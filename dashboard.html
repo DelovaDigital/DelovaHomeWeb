@@ -1,24 +1,35 @@
 <!DOCTYPE html>
 <html lang="nl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="style/style.css">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="./style/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+
 <body>
-    <header>
-    <h1>Omnihome</h1>
-    <ul>
-        <li><a href="dashboard.html">Dashboard</a></li>
-        <li><a href="pages/devices.html">Apparaten</a></li>
-        <li><a href="pages/instellingen.html">Instellingen</a></li>
-    </ul>
-    </header>
+    <div class="app-container">
+        <nav class="main-nav">
+            <div class="nav-brand">
+                <h1>DelovaHome</h1>
+            </div>
+            <ul>
+                <li><a href="dashboard.html" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="pages/devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
+                <li><a href="pages/settings.html"><i class="fas fa-cog"></i> Instellingen</a></li>
+                <li class="user-menu-container">
+                    <div class="user-avatar" onclick="toggleUserMenu()"></div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#"><i class="fas fa-user"></i> Profiel</a>
+                        <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </div>
 </body>
-
-
-
-
 <script src="script/script.js"></script>
+
 </html>

@@ -18,7 +18,7 @@
                 <li><a href="devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
                 <li><a href="settings.html" class="active"><i class="fas fa-cog"></i> Instellingen</a></li>
                 <li class="user-menu-container">
-                    <div class="user-avatar" onclick="toggleUserMenu()"></div>
+                    <div class="user-avatar"></div>
                     <div class="user-dropdown" id="userDropdown">
                         <a href="#"><i class="fas fa-user"></i> Profiel</a>
                         <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
@@ -34,7 +34,6 @@
             </header>
 
             <div class="settings-grid">
-                <!-- Account Settings -->
                 <div class="card settings-card">
                     <div class="card-header">
                         <i class="fas fa-user-circle"></i>
@@ -43,12 +42,8 @@
                     <div class="card-body">
                         <form onsubmit="event.preventDefault();">
                             <div class="form-group">
-                                <label for="username">Gebruikersnaam</label>
-                                <input type="text" id="username" placeholder="Jouw gebruikersnaam">
-                            </div>
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input type="email" id="email" placeholder="jouw@email.com">
+                                <label for="username">Wijzig gebruikersnaam</label>
+                                <input type="text" id="username" placeholder="Nieuwe gebruikersnaam">
                             </div>
                             <button type="submit" class="btn btn-primary">Opslaan</button>
                         </form>
@@ -73,6 +68,18 @@
                             </div>
                             <button type="submit" class="btn btn-secondary">Wachtwoord wijzigen</button>
                         </form>
+                    </div>
+                </div>
+
+                <div class="card settings-card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <h3>Info</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>DelovaHub Versie 0.0.3+Beta</p>
+                        <button type="submit" class="btn btn-primary">Check for updates</button>
+                        <p>© 2025 DelovaHub. Alle rechten voorbehouden.</p>
                     </div>
                 </div>
 
@@ -103,6 +110,15 @@
                                 <span class="slider round"></span>
                             </label>
                         </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Automatische updates</span>
+                                <span class="setting-desc">Houd deze hub up-to-date</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" checked>
+                                <span class="slider round"></span>
+                            </label>
                     </div>
                 </div>
             </div>

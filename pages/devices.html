@@ -5,17 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Delova - Apparaten</title>
     <link rel="stylesheet" href="../style/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <h1>DelovaHome</h1>
-    <ul>
-        <li><a href="../dashboard.html">Dashboard</a></li>
-        <li><a href="devices.html">Apparaten</a></li>
-        <li><a href="settings.html">Instellingen</a></li>
-    </ul>
+    <div class="app-container">
+        <nav class="main-nav">
+            <div class="nav-brand">
+                <h1>DelovaHome</h1>
+            </div>
+            <ul>
+                <li><a href="../dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="devices.html" class="active"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
+                <li><a href="settings.html"><i class="fas fa-cog"></i> Instellingen</a></li>
+                <li class="user-menu-container">
+                    <div class="user-avatar"></div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#"><i class="fas fa-user"></i> Profiel</a>
+                        <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content-area">
+            <header class="page-header">
+                <h2>Apparaten</h2>
+                <p>Beheer je apparaten en voorkeuren</p>
+            </header>
+
+            
+    </div>
+    <script src="../script/script.js"></script>
 </body>
-
-
-<script src="script/script.js"></script>
-
 </html>

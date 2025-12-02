@@ -1,15 +1,20 @@
-function toggleUserMenu() {
-    const dropdown = document.getElementById('userDropdown');
-    if (dropdown) dropdown.classList.toggle('show');
-}
+document.addEventListener('DOMContentLoaded', () => {
+  const avatar = document.querySelector('.user-avatar');
+  const dropdown = document.getElementById('userDropdown');
 
-window.addEventListener('click', function(event) {
-    const container = document.querySelector('.user-menu-container');
-    if (!container) return;
-    if (!container.contains(event.target)) {
-        const dropdowns = document.getElementsByClassName('user-dropdown');
-        for (let i = 0; i < dropdowns.length; i++) {
-            dropdowns[i].classList.remove('show');
-        }
-    }
+  const closeDropdown = () => {
+    if (dropdown) dropdown.classList.remove('show');
+  };
+
+  const toggleDropdown = (e) => {
+    if (!dropdown) return;
+    e.stopPropagation();
+    dropdown.classList.toggle('show');
+  };
+
+  if (avatar) avatar.addEventListener('click', toggleDropdown);
+  if (dropdown) dropdown.addEventListener('click', (e) => e.stopPropagation());
+
+  document.addEventListener('click', closeDropdown);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDropdown(); });
 });

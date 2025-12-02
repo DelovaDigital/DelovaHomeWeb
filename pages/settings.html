@@ -3,19 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Delova - Instellingen</title>
     <link rel="stylesheet" href="../style/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <h1>Omnihome</h1>
-    <ul>
-        <li><a href="../dashboard.html">Dashboard</a></li>
-        <li><a href="devices.html">Apparaten</a></li>
-        <li><a href="instellingen.html">Instellingen</a></li>
-    </ul>
+    <div class="app-container">
+        <nav class="main-nav">
+            <div class="nav-brand">
+                <h1>DelovaHome</h1>
+            </div>
+            <ul>
+                <li><a href="../dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
+                <li><a href="settings.html" class="active"><i class="fas fa-cog"></i> Instellingen</a></li>
+                <li class="user-menu-container">
+                    <div class="user-avatar" onclick="toggleUserMenu()"></div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#"><i class="fas fa-user"></i> Profiel</a>
+                        <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content-area">
+            <header class="page-header">
+                <h2>Instellingen</h2>
+                <p>Beheer je account en voorkeuren</p>
+            </header>
+
+            <div class="settings-grid">
+                <!-- Account Settings -->
+                <div class="card settings-card">
+                    <div class="card-header">
+                        <i class="fas fa-user-circle"></i>
+                        <h3>Account</h3>
+                    </div>
+                    <div class="card-body">
+                        <form onsubmit="event.preventDefault();">
+                            <div class="form-group">
+                                <label for="username">Gebruikersnaam</label>
+                                <input type="text" id="username" placeholder="Jouw gebruikersnaam">
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" placeholder="jouw@email.com">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Opslaan</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Security Settings -->
+                <div class="card settings-card">
+                    <div class="card-header">
+                        <i class="fas fa-lock"></i>
+                        <h3>Beveiliging</h3>
+                    </div>
+                    <div class="card-body">
+                        <form onsubmit="event.preventDefault();">
+                            <div class="form-group">
+                                <label for="current-password">Huidig wachtwoord</label>
+                                <input type="password" id="current-password" placeholder="••••••••">
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">Nieuw wachtwoord</label>
+                                <input type="password" id="new-password" placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="btn btn-secondary">Wachtwoord wijzigen</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Preferences -->
+                <div class="card settings-card">
+                    <div class="card-header">
+                        <i class="fas fa-sliders-h"></i>
+                        <h3>Voorkeuren</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Donkere modus</span>
+                                <span class="setting-desc">Schakel donker thema in</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <span class="setting-label">Meldingen</span>
+                                <span class="setting-desc">Ontvang updates en alerts</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../script/script.js"></script>
 </body>
-
-
-<script src="script/script.js"></script>
-
 </html>

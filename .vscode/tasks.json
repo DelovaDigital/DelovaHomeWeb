@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "backup_css",
+			"type": "shell",
+			"command": "cat /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/style.css >> /tmp/style_backup.css",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
+		}
+	]
+}

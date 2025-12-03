@@ -11,6 +11,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const username = localStorage.getItem('username');
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    if (usernameDisplay && username) {
+        usernameDisplay.textContent = `Hallo, ${username}`;
+    }
+
+    const logoutLink = document.querySelector('.logout');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem('username');
+            localStorage.removeItem('userId');
+            window.location.href = '../index.html';
+        });
+    }
+
     const closeDropdown = () => {
         if (dropdown) dropdown.classList.remove('show');
     };
@@ -50,7 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await res.json();
             if (res.ok && data.ok) {
-                // Login succeeded
+                // Login succeeded - save user data to localStorage
+                localStorage.setItem('username', data.username);
+                localStorage.setItem('userId', data.userId);
                 window.location.href = '../pages/dashboard.html';
             } else {
                 alert(data.message || 'Inloggen mislukt');

@@ -10,6 +10,22 @@ document.addEventListener('DOMContentLoaded', () => {
     themeStylesheet.href = '../style/style-dark.css';
     if (darkModeToggle) darkModeToggle.checked = true;
   }
+
+  const username = localStorage.getItem('username');
+  const usernameDisplay = document.getElementById('usernameDisplay');
+  if (usernameDisplay && username) {
+    usernameDisplay.textContent = `Hallo, ${username}`;
+  }
+
+  const logoutLink = document.querySelector('.logout');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('username');
+      localStorage.removeItem('userId');
+      window.location.href = '../index.html';
+    });
+  }
 });
 
 if (darkModeToggle) {

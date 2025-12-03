@@ -2,6 +2,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const avatar = document.querySelector('.user-avatar');
     const dropdown = document.getElementById('userDropdown');
     const btnLogin = document.getElementById('btnLogin');
+    const themeStylesheet = document.getElementById('theme-stylesheet');
+
+    // Load saved theme preference on page load
+    if (themeStylesheet) {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            themeStylesheet.href = '../style/style-dark.css';
+        }
+    }
 
     const closeDropdown = () => {
         if (dropdown) dropdown.classList.remove('show');

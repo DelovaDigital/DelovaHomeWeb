@@ -2,18 +2,19 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: rgb(191, 227, 215);
+    background-color: #1a1a1a;
+    color: #e0e0e0;
 }
 
 h1 {
-    color: black;
+    color: #e0e0e0;
     font-family: Arial, sans-serif;
 }
 
 header {
-    background-color: white;
+    background-color: #2d2d2d;
     padding: 10px 0;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #404040;
     border-radius: 10px;
 }
 
@@ -31,13 +32,13 @@ li {
 
 li a {
     text-decoration: none;
-    color: #007BFF;
+    color: #5ba3ff;
     font-weight: bold;
 }
 
 li a:hover {
     text-decoration: none;
-    color: #0056b3;
+    color: #7db8ff;
     font-weight: bold;
 }
 
@@ -45,15 +46,15 @@ form {
     max-width: 300px;
     margin: 50px auto;
     padding: 30px;
-    border: 1px solid #ddd;
+    border: 1px solid #404040;
     border-radius: 10px;
-    background-color: #f9f9f9;
+    background-color: #2d2d2d;
 }
 
 #btnLogin {
     width: 100%;
     padding: 10px;
-    background-color: #007BFF;
+    background-color: #4a7ba7;
     color: white;
     border: none;
     border-radius: 5px;
@@ -62,7 +63,7 @@ form {
 
 
 button {
-    background-color: rgb(174, 198, 255);
+    background-color: #4a7ba7;
     color: white;
     padding: 10px 15px;
     border: none;
@@ -71,7 +72,7 @@ button {
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: #5b8bb8;
 }
 
 input[type="text"],
@@ -79,30 +80,34 @@ input[type="password"] {
     width: 100%;
     padding: 10px;
     margin: 10px 0;
-    border: 1px solid #ccc;
+    border: 1px solid #404040;
     border-radius: 5px;
     box-sizing: border-box;
+    background-color: #1f1f1f;
+    color: #e0e0e0;
 }
 
 label {
     font-weight: bold;
+    color: #e0e0e0;
 }
 
 
 nav {
-    background-color: #333;
+    background-color: #2d2d2d;
     color: white;
     padding: 10px 0;
     border-radius: 10px;
 }
 
 nav a {
-    color: white;
+    color: #b0b0b0;
     margin: 0 15px;
     text-decoration: none;
 }
 
 nav a:hover {
+    color: #e0e0e0;
     text-decoration: underline;
 }
 
@@ -115,16 +120,16 @@ nav a:hover {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    background-color: rgb(191, 227, 215);
+    background-color: #1a1a1a;
 }
 
 /* Navigation */
 .main-nav {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(45, 45, 45, 0.95);
     backdrop-filter: blur(10px);
     padding: 1rem 2rem;
     border-radius: 16px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -132,7 +137,7 @@ nav a:hover {
 
 .nav-brand h1 {
     margin: 0;
-    color: #333;
+    color: #e0e0e0;
     font-size: 1.5rem;
 }
 
@@ -154,7 +159,7 @@ nav a:hover {
 }
 
 .main-nav a {
-    color: #666;
+    color: #b0b0b0;
     padding: 0.5rem 1rem;
     border-radius: 8px;
     transition: all 0.3s ease;
@@ -165,7 +170,7 @@ nav a:hover {
 
 .main-nav a:hover,
 .main-nav a.active {
-    background-color: rgb(	174, 198, 255);
+    background-color: #4a7ba7;
     color: white;
     text-decoration: none;
 }
@@ -177,20 +182,22 @@ nav a:hover {
 
 .page-header {
     margin-bottom: 30px;
-    color: white;
-    background-color: white;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: #e0e0e0;
+    background-color: #2d2d2d;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    border-radius: 10px;
 }
 
 .page-header h2 {
-    color: #000;
+    color: #e0e0e0;
     text-align: center;
     margin: 0;
     font-size: 2rem;
 }
 
 .page-header p {
-    color: #000;
+    color: #b0b0b0;
     margin: 5px 0 0;
     opacity: 0.9;
     text-align: center;
@@ -205,25 +212,26 @@ nav a:hover {
 
 /* Cards */
 .card.settings-card {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(45, 45, 45, 0.95);
     backdrop-filter: blur(10px);
-    border: none;
+    border: 1px solid #404040;
     border-radius: 16px;
     padding: 0;
     margin: 0;
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
     overflow: hidden;
     transition: transform 0.3s ease;
 }
 
 .card.settings-card:hover {
     transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
 }
 
 .card-header {
     padding: 20px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #eee;
+    background: #252525;
+    border-bottom: 1px solid #404040;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -231,13 +239,13 @@ nav a:hover {
 
 .card-header i {
     font-size: 1.2rem;
-    color: #007BFF;
+    color: #5ba3ff;
 }
 
 .card-header h3 {
     margin: 0;
     font-size: 1.1rem;
-    color: #333;
+    color: #e0e0e0;
 }
 
 .card-body {
@@ -261,21 +269,23 @@ nav a:hover {
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: #555;
+    color: #b0b0b0;
     font-size: 0.9rem;
 }
 
 .form-group input {
     width: 100%;
     padding: 12px;
-    border: 2px solid #eee;
+    border: 2px solid #404040;
     border-radius: 8px;
     transition: border-color 0.3s ease;
     margin: 0;
+    background-color: #1f1f1f;
+    color: #e0e0e0;
 }
 
 .form-group input:focus {
-    border-color: #007BFF;
+    border-color: #5ba3ff;
     outline: none;
 }
 
@@ -291,12 +301,12 @@ nav a:hover {
 }
 
 .btn-primary {
-    background-color: rgb(174, 198, 255);
+    background-color: #4a7ba7;
     color: white;
 }
 
 .btn-secondary {
-    background-color: #6c757d;
+    background-color: #505050;
     color: white;
 }
 
@@ -310,7 +320,7 @@ nav a:hover {
     justify-content: space-between;
     align-items: center;
     padding: 15px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #404040;
 }
 
 .setting-item:last-child {
@@ -324,12 +334,12 @@ nav a:hover {
 
 .setting-label {
     font-weight: 600;
-    color: #333;
+    color: #e0e0e0;
 }
 
 .setting-desc {
     font-size: 0.85rem;
-    color: #777;
+    color: #999;
     margin-top: 4px;
 }
 
@@ -353,7 +363,7 @@ nav a:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
+    background-color: #555;
     transition: .4s;
 }
 
@@ -364,16 +374,16 @@ nav a:hover {
     width: 18px;
     left: 4px;
     bottom: 4px;
-    background-color: white;
+    background-color: #e0e0e0;
     transition: .4s;
 }
 
 input:checked+.slider {
-    background-color: #007BFF;
+    background-color: #4a7ba7;
 }
 
 input:focus+.slider {
-    box-shadow: 0 0 1px #007BFF;
+    box-shadow: 0 0 1px #4a7ba7;
 }
 
 input:checked+.slider:before {
@@ -404,8 +414,8 @@ input:checked+.slider:before {
     background-position: center;
     cursor: pointer;
     transition: background-image 0.3s ease;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 2px solid #404040;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .user-avatar:hover {
@@ -416,10 +426,10 @@ input:checked+.slider:before {
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    background: white;
+    background: #2d2d2d;
     min-width: 200px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e9ecef;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    border: 1px solid #404040;
     border-radius: 12px;
     padding: 8px 0;
     z-index: 9999;
@@ -436,7 +446,7 @@ input:checked+.slider:before {
 }
 
 .user-dropdown a {
-    color: #333;
+    color: #e0e0e0;
     padding: 12px 20px;
     text-decoration: none;
     display: flex;
@@ -446,20 +456,20 @@ input:checked+.slider:before {
 }
 
 .user-dropdown a:hover {
-    background-color: #f8f9fa;
-    color: #007BFF;
+    background-color: #383838;
+    color: #5ba3ff;
 }
 
 .user-dropdown a.logout {
-    color: #dc3545;
-    border-top: 1px solid #eee;
+    color: #ff6b6b;
+    border-top: 1px solid #404040;
     margin-top: 8px;
     padding-top: 12px;
 }
 
 .user-dropdown a.logout:hover {
-    background-color: #fff5f5;
-    color: #c82333;
+    background-color: #3d2626;
+    color: #ff8787;
 }
 
 @keyframes fadeIn {

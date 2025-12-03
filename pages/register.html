@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Maak gebruiker</title>
+  <link rel="stylesheet" href="/style/style.css">
+ </head>
+<body>
+  <header><h1>Maak gebruiker</h1></header>
+
+  <main>
+    <form id="registerForm">
+      <label for="username">Gebruikersnaam</label>
+      <input id="username" name="username" required>
+
+      <label for="password">Wachtwoord</label>
+      <input id="password" name="password" type="password" required>
+
+      <label for="confirm">Bevestig wachtwoord</label>
+      <input id="confirm" name="confirm" type="password" required>
+
+      <button type="submit">Maak gebruiker</button>
+    </form>
+
+    <div id="msg" aria-live="polite"></div>
+  </main>
+
+  <script src="/script/register.js"></script>
+</body>
+</html>

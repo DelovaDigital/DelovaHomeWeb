@@ -4,7 +4,6 @@ const updates = document.querySelector('.btnCheck');
 const darkModeToggle = document.getElementById('darkModeToggle');
 const themeStylesheet = document.getElementById('theme-stylesheet');
 
-// Load saved theme preference on page load
 document.addEventListener('DOMContentLoaded', () => {
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme === 'dark') {
@@ -13,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Dark mode toggle functionality
 if (darkModeToggle) {
   darkModeToggle.addEventListener('change', () => {
     if (darkModeToggle.checked) {

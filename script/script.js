@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLogin = document.getElementById('btnLogin');
     const themeStylesheet = document.getElementById('theme-stylesheet');
 
-    // Load saved theme preference on page load
     if (themeStylesheet) {
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {

@@ -80,6 +80,36 @@ document.addEventListener('DOMContentLoaded', () => {
                             onchange="controlDevice('${device.id}', 'set_target_temp', this.value)">
                     </div>
                 `;
+            } else if (device.type === 'sensor') {
+                icon = 'fa-temperature-low';
+                statusClass = 'on';
+                controls = `
+                    <div class="control-group" style="justify-content: space-around;">
+                        <div style="text-align: center;">
+                            <i class="fas fa-thermometer-half" style="color: #ff6b6b;"></i>
+                            <span class="temp-display" style="font-size: 1em;">${device.state.temperature}°C</span>
+                        </div>
+                        <div style="text-align: center;">
+                            <i class="fas fa-tint" style="color: #4dabf7;"></i>
+                            <span class="temp-display" style="font-size: 1em;">${device.state.humidity}%</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Default / Speaker / Switch / Printer / Unknown
+                if (device.type === 'speaker') icon = 'fa-volume-up';
+                else if (device.type === 'printer') icon = 'fa-print';
+                else if (device.type === 'switch') icon = 'fa-toggle-on';
+                
+                const isOn = device.state.on;
+                statusClass = isOn ? 'on' : 'off';
+                controls = `
+                    <div class="control-group">
+                        <button class="btn-toggle ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}')">
+                            <i class="fas fa-power-off"></i>
+                        </button>
+                    </div>
+                `;
             }
 
             card.innerHTML = `

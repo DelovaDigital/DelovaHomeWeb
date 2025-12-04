@@ -5,6 +5,15 @@ try {
   // dotenv is optional; if it's not installed we'll rely on environment variables
 }
 
+// Suppress DEP0123 warning (TLS ServerName to IP)
+const originalEmit = process.emit;
+process.emit = function (name, data, ...args) {
+    if (name === 'warning' && typeof data === 'object' && data.code === 'DEP0123') {
+        return false;
+    }
+    return originalEmit.apply(process, [name, data, ...args]);
+};
+
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');

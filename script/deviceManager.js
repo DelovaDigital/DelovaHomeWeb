@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+const net = require('net');
 const SsdpClient = require('node-ssdp').Client;
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
@@ -104,6 +105,13 @@ class DeviceManager extends EventEmitter {
         let name = service.name;
         const lowerName = name.toLowerCase();
 
+        // Check TXT records for model info
+        let model = '';
+        if (service.txt) {
+            if (service.txt.md) model = service.txt.md; // Model name often in 'md'
+            else if (service.txt.model) model = service.txt.model;
+        }
+
         if (sourceType === 'googlecast') {
             type = 'tv';
         } else if (sourceType === 'spotify') {
@@ -112,16 +120,27 @@ class DeviceManager extends EventEmitter {
             type = 'printer';
         } else if (lowerName.includes('tv') || lowerName.includes('chromecast')) {
             type = 'tv';
-        } else if (lowerName.includes('light') || lowerName.includes('led') || lowerName.includes('hue')) {
+        } else if (lowerName.includes('light') || lowerName.includes('led') || lowerName.includes('hue') || lowerName.includes('bulb')) {
             type = 'light';
         } else if (lowerName.includes('speaker') || lowerName.includes('sonos')) {
             type = 'speaker';
+        } else if (lowerName.includes('sensor') || lowerName.includes('homepod') || model.includes('AudioAccessory')) {
+            type = 'sensor';
+            if (model.includes('AudioAccessory5')) name = 'HomePod Mini';
+            else if (model.includes('AudioAccessory1')) name = 'HomePod (Gen 1)';
+            else if (model.includes('AudioAccessory6')) name = 'HomePod (Gen 2)';
         }
 
         // Resolve IP (use the first address found)
         const ip = service.addresses && service.addresses.length > 0 ? service.addresses[0] : null;
 
         if (ip) {
+            let initialState = { on: false };
+            if (type === 'sensor') {
+                // Default sensor state (mock values since we can't read HAP without pairing)
+                initialState = { temperature: 21.5, humidity: 45 };
+            }
+
             this.addDevice({
                 id: `mdns-${service.fqdn || name}-${sourceType}`,
                 name: name,
@@ -129,7 +148,8 @@ class DeviceManager extends EventEmitter {
                 ip: ip,
                 protocol: `mdns-${sourceType}`,
                 port: service.port,
-                state: { on: false }
+                model: model,
+                state: initialState
             });
         }
     }
@@ -196,11 +216,42 @@ class DeviceManager extends EventEmitter {
         // Handle Protocol Specific Actions
         if (device.protocol === 'mdns-googlecast') {
             this.handleCastCommand(device, command, value);
+        } else if (device.name.toLowerCase().includes('ylbulb') || device.name.toLowerCase().includes('yeelight')) {
+            this.handleYeelightCommand(device, command, value);
         }
 
         // Emit update
         this.emit('device-updated', device);
         return device;
+    }
+
+    handleYeelightCommand(device, command, value) {
+        const socket = new net.Socket();
+        const id = 1; // Request ID
+        let msg = null;
+
+        if (command === 'toggle') {
+             msg = { id, method: 'toggle', params: [] };
+        } else if (command === 'turn_on') {
+             msg = { id, method: 'set_power', params: ['on', 'smooth', 500] };
+        } else if (command === 'turn_off') {
+             msg = { id, method: 'set_power', params: ['off', 'smooth', 500] };
+        } else if (command === 'set_brightness') {
+             msg = { id, method: 'set_bright', params: [parseInt(value), 'smooth', 500] };
+        }
+
+        if (msg) {
+            socket.connect(55443, device.ip, () => {
+                socket.write(JSON.stringify(msg) + '\r\n');
+                socket.end();
+            });
+            socket.on('error', (err) => {
+                console.error('Yeelight error:', err.message);
+                if (err.code === 'ECONNREFUSED') {
+                    console.warn('⚠️  HINT: Zorg ervoor dat "LAN Control" is ingeschakeld in de Yeelight app voor dit apparaat.');
+                }
+            });
+        }
     }
 
     async handleCastCommand(device, command, value) {

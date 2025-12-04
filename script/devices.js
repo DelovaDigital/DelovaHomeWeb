@@ -63,6 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="btn-toggle ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}')">
                             <i class="fas fa-power-off"></i>
                         </button>
+                        <div class="channel-controls" style="margin-left: auto; display: flex; gap: 5px;">
+                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'channel_up', null)"><i class="fas fa-chevron-up"></i></button>
+                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'channel_down', null)"><i class="fas fa-chevron-down"></i></button>
+                        </div>
                     </div>
                     <div class="control-group">
                         <i class="fas fa-volume-up"></i>

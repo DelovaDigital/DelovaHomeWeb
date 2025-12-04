@@ -12,9 +12,9 @@
     "castv2-client": "^1.2.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "ip": "^2.0.1",
+    "lgtv2": "^1.6.3",
     "mssql": "^12.2.0",
-    "node-ssdp": "^1.0.0"
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

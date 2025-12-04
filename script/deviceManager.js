@@ -1,8 +1,10 @@
 const EventEmitter = require('events');
 const net = require('net');
-const SsdpClient = require('node-ssdp').Client;
+const dgram = require('dgram');
+const WebSocket = require('ws');
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
+const lgtv = require('lgtv2');
 
 class DeviceManager extends EventEmitter {
     constructor() {
@@ -14,65 +16,9 @@ class DeviceManager extends EventEmitter {
     startDiscovery() {
         console.log('Starting device discovery...');
         
-        // 1. SSDP Discovery (UPnP)
-        this.ssdpClient = new SsdpClient();
-        
-        this.ssdpClient.on('response', (headers, statusCode, rinfo) => {
-            if (!rinfo) return;
-            
-            // Log raw discovery for debugging
-            // console.log('SSDP Response from', rinfo.address, headers);
-
-            const location = headers.LOCATION || headers.Location;
-            const usn = headers.USN || headers.Usn || '';
-            const server = headers.SERVER || headers.Server || '';
-            
-            // Basic identification based on USN or headers
-            let type = 'unknown';
-            let name = 'Unknown Device';
-
-            // Improved detection logic
-            if (usn.includes('HueBridge') || server.includes('IpBridge')) {
-                type = 'light';
-                name = 'Philips Hue Bridge';
-            } else if (usn.includes('Wemo') || server.includes('Wemo')) {
-                type = 'switch';
-                name = 'Wemo Switch';
-            } else if (server.includes('Sonos')) {
-                type = 'speaker';
-                name = 'Sonos Speaker';
-            } else if (server.includes('UPnP/1.0') && location) {
-                // Generic UPnP device
-                name = `UPnP Device (${rinfo.address})`;
-            } else {
-                name = `Device (${rinfo.address})`;
-            }
-
-            this.addDevice({
-                id: usn || `ssdp-${rinfo.address}`,
-                name: name,
-                type: type,
-                ip: rinfo.address,
-                protocol: 'ssdp',
-                location: location,
-                state: { on: false } // Default state
-            });
-        });
-
-        // Search for all SSDP devices
-        try {
-            this.ssdpClient.search('ssdp:all');
-        } catch (e) {
-            console.error('Error starting SSDP search:', e);
-        }
-        
-        // Periodically search again
-        setInterval(() => {
-            try {
-                this.ssdpClient.search('ssdp:all');
-            } catch (e) { console.error('SSDP search error:', e); }
-        }, 10000);
-
+        // 1. Custom SSDP Discovery (UPnP) using dgram
+        // Replaces node-ssdp to avoid 'ip' package vulnerability
+        this.setupSsdpDiscovery();
 
         // 2. mDNS Discovery (Bonjour/Zeroconf)
         this.bonjour = new Bonjour();
@@ -92,10 +38,110 @@ class DeviceManager extends EventEmitter {
         this.bonjour.find({ type: 'spotify-connect' }, (service) => {
             this.processMdnsService(service, 'spotify');
         });
+
+        // LG WebOS TV Discovery
+        this.bonjour.find({ type: 'webos-second-screen' }, (service) => {
+             const ip = service.addresses && service.addresses.length > 0 ? service.addresses[0] : null;
+             if (ip) {
+                 this.addDevice({
+                     id: `lg-webos-${service.name}`,
+                     name: service.name || 'LG WebOS TV',
+                     type: 'tv',
+                     ip: ip,
+                     protocol: 'lg-webos',
+                     state: { on: true, volume: 10 }
+                 });
+             }
+        });
         
         // Keep Mock devices for testing purposes if no real devices are found immediately
         // You can remove this later
         this.addMockDevices();
+    }
+
+    setupSsdpDiscovery() {
+        const SSDP_ADDR = '239.255.255.250';
+        const SSDP_PORT = 1900;
+        const M_SEARCH = Buffer.from(
+            'M-SEARCH * HTTP/1.1\r\n' +
+            'HOST: 239.255.255.250:1900\r\n' +
+            'MAN: "ssdp:discover"\r\n' +
+            'MX: 1\r\n' +
+            'ST: ssdp:all\r\n' +
+            '\r\n'
+        );
+
+        this.ssdpSocket = dgram.createSocket('udp4');
+
+        this.ssdpSocket.on('error', (err) => {
+            console.error(`SSDP socket error:\n${err.stack}`);
+            this.ssdpSocket.close();
+        });
+
+        this.ssdpSocket.on('message', (msg, rinfo) => {
+            const msgString = msg.toString();
+            const lines = msgString.split('\r\n');
+            const headers = {};
+            
+            lines.forEach(line => {
+                const parts = line.split(':');
+                if (parts.length >= 2) {
+                    const key = parts[0].trim().toUpperCase();
+                    const value = parts.slice(1).join(':').trim();
+                    headers[key] = value;
+                }
+            });
+
+            // Process SSDP Response
+            const location = headers.LOCATION || headers.Location;
+            const usn = headers.USN || headers.Usn || '';
+            const server = headers.SERVER || headers.Server || '';
+            
+            let type = 'unknown';
+            let name = 'Unknown Device';
+
+            if (usn.includes('HueBridge') || server.includes('IpBridge')) {
+                type = 'light';
+                name = 'Philips Hue Bridge';
+            } else if (usn.includes('Wemo') || server.includes('Wemo')) {
+                type = 'switch';
+                name = 'Wemo Switch';
+            } else if (server.includes('Sonos')) {
+                type = 'speaker';
+                name = 'Sonos Speaker';
+            } else if (server.toLowerCase().includes('samsung') || server.toLowerCase().includes('tizen')) {
+                type = 'tv';
+                name = 'Samsung Smart TV';
+            } else if (server.includes('UPnP/1.0') && location) {
+                name = `UPnP Device (${rinfo.address})`;
+            } else {
+                name = `Device (${rinfo.address})`;
+            }
+
+            this.addDevice({
+                id: usn || `ssdp-${rinfo.address}`,
+                name: name,
+                type: type,
+                ip: rinfo.address,
+                protocol: type === 'tv' && name.includes('Samsung') ? 'samsung-tizen' : 'ssdp',
+                location: location,
+                state: { on: false }
+            });
+        });
+
+        this.ssdpSocket.bind(0, () => {
+            this.ssdpSocket.setBroadcast(true);
+            this.ssdpSocket.setMulticastTTL(128);
+            // Send initial search
+            this.ssdpSocket.send(M_SEARCH, 0, M_SEARCH.length, SSDP_PORT, SSDP_ADDR);
+        });
+
+        // Periodically search
+        setInterval(() => {
+            try {
+                this.ssdpSocket.send(M_SEARCH, 0, M_SEARCH.length, SSDP_PORT, SSDP_ADDR);
+            } catch (e) { console.error('SSDP send error:', e); }
+        }, 10000);
     }
 
     processMdnsService(service, sourceType) {
@@ -218,11 +264,87 @@ class DeviceManager extends EventEmitter {
             this.handleCastCommand(device, command, value);
         } else if (device.name.toLowerCase().includes('ylbulb') || device.name.toLowerCase().includes('yeelight')) {
             this.handleYeelightCommand(device, command, value);
+        } else if (device.protocol === 'lg-webos') {
+            this.handleLgCommand(device, command, value);
+        } else if (device.protocol === 'samsung-tizen') {
+            this.handleSamsungCommand(device, command, value);
         }
 
         // Emit update
         this.emit('device-updated', device);
         return device;
+    }
+
+    handleLgCommand(device, command, value) {
+        const lgtvClient = lgtv({ url: `ws://${device.ip}:3000` });
+        
+        lgtvClient.on('connect', () => {
+            if (command === 'set_volume') {
+                lgtvClient.request('ssap://audio/setVolume', { volume: parseInt(value) });
+            } else if (command === 'turn_off') {
+                lgtvClient.request('ssap://system/turnOff');
+            } else if (command === 'toggle') {
+                // LG doesn't have a simple toggle, but we can try turn off if on
+                if (device.state.on) lgtvClient.request('ssap://system/turnOff');
+            } else if (command === 'channel_up') {
+                lgtvClient.request('ssap://tv/channelUp');
+            } else if (command === 'channel_down') {
+                lgtvClient.request('ssap://tv/channelDown');
+            }
+            
+            setTimeout(() => lgtvClient.disconnect(), 1000);
+        });
+        
+        lgtvClient.on('error', (err) => console.error('LG TV Error:', err));
+    }
+
+    handleSamsungCommand(device, command, value) {
+        // Custom Samsung Tizen Control via WebSocket (Port 8002 for secure, 8001 for insecure)
+        // This avoids using the vulnerable 'samsung-tv-control' package
+        
+        const appName = Buffer.from('DelovaHome').toString('base64');
+        const url = `wss://${device.ip}:8002/api/v2/channels/samsung.remote.control?name=${appName}`;
+        
+        // Ignore self-signed certs for local TV
+        const ws = new WebSocket(url, {
+            rejectUnauthorized: false
+        });
+
+        ws.on('error', (e) => {
+            console.error('Samsung TV Connection Error:', e.message);
+        });
+
+        ws.on('open', () => {
+            // console.log('Connected to Samsung TV');
+            
+            const sendKey = (key) => {
+                const commandData = {
+                    method: 'ms.remote.control',
+                    params: {
+                        Cmd: 'Click',
+                        DataOfCmd: key,
+                        Option: 'false',
+                        TypeOfRemote: 'SendRemoteKey'
+                    }
+                };
+                ws.send(JSON.stringify(commandData));
+            };
+
+            if (command === 'turn_off' || (command === 'toggle' && device.state.on)) {
+                sendKey('KEY_POWER');
+            } else if (command === 'channel_up') {
+                sendKey('KEY_CHUP');
+            } else if (command === 'channel_down') {
+                sendKey('KEY_CHDOWN');
+            } else if (command === 'set_volume') {
+                // Volume is tricky without current state, but we can try to nudge it
+                // Ideally we'd just send KEY_VOLUP or KEY_VOLDOWN
+                // For now, let's just support keys
+            }
+
+            // Close after a short delay to ensure message is sent
+            setTimeout(() => ws.close(), 1000);
+        });
     }
 
     handleYeelightCommand(device, command, value) {

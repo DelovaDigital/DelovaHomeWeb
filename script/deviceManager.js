@@ -178,58 +178,65 @@ class DeviceManager extends EventEmitter {
 
         console.log(`Controlling ${device.name} (${device.protocol}): ${command} = ${value}`);
 
-        // 1. Handle Google Cast Devices
-        if (device.protocol === 'mdns-googlecast') {
-            try {
-                if (command === 'set_volume') {
-                    const client = new CastClient();
-                    client.connect(device.ip, () => {
-                        client.setVolume({ level: value / 100 }, () => {
-                            client.close();
-                        });
-                    });
-                    // Optimistic update
-                    device.state.volume = value;
-                } else if (command === 'toggle') {
-                    // Cast devices don't really "toggle" power easily via API without launching an app
-                    // But we can mute/unmute or stop playback
-                    const client = new CastClient();
-                    client.connect(device.ip, () => {
-                        client.setVolume({ muted: !device.state.on }, () => { // Hack: use 'on' state as 'muted' inverse?
-                             // Actually, let's just toggle mute
-                             client.getVolume((err, vol) => {
-                                 if (!err) {
-                                     client.setVolume({ muted: !vol.muted }, () => client.close());
-                                 } else client.close();
-                             });
-                        });
-                    });
-                }
-            } catch (err) {
-                console.error('Error controlling Cast device:', err);
-            }
+        // Update state object first (Optimistic UI)
+        if (command === 'toggle') {
+            device.state.on = !device.state.on;
+        } else if (command === 'turn_on') {
+            device.state.on = true;
+        } else if (command === 'turn_off') {
+            device.state.on = false;
+        } else if (command === 'set_brightness') {
+            device.state.brightness = value;
+        } else if (command === 'set_volume') {
+            device.state.volume = value;
+        } else if (command === 'set_target_temp') {
+            device.state.target = value;
         }
 
-        // 2. Handle Mock Devices
-        if (device.protocol === 'mock' || !device.protocol) {
-             if (command === 'toggle') {
-                device.state.on = !device.state.on;
-            } else if (command === 'turn_on') {
-                device.state.on = true;
-            } else if (command === 'turn_off') {
-                device.state.on = false;
-            } else if (command === 'set_brightness') {
-                device.state.brightness = value;
-            } else if (command === 'set_volume') {
-                device.state.volume = value;
-            } else if (command === 'set_target_temp') {
-                device.state.target = value;
-            }
+        // Handle Protocol Specific Actions
+        if (device.protocol === 'mdns-googlecast') {
+            this.handleCastCommand(device, command, value);
         }
 
         // Emit update
         this.emit('device-updated', device);
         return device;
+    }
+
+    async handleCastCommand(device, command, value) {
+        try {
+            const client = new CastClient();
+            const connect = () => new Promise((resolve, reject) => {
+                client.connect(device.ip, () => resolve());
+                client.on('error', (err) => reject(err));
+            });
+
+            if (command === 'set_volume') {
+                await connect();
+                client.setVolume({ level: value / 100 }, () => client.close());
+            } 
+            else if (command === 'turn_on' || (command === 'toggle' && device.state.on)) {
+                await connect();
+                // Unmute and ensure connected
+                client.setVolume({ muted: false }, () => client.close());
+            }
+            else if (command === 'turn_off' || (command === 'toggle' && !device.state.on)) {
+                await connect();
+                // Stop apps and mute
+                client.getStatus((err, status) => {
+                    if (!err && status && status.applications) {
+                        status.applications.forEach(app => {
+                            if (app.displayName !== 'Backdrop') {
+                                client.stop(app, () => {});
+                            }
+                        });
+                    }
+                    client.setVolume({ muted: true }, () => client.close());
+                });
+            }
+        } catch (err) {
+            console.error('Error controlling Cast device:', err);
+        }
     }
 
     updateDeviceState(id, state) {

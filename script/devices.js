@@ -71,9 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     </div>
                     <div class="control-group">
-                        <i class="fas fa-volume-up"></i>
+                        <button class="btn-mini" onclick="controlDevice('${device.id}', 'volume_down', null)"><i class="fas fa-minus"></i></button>
+                        <i class="fas fa-volume-up" style="margin: 0 10px;"></i>
                         <input type="range" class="device-slider" min="0" max="100" value="${device.state.volume || 20}" 
                             onchange="controlDevice('${device.id}', 'set_volume', this.value)">
+                        <button class="btn-mini" onclick="controlDevice('${device.id}', 'volume_up', null)"><i class="fas fa-plus"></i></button>
                     </div>
                 `;
             } else if (device.type === 'thermostat') {

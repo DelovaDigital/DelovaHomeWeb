@@ -61,7 +61,7 @@ class DeviceManager extends EventEmitter {
         
         // Keep Mock devices for testing purposes if no real devices are found immediately
         // You can remove this later
-        this.addMockDevices();
+        // this.addMockDevices();
     }
 
     setupSsdpDiscovery() {
@@ -133,6 +133,11 @@ class DeviceManager extends EventEmitter {
                 name = `Device (${rinfo.address})`;
             }
 
+            // Filter out unknown UPnP devices to reduce clutter
+            if (type === 'unknown') {
+                return;
+            }
+
             // Sanitize ID to be safe for HTML attributes
             const safeId = (usn || `ssdp-${rinfo.address}`).replace(/[^a-zA-Z0-9-_:]/g, '_');
 
@@ -184,6 +189,13 @@ class DeviceManager extends EventEmitter {
 
         if (sourceType === 'googlecast') {
             type = 'tv';
+            // Try to get friendly name from TXT record
+            if (service.txt && service.txt.fn) {
+                name = service.txt.fn;
+            } else {
+                // Fallback: Clean up name by removing UUID suffix
+                name = name.replace(/-[a-f0-9]{32}$/, '').replace(/-/g, ' ');
+            }
         } else if (sourceType === 'airplay') {
             if (model.toLowerCase().includes('samsung') || lowerName.includes('samsung') || lowerName.includes('tv')) {
                 type = 'tv';
@@ -194,6 +206,10 @@ class DeviceManager extends EventEmitter {
             }
         } else if (sourceType === 'spotify') {
             type = 'speaker';
+            // Clean up Spotify names if they start with hex ID (MAC address)
+            if (/^[0-9a-fA-F]{12}/.test(name)) {
+                 name = name.substring(12);
+            }
         } else if (lowerName.includes('printer')) {
             type = 'printer';
         } else if (lowerName.includes('tv') || lowerName.includes('chromecast')) {
@@ -242,25 +258,7 @@ class DeviceManager extends EventEmitter {
     }
 
     addMockDevices() {
-        setTimeout(() => {
-            this.addDevice({
-                id: 'mock-light-1',
-                name: 'Woonkamer Lamp (Mock)',
-                type: 'light',
-                ip: '192.168.1.101',
-                state: { on: false, brightness: 80 }
-            });
-        }, 1000);
-
-        setTimeout(() => {
-            this.addDevice({
-                id: 'mock-tv-1',
-                name: 'Samsung TV (Mock)',
-                type: 'tv',
-                ip: '192.168.1.102',
-                state: { on: true, volume: 15, channel: 1 }
-            });
-        }, 2000);
+        // Mock devices removed
     }
 
     addDevice(device) {
@@ -316,6 +314,10 @@ class DeviceManager extends EventEmitter {
             device.state.brightness = value;
         } else if (command === 'set_volume') {
             device.state.volume = value;
+        } else if (command === 'volume_up') {
+            device.state.volume = Math.min((parseInt(device.state.volume) || 0) + 5, 100);
+        } else if (command === 'volume_down') {
+            device.state.volume = Math.max((parseInt(device.state.volume) || 0) - 5, 0);
         } else if (command === 'set_target_temp') {
             device.state.target = value;
         }
@@ -364,8 +366,13 @@ class DeviceManager extends EventEmitter {
         // This avoids using the vulnerable 'samsung-tv-control' package
         
         const appName = Buffer.from('DelovaHome').toString('base64');
-        const url = `wss://${device.ip}:8002/api/v2/channels/samsung.remote.control?name=${appName}`;
+        let url = `wss://${device.ip}:8002/api/v2/channels/samsung.remote.control?name=${appName}`;
         
+        // If we have a saved token, append it to the URL
+        if (device.token) {
+            url += `&token=${device.token}`;
+        }
+
         // Ignore self-signed certs for local TV
         const ws = new WebSocket(url, {
             rejectUnauthorized: false
@@ -373,6 +380,20 @@ class DeviceManager extends EventEmitter {
 
         ws.on('error', (e) => {
             console.error('Samsung TV Connection Error:', e.message);
+        });
+
+        ws.on('message', (data) => {
+            try {
+                const response = JSON.parse(data);
+                // Save the token if the TV sends one
+                if (response.data && response.data.token) {
+                    console.log(`Received new token for Samsung TV (${device.ip}): ${response.data.token}`);
+                    device.token = response.data.token;
+                    // In a real app, you should persist this token to disk/DB
+                }
+            } catch (e) {
+                // Ignore parse errors
+            }
         });
 
         ws.on('open', () => {
@@ -397,6 +418,10 @@ class DeviceManager extends EventEmitter {
                 sendKey('KEY_CHUP');
             } else if (command === 'channel_down') {
                 sendKey('KEY_CHDOWN');
+            } else if (command === 'volume_up') {
+                sendKey('KEY_VOLUP');
+            } else if (command === 'volume_down') {
+                sendKey('KEY_VOLDOWN');
             } else if (command === 'set_volume') {
                 // Volume is tricky without current state, but we can try to nudge it
                 // Ideally we'd just send KEY_VOLUP or KEY_VOLDOWN

@@ -28,9 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const unassignedPanel = document.createElement('div');
     unassignedPanel.className = 'unassigned-panel';
     unassignedPanel.innerHTML = `
-      <strong>Ongeïncippeerde apparaten</strong>
+      <strong>Niet-toegewezen apparaten</strong>
       <div class="unassigned-list">
-        ${unassigned.length>0 ? unassigned.map(u=>`<div class="unassigned-item" draggable="true" data-device-id="${u.id}">${u.name} <small>(${u.ip || 'n/a'})</small></div>`).join('') : '<div class="empty">Geen ongeïncippeerde apparaten</div>'}
+        ${unassigned.length>0 ? unassigned.map(u=>`<div class="unassigned-item" draggable="true" data-device-id="${u.id}">${u.name} <small>(${u.ip || 'n/a'})</small></div>`).join('') : '<div class="empty">Geen niet-toegewezen apparaten</div>'}
       </div>
     `;
     roomsList.appendChild(unassignedPanel);
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${devs.length>0 ? devs.map(d=>`<div class="room-device">${d.name} <button data-device="${d.id}" class="unassign">Verwijder</button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
         </div>
         <div class="room-add">
-          <label>Ongeïncippeerde apparaten toevoegen</label>
+          <label>apparaten toevoegen</label>
           <select class="add-select">
             <option value="">-- Kies apparaat --</option>
             ${unassigned.map(u=>`<option value="${u.id}">${u.name} (${u.ip || 'n/a'})</option>`).join('')}

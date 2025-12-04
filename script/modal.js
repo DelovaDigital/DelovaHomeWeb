@@ -14,7 +14,6 @@
             <option value="">-- Geen (ontkoppel) --</option>
           </select>
           <div style="height:8px"></div>
-          <label>Of maak nieuwe kamer</label>
           <input id="roomPickerNew" placeholder="Nieuwe kamer naam" />
         </div>
         <div class="modal-actions">
@@ -34,7 +33,18 @@
   const btnCancel = overlay.querySelector('#roomPickerCancel');
   const btnSave = overlay.querySelector('#roomPickerSave');
 
+  // allow Enter in the input to trigger save (same as clicking Opslaan)
+  if(newInput){
+    newInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        btnSave.click();
+      }
+    });
+  }
+
   let currentResolve = null;
+  let currentOptions = {};
 
   async function loadRooms(){
     try{
@@ -53,10 +63,25 @@
   });
 
   btnSave.addEventListener('click', async ()=>{
-    // if new name provided, create room first
     const newName = newInput.value && newInput.value.trim();
-    let roomId = selectEl.value || null;
     try{
+      if(currentOptions.createOnly){
+        if(!newName){
+          alert('Vul een naam in voor de nieuwe kamer');
+          return;
+        }
+        // create new room and return its id
+        const res = await fetch('/api/rooms', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name: newName }) });
+        let roomId = null;
+        try{ const data = await res.json(); if(data && data.room && data.room.id) roomId = data.room.id; }catch(e){}
+        overlay.style.display = 'none';
+        if(currentResolve) { currentResolve(roomId); currentResolve = null; }
+        newInput.value = '';
+        return;
+      }
+
+      // normal mode: allow selecting existing or creating new
+      let roomId = selectEl.value || null;
       if(newName){
         const res = await fetch('/api/rooms', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name: newName }) });
         const data = await res.json();
@@ -64,7 +89,6 @@
       }
       overlay.style.display = 'none';
       if(currentResolve) { currentResolve(roomId); currentResolve = null; }
-      // reset fields
       newInput.value = '';
     }catch(e){
       console.error('Modal: save failed', e);
@@ -78,8 +102,40 @@
     if(ev.target === overlay){ overlay.style.display = 'none'; if(currentResolve){ currentResolve(null); currentResolve = null; } }
   });
 
-  window.showRoomPicker = async function(deviceId){
+  // close modal with Escape key
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && overlay.style.display === 'flex'){
+      overlay.style.display = 'none';
+      if(currentResolve){ currentResolve(null); currentResolve = null; }
+    }
+  });
+
+  window.showRoomPicker = async function(arg){
+    // Accept either deviceId string (legacy) or options object { createOnly: true }
+    const opts = {};
+    if(typeof arg === 'string') opts.deviceId = arg;
+    if(typeof arg === 'object') Object.assign(opts, arg || {});
+    currentOptions = opts;
     await loadRooms();
+
+    // adjust UI for create-only mode
+    const title = overlay.querySelector('h3');
+    const labelExisting = selectEl.previousElementSibling; // the label node
+    const spacer = selectEl.nextElementSibling; // spacer div
+    if(opts.createOnly){
+      if(title) title.textContent = 'Nieuwe kamer aanmaken';
+      if(labelExisting) labelExisting.style.display = 'none';
+      if(selectEl) { selectEl.style.display = 'none'; selectEl.value = ''; }
+      if(spacer) spacer.style.display = 'none';
+      newInput.value = '';
+      newInput.focus();
+    }else{
+      if(title) title.textContent = 'Kies kamer';
+      if(labelExisting) labelExisting.style.display = 'block';
+      if(selectEl) selectEl.style.display = 'block';
+      if(spacer) spacer.style.display = 'block';
+    }
+
     overlay.style.display = 'flex';
     return new Promise((resolve, reject)=>{ currentResolve = resolve; });
   };

@@ -16,6 +16,14 @@
         <li><a href="rooms.html" class="active"><i class="fas fa-door-open"></i> Kamers</a></li>
         <li><a href="devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
         <li><a href="settings.html"><i class="fas fa-cog"></i> Instellingen</a></li>
+          <li class="user-menu-container">
+            <span id="usernameDisplay"></span>
+            <div class="user-avatar"></div>
+            <div class="user-dropdown" id="userDropdown">
+              <a href="#"><i class="fas fa-user"></i> Profiel</a>
+              <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
+            </div>
+          </li>
       </ul>
     </nav>
 
@@ -29,8 +37,7 @@
         <div class="panel-header">
           <h3>Kamers</h3>
           <div>
-            <input id="newRoomName" placeholder="Nieuwe kamer naam" />
-            <button id="createRoomBtn">Aanmaken</button>
+            <button id="addRoomHeaderBtn" class="btn-create-header" title="Nieuwe kamer">+</button>
           </div>
         </div>
         <div id="roomsList" class="rooms-list"></div>

@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
   const roomsList = document.getElementById('roomsList');
-  const newRoomName = document.getElementById('newRoomName');
-  const createRoomBtn = document.getElementById('createRoomBtn');
 
   async function apiGet(path){
     const res = await fetch(path);
@@ -18,7 +16,52 @@ document.addEventListener('DOMContentLoaded', () => {
     devices.forEach(d => deviceById[d.id] = d);
 
     roomsList.innerHTML = '';
-    if(rooms.length === 0){ roomsList.innerHTML = '<div class="empty">Geen kamers. Maak er één aan.</div>'; return; }
+    const headerAdd = document.getElementById('addRoomHeaderBtn');
+    if(rooms.length === 0){
+      // hide header add button when no rooms
+      if(headerAdd) headerAdd.style.display = 'none';
+      roomsList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-message">Geen kamers.</div>
+          <button id="createRoomEmptyBtn" class="btn-create-empty">Maak een kamer aan</button>
+        </div>
+      `;
+      const emptyBtn = document.getElementById('createRoomEmptyBtn');
+      if(emptyBtn) emptyBtn.addEventListener('click', async ()=>{
+        try{
+          if(typeof window.showRoomPicker === 'function'){
+            const roomId = await window.showRoomPicker({ createOnly: true });
+            if(roomId) render();
+          } else {
+            const name = prompt('Nieuwe kamer naam');
+            if(name && name.trim()){
+              await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name.trim() }) });
+              render();
+            }
+          }
+        }catch(e){ console.error('Failed to create room from empty-state', e); }
+      });
+      return;
+    }
+
+      // show header add button when rooms exist
+      if(headerAdd){
+        headerAdd.style.display = 'inline-block';
+        headerAdd.onclick = async ()=>{
+          try{
+            if(typeof window.showRoomPicker === 'function'){
+              const roomId = await window.showRoomPicker({ createOnly: true });
+              if(roomId) render();
+            } else {
+              const name = prompt('Nieuwe kamer naam');
+              if(name && name.trim()){
+                await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name.trim() }) });
+                render();
+              }
+            }
+          }catch(e){ console.error(e); }
+        };
+      }
 
     // build unassigned list
     const assignedIds = Object.keys(map || {}).filter(k => map[k]);
@@ -117,13 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
   }
 
-  createRoomBtn.addEventListener('click', async ()=>{
-    const name = newRoomName.value && newRoomName.value.trim();
-    if(!name) return alert('Vul een naam in');
-    await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-    newRoomName.value = '';
-    render();
-  });
 
   render();
 });

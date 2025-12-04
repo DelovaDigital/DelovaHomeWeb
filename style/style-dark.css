@@ -220,12 +220,13 @@ nav a:hover {
 }
 
 /* Cards */
-.card.settings-card {
-    background: rgba(45, 45, 45, 0.95);
-    backdrop-filter: blur(10px);
-    border: 1px solid #404040;
-    border-radius: 16px;
-    padding: 0;
+    .dashboard-grid {
+        display: grid;
+        /* place widgets in the left column and content on the right */
+        grid-template-columns: 260px 1fr;
+        gap: 20px;
+        align-items: start;
+    }
     margin: 0;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
     overflow: hidden;
@@ -269,8 +270,10 @@ nav a:hover {
     border: none;
     background: transparent;
     box-shadow: none;
-}
-
+.widgets-panel { display:flex; flex-direction: column; gap:12px; }
+/* Ensure widgets-panel stays narrow and aligns to the left column */
+.widgets-panel { max-width: 260px; width: 100%; margin-right: auto; }
+.widget { background: #2d2d2d; padding:12px; border-radius:10px; box-shadow: 0 6px 18px rgba(0,0,0,0.03); box-sizing: border-box; }
 .form-group {
     margin-bottom: 20px;
 }

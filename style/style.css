@@ -403,7 +403,8 @@ nav a:hover {
 /* Dashboard specific styles */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    /* place widgets in the left column and content on the right */
+    grid-template-columns: 260px 1fr;
     gap: 20px;
     align-items: start;
 }
@@ -476,7 +477,9 @@ nav a:hover {
 .room-device { display:flex; justify-content: space-between; align-items:center; padding:6px 8px; background: white; border-radius:6px; border:1px solid #f0f0f0; }
 
 .widgets-panel { display:flex; flex-direction: column; gap:12px; }
-.widget { background: white; padding:12px; border-radius:10px; box-shadow: 0 6px 18px rgba(0,0,0,0.03); }
+/* Ensure widgets-panel stays narrow and aligns to the left column */
+.widgets-panel { max-width: 260px; width: 100%; margin-right: auto; }
+.widget { background: white; padding:12px; border-radius:10px; box-shadow: 0 6px 18px rgba(0,0,0,0.03); box-sizing: border-box; }
 
 .empty { color:#777; padding:10px; }
 

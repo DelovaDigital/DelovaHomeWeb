@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function render(){
+    if(!roomsList) return; // page doesn't include rooms list -> nothing to render
     const [rooms, map, devices] = await Promise.all([fetchRooms(), fetchMap(), fetchDevices()]);
     const deviceById = {};
     devices.forEach(d => deviceById[d.id] = d);
@@ -82,13 +83,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
   }
 
-  createRoomBtn.addEventListener('click', async ()=>{
-    const name = newRoomName.value && newRoomName.value.trim();
-    if(!name) return alert('Vul een naam in');
-    await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
-    newRoomName.value = '';
-    render();
-  });
+  if (createRoomBtn) {
+    createRoomBtn.addEventListener('click', async ()=>{
+      const name = newRoomName && newRoomName.value && newRoomName.value.trim();
+      if(!name) return alert('Vul een naam in');
+      await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+      if(newRoomName) newRoomName.value = '';
+      render();
+    });
+  }
 
   // Weather widget (Open-Meteo fallback location Amsterdam)
   async function loadWeather(){
@@ -105,35 +108,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function runDownloadTest(sizeBytes = 5 * 1024 * 1024){
-    const start = performance.now();
     const resp = await fetch(`/api/speedtest/file?size=${sizeBytes}`);
+    if(!resp.ok) throw new Error('Speedtest file request failed');
     const reader = resp.body.getReader();
     let received = 0;
+    let start = 0;
     while(true){
       const { done, value } = await reader.read();
       if(done) break;
-      received += value.length;
+      // start timer on first received chunk to measure throughput (exclude request/setup latency)
+      if(!start) start = performance.now();
+      // prefer byteLength for TypedArrays; fallback to length
+      const bytes = (value && (value.byteLength || value.length)) || 0;
+      received += bytes;
     }
-    const duration = (performance.now() - start) / 1000;
-    const mbps = (received * 8) / (duration * 1000 * 1000);
+    const duration = ((performance.now() - start) / 1000) || 0.001;
+    const mbps = (received * 8) / (duration * 1000000);
     return { mbps: mbps.toFixed(2), bytes: received, secs: duration.toFixed(2) };
   }
 
-  runSpeedtest.addEventListener('click', async ()=>{
-    speedtestResults.innerText = 'Running...';
-    try{
-      // ping
-      const t0 = performance.now();
-      await fetch('/api/speedtest/ping');
-      const ping = Math.round(performance.now() - t0);
+  if (runSpeedtest) {
+    runSpeedtest.addEventListener('click', async ()=>{
+      if (speedtestResults) speedtestResults.innerText = 'Running...';
+      try{
+        // ping
+        const t0 = performance.now();
+        await fetch('/api/speedtest/ping');
+        const ping = Math.round(performance.now() - t0);
 
-      const dl = await runDownloadTest();
-      speedtestResults.innerHTML = `Ping: ${ping} ms<br>Download: ${dl.mbps} Mbps (${dl.bytes} bytes in ${dl.secs}s)`;
-    }catch(e){ speedtestResults.innerText = 'Speedtest failed'; }
-  });
+        const dl = await runDownloadTest();
+        if (speedtestResults) speedtestResults.innerHTML = `Ping: ${ping} ms<br>Download: ${dl.mbps} Mbps (${dl.bytes} bytes in ${dl.secs}s)`;
+      }catch(e){ if (speedtestResults) speedtestResults.innerText = 'Speedtest failed'; }
+    });
+  }
 
   // initial
-  render();
+  if (roomsList) render();
   loadWeather();
   // subscribe to server events to refresh widgets when rooms/mapping change
   if (typeof EventSource !== 'undefined'){

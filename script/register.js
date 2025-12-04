@@ -46,10 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         msg.style.backgroundColor = 'green';
         msg.textContent = 'Gebruiker aangemaakt!';
         msg.style.visibility = 'visible';
-
         form.reset();
-        validateInputs();
-
         setTimeout(() => {
           window.location.href = '../index.html';
         }, 2000);

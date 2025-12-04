@@ -577,13 +577,6 @@ input:checked+.slider:before {
     color: white;
 }
 
-.slider {
-    flex: 1;
-    height: 4px;
-    background: #404040;
-    border-radius: 2px;
-    outline: none;
-}
 
 .temp-display {
     font-size: 1.2em;

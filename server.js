@@ -193,6 +193,109 @@ app.post('/api/register', async (req, res) => {
 });
 
 const deviceManager = require('./script/deviceManager');
+const roomsStore = require('./script/roomsStore');
+
+// Simple SSE (Server-Sent Events) broadcaster for rooms changes
+const sseClients = [];
+
+function broadcastEvent(name, data){
+  const payload = typeof data === 'string' ? data : JSON.stringify(data || {});
+  sseClients.forEach(res => {
+    try{
+      res.write(`event: ${name}\n`);
+      res.write(`data: ${payload}\n\n`);
+    }catch(e){ /* ignore client errors */ }
+  });
+}
+
+// subscribe to roomsStore changes
+if (roomsStore && roomsStore.events && typeof roomsStore.events.on === 'function'){
+  roomsStore.events.on('rooms-changed', (data) => {
+    broadcastEvent('rooms-changed', data);
+  });
+}
+
+// Rooms API (server-backed persistence)
+app.get('/api/rooms', (req, res) => {
+  try{
+    const rooms = roomsStore.getRooms();
+    res.json(rooms);
+  }catch(e){ res.status(500).json({ ok:false, message:'Could not read rooms' }); }
+});
+
+app.post('/api/rooms', (req, res) => {
+  const { name } = req.body || {};
+  if(!name) return res.status(400).json({ ok:false, message:'Missing name' });
+  try{
+    const room = roomsStore.createRoom(name);
+    res.json({ ok:true, room });
+  }catch(e){ res.status(500).json({ ok:false }); }
+});
+
+app.put('/api/rooms/:id', (req, res) => {
+  const { id } = req.params; const { name } = req.body || {};
+  if(!name) return res.status(400).json({ ok:false, message:'Missing name' });
+  try{ roomsStore.renameRoom(id, name); res.json({ ok:true }); }catch(e){ res.status(500).json({ ok:false }); }
+});
+
+app.delete('/api/rooms/:id', (req, res) => {
+  const { id } = req.params;
+  try{ roomsStore.deleteRoom(id); res.json({ ok:true }); }catch(e){ res.status(500).json({ ok:false }); }
+});
+
+app.get('/api/room-mapping', (req, res) => {
+  try{ const map = roomsStore.getMap(); res.json(map); }catch(e){ res.status(500).json({}); }
+});
+
+app.post('/api/room-mapping', (req, res) => {
+  const { deviceId, roomId } = req.body || {};
+  if(!deviceId) return res.status(400).json({ ok:false, message:'Missing deviceId' });
+  try{ roomsStore.assignDevice(deviceId, roomId); res.json({ ok:true }); }catch(e){ res.status(500).json({ ok:false }); }
+});
+
+// SSE endpoint for clients to receive rooms/mapping updates
+app.get('/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders && res.flushHeaders();
+
+  // send an initial comment to establish the stream
+  res.write(': connected\n\n');
+
+  sseClients.push(res);
+
+  req.on('close', () => {
+    const idx = sseClients.indexOf(res);
+    if (idx !== -1) sseClients.splice(idx, 1);
+  });
+});
+
+// Speedtest endpoints
+app.get('/api/speedtest/ping', (req, res) => {
+  res.json({ ts: Date.now() });
+});
+
+app.get('/api/speedtest/file', (req, res) => {
+  // Serve a generated binary blob of requested size (default 1MB)
+  const size = parseInt(req.query.size || '1048576', 10);
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Length', String(size));
+  res.setHeader('Cache-Control', 'no-cache, no-store');
+  // stream zeros in chunks
+  const chunk = Buffer.alloc(64*1024, 0);
+  let remaining = size;
+  function sendNext(){
+    if(remaining<=0){ return res.end(); }
+    const toSend = Math.min(remaining, chunk.length);
+    res.write(toSend===chunk.length ? chunk : chunk.slice(0,toSend), () => {
+      remaining -= toSend;
+      // use setImmediate to avoid blocking
+      setImmediate(sendNext);
+    });
+  }
+  sendNext();
+});
 
 // Device API
 app.get('/api/devices', (req, res) => {

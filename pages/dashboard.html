@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Dashboard - Dashboard</title>
     <link rel="stylesheet" id="theme-stylesheet" href="../style/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -13,10 +13,11 @@
     <div class="app-container">
         <nav class="main-nav">
             <div class="nav-brand">
-                <h1>DelovaHome - Dashboard</h1>
+                <h1>DelovaHome</h1>
             </div>
             <ul>
                 <li><a href="dashboard.html" class="active"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="rooms.html"><i class="fas fa-door-open"></i> Kamers</a></li>
                 <li><a href="devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
                 <li><a href="settings.html"><i class="fas fa-cog"></i> Instellingen</a></li>
                 <li class="user-menu-container">
@@ -29,8 +30,34 @@
                 </li>
             </ul>
         </nav>
-    </div>
-</body>
-<script src="../script/script.js"></script>
 
+        <main class="content-area">
+            <header class="page-header">
+                <h2>Dashboard</h2>
+                <p>Overzicht van kamers, apparaten en handige widgets</p>
+            </header>
+
+            <div class="dashboard-grid">
+                <aside class="widgets-panel">
+                    <div class="widget" id="weatherWidget">
+                        <h4>Weer</h4>
+                        <div id="weatherContent">Laden…</div>
+                    </div>
+
+                    <div class="widget" id="speedtestWidget">
+                        <h4>Speedtest</h4>
+                        <div id="speedtestContent">
+                            <button id="runSpeedtest">Start Speedtest</button>
+                            <div id="speedtestResults"></div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </main>
+    </div>
+
+    <script src="../script/script.js"></script>
+    <script src="../script/modal.js"></script>
+    <script src="../script/dashboard.js"></script>
+</body>
 </html>

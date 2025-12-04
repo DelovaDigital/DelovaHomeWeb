@@ -400,6 +400,69 @@ nav a:hover {
     height: 26px;
 }
 
+/* Dashboard specific styles */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+}
+
+.rooms-panel {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+.panel-header {
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.rooms-list { display:flex; flex-direction: column; gap: 12px; }
+.room-card { border:1px solid #eef2f5; border-radius: 8px; padding: 12px; background: #fafafa; }
+.room-header { display:flex; justify-content: space-between; align-items:center; }
+.room-header h4 { margin:0; }
+.room-actions button { margin-left:8px; }
+.room-devices { margin-top:8px; display:flex; flex-direction: column; gap:6px; }
+.room-device { display:flex; justify-content: space-between; align-items:center; padding:6px 8px; background: white; border-radius:6px; border:1px solid #f0f0f0; }
+
+.widgets-panel { display:flex; flex-direction: column; gap:12px; }
+.widget { background: white; padding:12px; border-radius:10px; box-shadow: 0 6px 18px rgba(0,0,0,0.03); }
+
+.empty { color:#777; padding:10px; }
+
+/* Modal picker styles */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index: 10000; }
+.modal { width: 420px; max-width: calc(100% - 40px); background: white; border-radius: 10px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.modal h3 { margin:0 0 8px 0; }
+.modal .modal-body { margin:8px 0 12px 0; }
+.modal select, .modal input { width:100%; padding:8px 10px; border:1px solid #ddd; border-radius:6px; box-sizing: border-box; }
+.modal .modal-actions { display:flex; justify-content:flex-end; gap:8px; }
+.btn-ghost { background:transparent; color:#333; border:1px solid #ddd; padding:8px 12px; border-radius:6px; }
+.btn-primary { background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; }
+
+/* Unassigned devices panel */
+.unassigned-panel { background: #fff; padding: 12px; border-radius: 8px; border:1px solid #eef2f5; margin-bottom: 12px; }
+.unassigned-list { display:flex; flex-wrap:wrap; gap:8px; }
+.unassigned-item { background: #f8fafc; padding:8px 10px; border-radius:8px; border:1px solid #e6eef6; cursor:grab; }
+.unassigned-item:active { cursor:grabbing; }
+
+/* Drag over highlight */
+.room-card.drag-over { outline: 2px dashed #3b82f6; background: #f6fbff; }
+
+.room-add { margin-top:10px; display:flex; gap:8px; align-items:center; }
+
+/* small polish */
+.room-card { transition: box-shadow .18s ease, transform .12s ease; }
+.room-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.06); transform: translateY(-3px); }
+
+
+
 .slider {
     position: absolute;
     cursor: pointer;

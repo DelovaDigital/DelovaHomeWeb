@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Kamers - DelovaHome</title>
+  <link rel="stylesheet" href="../style/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+  <div class="app-container">
+    <nav class="main-nav">
+      <div class="nav-brand"><h1>DelovaHome</h1></div>
+      <ul>
+        <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+        <li><a href="rooms.html" class="active"><i class="fas fa-door-open"></i> Kamers</a></li>
+        <li><a href="devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
+        <li><a href="settings.html"><i class="fas fa-cog"></i> Instellingen</a></li>
+      </ul>
+    </nav>
+
+    <main class="content-area">
+      <header class="page-header">
+        <h2>Kamers</h2>
+        <p>Beheer je kamers en voeg apparaten toe aan kamers.</p>
+      </header>
+
+      <section class="rooms-panel">
+        <div class="panel-header">
+          <h3>Kamers</h3>
+          <div>
+            <input id="newRoomName" placeholder="Nieuwe kamer naam" />
+            <button id="createRoomBtn">Aanmaken</button>
+          </div>
+        </div>
+        <div id="roomsList" class="rooms-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../script/script.js"></script>
+  <script src="../script/modal.js"></script>
+  <script src="../script/rooms.js"></script>
+</body>
+</html>

@@ -92,6 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="device-body">
                     ${controls}
+                    <div class="control-group">
+                        <button class="btn-assign" onclick="assignDeviceToRoom('${device.id}')">Toevoegen aan kamer</button>
+                    </div>
                 </div>
             `;
             grid.appendChild(card);
@@ -125,5 +128,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial fetch
     fetchDevices();
     // Poll every 3 seconds
-    setInterval(fetchDevices, 3000);
+        setInterval(fetchDevices, 3000);
+
+        // Listen for server-sent events to refresh immediately
+        if (typeof EventSource !== 'undefined'){
+            try{
+                const es = new EventSource('/events');
+                es.addEventListener('rooms-changed', (e)=>{ fetchDevices(); });
+            }catch(e){ /* ignore */ }
+        }
 });

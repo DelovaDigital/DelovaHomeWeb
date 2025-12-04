@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderDevices(devices) {
+        console.log('Rendering devices:', devices); // Debug log
         grid.innerHTML = '';
         if (devices.length === 0) {
             grid.innerHTML = '<div class="loading-devices"><i class="fas fa-spinner fa-spin"></i> Apparaten zoeken...</div>';
@@ -34,14 +35,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         devices.forEach(device => {
-            const card = document.createElement('div');
-            card.className = 'device-card';
-            
-            let icon = 'fa-question-circle';
-            let controls = '';
-            let statusClass = '';
+            try {
+                const card = document.createElement('div');
+                card.className = 'device-card';
+                
+                let icon = 'fa-question-circle';
+                let controls = '';
+                let statusClass = '';
 
-            if (device.type === 'light') {
+                if (device.type === 'light') {
                 icon = 'fa-lightbulb';
                 const isOn = device.state.on;
                 statusClass = isOn ? 'on' : 'off';
@@ -132,6 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             grid.appendChild(card);
+            } catch (e) {
+                console.error('Error rendering device:', device, e);
+            }
         });
     }
 

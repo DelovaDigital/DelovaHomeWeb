@@ -39,6 +39,11 @@ class DeviceManager extends EventEmitter {
             this.processMdnsService(service, 'spotify');
         });
 
+        // Samsung TV (AirPlay)
+        this.bonjour.find({ type: 'airplay' }, (service) => {
+            this.processMdnsService(service, 'airplay');
+        });
+
         // LG WebOS TV Discovery
         this.bonjour.find({ type: 'webos-second-screen' }, (service) => {
              const ip = service.addresses && service.addresses.length > 0 ? service.addresses[0] : null;
@@ -62,14 +67,18 @@ class DeviceManager extends EventEmitter {
     setupSsdpDiscovery() {
         const SSDP_ADDR = '239.255.255.250';
         const SSDP_PORT = 1900;
-        const M_SEARCH = Buffer.from(
+        
+        const createSearch = (st) => Buffer.from(
             'M-SEARCH * HTTP/1.1\r\n' +
             'HOST: 239.255.255.250:1900\r\n' +
             'MAN: "ssdp:discover"\r\n' +
             'MX: 1\r\n' +
-            'ST: ssdp:all\r\n' +
+            `ST: ${st}\r\n` +
             '\r\n'
         );
+
+        const M_SEARCH_ALL = createSearch('ssdp:all');
+        const M_SEARCH_SAMSUNG = createSearch('urn:samsung.com:device:RemoteControlReceiver:1');
 
         this.ssdpSocket = dgram.createSocket('udp4');
 
@@ -96,7 +105,13 @@ class DeviceManager extends EventEmitter {
             const location = headers.LOCATION || headers.Location;
             const usn = headers.USN || headers.Usn || '';
             const server = headers.SERVER || headers.Server || '';
+            const st = headers.ST || headers.St || '';
             
+            // Debug logging for Samsung devices
+            // if (server.toLowerCase().includes('samsung') || st.toLowerCase().includes('samsung')) {
+            //    console.log(`[SSDP] Potential Samsung Device from ${rinfo.address}:`, { server, st, usn });
+            // }
+
             let type = 'unknown';
             let name = 'Unknown Device';
 
@@ -109,7 +124,7 @@ class DeviceManager extends EventEmitter {
             } else if (server.includes('Sonos')) {
                 type = 'speaker';
                 name = 'Sonos Speaker';
-            } else if (server.toLowerCase().includes('samsung') || server.toLowerCase().includes('tizen')) {
+            } else if (server.toLowerCase().includes('samsung') || server.toLowerCase().includes('tizen') || st.includes('samsung')) {
                 type = 'tv';
                 name = 'Samsung Smart TV';
             } else if (server.includes('UPnP/1.0') && location) {
@@ -118,8 +133,11 @@ class DeviceManager extends EventEmitter {
                 name = `Device (${rinfo.address})`;
             }
 
+            // Sanitize ID to be safe for HTML attributes
+            const safeId = (usn || `ssdp-${rinfo.address}`).replace(/[^a-zA-Z0-9-_:]/g, '_');
+
             this.addDevice({
-                id: usn || `ssdp-${rinfo.address}`,
+                id: safeId,
                 name: name,
                 type: type,
                 ip: rinfo.address,
@@ -132,14 +150,20 @@ class DeviceManager extends EventEmitter {
         this.ssdpSocket.bind(0, () => {
             this.ssdpSocket.setBroadcast(true);
             this.ssdpSocket.setMulticastTTL(128);
-            // Send initial search
-            this.ssdpSocket.send(M_SEARCH, 0, M_SEARCH.length, SSDP_PORT, SSDP_ADDR);
+            // Send initial searches
+            this.ssdpSocket.send(M_SEARCH_ALL, 0, M_SEARCH_ALL.length, SSDP_PORT, SSDP_ADDR);
+            setTimeout(() => {
+                this.ssdpSocket.send(M_SEARCH_SAMSUNG, 0, M_SEARCH_SAMSUNG.length, SSDP_PORT, SSDP_ADDR);
+            }, 500);
         });
 
         // Periodically search
         setInterval(() => {
             try {
-                this.ssdpSocket.send(M_SEARCH, 0, M_SEARCH.length, SSDP_PORT, SSDP_ADDR);
+                this.ssdpSocket.send(M_SEARCH_ALL, 0, M_SEARCH_ALL.length, SSDP_PORT, SSDP_ADDR);
+                setTimeout(() => {
+                    this.ssdpSocket.send(M_SEARCH_SAMSUNG, 0, M_SEARCH_SAMSUNG.length, SSDP_PORT, SSDP_ADDR);
+                }, 500);
             } catch (e) { console.error('SSDP send error:', e); }
         }, 10000);
     }
@@ -160,6 +184,14 @@ class DeviceManager extends EventEmitter {
 
         if (sourceType === 'googlecast') {
             type = 'tv';
+        } else if (sourceType === 'airplay') {
+            if (model.toLowerCase().includes('samsung') || lowerName.includes('samsung') || lowerName.includes('tv')) {
+                type = 'tv';
+            } else if (model.includes('AudioAccessory') || lowerName.includes('homepod')) {
+                type = 'sensor';
+            } else {
+                type = 'speaker';
+            }
         } else if (sourceType === 'spotify') {
             type = 'speaker';
         } else if (lowerName.includes('printer')) {
@@ -187,12 +219,21 @@ class DeviceManager extends EventEmitter {
                 initialState = { temperature: 21.5, humidity: 45 };
             }
 
+            let protocol = `mdns-${sourceType}`;
+            // If we identify a Samsung TV via mDNS, use the Tizen protocol for control
+            if (type === 'tv' && (name.toLowerCase().includes('samsung') || model.toLowerCase().includes('samsung'))) {
+                protocol = 'samsung-tizen';
+            }
+
+            // Sanitize ID
+            const safeId = `mdns-${service.fqdn || name}-${sourceType}`.replace(/[^a-zA-Z0-9-_]/g, '_');
+
             this.addDevice({
-                id: `mdns-${service.fqdn || name}-${sourceType}`,
+                id: safeId,
                 name: name,
                 type: type,
                 ip: ip,
-                protocol: `mdns-${sourceType}`,
+                protocol: protocol,
                 port: service.port,
                 model: model,
                 state: initialState
@@ -223,6 +264,26 @@ class DeviceManager extends EventEmitter {
     }
 
     addDevice(device) {
+        // Deduplicate Samsung TVs by IP
+        if (device.type === 'tv' && (device.name.includes('Samsung') || device.protocol === 'samsung-tizen')) {
+            // Check if we already have a Samsung TV with this IP
+            for (const [existingId, existingDevice] of this.devices.entries()) {
+                if (existingDevice.ip === device.ip && existingDevice.type === 'tv') {
+                    // If the existing device is generic UPnP, upgrade it to Samsung
+                    if (existingDevice.name.startsWith('UPnP Device') || existingDevice.name === 'Unknown Device') {
+                        console.log(`Upgrading device at ${device.ip} to Samsung TV`);
+                        this.devices.delete(existingId); // Remove the generic one
+                        // Continue to add the new specific one
+                    } else if (existingDevice.name.includes('Samsung')) {
+                        // We already have a Samsung TV at this IP, ignore this new announcement (likely just a different service UUID)
+                        // console.log(`Ignoring duplicate Samsung TV announcement for ${device.ip}`);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // General deduplication by ID
         if (!this.devices.has(device.id)) {
             this.devices.set(device.id, device);
             this.emit('device-added', device);

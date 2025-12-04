@@ -15,12 +15,13 @@
       <input id="username" name="username" required>
 
       <label for="password">Wachtwoord</label>
-      <input id="password" name="password" type="password" required>
+      <input id="password" name="password" type="password" required placeholder="Geef minimaal 6 karakters">
 
       <label for="confirm">Bevestig wachtwoord</label>
-      <input id="confirm" name="confirm" type="password" required>
+      <input id="confirm" name="confirm" type="password" required placeholder="Herhaal wachtwoord">
 
-      <button type="submit">Maak gebruiker</button>
+      <button type="submit" id="createUser">Maak gebruiker</button>
+      <button type="button" id="goToLogin" class="buttonLogin">Ga naar login</button>
     </form>
 
     <div id="msg" aria-live="polite"></div>

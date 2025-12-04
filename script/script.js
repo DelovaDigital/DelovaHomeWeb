@@ -3,6 +3,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropdown = document.getElementById('userDropdown');
     const btnLogin = document.getElementById('btnLogin');
     const themeStylesheet = document.getElementById('theme-stylesheet');
+    const btnCreateAccount = document.getElementById('btnCreateAccount');
+ 
+    
+    if (btnCreateAccount) {
+        btnCreateAccount.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.href = '../pages/register.html';
+        });
+    }
 
     if (themeStylesheet) {
         const savedTheme = localStorage.getItem('theme');

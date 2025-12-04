@@ -183,6 +183,44 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+const deviceManager = require('./script/deviceManager');
+
+// Device API
+app.get('/api/devices', (req, res) => {
+    res.json(deviceManager.getAllDevices());
+});
+
+app.post('/api/devices/:id/command', (req, res) => {
+    const { id } = req.params;
+    const { command, value } = req.body;
+    
+    console.log(`Received command for ${id}: ${command} = ${value}`);
+
+    let update = {};
+    // Simple command mapping
+    if (command === 'toggle') {
+        const device = deviceManager.getDevice(id);
+        if (device) update.on = !device.state.on;
+    } else if (command === 'turn_on') {
+        update.on = true;
+    } else if (command === 'turn_off') {
+        update.on = false;
+    } else if (command === 'set_brightness') {
+        update.brightness = value;
+    } else if (command === 'set_volume') {
+        update.volume = value;
+    } else if (command === 'set_target_temp') {
+        update.target = value;
+    }
+
+    const device = deviceManager.updateDeviceState(id, update);
+    if (device) {
+        res.json({ ok: true, device });
+    } else {
+        res.status(404).json({ ok: false, message: 'Device not found' });
+    }
+});
+
 app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
 
 (async () => {

@@ -1,16 +1,34 @@
 const EventEmitter = require('events');
 const net = require('net');
 const dgram = require('dgram');
+const fs = require('fs');
+const path = require('path');
 const WebSocket = require('ws');
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
 const lgtv = require('lgtv2');
+// const { scan, parseCredentials, AppleTV } = require('node-appletv-x');
 
 class DeviceManager extends EventEmitter {
     constructor() {
         super();
         this.devices = new Map(); // id -> device
+        this.samsungConnections = new Map(); // ip -> { ws, timeout }
+        this.appleTvCredentials = {};
+        this.loadAppleTvCredentials();
         this.startDiscovery();
+    }
+
+    loadAppleTvCredentials() {
+        try {
+            const credPath = path.join(__dirname, '../appletv-credentials.json');
+            if (fs.existsSync(credPath)) {
+                this.appleTvCredentials = JSON.parse(fs.readFileSync(credPath));
+                console.log(`Loaded credentials for ${Object.keys(this.appleTvCredentials).length} Apple TV(s)`);
+            }
+        } catch (e) {
+            console.error('Failed to load Apple TV credentials:', e.message);
+        }
     }
 
     startDiscovery() {
@@ -182,9 +200,31 @@ class DeviceManager extends EventEmitter {
 
         // Check TXT records for model info
         let model = '';
+        let deviceId = '';
         if (service.txt) {
             if (service.txt.md) model = service.txt.md; // Model name often in 'md'
             else if (service.txt.model) model = service.txt.model;
+            
+            if (service.txt.deviceid) deviceId = service.txt.deviceid;
+        }
+
+        // Debug logging for Apple TV
+        if (name.includes('Apple TV') || model.includes('AppleTV')) {
+            console.log(`[Discovery] Found Apple TV: ${name}, Source: ${sourceType}, IP: ${service.addresses}, DeviceID: ${deviceId}`);
+        }
+
+        // Force add Apple TV if found via AirPlay
+        if (sourceType === 'airplay' && (name.includes('Apple TV') || model.includes('AppleTV'))) {
+            type = 'tv';
+            // If deviceId is missing from TXT, try to use the one from credentials if IP matches
+            if (!deviceId) {
+                 // Try to find deviceId from credentials if we have only one
+                 const credKeys = Object.keys(this.appleTvCredentials);
+                 if (credKeys.length === 1) {
+                     deviceId = credKeys[0];
+                     console.log(`[Discovery] Auto-assigning DeviceID ${deviceId} to ${name}`);
+                 }
+            }
         }
 
         if (sourceType === 'googlecast') {
@@ -252,6 +292,7 @@ class DeviceManager extends EventEmitter {
                 protocol: protocol,
                 port: service.port,
                 model: model,
+                deviceId: deviceId,
                 state: initialState
             });
         }
@@ -262,26 +303,54 @@ class DeviceManager extends EventEmitter {
     }
 
     addDevice(device) {
-        // Deduplicate Samsung TVs by IP
-        if (device.type === 'tv' && (device.name.includes('Samsung') || device.protocol === 'samsung-tizen')) {
-            // Check if we already have a Samsung TV with this IP
-            for (const [existingId, existingDevice] of this.devices.entries()) {
-                if (existingDevice.ip === device.ip && existingDevice.type === 'tv') {
-                    // If the existing device is generic UPnP, upgrade it to Samsung
-                    if (existingDevice.name.startsWith('UPnP Device') || existingDevice.name === 'Unknown Device') {
-                        console.log(`Upgrading device at ${device.ip} to Samsung TV`);
-                        this.devices.delete(existingId); // Remove the generic one
-                        // Continue to add the new specific one
-                    } else if (existingDevice.name.includes('Samsung')) {
-                        // We already have a Samsung TV at this IP, ignore this new announcement (likely just a different service UUID)
-                        // console.log(`Ignoring duplicate Samsung TV announcement for ${device.ip}`);
-                        return;
-                    }
-                }
+        // Check if device already exists by IP
+        let existingId = null;
+        let existingDevice = null;
+
+        for (const [id, dev] of this.devices) {
+            if (dev.ip === device.ip) {
+                existingId = id;
+                existingDevice = dev;
+                break;
             }
         }
 
-        // General deduplication by ID
+        if (existingDevice) {
+            let updated = false;
+
+            // Update name if existing is generic and new is specific
+            const genericNames = ['Samsung Smart TV', 'Unknown Device', 'UPnP Device', 'Device'];
+            const isExistingGeneric = genericNames.some(n => existingDevice.name.startsWith(n));
+            const isNewGeneric = genericNames.some(n => device.name.startsWith(n));
+
+            if (isExistingGeneric && !isNewGeneric) {
+                console.log(`[DeviceManager] Updating name for ${device.ip}: ${existingDevice.name} -> ${device.name}`);
+                existingDevice.name = device.name;
+                updated = true;
+            }
+
+            // Prioritize protocols: samsung-tizen > mdns-airplay > ssdp
+            if (device.protocol === 'samsung-tizen' && existingDevice.protocol !== 'samsung-tizen') {
+                 console.log(`[DeviceManager] Upgrading protocol for ${device.ip}: ${existingDevice.protocol} -> ${device.protocol}`);
+                 existingDevice.protocol = device.protocol;
+                 updated = true;
+            }
+            
+            // Special case for Apple TV: If we found it via AirPlay/MDNS, we want to ensure we keep the Apple TV identity
+            if (device.name.includes('Apple TV') && !existingDevice.name.includes('Apple TV')) {
+                existingDevice.name = device.name;
+                existingDevice.type = 'tv'; // Ensure type is TV
+                updated = true;
+            }
+
+            if (updated) {
+                this.emit('device-updated', existingDevice);
+            }
+            
+            return; // Don't add duplicate
+        }
+
+        // General deduplication by ID (fallback)
         if (!this.devices.has(device.id)) {
             this.devices.set(device.id, device);
             this.emit('device-added', device);
@@ -331,6 +400,8 @@ class DeviceManager extends EventEmitter {
             this.handleLgCommand(device, command, value);
         } else if (device.protocol === 'samsung-tizen') {
             this.handleSamsungCommand(device, command, value);
+        } else if (device.protocol === 'mdns-airplay') {
+            this.handleAirPlayCommand(device, command, value);
         }
 
         // Emit update
@@ -361,10 +432,129 @@ class DeviceManager extends EventEmitter {
         lgtvClient.on('error', (err) => console.error('LG TV Error:', err));
     }
 
+    async handleAirPlayCommand(device, command, value) {
+        if (!device.deviceId) {
+            console.log(`[AirPlay] Cannot control ${device.name}: No device ID found.`);
+            return;
+        }
+
+        // Check if we have credentials for this device
+        // The credentials file is keyed by MAC address (deviceId)
+        const deviceCreds = this.appleTvCredentials[device.deviceId];
+        if (!deviceCreds) {
+            console.log(`[AirPlay] Cannot control ${device.name}: Not paired. Run 'python script/pair_atv.py' to pair.`);
+            return;
+        }
+
+        console.log(`[AirPlay] Sending command '${command}' to ${device.name} via Python script...`);
+
+        // Map commands to Python script arguments
+        let pyCommand = null;
+        if (command === 'turn_on') pyCommand = 'turn_on';
+        else if (command === 'turn_off') pyCommand = 'turn_off';
+        else if (command === 'play') pyCommand = 'play';
+        else if (command === 'pause') pyCommand = 'pause';
+        else if (command === 'stop') pyCommand = 'stop';
+        else if (command === 'next') pyCommand = 'next';
+        else if (command === 'previous') pyCommand = 'previous';
+        else if (command === 'select') pyCommand = 'select';
+        else if (command === 'menu') pyCommand = 'menu';
+        else if (command === 'top_menu' || command === 'home') pyCommand = 'top_menu';
+        else if (command === 'up') pyCommand = 'up';
+        else if (command === 'down') pyCommand = 'down';
+        else if (command === 'left') pyCommand = 'left';
+        else if (command === 'right') pyCommand = 'right';
+        else if (command === 'volume_up') pyCommand = 'volume_up';
+        else if (command === 'volume_down') pyCommand = 'volume_down';
+        else if (command === 'set_volume') pyCommand = 'set_volume';
+        else if (command === 'toggle') pyCommand = 'play'; // Fallback for toggle
+        
+        if (!pyCommand) {
+            console.log(`[AirPlay] Command ${command} not supported via Python script yet.`);
+            return;
+        }
+
+        const { spawn } = require('child_process');
+        // Use the virtual environment python
+        const pythonPath = path.join(__dirname, '../.venv/bin/python');
+        const scriptPath = path.join(__dirname, 'control_atv.py');
+        
+        const args = [scriptPath, pyCommand];
+        if (value !== undefined && value !== null) {
+            args.push(String(value));
+        }
+        
+        const pythonProcess = spawn(pythonPath, args);
+
+        pythonProcess.stdout.on('data', (data) => {
+            console.log(`[Python ATV] ${data.toString().trim()}`);
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            console.error(`[Python ATV Error] ${data.toString().trim()}`);
+        });
+        
+        pythonProcess.on('close', (code) => {
+            if (code !== 0) {
+                console.log(`[Python ATV] Process exited with code ${code}`);
+            }
+        });
+    }
+
     handleSamsungCommand(device, command, value) {
         // Custom Samsung Tizen Control via WebSocket (Port 8002 for secure, 8001 for insecure)
         // This avoids using the vulnerable 'samsung-tv-control' package
         
+        const sendKey = (ws, key) => {
+            const commandData = {
+                method: 'ms.remote.control',
+                params: {
+                    Cmd: 'Click',
+                    DataOfCmd: key,
+                    Option: 'false',
+                    TypeOfRemote: 'SendRemoteKey'
+                }
+            };
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(commandData));
+            }
+        };
+
+        const executeCommand = (ws) => {
+            if (command === 'turn_off' || (command === 'toggle' && device.state.on)) {
+                sendKey(ws, 'KEY_POWER');
+            } else if (command === 'channel_up') {
+                sendKey(ws, 'KEY_CHUP');
+            } else if (command === 'channel_down') {
+                sendKey(ws, 'KEY_CHDOWN');
+            } else if (command === 'volume_up') {
+                sendKey(ws, 'KEY_VOLUP');
+            } else if (command === 'volume_down') {
+                sendKey(ws, 'KEY_VOLDOWN');
+            }
+        };
+
+        // Check for existing connection
+        if (this.samsungConnections.has(device.ip)) {
+            const conn = this.samsungConnections.get(device.ip);
+            
+            // Reset inactivity timeout
+            clearTimeout(conn.timeout);
+            conn.timeout = setTimeout(() => {
+                console.log(`Closing idle Samsung connection for ${device.ip}`);
+                conn.ws.close();
+                this.samsungConnections.delete(device.ip);
+            }, 15000); // Keep alive for 15 seconds
+
+            if (conn.ws.readyState === WebSocket.OPEN) {
+                executeCommand(conn.ws);
+                return;
+            } else {
+                // Connection dead, remove it and reconnect
+                this.samsungConnections.delete(device.ip);
+            }
+        }
+
         const appName = Buffer.from('DelovaHome').toString('base64');
         let url = `wss://${device.ip}:8002/api/v2/channels/samsung.remote.control?name=${appName}`;
         
@@ -380,16 +570,21 @@ class DeviceManager extends EventEmitter {
 
         ws.on('error', (e) => {
             console.error('Samsung TV Connection Error:', e.message);
+            this.samsungConnections.delete(device.ip);
+        });
+
+        ws.on('close', () => {
+            this.samsungConnections.delete(device.ip);
         });
 
         ws.on('message', (data) => {
             try {
-                const response = JSON.parse(data);
+                const msgStr = data.toString();
+                const response = JSON.parse(msgStr);
                 // Save the token if the TV sends one
                 if (response.data && response.data.token) {
                     console.log(`Received new token for Samsung TV (${device.ip}): ${response.data.token}`);
                     device.token = response.data.token;
-                    // In a real app, you should persist this token to disk/DB
                 }
             } catch (e) {
                 // Ignore parse errors
@@ -397,39 +592,18 @@ class DeviceManager extends EventEmitter {
         });
 
         ws.on('open', () => {
-            // console.log('Connected to Samsung TV');
+            // Store connection
+            const timeout = setTimeout(() => {
+                console.log(`Closing idle Samsung connection for ${device.ip}`);
+                ws.close();
+                this.samsungConnections.delete(device.ip);
+            }, device.token ? 15000 : 60000); // 15s normally, 60s if waiting for pairing
+
+            this.samsungConnections.set(device.ip, { ws, timeout });
+
+            if (!device.token) console.log('Waiting for Samsung TV pairing...');
             
-            const sendKey = (key) => {
-                const commandData = {
-                    method: 'ms.remote.control',
-                    params: {
-                        Cmd: 'Click',
-                        DataOfCmd: key,
-                        Option: 'false',
-                        TypeOfRemote: 'SendRemoteKey'
-                    }
-                };
-                ws.send(JSON.stringify(commandData));
-            };
-
-            if (command === 'turn_off' || (command === 'toggle' && device.state.on)) {
-                sendKey('KEY_POWER');
-            } else if (command === 'channel_up') {
-                sendKey('KEY_CHUP');
-            } else if (command === 'channel_down') {
-                sendKey('KEY_CHDOWN');
-            } else if (command === 'volume_up') {
-                sendKey('KEY_VOLUP');
-            } else if (command === 'volume_down') {
-                sendKey('KEY_VOLDOWN');
-            } else if (command === 'set_volume') {
-                // Volume is tricky without current state, but we can try to nudge it
-                // Ideally we'd just send KEY_VOLUP or KEY_VOLDOWN
-                // For now, let's just support keys
-            }
-
-            // Close after a short delay to ensure message is sent
-            setTimeout(() => ws.close(), 1000);
+            executeCommand(ws);
         });
     }
 

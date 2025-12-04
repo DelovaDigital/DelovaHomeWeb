@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="btn-toggle ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}')">
                             <i class="fas fa-power-off"></i>
                         </button>
+                        <input type="range" class="device-slider" min="0" max="100" value="${device.state.brightness || 50}" 
+                            onchange="controlDevice('${device.id}', 'set_brightness', this.value)">
                     </div>
                 `;
             } else if (device.type === 'tv') {
@@ -64,6 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="control-group">
                         <i class="fas fa-volume-up"></i>
+                        <input type="range" class="device-slider" min="0" max="100" value="${device.state.volume || 20}" 
+                            onchange="controlDevice('${device.id}', 'set_volume', this.value)">
+                    </div>
                 `;
             } else if (device.type === 'thermostat') {
                 icon = 'fa-thermometer-half';

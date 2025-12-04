@@ -1,6 +1,7 @@
 const EventEmitter = require('events');
 const SsdpClient = require('node-ssdp').Client;
 const { Bonjour } = require('bonjour-service');
+const CastClient = require('castv2-client').Client;
 
 class DeviceManager extends EventEmitter {
     constructor() {
@@ -169,6 +170,66 @@ class DeviceManager extends EventEmitter {
 
     getDevice(id) {
         return this.devices.get(id);
+    }
+
+    async controlDevice(id, command, value) {
+        const device = this.devices.get(id);
+        if (!device) return null;
+
+        console.log(`Controlling ${device.name} (${device.protocol}): ${command} = ${value}`);
+
+        // 1. Handle Google Cast Devices
+        if (device.protocol === 'mdns-googlecast') {
+            try {
+                if (command === 'set_volume') {
+                    const client = new CastClient();
+                    client.connect(device.ip, () => {
+                        client.setVolume({ level: value / 100 }, () => {
+                            client.close();
+                        });
+                    });
+                    // Optimistic update
+                    device.state.volume = value;
+                } else if (command === 'toggle') {
+                    // Cast devices don't really "toggle" power easily via API without launching an app
+                    // But we can mute/unmute or stop playback
+                    const client = new CastClient();
+                    client.connect(device.ip, () => {
+                        client.setVolume({ muted: !device.state.on }, () => { // Hack: use 'on' state as 'muted' inverse?
+                             // Actually, let's just toggle mute
+                             client.getVolume((err, vol) => {
+                                 if (!err) {
+                                     client.setVolume({ muted: !vol.muted }, () => client.close());
+                                 } else client.close();
+                             });
+                        });
+                    });
+                }
+            } catch (err) {
+                console.error('Error controlling Cast device:', err);
+            }
+        }
+
+        // 2. Handle Mock Devices
+        if (device.protocol === 'mock' || !device.protocol) {
+             if (command === 'toggle') {
+                device.state.on = !device.state.on;
+            } else if (command === 'turn_on') {
+                device.state.on = true;
+            } else if (command === 'turn_off') {
+                device.state.on = false;
+            } else if (command === 'set_brightness') {
+                device.state.brightness = value;
+            } else if (command === 'set_volume') {
+                device.state.volume = value;
+            } else if (command === 'set_target_temp') {
+                device.state.target = value;
+            }
+        }
+
+        // Emit update
+        this.emit('device-updated', device);
+        return device;
     }
 
     updateDeviceState(id, state) {

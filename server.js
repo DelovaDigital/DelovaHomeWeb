@@ -190,30 +190,14 @@ app.get('/api/devices', (req, res) => {
     res.json(deviceManager.getAllDevices());
 });
 
-app.post('/api/devices/:id/command', (req, res) => {
+app.post('/api/devices/:id/command', async (req, res) => {
     const { id } = req.params;
     const { command, value } = req.body;
     
-    console.log(`Received command for ${id}: ${command} = ${value}`);
+    // console.log(`Received command for ${id}: ${command} = ${value}`);
 
-    let update = {};
-    // Simple command mapping
-    if (command === 'toggle') {
-        const device = deviceManager.getDevice(id);
-        if (device) update.on = !device.state.on;
-    } else if (command === 'turn_on') {
-        update.on = true;
-    } else if (command === 'turn_off') {
-        update.on = false;
-    } else if (command === 'set_brightness') {
-        update.brightness = value;
-    } else if (command === 'set_volume') {
-        update.volume = value;
-    } else if (command === 'set_target_temp') {
-        update.target = value;
-    }
-
-    const device = deviceManager.updateDeviceState(id, update);
+    const device = await deviceManager.controlDevice(id, command, value);
+    
     if (device) {
         res.json({ ok: true, device });
     } else {

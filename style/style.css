@@ -612,6 +612,14 @@ input:checked+.slider:before {
     color: white;
 }
 
+.device-slider {
+    flex: 1;
+    height: 4px;
+    background: #ddd;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
 
 .temp-display {
     font-size: 1.2em;

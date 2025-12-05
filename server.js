@@ -56,8 +56,10 @@ if (!hubConfig.hubId) {
 
 // Sync with Database (SystemConfig table)
 async function initHubConfigFromDB() {
+    console.log('Starting DB Sync...');
     try {
         const pool = await db.getPool();
+        const sql = db.sql; // Use the sql instance from db module
         
         // Ensure SystemConfig table exists
         const tableRes = await pool.request().query("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'SystemConfig'");
@@ -110,20 +112,27 @@ async function initHubConfigFromDB() {
                 .input('val', sql.NVarChar, hubConfig.name)
                 .query("INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubName', @val)");
         }
+        
+        console.log('DB Sync completed successfully.');
+        return { success: true };
 
     } catch (err) {
-        console.error('Database sync error (SystemConfig):', err.message);
+        console.error('Database sync error (SystemConfig):', err);
         return { success: false, error: err.message };
     }
-    return { success: true };
 }
 
-// Run DB sync asynchronously
-initHubConfigFromDB();
+// Run DB sync asynchronously, catch any top-level errors
+initHubConfigFromDB().catch(err => console.error('Fatal DB Sync Error:', err));
 
 app.get('/api/system/sync-db', async (req, res) => {
-    const result = await initHubConfigFromDB();
-    res.json(result);
+    try {
+        const result = await initHubConfigFromDB();
+        res.json(result);
+    } catch (e) {
+        console.error('Route handler error:', e);
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // Start mDNS Advertisement

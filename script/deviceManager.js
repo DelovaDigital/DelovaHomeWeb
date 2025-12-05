@@ -1127,7 +1127,20 @@ class DeviceManager extends EventEmitter {
         process.stdin.write(JSON.stringify(payload) + '\n');
     }
 
-    handleSamsungCommand(device, command, value) {
+    async handleSamsungCommand(device, command, value) {
+        // Handle Turn On via Wake-on-LAN
+        if (command === 'turn_on' || (command === 'toggle' && !device.state.on)) {
+            const mac = await this.getMacAddress(device.ip);
+            if (mac) {
+                console.log(`[Samsung] Sending WoL to ${mac}`);
+                this.sendWol(mac);
+                // Optimistically set state
+                device.state.on = true;
+                this.emit('device-updated', device);
+                return;
+            }
+        }
+
         // Custom Samsung Tizen Control via WebSocket (Port 8002 for secure, 8001 for insecure)
         // This avoids using the vulnerable 'samsung-tv-control' package
         
@@ -1157,6 +1170,16 @@ class DeviceManager extends EventEmitter {
                 sendKey(ws, 'KEY_VOLUP');
             } else if (command === 'volume_down') {
                 sendKey(ws, 'KEY_VOLDOWN');
+            } else if (command === 'play') {
+                sendKey(ws, 'KEY_PLAY');
+            } else if (command === 'pause') {
+                sendKey(ws, 'KEY_PAUSE');
+            } else if (command === 'stop') {
+                sendKey(ws, 'KEY_STOP');
+            } else if (command === 'next') {
+                sendKey(ws, 'KEY_FF');
+            } else if (command === 'previous') {
+                sendKey(ws, 'KEY_REWIND');
             } else if (command === 'set_input') {
                 const keyMap = {
                     'tv': 'KEY_TV',
@@ -1241,6 +1264,42 @@ class DeviceManager extends EventEmitter {
             if (!device.token) console.log('Waiting for Samsung TV pairing...');
             
             executeCommand(ws);
+        });
+    }
+
+    getMacAddress(ip) {
+        return new Promise((resolve) => {
+            const { exec } = require('child_process');
+            exec(`arp -n ${ip}`, (err, stdout) => {
+                if (err) {
+                    resolve(null);
+                    return;
+                }
+                // Example output: ? (192.168.0.123) at 00:11:22:33:44:55 [ether] on eth0
+                const match = stdout.match(/([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})/);
+                resolve(match ? match[0] : null);
+            });
+        });
+    }
+
+    sendWol(mac) {
+        const dgram = require('dgram');
+        const socket = dgram.createSocket('udp4');
+        const macHex = mac.replace(/[:-]/g, '');
+        const magicPacket = Buffer.alloc(102);
+        
+        // 6 bytes of FF
+        for (let i = 0; i < 6; i++) magicPacket[i] = 0xFF;
+        
+        // 16 repetitions of MAC
+        for (let i = 0; i < 16; i++) {
+            for (let j = 0; j < 6; j++) {
+                magicPacket[6 + i * 6 + j] = parseInt(macHex.substring(j * 2, j * 2 + 2), 16);
+            }
+        }
+        
+        socket.send(magicPacket, 0, magicPacket.length, 9, '255.255.255.255', () => {
+            socket.close();
         });
     }
 

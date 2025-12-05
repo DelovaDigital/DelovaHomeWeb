@@ -1594,6 +1594,16 @@ class DeviceManager extends EventEmitter {
              msg = { id, method: 'set_power', params: ['off', 'smooth', 500] };
         } else if (command === 'set_brightness') {
              msg = { id, method: 'set_bright', params: [parseInt(value), 'smooth', 500] };
+        } else if (command === 'set_color') {
+             // Value is {r, g, b}
+             // Convert to integer: R*65536 + G*256 + B
+             let rgb = 0;
+             if (typeof value === 'object') {
+                 rgb = (value.r << 16) + (value.g << 8) + value.b;
+             } else {
+                 rgb = parseInt(value);
+             }
+             msg = { id, method: 'set_rgb', params: [rgb, 'smooth', 500] };
         }
 
         if (msg) {

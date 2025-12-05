@@ -177,6 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'cover') icon = 'fa-warehouse';
         else if (type === 'vacuum') icon = 'fa-robot';
         else if (type === 'sensor') icon = 'fa-wifi';
+        else if (type === 'printer') icon = 'fa-print';
+        else if (type === 'receiver' || device.name.toLowerCase().includes('denon')) icon = 'fa-compact-disc';
 
         let html = `
             <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
@@ -226,6 +228,59 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+        } else if (type === 'printer') {
+             let inkHtml = '';
+             if (device.state.inks && device.state.inks.length > 0) {
+                 inkHtml = '<div style="display: flex; gap: 15px; width: 100%; margin-top: 20px; justify-content: center;">';
+                 device.state.inks.forEach(ink => {
+                     let colorCode = '#000';
+                     if (ink.color === 'C') colorCode = '#00FFFF';
+                     else if (ink.color === 'M') colorCode = '#FF00FF';
+                     else if (ink.color === 'Y') colorCode = '#FFFF00';
+                     else if (ink.color === 'K') colorCode = '#000000';
+                     
+                     inkHtml += `
+                         <div style="display: flex; flex-direction: column; align-items: center; width: 60px;">
+                             <div style="width: 100%; height: 100px; background: #eee; border-radius: 8px; position: relative; overflow: hidden; border: 1px solid #ddd;">
+                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; height: ${ink.level}%; background-color: ${colorCode}; transition: height 0.5s;"></div>
+                             </div>
+                             <span style="font-size: 0.9em; margin-top: 8px; font-weight: bold;">${ink.level}%</span>
+                         </div>
+                     `;
+                 });
+                 inkHtml += '</div>';
+             } else {
+                 inkHtml = '<div style="text-align: center; color: #888; margin-top: 20px;">Inktniveaus onbekend</div>';
+             }
+             html += inkHtml;
+        } else if (type === 'receiver' || device.name.toLowerCase().includes('denon') || device.protocol === 'denon-avr') {
+             const defaultInputs = ['TV', 'HDMI1', 'HDMI2', 'HDMI3', 'HDMI4', 'Bluetooth', 'AUX', 'Tuner', 'NET', 'Phono', 'CD'];
+             const inputs = device.inputs || defaultInputs;
+             
+             let inputOptions = inputs.map(inp => {
+                 const val = typeof inp === 'string' ? inp.toLowerCase() : inp.id;
+                 const label = typeof inp === 'string' ? inp : inp.name;
+                 return `<option value="${val}">${label}</option>`;
+             }).join('');
+
+             html += `
+                <div class="modal-slider-container">
+                    <label class="modal-slider-label">Volume: ${device.state.volume || 0}%</label>
+                    <input type="range" class="modal-slider" min="0" max="100" value="${device.state.volume || 0}"
+                        onchange="controlDevice('${device.id}', 'set_volume', this.value)">
+                </div>
+                <div class="control-group" style="margin-top: 20px;">
+                    <select class="input-selector" onchange="controlDevice('${device.id}', 'set_input', this.value)" style="width: 100%; padding: 10px; font-size: 1.1em;">
+                        <option value="" disabled selected>Bron selecteren</option>
+                        ${inputOptions}
+                    </select>
+                </div>
+                <div class="remote-grid" style="margin-top: 20px;">
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_down')"><i class="fas fa-minus"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
+                </div>
+             `;
         } else if (type === 'thermostat') {
             html += `
                 <div class="temp-display-large">${device.state.targetTemperature || 21}°C</div>

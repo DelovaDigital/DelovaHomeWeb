@@ -38,9 +38,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Display Hub Name if available (e.g. in header or title)
-    const hubName = localStorage.getItem('hubName');
+    let hubName = localStorage.getItem('hubName');
     const brandHeader = document.querySelector('.nav-brand h1');
-    if (brandHeader && hubName) {
+    
+    // If we are logged in but don't have hub info, fetch it
+    if (!hubName && localStorage.getItem('userId')) {
+         fetch('/api/system/info')
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    localStorage.setItem('hubId', data.hubId);
+                    localStorage.setItem('hubName', data.name);
+                    if (brandHeader) brandHeader.textContent = data.name;
+                }
+            })
+            .catch(err => console.error('Failed to fetch hub info', err));
+    } else if (brandHeader && hubName) {
         brandHeader.textContent = hubName;
     }
 

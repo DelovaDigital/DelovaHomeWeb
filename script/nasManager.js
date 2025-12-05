@@ -227,11 +227,13 @@ class NasManager {
     }
 
     async listFiles(id, dirPath = '') {
+        console.log(`[NAS] listFiles called for id=${id} path=${dirPath} platform=${process.platform}`);
         const config = this.config.find(c => c.id === id);
         if (!config) throw new Error('NAS not found');
 
         // Force disable native mode on Linux/Pi to prevent infinite recursion
         if (config.mode === 'native' && process.platform !== 'darwin') {
+            console.log('[NAS] Forcing smb2 mode on non-darwin platform');
             config.mode = 'smb2'; // Downgrade to smb2
         }
 
@@ -245,24 +247,30 @@ class NasManager {
         const smbPath = dirPath.replace(/\//g, '\\');
 
         return new Promise((resolve, reject) => {
-            const client = new SMB2({
-                share: config.share,
-                domain: config.domain || '',
-                username: config.username,
-                password: config.password
-            });
+            try {
+                const client = new SMB2({
+                    share: config.share,
+                    domain: config.domain || '',
+                    username: config.username,
+                    password: config.password
+                });
 
-            client.readdir(smbPath, (err, files) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    const fileList = files.map(f => ({
-                        name: f,
-                        isDirectory: !f.includes('.') // Naive guess
-                    }));
-                    resolve(fileList);
-                }
-            });
+                client.readdir(smbPath, (err, files) => {
+                    if (err) {
+                        console.error('[NAS] SMB2 readdir error:', err);
+                        reject(err);
+                    } else {
+                        const fileList = files.map(f => ({
+                            name: f,
+                            isDirectory: !f.includes('.') // Naive guess
+                        }));
+                        resolve(fileList);
+                    }
+                });
+            } catch (err) {
+                console.error('[NAS] SMB2 client init error:', err);
+                reject(err);
+            }
         });
     }
 

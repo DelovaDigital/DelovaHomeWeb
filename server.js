@@ -146,8 +146,33 @@ async function initHubConfigFromDB() {
     }
 }
 
+// Ensure Users table exists
+async function initUsersTable() {
+    try {
+        const pool = await db.getPool();
+        // Check for Users table (standardized name)
+        const tableRes = await pool.request().query("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Users' AND TABLE_SCHEMA = 'dbo'");
+        
+        if (tableRes.recordset.length === 0) {
+            console.log('Creating Users table...');
+            await pool.request().query(`
+                CREATE TABLE Users (
+                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                    Username NVARCHAR(255) NOT NULL UNIQUE,
+                    PasswordHash NVARCHAR(255) NOT NULL,
+                    Role NVARCHAR(50) DEFAULT 'User',
+                    CreatedAt DATETIME DEFAULT GETDATE()
+                )
+            `);
+            console.log('Created Users table.');
+        }
+    } catch (err) {
+        console.error('Error initializing Users table:', err);
+    }
+}
+
 // Run DB sync asynchronously, catch any top-level errors
-initHubConfigFromDB().catch(err => console.error('Fatal DB Sync Error:', err));
+initHubConfigFromDB().then(() => initUsersTable()).catch(err => console.error('Fatal DB Sync Error:', err));
 
 app.get('/api/system/ping', (req, res) => {
     res.json({ ok: true, message: 'Server is running' });
@@ -209,83 +234,28 @@ app.post('/api/login', async (req, res) => {
 
   try {
     const pool = await db.getPool();
-    const sql = db.sql;
-    // Try to discover a suitable users table and column names dynamically.
-    // 1) look for tables with "user" or "gebruik" in the name
-    const tablesRes = await pool.request()
-      .query("SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' AND (LOWER(TABLE_NAME) LIKE '%user%' OR LOWER(TABLE_NAME) LIKE '%gebruik%')");
+    
+    const result = await pool.request()
+        .input('username', db.sql.NVarChar(255), username)
+        .query("SELECT Id, Username, PasswordHash, Role FROM Users WHERE Username = @username");
 
-    let candidates = tablesRes.recordset || [];
-    // fallback common names if discovery found nothing
-    if (candidates.length === 0) {
-      candidates = [
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'Users' },
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'User' },
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'Accounts' },
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'Gebruikers' }
-      ];
-    }
-
-    let user = null;
-    let foundMeta = null;
-
-    for (const t of candidates) {
-      const schema = t.TABLE_SCHEMA;
-      const table = t.TABLE_NAME;
-      // get columns for this table
-      const colsRes = await pool.request()
-        .input('schema', sql.NVarChar, schema)
-        .input('table', sql.NVarChar, table)
-        .query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=@schema AND TABLE_NAME=@table");
-
-      const cols = (colsRes.recordset || []).map(r => r.COLUMN_NAME);
-      // heuristics for username / password / id columns
-      const usernameCol = cols.find(c => /^(username|user_name|user|login|gebruikersnaam)$/i.test(c)) || cols.find(c => /user/i.test(c));
-      const passwordCol = cols.find(c => /^(password|passwordhash|passwoord|wachtwoord|pwd|pass_hash)$/i.test(c)) || cols.find(c => /(pass|pwd|hash|wacht)/i.test(c));
-      const idCol = cols.find(c => /^(id|user_id|userid|userId)$/i.test(c)) || cols.find(c => /id$/i.test(c));
-
-      if (!usernameCol || !passwordCol) {
-        // try next candidate
-        continue;
-      }
-
-      // build safe query using bracket quoting
-      const selId = idCol ? `[${idCol}] AS id,` : '';
-      const q = `SELECT ${selId} [${usernameCol}] AS username, [${passwordCol}] AS passwordHash FROM [${schema}].[${table}] WHERE [${usernameCol}] = @username`;
-
-      try {
-        const result = await pool.request()
-          .input('username', sql.NVarChar(255), username)
-          .query(q);
-
-        if (result.recordset && result.recordset.length > 0) {
-          user = result.recordset[0];
-          foundMeta = { schema, table, usernameCol, passwordCol, idCol };
-          break;
-        }
-      } catch (err) {
-        // ignore and try next candidate
-        console.warn('Query against', schema + '.' + table, 'failed:', err && err.message);
-        continue;
-      }
-    }
+    const user = result.recordset[0];
 
     if (!user) {
       return res.status(401).json({ ok: false, message: 'Invalid credentials' });
     }
 
-    const match = await bcrypt.compare(password, user.passwordHash);
+    const match = await bcrypt.compare(password, user.PasswordHash);
     if (!match) {
       return res.status(401).json({ ok: false, message: 'Invalid credentials' });
     }
 
-    // Authentication succeeded. For now respond with a simple success payload.
-    // In production, create a session or issue a JWT instead of returning raw user data.
+    // Authentication succeeded.
     res.json({ 
         ok: true, 
-        userId: user.id || null, 
-        username: user.username, 
-        meta: foundMeta,
+        userId: user.Id, 
+        username: user.Username, 
+        role: user.Role,
         hubInfo: {
             id: hubConfig.hubId,
             name: hubConfig.name,
@@ -305,74 +275,71 @@ app.post('/api/register', async (req, res) => {
 
   try {
     const pool = await db.getPool();
-    const sql = db.sql;
-
-    // discover candidate user tables similar to login logic
-    const tablesRes = await pool.request()
-      .query("SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' AND (LOWER(TABLE_NAME) LIKE '%user%' OR LOWER(TABLE_NAME) LIKE '%gebruik%')");
-    let candidates = tablesRes.recordset || [];
-    if (candidates.length === 0) {
-      candidates = [
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'Users' },
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'User' },
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'Accounts' },
-        { TABLE_SCHEMA: 'dbo', TABLE_NAME: 'Gebruikers' }
-      ];
-    }
-
-    let created = false;
-    let createdMeta = null;
-
-    for (const t of candidates) {
-      const schema = t.TABLE_SCHEMA;
-      const table = t.TABLE_NAME;
-      const colsRes = await pool.request()
-        .input('schema', sql.NVarChar, schema)
-        .input('table', sql.NVarChar, table)
-        .query("SELECT COLUMN_NAME, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=@schema AND TABLE_NAME=@table");
-
-      const cols = (colsRes.recordset || []).map(r => ({ name: r.COLUMN_NAME, nullable: r.IS_NULLABLE === 'YES' }));
-      const colNames = cols.map(c => c.name);
-
-      const usernameCol = colNames.find(c => /^(username|user_name|user|login|gebruikersnaam)$/i.test(c)) || colNames.find(c => /user/i.test(c));
-      const passwordCol = colNames.find(c => /^(password|passwordhash|passwoord|wachtwoord|pwd|pass_hash)$/i.test(c)) || colNames.find(c => /(pass|pwd|hash|wacht)/i.test(c));
-
-      if (!usernameCol || !passwordCol) continue;
-
-      // check duplicate
-      const existsQ = `SELECT COUNT(1) AS cnt FROM [${schema}].[${table}] WHERE [${usernameCol}] = @username`;
-      const existsRes = await pool.request().input('username', sql.NVarChar(255), username).query(existsQ);
-      if (existsRes.recordset && existsRes.recordset[0] && existsRes.recordset[0].cnt > 0) {
+    
+    // Check if user exists in standard Users table
+    const existsRes = await pool.request()
+        .input('username', db.sql.NVarChar(255), username)
+        .query("SELECT COUNT(1) as cnt FROM Users WHERE Username = @username");
+    
+    if (existsRes.recordset[0].cnt > 0) {
         return res.status(409).json({ ok: false, message: 'User already exists' });
-      }
-
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      // attempt insert; build columns/params only for username & password
-      const insertQ = `INSERT INTO [${schema}].[${table}] ([${usernameCol}], [${passwordCol}]) VALUES (@username, @passwordHash)`;
-      try {
-        await pool.request()
-          .input('username', sql.NVarChar(255), username)
-          .input('passwordHash', sql.NVarChar(4000), passwordHash)
-          .query(insertQ);
-
-        created = true;
-        createdMeta = { schema, table, usernameCol, passwordCol };
-        break;
-      } catch (err) {
-        console.warn('Insert into', schema + '.' + table, 'failed:', err && err.message);
-        // try next candidate
-        continue;
-      }
     }
 
-    if (!created) return res.status(500).json({ ok: false, message: 'Could not create user; table/columns may be incompatible' });
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    await pool.request()
+        .input('username', db.sql.NVarChar(255), username)
+        .input('passwordHash', db.sql.NVarChar(255), passwordHash)
+        .query("INSERT INTO Users (Username, PasswordHash) VALUES (@username, @passwordHash)");
 
-    res.json({ ok: true, message: 'User created', meta: createdMeta });
+    res.json({ ok: true, message: 'User created' });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ ok: false, message: 'Server error' });
   }
+});
+
+// Validate Session Endpoint
+app.get('/api/me', async (req, res) => {
+    const userId = req.query.userId;
+    if (!userId) return res.status(401).json({ ok: false });
+
+    try {
+        const pool = await db.getPool();
+        const result = await pool.request()
+            .input('id', db.sql.Int, userId)
+            .query("SELECT Id, Username, Role FROM Users WHERE Id = @id");
+        
+        if (result.recordset.length > 0) {
+            const user = result.recordset[0];
+            res.json({
+                ok: true,
+                userId: user.Id,
+                username: user.Username,
+                role: user.Role,
+                hubInfo: {
+                    id: hubConfig.hubId,
+                    name: hubConfig.name,
+                    version: hubConfig.version
+                }
+            });
+        } else {
+            res.status(401).json({ ok: false });
+        }
+    } catch (e) {
+        res.status(500).json({ ok: false });
+    }
+});
+
+// List Users Endpoint
+app.get('/api/users', async (req, res) => {
+    try {
+        const pool = await db.getPool();
+        const result = await pool.request().query("SELECT Id, Username, Role, CreatedAt FROM Users");
+        res.json({ ok: true, users: result.recordset });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
 });
 
 const deviceManager = require('./script/deviceManager');
@@ -529,6 +496,28 @@ app.get('/api/speedtest/file', (req, res) => {
     });
   }
   sendNext();
+});
+
+// System Status API
+app.get('/api/status', (req, res) => {
+    const uptime = process.uptime();
+    const memory = process.memoryUsage();
+    const cpu = process.cpuUsage();
+    
+    res.json({
+        ok: true,
+        uptime,
+        memory: {
+            rss: memory.rss,
+            heapTotal: memory.heapTotal,
+            heapUsed: memory.heapUsed
+        },
+        cpu: {
+            user: cpu.user,
+            system: cpu.system
+        },
+        timestamp: Date.now()
+    });
 });
 
 // Device API

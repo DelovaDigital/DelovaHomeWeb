@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:io';
 import '../models/device.dart';
 import '../services/api_service.dart';
 
@@ -110,14 +112,25 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     
     final wsUrl = '$scheme://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
     
+    // Fetch JSMpeg script content to avoid SSL/CORS issues in WebView
+    String jsmpegContent = '';
+    try {
+      final client = HttpClient()
+        ..badCertificateCallback = (cert, host, port) => true;
+      final request = await client.getUrl(Uri.parse('$baseUrl/script/jsmpeg.min.js'));
+      final response = await request.close();
+      if (response.statusCode == 200) {
+        jsmpegContent = await response.transform(utf8.decoder).join();
+      } else {
+        debugPrint('Failed to load jsmpeg.min.js: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error fetching jsmpeg.min.js: $e');
+    }
+
     // Trigger the stream start on the backend (pre-warm)
     try {
       await _apiService.sendCommand(widget.device.id, 'start_stream', {'rtspUrl': rtspUrl});
-      // Note: The backend endpoint is actually /api/camera/stream, but ApiService.sendCommand uses /api/devices/:id/command
-      // We might need a specific call for camera stream start if it's not a device command.
-      // Looking at server.js, /api/camera/stream is a separate endpoint.
-      // However, the WebSocket connection also triggers the stream in the new implementation.
-      // So we might just rely on the WebSocket connection.
     } catch (e) {
       debugPrint('Error starting stream: $e');
     }
@@ -131,14 +144,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
           canvas { width: 100%; height: 100%; object-fit: contain; }
         </style>
-        <script src="$baseUrl/script/jsmpeg.min.js"></script>
+        <script>
+          $jsmpegContent
+        </script>
       </head>
       <body>
         <canvas id="video-canvas"></canvas>
         <script>
-          var canvas = document.getElementById('video-canvas');
-          var url = '$wsUrl';
-          var player = new JSMpeg.Player(url, {canvas: canvas, autoplay: true, audio: false, loop: true});
+          if (typeof JSMpeg === 'undefined') {
+             document.body.innerHTML = '<h3 style="color:white">Failed to load Player</h3>';
+          } else {
+             var canvas = document.getElementById('video-canvas');
+             var url = '$wsUrl';
+             var player = new JSMpeg.Player(url, {canvas: canvas, autoplay: true, audio: false, loop: true});
+          }
         </script>
       </body>
       </html>

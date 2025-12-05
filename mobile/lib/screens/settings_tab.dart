@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../services/api_service.dart';
 import 'hub_discovery_screen.dart';
+import 'manage_users_screen.dart';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({super.key});
@@ -153,6 +154,19 @@ class _SettingsTabState extends State<SettingsTab> {
           const Text(
             'System Management',
             style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            tileColor: Colors.grey[900],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.people, color: Colors.green),
+            title: const Text('Manage Users', style: TextStyle(color: Colors.white)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ManageUsersScreen()),
+              );
+            },
           ),
           const SizedBox(height: 10),
           ListTile(

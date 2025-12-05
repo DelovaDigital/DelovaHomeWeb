@@ -186,6 +186,40 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   };
 
+  // System Status Widget
+  async function loadSystemStatus() {
+    const statusWidget = document.getElementById('systemStatusWidget');
+    const statusContent = document.getElementById('systemStatusContent');
+    if (!statusWidget || !statusContent) return;
+
+    try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        
+        if (data.ok) {
+            const uptimeHours = (data.uptime / 3600).toFixed(1);
+            const memUsed = (data.memory.rss / 1024 / 1024).toFixed(0);
+            
+            statusContent.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span><i class="fas fa-clock"></i> Uptime:</span>
+                    <strong>${uptimeHours} uur</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span><i class="fas fa-memory"></i> Geheugen:</span>
+                    <strong>${memUsed} MB</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span><i class="fas fa-server"></i> Status:</span>
+                    <strong style="color: #2ecc71;">Online</strong>
+                </div>
+            `;
+        }
+    } catch (e) {
+        statusContent.innerHTML = '<span style="color: red;">Offline</span>';
+    }
+  }
+
   // Printer Widget
   async function loadPrinterStatus() {
     const printerWidget = document.getElementById('printerWidget');
@@ -317,7 +351,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (roomsList) render();
   loadWeather();
   loadPrinterStatus();
+  loadSystemStatus();
   setInterval(loadPrinterStatus, 10000); // Poll printer every 10s
+  setInterval(loadSystemStatus, 30000); // Poll system status every 30s
   // subscribe to server events to refresh widgets when rooms/mapping change
   if (typeof EventSource !== 'undefined'){
     try{

@@ -2,7 +2,9 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:nsd/nsd.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
+import 'main_screen.dart';
 
 class HubDiscoveryScreen extends StatefulWidget {
   const HubDiscoveryScreen({super.key});
@@ -19,7 +21,42 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
   @override
   void initState() {
     super.initState();
+    _checkAutoLogin();
     _startDiscovery();
+  }
+
+  Future<void> _checkAutoLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hubIp = prefs.getString('hub_ip');
+    final hubPort = prefs.getString('hub_port');
+    final userId = prefs.getString('userId');
+
+    if (hubIp != null && hubPort != null && userId != null) {
+      debugPrint('Found stored credentials. Verifying session...');
+      try {
+        final client = HttpClient();
+        client.badCertificateCallback = (cert, host, port) => true;
+        final url = Uri.parse('https://$hubIp:$hubPort/api/me?userId=$userId');
+        final request = await client.getUrl(url);
+        final response = await request.close();
+        
+        if (response.statusCode == 200) {
+          final body = await response.transform(utf8.decoder).join();
+          final data = jsonDecode(body);
+          if (data['ok'] == true) {
+            debugPrint('Session valid. Auto-login.');
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const MainScreen()),
+              );
+            }
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('Auto-login failed: $e');
+      }
+    }
   }
 
   @override

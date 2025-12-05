@@ -31,6 +31,15 @@ const Bonjour = require('bonjour-service').Bonjour;
 const app = express();
 const port = process.env.PORT || 3000;
 
+// --- Global Error Handlers to prevent crash ---
+process.on('uncaughtException', (err) => {
+    console.error('CRITICAL: Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // --- Hub Identity & Discovery ---
 const HUB_CONFIG_PATH = path.join(__dirname, 'hub_config.json');
 let hubConfig = {
@@ -58,12 +67,20 @@ if (!hubConfig.hubId) {
 async function initHubConfigFromDB() {
     console.log('Starting DB Sync...');
     try {
+        console.log('Step 1: Getting DB Pool...');
         const pool = await db.getPool();
-        const sql = db.sql; // Use the sql instance from db module
+        console.log('Step 1: Pool acquired.');
+
+        const sql = db.sql; 
+        if (!sql) throw new Error('db.sql is undefined - check db.js exports');
+        console.log('Step 2: SQL instance verified.');
         
         // Ensure SystemConfig table exists
+        console.log('Step 3: Checking SystemConfig table...');
         const tableRes = await pool.request().query("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'SystemConfig'");
+        
         if (tableRes.recordset.length === 0) {
+            console.log('Step 3a: Creating SystemConfig table...');
             await pool.request().query(`
                 CREATE TABLE SystemConfig (
                     KeyName NVARCHAR(50) PRIMARY KEY,
@@ -71,9 +88,12 @@ async function initHubConfigFromDB() {
                 )
             `);
             console.log('Created SystemConfig table in SQL Server');
+        } else {
+            console.log('Step 3b: SystemConfig table exists.');
         }
 
         // Sync HubId
+        console.log('Step 4: Syncing HubId...');
         let dbHubId = null;
         const idRes = await pool.request().query("SELECT KeyValue FROM SystemConfig WHERE KeyName = 'HubId'");
         if (idRes.recordset.length > 0) {
@@ -81,6 +101,7 @@ async function initHubConfigFromDB() {
         }
 
         if (dbHubId) {
+            console.log(`Step 4a: Found DB Hub ID: ${dbHubId}`);
             // DB has priority if local is different (or we can decide otherwise, but DB is usually source of truth)
             if (hubConfig.hubId !== dbHubId) {
                 console.log(`Updating local Hub ID from DB: ${dbHubId}`);
@@ -88,6 +109,7 @@ async function initHubConfigFromDB() {
                 fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
             }
         } else {
+            console.log('Step 4b: DB Hub ID empty. Saving local ID to DB...');
             // DB is empty, save local ID to DB
             await pool.request()
                 .input('val', sql.NVarChar, hubConfig.hubId)
@@ -96,6 +118,7 @@ async function initHubConfigFromDB() {
         }
 
         // Sync HubName
+        console.log('Step 5: Syncing HubName...');
         let dbHubName = null;
         const nameRes = await pool.request().query("SELECT KeyValue FROM SystemConfig WHERE KeyName = 'HubName'");
         if (nameRes.recordset.length > 0) {
@@ -118,7 +141,7 @@ async function initHubConfigFromDB() {
 
     } catch (err) {
         console.error('Database sync error (SystemConfig):', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err.message, stack: err.stack };
     }
 }
 

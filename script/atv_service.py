@@ -148,12 +148,15 @@ async def main():
                     vol = 0
                     try:
                         vol = atv.audio.volume
+                        if vol is None: vol = 0
                     except: pass
                     
                     # Handle Power State
                     is_on = True
                     try:
                         if hasattr(atv.power, 'power_state'):
+                            # Debug power state
+                            # print(f"DEBUG: PowerState is {atv.power.power_state}", file=sys.stderr)
                             is_on = atv.power.power_state == PowerState.On
                     except:
                         # If power state fetch fails, assume ON if we are connected
@@ -165,6 +168,10 @@ async def main():
                         try:
                             # device_state is an Enum
                             p_state_str = playing.device_state.name.lower()
+                            
+                            # If we are playing or paused, we are definitely ON
+                            if playing.device_state in [DeviceState.Playing, DeviceState.Paused, DeviceState.Buffering]:
+                                is_on = True
                         except:
                             p_state_str = 'stopped'
 

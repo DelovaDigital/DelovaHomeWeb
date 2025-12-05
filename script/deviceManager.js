@@ -1479,6 +1479,12 @@ class DeviceManager extends EventEmitter {
                 console.log(`Pairing process exited with code ${code}`);
                 if (code !== 0 && !outputBuffer.includes('PAIRING_SUCCESS')) {
                     this.pairingProcess = null;
+                    
+                    if (outputBuffer.includes('ModuleNotFoundError')) {
+                        console.error('CRITICAL ERROR: The "pyatv" library is missing.');
+                        console.error('Please run: cd ~/DelovaHome && python3 -m venv .venv && .venv/bin/pip install pyatv');
+                    }
+                    
                     reject(new Error('Pairing process failed'));
                 }
             });

@@ -4,7 +4,7 @@ set -e
 # --- Configuration ---
 # If your repo is private, you can embed a token here OR enter it when prompted
 # Format: https://<token>@github.com/username/repo.git
-REPO_URL="https://github.com/DelovaDigital/OmniHome.git"
+REPO_URL="https://github.com/DelovaDigital/DelovaHomeWeb.git"
 INSTALL_DIR="/home/pi/DelovaHome"
 NODE_VERSION="18.x"
 

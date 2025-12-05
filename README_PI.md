@@ -15,7 +15,7 @@ sudo apt install -y nodejs
 You must clone the repository for the update system to work.
 ```bash
 cd /home/pi
-git clone https://github.com/DelovaDigital/OmniHome.git DelovaHome
+git clone https://github.com/DelovaDigital/DelovaHomeWeb.git DelovaHome
 cd DelovaHome/web
 ```
 *Note: You may need to set up an SSH key or use a Personal Access Token if the repo is private.*

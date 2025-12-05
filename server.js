@@ -229,8 +229,9 @@ app.get('/api/system/sync-db', async (req, res) => {
 });
 
 // Start mDNS Advertisement
+let bonjour;
 try {
-    const bonjour = new Bonjour();
+    bonjour = new Bonjour();
     bonjour.publish({ name: `DelovaHome-${hubConfig.hubId.substring(0, 8)}`, type: 'http', port: port, txt: { id: hubConfig.hubId, version: hubConfig.version, type: 'delovahome' } });
     console.log(`Advertising DelovaHome Hub on network (ID: ${hubConfig.hubId})`);
 } catch (e) {

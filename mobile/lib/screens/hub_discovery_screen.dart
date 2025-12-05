@@ -36,6 +36,8 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
       try {
         final client = HttpClient();
         client.badCertificateCallback = (cert, host, port) => true;
+        client.connectionTimeout = const Duration(seconds: 5);
+        
         final url = Uri.parse('https://$hubIp:$hubPort/api/me?userId=$userId');
         final request = await client.getUrl(url);
         final response = await request.close();
@@ -134,7 +136,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
             hintStyle: TextStyle(color: Colors.grey),
             enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
           ),
-          keyboardType: TextInputType.number,
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
         ),
         actions: [
           TextButton(

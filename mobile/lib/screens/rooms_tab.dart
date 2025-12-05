@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
-import '../widgets/device_card.dart';
+import 'room_detail_screen.dart';
 
 class RoomsTab extends StatefulWidget {
   const RoomsTab({super.key});
@@ -93,22 +93,90 @@ class _RoomsTabState extends State<RoomsTab> {
 
     return RefreshIndicator(
       onRefresh: () => _fetchDevices(),
-      child: ListView.builder(
+      child: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 1.2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
         itemCount: _rooms.length,
         itemBuilder: (context, index) {
           final roomName = _rooms.keys.elementAt(index);
           final devices = _rooms[roomName]!;
           
-          return ExpansionTile(
-            title: Text(roomName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            initiallyExpanded: true,
-            children: devices.map((device) => DeviceCard(
-              device: device,
-              onRefresh: () => _fetchDevices(silent: true),
-            )).toList(),
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RoomDetailScreen(
+                    roomName: roomName,
+                    devices: devices,
+                    onRefresh: () => _fetchDevices(),
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _getRoomIcon(roomName),
+                    size: 48,
+                    color: Colors.blueAccent,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    roomName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${devices.length} Devices',
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         },
       ),
     );
+  }
+
+  IconData _getRoomIcon(String roomName) {
+    final name = roomName.toLowerCase();
+    if (name.contains('living') || name.contains('woon')) return Icons.weekend;
+    if (name.contains('kitchen') || name.contains('keuken')) return Icons.kitchen;
+    if (name.contains('bed') || name.contains('slaap')) return Icons.bed;
+    if (name.contains('bath') || name.contains('bad')) return Icons.bathtub;
+    if (name.contains('office') || name.contains('kantoor') || name.contains('desk')) return Icons.work;
+    if (name.contains('garage')) return Icons.garage;
+    if (name.contains('garden') || name.contains('tuin')) return Icons.yard;
+    if (name.contains('dining') || name.contains('eet')) return Icons.dining;
+    if (name.contains('hall') || name.contains('gang')) return Icons.door_sliding;
+    return Icons.meeting_room;
   }
 }

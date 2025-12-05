@@ -2,8 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:nsd/nsd.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'main_screen.dart';
+import 'login_screen.dart';
 
 class HubDiscoveryScreen extends StatefulWidget {
   const HubDiscoveryScreen({super.key});
@@ -38,22 +37,32 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
       _discovery = await startDiscovery('_http._tcp');
       _discovery!.addServiceListener((service, status) {
         if (status == ServiceStatus.found) {
-          // Check if it's our hub
+          debugPrint('Found service: ${service.name} ${service.txt}');
+          
+          bool isMatch = false;
+
+          // 1. Check TXT record (Best method)
           if (service.txt != null && service.txt!.containsKey('type')) {
-             // Decode bytes to string for comparison
              try {
                final typeBytes = service.txt!['type'];
                if (typeBytes != null) {
                  final typeStr = utf8.decode(typeBytes);
-                 if (typeStr == 'delovahome') {
-                    setState(() {
-                      if (!_hubs.any((h) => h.name == service.name)) {
-                        _hubs.add(service);
-                      }
-                    });
-                 }
+                 if (typeStr == 'delovahome') isMatch = true;
                }
              } catch (e) { /* ignore decode error */ }
+          }
+
+          // 2. Fallback: Check Service Name (If TXT is stripped by router)
+          if (!isMatch && (service.name != null && service.name!.toLowerCase().startsWith('delovahome'))) {
+             isMatch = true;
+          }
+
+          if (isMatch) {
+            setState(() {
+              if (!_hubs.any((h) => h.name == service.name)) {
+                _hubs.add(service);
+              }
+            });
           }
         }
       });
@@ -69,6 +78,53 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
       _discovery = null;
     }
     if (mounted) setState(() => _isScanning = false);
+  }
+
+  void _showManualConnectDialog() {
+    final ipController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Manual Connect', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ipController,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Hub IP Address',
+            labelStyle: TextStyle(color: Colors.grey),
+            hintText: 'e.g. 192.168.0.216',
+            hintStyle: TextStyle(color: Colors.grey),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+          ),
+          keyboardType: TextInputType.number,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final ip = ipController.text.trim();
+              if (ip.isNotEmpty) {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => LoginScreen(
+                      hubIp: ip,
+                      hubPort: '3000',
+                      hubName: 'Manual Hub',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('Connect'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _connectToHub(Service service) async {
@@ -88,23 +144,16 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
     }
 
     if (ip != null) {
-      // Save to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('hub_ip', ip);
-      await prefs.setString('hub_port', port.toString());
-      
-      // Extract Hub ID from TXT record if available
-      if (service.txt != null && service.txt!.containsKey('id')) {
-        // nsd returns Uint8List for TXT values, so we decode it
-        final idBytes = service.txt!['id'];
-        if (idBytes != null) {
-          await prefs.setString('hub_id', utf8.decode(idBytes));
-        }
-      }
-
+      // Navigate to Login Screen with Hub details
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainScreen()),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => LoginScreen(
+              hubIp: ip!,
+              hubPort: port?.toString() ?? '3000',
+              hubName: service.name,
+            ),
+          ),
         );
       }
     } else {
@@ -143,6 +192,11 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
                 _startDiscovery();
               },
             ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Manual Connect',
+            onPressed: _showManualConnectDialog,
+          ),
         ],
       ),
       body: _hubs.isEmpty
@@ -158,10 +212,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
                   ),
                   const SizedBox(height: 40),
                   TextButton(
-                    onPressed: () {
-                      // Manual IP fallback
-                      _showManualIpDialog();
-                    },
+                    onPressed: _showManualConnectDialog,
                     child: const Text('Enter IP Manually'),
                   ),
                 ],
@@ -187,47 +238,6 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
                 );
               },
             ),
-    );
-  }
-
-  void _showManualIpDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text('Enter Hub IP', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: '192.168.1.x',
-            hintStyle: TextStyle(color: Colors.grey),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (controller.text.isNotEmpty) {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('hub_ip', controller.text);
-                if (mounted) {
-                  Navigator.pop(context);
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => const MainScreen()),
-                  );
-                }
-              }
-            },
-            child: const Text('Connect'),
-          ),
-        ],
-      ),
     );
   }
 }

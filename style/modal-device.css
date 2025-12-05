@@ -178,6 +178,7 @@
     border-radius: 3px;
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
 }
 
 .modal-slider::-webkit-slider-thumb {

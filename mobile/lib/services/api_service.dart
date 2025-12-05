@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 
 class ApiService {
-  static const String _defaultIp = '192.168.0.216';
   static const String _port = '3000';
 
   Future<String> getBaseUrl() async {
@@ -66,7 +66,7 @@ class ApiService {
         body: json.encode(body),
       );
     } catch (e) {
-      print('Error sending command: $e');
+      debugPrint('Error sending command: $e');
     }
   }
 

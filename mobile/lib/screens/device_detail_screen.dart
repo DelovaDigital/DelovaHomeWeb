@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
 
@@ -30,26 +31,95 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     _currentVolume = widget.device.status.volume;
     
     if (widget.device.type.toLowerCase() == 'camera') {
-      _initCamera();
+      _checkAndInitCamera();
     }
   }
 
-  Future<void> _initCamera() async {
+  Future<void> _checkAndInitCamera() async {
+    final prefs = await SharedPreferences.getInstance();
+    final user = prefs.getString('cam_user_${widget.device.id}');
+    final pass = prefs.getString('cam_pass_${widget.device.id}');
+
+    if (user == null || pass == null) {
+      // Wait for build to finish before showing dialog
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showCredentialsDialog();
+      });
+    } else {
+      _initCamera(user, pass);
+    }
+  }
+
+  void _showCredentialsDialog() {
+    final userController = TextEditingController();
+    final passController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Camera Credentials'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Please enter the username and password for this camera.'),
+            const SizedBox(height: 10),
+            TextField(
+              controller: userController,
+              decoration: const InputDecoration(labelText: 'Username', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: passController,
+              decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final navigator = Navigator.of(context);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('cam_user_${widget.device.id}', userController.text);
+              await prefs.setString('cam_pass_${widget.device.id}', passController.text);
+              if (mounted) {
+                navigator.pop();
+                _initCamera(userController.text, passController.text);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _initCamera(String user, String pass) async {
     final baseUrl = await _apiService.getBaseUrl();
     final uri = Uri.parse(baseUrl);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
-    final wsUrl = '$scheme://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(widget.device.ip)}';
+    
+    // Construct RTSP URL with credentials
+    // Defaulting to /stream1, but this might need to be configurable
+    final rtspUrl = 'rtsp://$user:$pass@${widget.device.ip}:554/stream1';
+    
+    final wsUrl = '$scheme://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
     
     // Trigger the stream start on the backend (pre-warm)
     try {
-      await _apiService.sendCommand(widget.device.id, 'start_stream', {'rtspUrl': widget.device.ip});
+      await _apiService.sendCommand(widget.device.id, 'start_stream', {'rtspUrl': rtspUrl});
       // Note: The backend endpoint is actually /api/camera/stream, but ApiService.sendCommand uses /api/devices/:id/command
       // We might need a specific call for camera stream start if it's not a device command.
       // Looking at server.js, /api/camera/stream is a separate endpoint.
       // However, the WebSocket connection also triggers the stream in the new implementation.
       // So we might just rely on the WebSocket connection.
     } catch (e) {
-      print('Error starting stream: $e');
+      debugPrint('Error starting stream: $e');
     }
 
     final html = '''
@@ -98,6 +168,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isVacuum = widget.device.type.toLowerCase() == 'vacuum' || widget.device.type.toLowerCase() == 'robot';
     final isSensor = widget.device.type.toLowerCase() == 'sensor';
     final isCamera = widget.device.type.toLowerCase() == 'camera';
+    final isPrinter = widget.device.type.toLowerCase() == 'printer';
     
     final isPoweredOn = widget.device.status.isOn;
 
@@ -152,7 +223,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               const SizedBox(height: 40),
 
               // Big Power Button (Hide for sensors or always-on devices)
-              if (!isSensor && !isLock && !isCamera)
+              if (!isSensor && !isLock && !isCamera && !isPrinter)
               GestureDetector(
                 onTap: () => _sendCommand('toggle'),
                 child: AnimatedContainer(
@@ -165,7 +236,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     boxShadow: isPoweredOn
                         ? [
                             BoxShadow(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                               blurRadius: 20,
                               spreadRadius: 5,
                             )
@@ -193,7 +264,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       color: widget.device.status.isLocked == true ? Colors.red : Colors.green,
                       boxShadow: [
                         BoxShadow(
-                          color: (widget.device.status.isLocked == true ? Colors.red : Colors.green).withOpacity(0.4),
+                          color: (widget.device.status.isLocked == true ? Colors.red : Colors.green).withValues(alpha: 0.4),
                           blurRadius: 20,
                           spreadRadius: 5,
                         )
@@ -324,6 +395,49 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 ),
               ],
 
+              // --- Printer Controls ---
+              if (isPrinter) ...[
+                if (widget.device.status.printerStatus != null)
+                  Text(
+                    "Status: ${widget.device.status.printerStatus}",
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                const SizedBox(height: 20),
+                if (widget.device.status.inks != null)
+                  ...widget.device.status.inks!.map((ink) {
+                    final colorCode = ink['color'] as String;
+                    final level = ink['level'] as int;
+                    Color color;
+                    switch (colorCode.toUpperCase()) {
+                      case 'C': color = Colors.cyan; break;
+                      case 'M': color = const Color(0xFFFF00FF); break;
+                      case 'Y': color = Colors.yellow; break;
+                      case 'K': color = Colors.black; break;
+                      default: color = Colors.grey;
+                    }
+                    
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("$colorCode ($level%)", style: const TextStyle(color: Colors.grey)),
+                          const SizedBox(height: 5),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: level / 100.0,
+                              backgroundColor: Colors.grey[800],
+                              valueColor: AlwaysStoppedAnimation<Color>(color),
+                              minHeight: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+
               // --- Sensor Display ---
               if (isSensor) ...[
                 if (widget.device.status.temperature != null)
@@ -367,7 +481,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     margin: const EdgeInsets.only(bottom: 30),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -639,7 +753,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
+                          color: Colors.black.withValues(alpha: 0.3),
                           blurRadius: 5,
                           offset: const Offset(0, 2),
                         )

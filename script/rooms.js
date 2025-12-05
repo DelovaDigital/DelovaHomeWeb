@@ -78,6 +78,10 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     roomsList.appendChild(unassignedPanel);
 
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'rooms-grid';
+    roomsList.appendChild(gridContainer);
+
     rooms.forEach(r => {
       const devs = Object.keys(map).filter(k => map[k] === r.id).map(id => deviceById[id]).filter(Boolean);
 
@@ -87,79 +91,77 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="room-header">
           <h4>${r.name}</h4>
           <div class="room-actions">
-            <button data-id="${r.id}" class="rename-room">✏️</button>
-            <button data-id="${r.id}" class="delete-room">🗑️</button>
+            <button data-id="${r.id}" class="rename-room" title="Rename"><i class="fas fa-edit"></i></button>
+            <button data-id="${r.id}" class="delete-room" title="Delete"><i class="fas fa-trash"></i></button>
           </div>
         </div>
+        <div class="room-stats">
+            <span>${devs.length} Apparaten</span>
+        </div>
         <div class="room-devices">
-          ${devs.length>0 ? devs.map(d=>`<div class="room-device">${d.name} <button data-device="${d.id}" class="unassign">Verwijder</button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
+          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="fas fa-cube"></i> <span>${d.name}</span> <button data-device="${d.id}" class="unassign" title="Remove"><i class="fas fa-times"></i></button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
         </div>
         <div class="room-add">
-          <label>apparaten toevoegen</label>
           <select class="add-select">
-            <option value="">-- Kies apparaat --</option>
-            ${unassigned.map(u=>`<option value="${u.id}">${u.name} (${u.ip || 'n/a'})</option>`).join('')}
+            <option value="">+ Apparaat toevoegen</option>
+            ${unassigned.map(u=>`<option value="${u.id}">${u.name}</option>`).join('')}
           </select>
-          <button class="btn-add">Toevoegen</button>
         </div>
       `;
+      
+      // Event listeners
+      roomEl.querySelector('.rename-room').onclick = async () => {
+        const newName = prompt('Nieuwe naam:', r.name);
+        if(newName && newName !== r.name){
+          await fetch(`/api/rooms/${r.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: newName }) });
+          render();
+        }
+      };
+      
+      roomEl.querySelector('.delete-room').onclick = async () => {
+        if(confirm(`Kamer "${r.name}" verwijderen?`)){
+          await fetch(`/api/rooms/${r.id}`, { method:'DELETE' });
+          render();
+        }
+      };
 
-      roomsList.appendChild(roomEl);
+      roomEl.querySelectorAll('.unassign').forEach(btn => {
+        btn.onclick = async () => {
+          const devId = btn.dataset.device;
+          await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId: devId, roomId: null }) });
+          render();
+        };
+      });
+
+      const sel = roomEl.querySelector('.add-select');
+      sel.onchange = async () => {
+        if(sel.value){
+          await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId: sel.value, roomId: r.id }) });
+          render();
+        }
+      };
+
+      // Drag & Drop Drop Target
+      roomEl.addEventListener('dragover', (ev)=>{ ev.preventDefault(); roomEl.classList.add('drag-over'); });
+      roomEl.addEventListener('dragleave', ()=>{ roomEl.classList.remove('drag-over'); });
+      roomEl.addEventListener('drop', async (ev)=>{
+        ev.preventDefault(); roomEl.classList.remove('drag-over');
+        const deviceId = ev.dataTransfer.getData('text/plain');
+        if(!deviceId) return;
+        await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId: r.id }) });
+        render();
+      });
+
+      gridContainer.appendChild(roomEl);
     });
 
-    // drag & drop handlers for unassigned items
+    // Drag Start for Unassigned Items
     document.querySelectorAll('.unassigned-item').forEach(item => {
       item.addEventListener('dragstart', (ev)=>{
         ev.dataTransfer.setData('text/plain', item.getAttribute('data-device-id'));
       });
     });
-
-    // make room cards drop targets
-    document.querySelectorAll('.room-card').forEach(card => {
-      card.addEventListener('dragover', (ev)=>{ ev.preventDefault(); card.classList.add('drag-over'); });
-      card.addEventListener('dragleave', ()=>{ card.classList.remove('drag-over'); });
-      card.addEventListener('drop', async (ev)=>{
-        ev.preventDefault(); card.classList.remove('drag-over');
-        const deviceId = ev.dataTransfer.getData('text/plain');
-        const roomId = card.querySelector('.rename-room').getAttribute('data-id');
-        if(!deviceId) return;
-        await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId }) });
-        render();
-      });
-    });
-
-    // handlers
-    document.querySelectorAll('.unassign').forEach(btn => btn.addEventListener('click', async ()=>{
-      const deviceId = btn.getAttribute('data-device');
-      await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId: null }) });
-      render();
-    }));
-
-    document.querySelectorAll('.delete-room').forEach(btn => btn.addEventListener('click', async ()=>{
-      const id = btn.getAttribute('data-id');
-      if(!confirm('Kamer verwijderen?')) return;
-      await fetch(`/api/rooms/${id}`, { method: 'DELETE' });
-      render();
-    }));
-
-    document.querySelectorAll('.rename-room').forEach(btn => btn.addEventListener('click', async ()=>{
-      const id = btn.getAttribute('data-id');
-      const name = prompt('Nieuwe naam voor kamer');
-      if(name) { await fetch(`/api/rooms/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); render(); }
-    }));
-
-    document.querySelectorAll('.btn-add').forEach((btn, idx) => btn.addEventListener('click', async (e)=>{
-      const parent = btn.parentElement;
-      const sel = parent.querySelector('.add-select');
-      const deviceId = sel.value;
-      const roomCard = parent.closest('.room-card');
-      const roomId = roomCard.querySelector('.rename-room').getAttribute('data-id');
-      if(!deviceId) return alert('Kies eerst een apparaat');
-      await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId }) });
-      render();
-    }));
   }
-
 
   render();
 });

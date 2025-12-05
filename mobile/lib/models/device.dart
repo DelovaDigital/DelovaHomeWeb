@@ -47,6 +47,8 @@ class DeviceStatus {
   final int? position; // 0-100 for blinds
   final String? mode; // heat, cool, auto, etc.
   final int? fanSpeed;
+  final List<dynamic>? inks;
+  final String? printerStatus;
 
   DeviceStatus({
     required this.powerState,
@@ -66,6 +68,8 @@ class DeviceStatus {
     this.position,
     this.mode,
     this.fanSpeed,
+    this.inks,
+    this.printerStatus,
   });
 
   factory DeviceStatus.fromJson(Map<String, dynamic> json) {
@@ -95,6 +99,8 @@ class DeviceStatus {
       position: json['position'],
       mode: json['mode'],
       fanSpeed: json['fanSpeed'],
+      inks: json['inks'],
+      printerStatus: json['printerStatus'],
     );
   }
 }

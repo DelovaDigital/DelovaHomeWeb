@@ -14,7 +14,6 @@ class SettingsTab extends StatefulWidget {
 class _SettingsTabState extends State<SettingsTab> {
   final _apiService = ApiService();
   bool _isCheckingUpdate = false;
-  bool _isUpdating = false;
   
   String _hubIp = 'Unknown';
   String _hubId = 'Unknown';
@@ -47,7 +46,7 @@ class _SettingsTabState extends State<SettingsTab> {
         });
       }
     } catch (e) {
-      print('Error fetching hub info: $e');
+      debugPrint('Error fetching hub info: $e');
     }
   }
 
@@ -101,7 +100,6 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   Future<void> _performUpdate() async {
-    setState(() => _isUpdating = true);
     try {
       final result = await _apiService.updateSystem();
       if (mounted) {
@@ -120,8 +118,6 @@ class _SettingsTabState extends State<SettingsTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update Error: $e')));
       }
-    } finally {
-      if (mounted) setState(() => _isUpdating = false);
     }
   }
 

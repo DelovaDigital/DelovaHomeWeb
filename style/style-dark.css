@@ -647,3 +647,134 @@ input:checked+.slider:before {
     background: #505050;
     color: white;
 }
+
+/* Rooms Grid Layout (Dark Mode) */
+.rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.room-card {
+    background: #2d2d2d;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #404040;
+}
+
+.room-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #404040;
+}
+
+.room-header h4 {
+    margin: 0;
+    font-size: 1.3em;
+    color: #e0e0e0;
+    font-weight: 600;
+}
+
+.room-actions button {
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    transition: color 0.2s, background 0.2s;
+}
+
+.room-actions button:hover {
+    background: #3d3d3d;
+    color: #fff;
+}
+
+.room-actions button.delete-room:hover {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.room-stats {
+    font-size: 0.85em;
+    color: #aaa;
+    margin-bottom: 12px;
+}
+
+.room-devices {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    min-height: 50px; /* Drop target area */
+}
+
+.room-device {
+    background: #1f1f1f;
+    padding: 10px 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95em;
+    color: #ccc;
+    border: 1px solid #333;
+}
+
+.room-device i {
+    color: #888;
+    margin-right: 8px;
+}
+
+.room-device .unassign {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.room-device .unassign:hover {
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+}
+
+.room-add {
+    margin-top: auto;
+}
+
+.room-add select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    background-color: #1f1f1f;
+    color: #e0e0e0;
+    cursor: pointer;
+    outline: none;
+}
+
+.room-add select:hover {
+    border-color: #666;
+}
+
+.room-add select:focus {
+    border-color: #4a7ba7;
+    box-shadow: 0 0 0 2px rgba(74, 123, 167, 0.3);
+    outline: none;
+}

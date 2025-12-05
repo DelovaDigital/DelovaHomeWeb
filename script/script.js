@@ -129,15 +129,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const hubIdEl = document.getElementById('hubId');
     if (hubIdEl) {
         fetch('/api/system/info')
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
             .then(data => {
                 if (data.ok) {
                     document.getElementById('hubName').textContent = data.name;
                     document.getElementById('hubId').textContent = data.hubId;
                     document.getElementById('hubVersion').textContent = data.version;
+                } else {
+                    document.getElementById('hubName').textContent = 'Fout: ' + (data.message || 'Onbekend');
                 }
             })
-            .catch(err => console.error('Failed to load hub info', err));
+            .catch(err => {
+                console.error('Failed to load hub info', err);
+                document.getElementById('hubName').textContent = 'Verbindingsfout: ' + err.message;
+            });
     }
 
     // Check for NAS and add "Bestanden" tab if configured

@@ -465,6 +465,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial fetch
     fetchDevices();
+    
+    // Sync Spotify State to Devices
+    function syncSpotifyState() {
+        fetch('/api/spotify/status')
+            .then(res => res.json())
+            .then(data => {
+                if (!data || !data.is_playing || !data.device) return;
+                
+                // Find a device card that matches the Spotify device name
+                const spotifyDeviceName = data.device.name.toLowerCase();
+                const cards = document.querySelectorAll('.device-card');
+                
+                cards.forEach(card => {
+                    const deviceName = card.querySelector('h3').textContent.toLowerCase();
+                    // Simple fuzzy match or exact match
+                    if (deviceName.includes(spotifyDeviceName) || spotifyDeviceName.includes(deviceName)) {
+                        const container = card.querySelector('.now-playing-info') || createNowPlayingContainer(card);
+                        
+                        const html = `
+                            <div class="media-info" style="margin-top: 10px; padding: 10px; background: rgba(29, 185, 84, 0.1); border-radius: 8px; border: 1px solid #1db954;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                    <i class="fab fa-spotify" style="color: #1db954;"></i>
+                                    <span style="font-size: 0.8em; font-weight: bold; color: #1db954;">Spotify Connect</span>
+                                </div>
+                                <div style="font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${data.item.name}</div>
+                                <div style="font-size: 0.9em; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${data.item.artists.map(a => a.name).join(', ')}</div>
+                            </div>
+                        `;
+                        
+                        // Only update if changed to avoid flickering inputs
+                        if (container.innerHTML !== html) {
+                            container.innerHTML = html;
+                        }
+                    }
+                });
+            })
+            .catch(() => {}); // Ignore errors
+    }
+
+    function createNowPlayingContainer(card) {
+        const div = document.createElement('div');
+        div.className = 'now-playing-info';
+        // Insert after controls
+        const controls = card.querySelector('.device-controls');
+        if (controls) {
+            controls.parentNode.insertBefore(div, controls.nextSibling);
+        } else {
+            card.appendChild(div);
+        }
+        return div;
+    }
+
+    // Poll Spotify state every 3 seconds
+    setInterval(syncSpotifyState, 3000);
+    // Also run immediately
+    syncSpotifyState();
     // Poll every 3 seconds
     setInterval(fetchDevices, 3000);
 

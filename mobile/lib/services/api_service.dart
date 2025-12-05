@@ -70,6 +70,16 @@ class ApiService {
     }
   }
 
+  Future<void> activateScene(String sceneName) async {
+    final baseUrl = await getBaseUrl();
+    final url = Uri.parse('$baseUrl/api/scenes/$sceneName');
+    try {
+      await http.post(url);
+    } catch (e) {
+      debugPrint('Error activating scene: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> checkUpdate() async {
     final baseUrl = await getBaseUrl();
     try {

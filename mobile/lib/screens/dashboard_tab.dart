@@ -72,6 +72,27 @@ class _DashboardTabState extends State<DashboardTab> {
     }
   }
 
+  Future<void> _activateScene(String sceneName) async {
+    setState(() => _isLoading = true);
+    try {
+      await _apiService.activateScene(sceneName);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scene activated: $sceneName')),
+        );
+        _fetchStats(); // Refresh status
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to activate scene: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -129,10 +150,10 @@ class _DashboardTabState extends State<DashboardTab> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildQuickAction(Icons.lightbulb_outline, 'All Off', () {}),
-                _buildQuickAction(Icons.movie_creation_outlined, 'Movie', () {}),
-                _buildQuickAction(Icons.bedtime_outlined, 'Night', () {}),
-                _buildQuickAction(Icons.exit_to_app, 'Away', () {}),
+                _buildQuickAction(Icons.lightbulb_outline, 'All Off', () => _activateScene('all_off')),
+                _buildQuickAction(Icons.movie_creation_outlined, 'Movie', () => _activateScene('movie')),
+                _buildQuickAction(Icons.bedtime_outlined, 'Night', () => _activateScene('night')),
+                _buildQuickAction(Icons.exit_to_app, 'Away', () => _activateScene('away')),
               ],
             ),
             const SizedBox(height: 24),

@@ -580,6 +580,16 @@ app.post('/api/devices/:id/command', async (req, res) => {
     }
 });
 
+app.post('/api/scenes/:name', async (req, res) => {
+    const { name } = req.params;
+    try {
+        const result = await deviceManager.activateScene(name);
+        res.json({ ok: true, result });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
 app.post('/api/devices/:id/refresh', async (req, res) => {
     const { id } = req.params;
     await deviceManager.refreshDevice(id);

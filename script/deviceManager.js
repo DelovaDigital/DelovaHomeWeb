@@ -1102,6 +1102,37 @@ class DeviceManager extends EventEmitter {
         return device;
     }
 
+    async activateScene(sceneName) {
+        console.log(`[DeviceManager] Activating scene: ${sceneName}`);
+        const devices = Array.from(this.devices.values());
+
+        if (sceneName === 'all_off' || sceneName === 'away' || sceneName === 'night') {
+            for (const device of devices) {
+                if (device.state.on) {
+                    // Turn off lights, switches, TVs, speakers
+                    if (['light', 'switch', 'tv', 'speaker', 'receiver'].includes(device.type)) {
+                        this.controlDevice(device.id, 'turn_off');
+                    }
+                }
+                // Pause media
+                if (device.state.playingState === 'playing') {
+                    this.controlDevice(device.id, 'pause');
+                }
+            }
+        } else if (sceneName === 'movie') {
+            for (const device of devices) {
+                // Turn off lights
+                if (device.type === 'light' && device.state.on) {
+                    this.controlDevice(device.id, 'turn_off');
+                }
+                // Maybe dim lights if we had dimming logic for specific groups
+            }
+            // Note: We don't turn ON the TV automatically because we don't know which one the user wants
+        }
+        
+        return { success: true, message: `Scene ${sceneName} activated` };
+    }
+
     handleLgCommand(device, command, value) {
         const lgtvClient = lgtv({ url: `ws://${device.ip}:3000` });
         

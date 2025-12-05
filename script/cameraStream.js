@@ -24,7 +24,8 @@ class CameraStreamManager {
                 ffmpegOptions: { // options ffmpeg flags
                     '-stats': '', 
                     '-r': 25,
-                    '-q:v': 3 // Quality setting
+                    '-q:v': 3, // Quality setting
+                    '-vf': 'scale=1280:-1' // Resize to 720p-ish to reduce CPU load on client
                 }
             });
 

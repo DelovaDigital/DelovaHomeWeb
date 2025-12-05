@@ -1,14 +1,6 @@
 {
   "rooms": [
-    {
-      "id": "r_mis51nya5203oj",
-      "name": "Alessio Kamer"
-    }
+    {}
   ],
-  "map": {
-    "A2:38:75:CB:F5:93": "r_mis51nya5203oj",
-    "C6:0D:71:CC:67:93": "r_mis51nya5203oj",
-    "mdns-HomePodSensor_407443__hap__tcp_local-homekit": "r_mis51nya5203oj",
-    "mdns-YLBulbColor1s-C15A__hap__tcp_local-homekit": "r_mis51nya5203oj"
-  }
+  "map": {}
 }

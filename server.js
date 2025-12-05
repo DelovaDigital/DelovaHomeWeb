@@ -123,15 +123,20 @@ async function initHubConfigFromDB() {
 }
 
 // Run DB sync asynchronously, catch any top-level errors
-initHubConfigFromDB().catch(err => console.error('Fatal DB Sync Error:', err));
+// initHubConfigFromDB().catch(err => console.error('Fatal DB Sync Error:', err));
+
+app.get('/api/system/ping', (req, res) => {
+    res.json({ ok: true, message: 'Server is running' });
+});
 
 app.get('/api/system/sync-db', async (req, res) => {
+    console.log('Manual DB Sync triggered via API');
     try {
         const result = await initHubConfigFromDB();
         res.json(result);
     } catch (e) {
         console.error('Route handler error:', e);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(500).json({ success: false, error: e.message, stack: e.stack });
     }
 });
 

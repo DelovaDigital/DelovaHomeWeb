@@ -1170,6 +1170,14 @@ class DeviceManager extends EventEmitter {
                                 device.state.mediaArtist = status.artist;
                                 updated = true;
                             }
+                            if (status.album !== device.state.mediaAlbum) {
+                                device.state.mediaAlbum = status.album;
+                                updated = true;
+                            }
+                            if (status.app !== device.state.mediaApp) {
+                                device.state.mediaApp = status.app;
+                                updated = true;
+                            }
                             if (status.playing_state !== undefined && device.state.playingState !== status.playing_state) {
                                 device.state.playingState = status.playing_state;
                                 updated = true;

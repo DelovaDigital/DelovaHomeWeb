@@ -164,9 +164,23 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function updateModalContent(device) {
+        const modalContent = document.querySelector('.device-modal-content');
         const body = document.getElementById('modalDeviceBody');
         const type = device.type.toLowerCase();
         const isOn = device.state.on;
+        
+        // Check for media capability
+        const isMedia = (type === 'tv' || type === 'speaker' || type === 'receiver' || 
+                        device.protocol === 'mdns-airplay' || device.protocol === 'spotify-connect' ||
+                        device.name.toLowerCase().includes('denon')) && isOn;
+
+        if (isMedia) {
+            modalContent.classList.add('wide');
+            body.classList.add('split-view');
+        } else {
+            modalContent.classList.remove('wide');
+            body.classList.remove('split-view');
+        }
         
         let icon = 'fa-question-circle';
         if (type === 'light') icon = 'fa-lightbulb';
@@ -180,13 +194,11 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'printer') icon = 'fa-print';
         else if (type === 'receiver' || device.name.toLowerCase().includes('denon')) icon = 'fa-compact-disc';
 
-        let html = `
-            <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
-        `;
+        let controlsHtml = '';
 
         // Power Button (except for sensors/locks)
         if (type !== 'sensor' && type !== 'lock') {
-            html += `
+            controlsHtml += `
                 <button class="big-power-btn ${isOn ? 'on' : ''}" onclick="toggleDevice('${device.id}')">
                     <i class="fas fa-power-off"></i>
                 </button>
@@ -195,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Specific Controls
         if (type === 'light' && isOn) {
-            html += `
+            controlsHtml += `
                 <div class="modal-slider-container">
                     <label class="modal-slider-label">Helderheid: ${device.state.brightness || 0}%</label>
                     <input type="range" class="modal-slider" min="0" max="100" value="${device.state.brightness || 0}"
@@ -207,10 +219,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="color-swatch" style="background: #00ff00" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:255,b:0})"></div>
                     <div class="color-swatch" style="background: #0000ff" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:0,b:255})"></div>
                     <div class="color-swatch" style="background: #ffa500" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:165,b:0})"></div>
+                    <div class="color-swatch" style="background: #800080" onclick="controlDevice('${device.id}', 'set_color', {r:128,g:0,b:128})"></div>
+                    <div class="color-swatch" style="background: #00ffff" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:255,b:255})"></div>
+                    <div class="color-swatch" style="background: #ffc0cb" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:192,b:203})"></div>
                 </div>
             `;
         } else if (type === 'tv' && isOn) {
-            html += `
+            controlsHtml += `
                 <div class="remote-control">
                     <div class="d-pad">
                         <button class="d-pad-btn d-pad-up" onclick="controlDevice('${device.id}', 'up')"><i class="fas fa-chevron-up"></i></button>
@@ -252,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
              } else {
                  inkHtml = '<div style="text-align: center; color: #888; margin-top: 20px;">Inktniveaus onbekend</div>';
              }
-             html += inkHtml;
+             controlsHtml += inkHtml;
         } else if (type === 'receiver' || device.name.toLowerCase().includes('denon') || device.protocol === 'denon-avr') {
              const defaultInputs = ['TV', 'HDMI1', 'HDMI2', 'HDMI3', 'HDMI4', 'Bluetooth', 'AUX', 'Tuner', 'NET', 'Phono', 'CD'];
              const inputs = device.inputs || defaultInputs;
@@ -263,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  return `<option value="${val}">${label}</option>`;
              }).join('');
 
-             html += `
+             controlsHtml += `
                 <div class="modal-slider-container">
                     <label class="modal-slider-label">Volume: ${device.state.volume || 0}%</label>
                     <input type="range" class="modal-slider" min="0" max="100" value="${device.state.volume || 0}"
@@ -282,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
              `;
         } else if (type === 'thermostat') {
-            html += `
+            controlsHtml += `
                 <div class="temp-display-large">${device.state.targetTemperature || 21}°C</div>
                 <div class="modal-slider-container">
                     <input type="range" class="modal-slider" min="10" max="30" step="0.5" value="${device.state.targetTemperature || 21}"
@@ -302,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else if (type === 'lock') {
             const isLocked = device.state.isLocked;
-            html += `
+            controlsHtml += `
                 <button class="big-power-btn" style="background-color: ${isLocked ? '#dc3545' : '#28a745'}; width: 100px; height: 100px;" 
                     onclick="controlDevice('${device.id}', '${isLocked ? 'unlock' : 'lock'}')">
                     <i class="fas ${isLocked ? 'fa-lock' : 'fa-lock-open'}"></i>
@@ -310,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p>${isLocked ? 'Vergrendeld' : 'Ontgrendeld'}</p>
             `;
         } else if (type === 'cover' || type === 'blind') {
-            html += `
+            controlsHtml += `
                 <div class="modal-slider-container">
                     <label class="modal-slider-label">Positie: ${device.state.position || 0}%</label>
                     <input type="range" class="modal-slider" min="0" max="100" value="${device.state.position || 0}"
@@ -323,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         } else if (type === 'vacuum') {
-            html += `
+            controlsHtml += `
                 <div class="remote-grid">
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'start')"><i class="fas fa-play"></i></button>
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'pause')"><i class="fas fa-pause"></i></button>
@@ -331,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         } else if (type === 'sensor') {
-            html += `
+            controlsHtml += `
                 <div style="display: flex; gap: 30px; font-size: 1.2em;">
                     <div style="text-align: center;">
                         <i class="fas fa-thermometer-half" style="color: #ff6b6b; font-size: 2em; display: block; margin-bottom: 10px;"></i>
@@ -349,10 +364,57 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-        body.innerHTML = html;
-    }
+        if (isMedia) {
+            const title = device.state.mediaTitle || 'Geen media';
+            const artist = device.state.mediaArtist || '';
+            const album = device.state.mediaAlbum || '';
+            const app = device.state.mediaApp || '';
+            const state = device.state.playingState || 'stopped';
+            
+            // Placeholder art
+            let artContent = `<i class="fas fa-music"></i>`;
+            
+            // If we have a way to get artwork URL, we would use it here.
+            // For now, we can check if there is a global spotify state that matches this device
+            // But that's complex to access here synchronously without storing it.
+            // We'll stick to the icon for now, or maybe a generic image based on app.
+            
+            if (app.toLowerCase().includes('spotify')) {
+                artContent = `<i class="fab fa-spotify" style="color: #1db954;"></i>`;
+            } else if (app.toLowerCase().includes('netflix')) {
+                artContent = `<span style="color: #e50914; font-weight: bold; font-size: 0.5em;">NETFLIX</span>`;
+            } else if (app.toLowerCase().includes('youtube')) {
+                artContent = `<i class="fab fa-youtube" style="color: #ff0000;"></i>`;
+            }
 
-    window.toggleDevice = (id) => {
+            body.innerHTML = `
+                <div class="modal-left-col">
+                    <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
+                    ${controlsHtml}
+                </div>
+                <div class="modal-right-col">
+                    <div class="media-info-panel">
+                        <div class="album-art">
+                            ${artContent}
+                        </div>
+                        <div class="media-text">
+                            <h3>${title}</h3>
+                            <p>${artist}</p>
+                            <p class="album-name">${album}</p>
+                            <div style="margin-top: 10px; font-size: 0.8em; color: #666;">
+                                <i class="fas ${state === 'playing' ? 'fa-play' : 'fa-pause'}"></i> ${app}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            body.innerHTML = `
+                <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
+                ${controlsHtml}
+            `;
+        }
+    }    window.toggleDevice = (id) => {
         fetch(`/api/devices/${id}/command`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

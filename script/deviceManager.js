@@ -8,14 +8,13 @@ const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
 const lgtv = require('lgtv2');
 const spotifyManager = require('./spotifyManager');
-// const { scan, parseCredentials, AppleTV } = require('node-appletv-x');
 
 class DeviceManager extends EventEmitter {
     constructor() {
         super();
-        this.devices = new Map(); // id -> device
-        this.samsungConnections = new Map(); // ip -> { ws, timeout }
-        this.atvProcesses = new Map(); // ip -> process
+        this.devices = new Map();
+        this.samsungConnections = new Map();
+        this.atvProcesses = new Map();
         this.pairingProcess = null;
         this.appleTvCredentials = {};
         this.samsungCredentials = {};
@@ -338,8 +337,10 @@ class DeviceManager extends EventEmitter {
 
         this.onvifSocket.on('message', (msg, rinfo) => {
             const msgString = msg.toString();
+            // console.log(`[ONVIF] Received message from ${rinfo.address}:`, msgString.substring(0, 200)); // Debug log
+
             // Check if it's a ProbeMatch
-            if (msgString.includes('ProbeMatch') && (msgString.includes('NetworkVideoTransmitter') || msgString.includes('onvif'))) {
+            if (msgString.includes('ProbeMatch') || msgString.includes('NetworkVideoTransmitter') || msgString.includes('onvif')) {
                 // Extract Scopes to find name
                 const scopesMatch = msgString.match(/<d:Scopes>([^<]+)<\/d:Scopes>/) || msgString.match(/Scopes>([^<]+)</);
                 
@@ -457,6 +458,8 @@ class DeviceManager extends EventEmitter {
         } else if (sourceType === 'nanoleaf') {
             type = 'light';
         } else if (sourceType === 'camera') {
+            type = 'camera';
+        } else if (lowerName.includes('tapo') || lowerName.includes('camera')) {
             type = 'camera';
         } else if (lowerName.includes('shelly')) {
             type = 'switch';

@@ -18,7 +18,9 @@ class DeviceManager extends EventEmitter {
         this.atvProcesses = new Map(); // ip -> process
         this.pairingProcess = null;
         this.appleTvCredentials = {};
+        this.samsungCredentials = {};
         this.loadAppleTvCredentials();
+        this.loadSamsungCredentials();
         this.startDiscovery();
         this.startPolling();
     }
@@ -57,6 +59,36 @@ class DeviceManager extends EventEmitter {
         } catch (e) {
             console.error('Failed to load Apple TV credentials:', e.message);
         }
+    }
+
+    loadSamsungCredentials() {
+        try {
+            const credsPath = path.join(__dirname, '../samsung-credentials.json');
+            if (fs.existsSync(credsPath)) {
+                const creds = JSON.parse(fs.readFileSync(credsPath));
+                this.samsungCredentials = creds;
+                console.log(`Loaded credentials for ${Object.keys(creds).length} Samsung TV(s)`);
+            } else {
+                this.samsungCredentials = {};
+            }
+        } catch (e) {
+            console.error('Failed to load Samsung credentials:', e.message);
+            this.samsungCredentials = {};
+        }
+    }
+
+    saveSamsungToken(ip, token) {
+        const credsPath = path.join(__dirname, '../samsung-credentials.json');
+        let existing = {};
+        if (fs.existsSync(credsPath)) {
+            try {
+                existing = JSON.parse(fs.readFileSync(credsPath));
+            } catch (e) {}
+        }
+        existing[ip] = token;
+        fs.writeFileSync(credsPath, JSON.stringify(existing, null, 2));
+        this.samsungCredentials[ip] = token;
+        console.log(`[Samsung] Token saved for ${ip}`);
     }
 
     startDiscovery() {
@@ -1221,6 +1253,11 @@ class DeviceManager extends EventEmitter {
         // If we have a saved token, append it to the URL
         if (device.token) {
             url += `&token=${device.token}`;
+        } else if (this.samsungCredentials[device.ip]) {
+            // Check if we have a saved token in credentials
+            device.token = this.samsungCredentials[device.ip];
+            url += `&token=${device.token}`;
+            console.log(`[Samsung] Using saved token for ${device.ip}`);
         }
 
         // Ignore self-signed certs for local TV
@@ -1245,6 +1282,7 @@ class DeviceManager extends EventEmitter {
                 if (response.data && response.data.token) {
                     console.log(`Received new token for Samsung TV (${device.ip}): ${response.data.token}`);
                     device.token = response.data.token;
+                    this.saveSamsungToken(device.ip, device.token);
                 }
             } catch (e) {
                 // Ignore parse errors

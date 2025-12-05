@@ -108,7 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update Play/Pause Button Icon and Command
                     const playBtn = card.querySelector('.btn-play-pause');
                     if (playBtn) {
-                        const isPlaying = device.state.playingState === 'playing';
+                        // Check for both 'playing' and 'buffering'/'loading' if needed, but usually just 'playing'
+                        const isPlaying = device.state.playingState === 'playing' || device.state.playingState === 'buffering';
                         const icon = playBtn.querySelector('i');
                         if (icon) icon.className = `fas fa-${isPlaying ? 'pause' : 'play'}`;
                         // Update onclick to send the correct command
@@ -178,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 } else {
                     // Always show media controls for Apple devices
-                    const isPlaying = device.state.playingState === 'playing';
+                    const isPlaying = device.state.playingState === 'playing' || device.state.playingState === 'buffering';
                     const playIcon = isPlaying ? 'fa-pause' : 'fa-play';
                     // Use explicit play/pause commands to avoid toggling power
                     const playCmd = isPlaying ? 'pause' : 'play';

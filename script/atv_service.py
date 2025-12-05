@@ -9,7 +9,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module='urllib3')
 
 from pyatv import connect
-from pyatv.const import Protocol
+from pyatv.const import Protocol, PowerState, DeviceState
 
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '../appletv-credentials.json')
 
@@ -98,7 +98,15 @@ async def main():
                 if cmd == 'turn_on':
                     await atv.power.turn_on()
                 elif cmd == 'turn_off':
-                    await atv.power.turn_off()
+                    try:
+                        await atv.power.turn_off()
+                    except Exception:
+                        # Fallback to stop for AirPlay targets that don't support power off
+                        try:
+                            await atv.remote_control.stop()
+                        except: pass
+                        print(json.dumps({"status": "success", "command": cmd, "note": "fallback_stop"}), flush=True)
+                        continue
                 elif cmd == 'play':
                     await atv.remote_control.play()
                 elif cmd == 'pause':
@@ -132,16 +140,38 @@ async def main():
                         await atv.audio.set_volume(float(val))
                 elif cmd == 'status':
                     # Fetch status
-                    playing = await atv.metadata.playing()
+                    try:
+                        playing = await atv.metadata.playing()
+                    except Exception as e:
+                        playing = None
+                        
                     vol = 0
                     try:
                         vol = atv.audio.volume
                     except: pass
                     
+                    # Handle Power State
+                    is_on = True
+                    try:
+                        if hasattr(atv.power, 'power_state'):
+                            is_on = atv.power.power_state == PowerState.On
+                    except:
+                        # If power state fetch fails, assume ON if we are connected
+                        is_on = True
+
+                    # Handle Playing State
+                    p_state_str = 'stopped'
+                    if playing:
+                        try:
+                            # device_state is an Enum
+                            p_state_str = playing.device_state.name.lower()
+                        except:
+                            p_state_str = 'stopped'
+
                     output = {
-                        'on': atv.power.power_state == 'on', # unreliable on AirPlay
+                        'on': is_on, 
                         'volume': vol,
-                        'playing_state': playing.device_state.name.lower() if playing else 'stopped',
+                        'playing_state': p_state_str,
                         'title': playing.title if playing else '',
                         'artist': playing.artist if playing else '',
                         'album': playing.album if playing else '',

@@ -1007,6 +1007,8 @@ class DeviceManager extends EventEmitter {
                     const msg = JSON.parse(line);
                     if (msg.status === 'connected') {
                         console.log(`[ATV Service] Connected to ${ip}`);
+                        // Immediately fetch status to sync UI
+                        process.stdin.write(JSON.stringify({ command: 'status' }) + '\n');
                     } else if (msg.error) {
                         console.error(`[ATV Service Error] ${ip}: ${msg.error}`);
                     } else if (msg.type === 'status') {
@@ -1100,11 +1102,8 @@ class DeviceManager extends EventEmitter {
         else if (command === 'volume_down') pyCommand = 'volume_down';
         else if (command === 'set_volume') pyCommand = 'set_volume';
         else if (command === 'toggle') {
-            // For toggle, we can send play/pause if it's media, or turn_on/off if it's power
-            // But here we are likely talking about media toggle since we fixed the UI
-            // Let's check if we have playing state
-            if (device.state.playingState === 'playing') pyCommand = 'pause';
-            else pyCommand = 'play';
+            // Power toggle
+            pyCommand = device.state.on ? 'turn_off' : 'turn_on';
         }
         
         if (!pyCommand) {

@@ -6,7 +6,7 @@ const sql = require('mssql');
 // DB_ENCRYPT (true|false), DB_TRUST_CERT (true|false)
 const config = {
   user: process.env.DB_USER || 'sa',
-  server: process.env.DB_SERVER || '87.67.78.176',
+  server: process.env.DB_SERVER || '91.177.155.129',
   password: process.env.DB_PASSWORD || 'VIVes123',
   port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
   database: process.env.DB_DATABASE || 'DelovaHub',

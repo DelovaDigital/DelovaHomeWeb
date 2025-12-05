@@ -54,9 +54,13 @@ if (!hubConfig.hubId) {
 }
 
 // Start mDNS Advertisement
-const bonjour = new Bonjour();
-bonjour.publish({ name: `DelovaHome-${hubConfig.hubId.substring(0, 8)}`, type: 'delovahome', port: port, txt: { id: hubConfig.hubId, version: hubConfig.version } });
-console.log(`Advertising DelovaHome Hub on network (ID: ${hubConfig.hubId})`);
+try {
+    const bonjour = new Bonjour();
+    bonjour.publish({ name: `DelovaHome-${hubConfig.hubId.substring(0, 8)}`, type: 'http', port: port, txt: { id: hubConfig.hubId, version: hubConfig.version, type: 'delovahome' } });
+    console.log(`Advertising DelovaHome Hub on network (ID: ${hubConfig.hubId})`);
+} catch (e) {
+    console.error('Failed to start mDNS advertisement:', e);
+}
 
 app.use(express.json());
 // Serve static files from project root

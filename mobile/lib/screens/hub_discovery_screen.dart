@@ -34,14 +34,27 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
     setState(() => _isScanning = true);
 
     try {
-      _discovery = await startDiscovery('_delovahome._tcp');
+      // Search for _http._tcp as it is more standard, and filter by TXT record
+      _discovery = await startDiscovery('_http._tcp');
       _discovery!.addServiceListener((service, status) {
         if (status == ServiceStatus.found) {
-          setState(() {
-            if (!_hubs.any((h) => h.name == service.name)) {
-              _hubs.add(service);
-            }
-          });
+          // Check if it's our hub
+          if (service.txt != null && service.txt!.containsKey('type')) {
+             // Decode bytes to string for comparison
+             try {
+               final typeBytes = service.txt!['type'];
+               if (typeBytes != null) {
+                 final typeStr = utf8.decode(typeBytes);
+                 if (typeStr == 'delovahome') {
+                    setState(() {
+                      if (!_hubs.any((h) => h.name == service.name)) {
+                        _hubs.add(service);
+                      }
+                    });
+                 }
+               }
+             } catch (e) { /* ignore decode error */ }
+          }
         }
       });
     } catch (e) {

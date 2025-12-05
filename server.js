@@ -25,7 +25,7 @@ const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const Bonjour = require('bonjour-service');
+const Bonjour = require('bonjour-service').Bonjour;
 
 const app = express();
 const port = process.env.PORT || 3000;

@@ -33,6 +33,7 @@ class DeviceStatus {
   final String? app;
   final String? title;
   final String? artist;
+  final String? album;
   final double volume;
   final double brightness;
   final String? color; // Hex color like "#FF0000"
@@ -53,6 +54,7 @@ class DeviceStatus {
     this.app,
     this.title,
     this.artist,
+    this.album,
     required this.volume,
     required this.brightness,
     this.color,
@@ -78,11 +80,12 @@ class DeviceStatus {
     return DeviceStatus(
       powerState: isOn ? 'on' : 'off',
       isOn: isOn,
-      app: json['app'],
-      title: json['title'],
-      artist: json['artist'],
-      volume: (json['volume'] ?? 0).toDouble(),
-      brightness: (json['brightness'] ?? 0).toDouble(),
+      app: json['app'] ?? json['mediaApp'],
+      title: json['title'] ?? json['mediaTitle'],
+      artist: json['artist'] ?? json['mediaArtist'],
+      album: json['album'] ?? json['mediaAlbum'],
+      volume: (json['volume'] is int) ? (json['volume'] as int).toDouble() : (json['volume'] ?? 0.0),
+      brightness: (json['brightness'] is int) ? (json['brightness'] as int).toDouble() : (json['brightness'] ?? 0.0),
       color: json['color'],
       temperature: json['temperature']?.toDouble(),
       targetTemperature: json['targetTemperature']?.toDouble(),

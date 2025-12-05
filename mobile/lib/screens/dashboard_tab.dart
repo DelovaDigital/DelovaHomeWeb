@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import '../models/device.dart';
 
 class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key});

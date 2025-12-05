@@ -44,6 +44,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let allDevices = []; // Store devices globally for modal access
+    const activeStreams = new Map(); // deviceId -> JSMpeg player
+
+    function startCameraStream(deviceId, ip, containerId) {
+        if (activeStreams.has(deviceId)) return;
+
+        // Default RTSP URL (User would ideally configure this)
+        // Using a common pattern or a test stream
+        const rtspUrl = `rtsp://admin:admin@${ip}:554/stream1`; 
+
+        fetch('/api/camera/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceId, rtspUrl })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) {
+                const port = data.port;
+                const container = document.getElementById(containerId);
+                if (container) {
+                    container.innerHTML = ''; // Clear placeholder
+                    const canvas = document.createElement('canvas');
+                    canvas.style.width = '100%';
+                    canvas.style.height = '100%';
+                    canvas.style.borderRadius = '10px';
+                    container.appendChild(canvas);
+
+                    const url = `ws://${window.location.hostname}:${port}`;
+                    // Ensure JSMpeg is loaded
+                    if (typeof JSMpeg !== 'undefined') {
+                        const player = new JSMpeg.Player(url, { canvas: canvas });
+                        activeStreams.set(deviceId, player);
+                    } else {
+                        console.error('JSMpeg library not loaded');
+                        container.innerHTML = '<p style="color:red">JSMpeg library missing</p>';
+                    }
+                }
+            }
+        })
+        .catch(err => console.error('Error starting stream:', err));
+    }
 
     function fetchDevices() {
         fetch('/api/devices')
@@ -167,6 +208,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.closeDeviceDetail = () => {
         document.getElementById('deviceModal').style.display = 'none';
+        activeStreams.forEach((player, deviceId) => {
+            try { player.destroy(); } catch(e) {}
+            // Notify backend to stop stream
+            fetch('/api/camera/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceId })
+            });
+        });
+        activeStreams.clear();
     };
 
     function updateModalContent(device) {
@@ -179,8 +230,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMedia = (type === 'tv' || type === 'speaker' || type === 'receiver' || 
                         device.protocol === 'mdns-airplay' || device.protocol === 'spotify-connect' ||
                         device.name.toLowerCase().includes('denon')) && isOn;
+        const isCamera = type === 'camera';
 
-        if (isMedia) {
+        // Avoid full refresh for camera if stream is active
+        if (isCamera && activeStreams.has(device.id)) {
+             const leftCol = document.querySelector('.modal-left-col');
+             if (leftCol) {
+                 const iconEl = leftCol.querySelector('.modal-device-icon');
+                 if (iconEl) {
+                     if (isOn) iconEl.classList.add('on');
+                     else iconEl.classList.remove('on');
+                 }
+             }
+             return; 
+        }
+
+        if (isMedia || isCamera) {
             modalContent.classList.add('wide');
             body.classList.add('split-view');
         } else {
@@ -199,11 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'sensor') icon = 'fa-wifi';
         else if (type === 'printer') icon = 'fa-print';
         else if (type === 'receiver' || device.name.toLowerCase().includes('denon')) icon = 'fa-compact-disc';
+        else if (type === 'camera') icon = 'fa-video';
 
         let controlsHtml = '';
 
-        // Power Button (except for sensors/locks)
-        if (type !== 'sensor' && type !== 'lock') {
+        // Power Button (except for sensors/locks/cameras)
+        if (type !== 'sensor' && type !== 'lock' && type !== 'camera') {
             controlsHtml += `
                 <button class="big-power-btn ${isOn ? 'on' : ''}" onclick="toggleDevice('${device.id}')">
                     <i class="fas fa-power-off"></i>
@@ -377,6 +443,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+        } else if (type === 'camera') {
+            controlsHtml += `
+                <div class="remote-grid">
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'snapshot')"><i class="fas fa-camera"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'record')"><i class="fas fa-circle"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'ptz_home')"><i class="fas fa-home"></i></button>
+                </div>
+            `;
         }
 
         if (isMedia) {
@@ -423,6 +497,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+        } else if (isCamera) {
+            body.innerHTML = `
+                <div class="modal-left-col">
+                    <i class="fas ${icon} modal-device-icon on"></i>
+                    <div style="margin-bottom: 20px; font-size: 1.2em; color: #aaa;">${device.ip}</div>
+                    ${controlsHtml}
+                </div>
+                <div class="modal-right-col">
+                    <div class="camera-view" id="camera-container-${device.id}">
+                        <div class="camera-placeholder">
+                            <i class="fas fa-circle-notch fa-spin" style="font-size: 4em; color: #555; margin-bottom: 20px;"></i>
+                            <p>Verbinden met camera...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            startCameraStream(device.id, device.ip, `camera-container-${device.id}`);
         } else {
             body.innerHTML = `
                 <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>

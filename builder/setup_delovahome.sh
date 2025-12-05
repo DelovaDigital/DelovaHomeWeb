@@ -27,7 +27,7 @@ fi
 # 1. System Updates
 echo "[1/6] Updating system packages..."
 sudo apt-get update
-sudo apt-get install -y git build-essential curl avahi-daemon python3-venv python3-pip openssl
+sudo apt-get install -y git build-essential curl avahi-daemon python3-venv python3-pip openssl ffmpeg
 
 # 2. Install Node.js
 echo "[2/6] Checking Node.js version..."

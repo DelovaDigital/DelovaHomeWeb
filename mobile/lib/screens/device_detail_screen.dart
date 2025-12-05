@@ -43,6 +43,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isCover = widget.device.type.toLowerCase() == 'cover' || widget.device.type.toLowerCase() == 'blind' || widget.device.type.toLowerCase() == 'curtain';
     final isVacuum = widget.device.type.toLowerCase() == 'vacuum' || widget.device.type.toLowerCase() == 'robot';
     final isSensor = widget.device.type.toLowerCase() == 'sensor';
+    final isCamera = widget.device.type.toLowerCase() == 'camera';
     
     final isPoweredOn = widget.device.status.isOn;
 
@@ -97,7 +98,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               const SizedBox(height: 40),
 
               // Big Power Button (Hide for sensors or always-on devices)
-              if (!isSensor && !isLock)
+              if (!isSensor && !isLock && !isCamera)
               GestureDetector(
                 onTap: () => _sendCommand('toggle'),
                 child: AnimatedContainer(
@@ -232,6 +233,46 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 ),
               ],
 
+              // --- Camera Controls ---
+              if (isCamera) ...[
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[800]!),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.videocam_off, size: 64, color: Colors.grey[700]),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Live Stream Unavailable",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "IP: ${widget.device.ip}",
+                          style: TextStyle(color: Colors.grey[800], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _actionButton("Snapshot", Icons.camera_alt, () => _sendCommand('snapshot')),
+                    _actionButton("Record", Icons.fiber_manual_record, () => _sendCommand('record')),
+                    _actionButton("Home", Icons.home, () => _sendCommand('ptz_home')),
+                  ],
+                ),
+              ],
+
               // --- Sensor Display ---
               if (isSensor) ...[
                 if (widget.device.status.temperature != null)
@@ -269,6 +310,79 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
               // --- Media/Volume Controls ---
               if (isSpeaker && isPoweredOn) ...[
+                // Media Info Panel
+                if (widget.device.status.title != null && widget.device.status.title!.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 30),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        // Album Art Placeholder
+                        Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[800],
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2)],
+                          ),
+                          child: Icon(
+                            widget.device.status.app?.toLowerCase().contains('spotify') == true 
+                                ? Icons.music_note // In a real app, use Spotify logo asset
+                                : Icons.music_note, 
+                            size: 80, 
+                            color: widget.device.status.app?.toLowerCase().contains('spotify') == true 
+                                ? Colors.green 
+                                : Colors.grey[600]
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          widget.device.status.title!,
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (widget.device.status.artist != null)
+                          Text(
+                            widget.device.status.artist!,
+                            style: const TextStyle(color: Colors.grey, fontSize: 16),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        if (widget.device.status.album != null)
+                          Text(
+                            widget.device.status.album!,
+                            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        if (widget.device.status.app != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.apps, size: 16, color: Colors.grey[500]),
+                                const SizedBox(width: 5),
+                                Text(
+                                  widget.device.status.app!,
+                                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text('Volume', style: TextStyle(color: Colors.white70)),
@@ -401,7 +515,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               // For now, just sending a dummy 'set_color' command
               // You'd need to implement color conversion logic here
               final color = colors[index];
-              _sendCommand('set_color', {'r': color.red, 'g': color.green, 'b': color.blue});
+              _sendCommand('set_color', {
+                'r': (color.r * 255).round(), 
+                'g': (color.g * 255).round(), 
+                'b': (color.b * 255).round()
+              });
             },
             child: Container(
               margin: const EdgeInsets.only(right: 16),

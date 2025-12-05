@@ -99,11 +99,23 @@ class DeviceCard extends StatelessWidget {
                 if (isMedia && device.status.title != null && device.status.title!.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text(
-                      "Playing: ${device.status.title}",
-                      style: const TextStyle(fontStyle: FontStyle.italic),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          device.status.title!,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (device.status.artist != null && device.status.artist!.isNotEmpty)
+                          Text(
+                            device.status.artist!,
+                            style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
                     ),
                   ),
                 

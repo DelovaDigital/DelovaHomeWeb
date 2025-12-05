@@ -20,15 +20,34 @@ const bcrypt = require('bcrypt');
 const { exec } = require('child_process');
 const db = require('./script/db');
 const nasManager = require('./script/nasManager');
+const cameraStreamManager = require('./script/cameraStream');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
-
 // Serve static files from project root
 app.use(express.static(path.join(__dirname)));
 
+app.post('/api/camera/stream', (req, res) => {
+    const { deviceId, rtspUrl } = req.body;
+    if (!deviceId || !rtspUrl) {
+        return res.status(400).json({ ok: false, message: 'Missing deviceId or rtspUrl' });
+    }
+    
+    const port = cameraStreamManager.startStream(deviceId, rtspUrl);
+    res.json({ ok: true, port });
+});
+
+app.post('/api/camera/stop', (req, res) => {
+    const { deviceId } = req.body;
+    if (deviceId) {
+        cameraStreamManager.stopStream(deviceId);
+    }
+    res.json({ ok: true });
+});
+
+// Login endpoint: expects JSON { username, password }
 // Login endpoint: expects JSON { username, password }
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body || {};

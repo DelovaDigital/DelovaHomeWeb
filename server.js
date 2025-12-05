@@ -29,6 +29,8 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 // Serve static files from project root
+app.use(express.static(__dirname));
+
 app.post('/api/camera/stream', (req, res) => {
     const { deviceId, rtspUrl } = req.body;
     if (!deviceId || !rtspUrl) {

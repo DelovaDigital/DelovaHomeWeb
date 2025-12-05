@@ -147,7 +147,7 @@ async function initHubConfigFromDB() {
 }
 
 // Run DB sync asynchronously, catch any top-level errors
-// initHubConfigFromDB().catch(err => console.error('Fatal DB Sync Error:', err));
+initHubConfigFromDB().catch(err => console.error('Fatal DB Sync Error:', err));
 
 app.get('/api/system/ping', (req, res) => {
     res.json({ ok: true, message: 'Server is running' });

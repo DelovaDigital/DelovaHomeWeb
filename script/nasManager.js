@@ -129,7 +129,7 @@ class NasManager {
         const { exec } = require('child_process');
         const os = require('os');
         
-        const mountPoint = path.join(os.tmpdir(), `omnihome_nas_${Date.now()}`);
+        const mountPoint = path.join(os.tmpdir(), `delovahome_nas_${Date.now()}`);
         if (!fs.existsSync(mountPoint)) fs.mkdirSync(mountPoint);
 
         const user = encodeURIComponent(config.username);
@@ -267,7 +267,7 @@ class NasManager {
             });
         }
 
-        const mountPoint = path.join(os.tmpdir(), `omnihome_nas_${Date.now()}`);
+        const mountPoint = path.join(os.tmpdir(), `delovahome_nas_${Date.now()}`);
         if (!fs.existsSync(mountPoint)) fs.mkdirSync(mountPoint);
 
         const user = encodeURIComponent(config.username);
@@ -394,7 +394,7 @@ class NasManager {
                  // Try to mount it temporarily? No, sendFile needs a path.
                  // Let's try to mount it to a fixed path for this NAS ID
                  const os = require('os');
-                 const fixedMount = path.join(os.tmpdir(), `omnihome_nas_persistent_${id}`);
+                 const fixedMount = path.join(os.tmpdir(), `delovahome_nas_persistent_${id}`);
                  if (!fs.existsSync(fixedMount)) fs.mkdirSync(fixedMount);
                  
                  // Check if already mounted there

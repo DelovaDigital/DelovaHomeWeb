@@ -17,6 +17,7 @@ process.emit = function (name, data, ...args) {
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const { exec } = require('child_process');
 const db = require('./script/db');
 const nasManager = require('./script/nasManager');
 
@@ -460,6 +461,39 @@ app.get('/api/nas/:id/stream', async (req, res) => {
         console.error('Stream error:', err);
         res.status(500).send('Error streaming file');
     }
+});
+
+// --- System Update Endpoints ---
+
+app.get('/api/system/check-update', (req, res) => {
+    // Check if we are behind origin/main
+    exec('git fetch && git status -uno', (err, stdout, stderr) => {
+        if (err) {
+            console.error('Git check failed:', err);
+            return res.status(500).json({ error: 'Failed to check for updates' });
+        }
+        // "Your branch is behind" indicates an update is available
+        const canUpdate = stdout.includes('Your branch is behind');
+        res.json({ canUpdate, message: stdout });
+    });
+});
+
+app.post('/api/system/update', (req, res) => {
+    console.log('Starting system update...');
+    exec('git pull && npm install', (err, stdout, stderr) => {
+        if (err) {
+            console.error('Update failed:', stderr);
+            return res.status(500).json({ error: 'Update failed', details: stderr });
+        }
+        console.log('Update successful:', stdout);
+        res.json({ success: true, message: 'Update successful. Restarting...' });
+        
+        // Restart the server after a short delay
+        setTimeout(() => {
+            console.log('Restarting server...');
+            process.exit(0); // Systemd/PM2 should restart this process
+        }, 1000);
+    });
 });
 
 const https = require('https');

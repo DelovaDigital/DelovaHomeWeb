@@ -43,8 +43,45 @@ if (darkModeToggle) {
 }
 
 
-updates.addEventListener('click', () => {
-    alert('Je bent up-to-date!');
+updates.addEventListener('click', async () => {
+    const btn = updates;
+    const originalText = btn.textContent;
+    btn.textContent = 'Controleren...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/system/check-update');
+        const data = await res.json();
+
+        if (data.canUpdate) {
+            if (confirm('Er is een nieuwe versie beschikbaar. Wil je nu updaten?')) {
+                btn.textContent = 'Updaten...';
+                const updateRes = await fetch('/api/system/update', { method: 'POST' });
+                const updateData = await updateRes.json();
+                
+                if (updateData.success) {
+                    alert('Update geslaagd! De server wordt herstart. De pagina wordt zo herladen.');
+                    setTimeout(() => window.location.reload(), 5000);
+                } else {
+                    alert('Update mislukt: ' + (updateData.details || 'Onbekende fout'));
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            } else {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        } else {
+            alert('Je bent up-to-date!');
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Fout bij controleren op updates.');
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
 });
 
 updateToggle.addEventListener('change', () => {

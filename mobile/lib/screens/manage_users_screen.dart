@@ -132,6 +132,26 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     }
   }
 
+  Future<void> _toggleAccess(int userId, bool currentAccess) async {
+    try {
+      final baseUrl = await _apiService.getBaseUrl();
+      final client = HttpClient();
+      client.badCertificateCallback = (cert, host, port) => true;
+      final request = await client.postUrl(Uri.parse('$baseUrl/api/users/$userId/access'));
+      request.headers.set('Content-Type', 'application/json');
+      request.add(utf8.encode(jsonEncode({
+        'access': !currentAccess,
+      })));
+      
+      final response = await request.close();
+      if (response.statusCode == 200) {
+        _loadUsers();
+      }
+    } catch (e) {
+      debugPrint('Error toggling access: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,10 +164,22 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               itemCount: _users.length,
               itemBuilder: (context, index) {
                 final user = _users[index];
+                final hasAccess = user['HubAccess'] == true || user['HubAccess'] == 1;
+                
                 return ListTile(
                   leading: CircleAvatar(child: Text(user['Username'][0].toUpperCase())),
                   title: Text(user['Username']),
                   subtitle: Text(user['Role'] ?? 'User'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Hub Access: '),
+                      Switch(
+                        value: hasAccess,
+                        onChanged: (val) => _toggleAccess(user['Id'], hasAccess),
+                      ),
+                    ],
+                  ),
                 );
               },
             ),

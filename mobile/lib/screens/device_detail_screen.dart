@@ -107,7 +107,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     
     // Construct RTSP URL with credentials
     // Defaulting to /stream1, but this might need to be configurable
-    final rtspUrl = 'rtsp://$user:$pass@${widget.device.ip}:554/stream1';
+    final encodedUser = Uri.encodeComponent(user);
+    final encodedPass = Uri.encodeComponent(pass);
+    final rtspUrl = 'rtsp://$encodedUser:$encodedPass@${widget.device.ip}:554/stream1';
 
     String wsUrl;
     if (uri.scheme == 'https') {
@@ -248,23 +250,37 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isLock = widget.device.type.toLowerCase() == 'lock' || widget.device.type.toLowerCase() == 'security';
     final isCover = widget.device.type.toLowerCase() == 'cover' || widget.device.type.toLowerCase() == 'blind' || widget.device.type.toLowerCase() == 'curtain';
     final isVacuum = widget.device.type.toLowerCase() == 'vacuum' || widget.device.type.toLowerCase() == 'robot';
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text(widget.device.name),
+        backgroundColor: Colors.transparent,
+        actions: [
+          if (widget.device.type.toLowerCase() == 'camera')
+            IconButton(
+              icon: const Icon(Icons.lock_reset),
+              tooltip: 'Reset Credentials',
+              onPressed: _showCredentialsDialog,
+            ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: widget.onRefresh,
+          ),
+        ],
+      ),
+      body: _buildBody(isLight, isTv, isSpeaker, isThermostat, isLock, isCover, isVacuum),
+    );
+  }
+
+  Widget _buildBody(bool isLight, bool isTv, bool isSpeaker, bool isThermostat, bool isLock, bool isCover, bool isVacuum) {
     final isSensor = widget.device.type.toLowerCase() == 'sensor';
     final isCamera = widget.device.type.toLowerCase() == 'camera';
     final isPrinter = widget.device.type.toLowerCase() == 'printer';
     
     final isPoweredOn = widget.device.status.isOn;
 
-    return Scaffold(
-      backgroundColor: Colors.grey[900],
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down, size: 32),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SingleChildScrollView(
+    return SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
@@ -676,7 +692,6 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 

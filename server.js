@@ -176,6 +176,14 @@ async function initUsersTable() {
                 await pool.request().query("ALTER TABLE Users ADD Role NVARCHAR(50) DEFAULT 'User'");
             }
 
+            // Check for HubAccess
+            if (!cols.find(c => c.toLowerCase() === 'hubaccess')) {
+                console.log('Schema Update: Adding HubAccess column...');
+                await pool.request().query("ALTER TABLE Users ADD HubAccess BIT DEFAULT 1");
+                // Set existing users to have access by default
+                await pool.request().query("UPDATE Users SET HubAccess = 1 WHERE HubAccess IS NULL");
+            }
+
             // Check for Id
             const idCol = cols.find(c => c.toLowerCase() === 'id');
             if (!idCol) {
@@ -277,12 +285,16 @@ app.post('/api/login', async (req, res) => {
     
     const result = await pool.request()
         .input('username', db.sql.NVarChar(255), username)
-        .query("SELECT Id, Username, PasswordHash, Role FROM Users WHERE Username = @username");
+        .query("SELECT Id, Username, PasswordHash, Role, HubAccess FROM Users WHERE Username = @username");
 
     const user = result.recordset[0];
 
     if (!user) {
       return res.status(401).json({ ok: false, message: 'Invalid credentials' });
+    }
+
+    if (user.HubAccess === false) {
+        return res.status(403).json({ ok: false, message: 'Access to this Hub is denied.' });
     }
 
     const match = await bcrypt.compare(password, user.PasswordHash);
@@ -348,10 +360,13 @@ app.get('/api/me', async (req, res) => {
         const pool = await db.getPool();
         const result = await pool.request()
             .input('id', db.sql.Int, userId)
-            .query("SELECT Id, Username, Role FROM Users WHERE Id = @id");
+            .query("SELECT Id, Username, Role, HubAccess FROM Users WHERE Id = @id");
         
         if (result.recordset.length > 0) {
             const user = result.recordset[0];
+            if (user.HubAccess === false) {
+                return res.status(403).json({ ok: false, message: 'Access denied' });
+            }
             res.json({
                 ok: true,
                 userId: user.Id,
@@ -375,8 +390,26 @@ app.get('/api/me', async (req, res) => {
 app.get('/api/users', async (req, res) => {
     try {
         const pool = await db.getPool();
-        const result = await pool.request().query("SELECT Id, Username, Role, CreatedAt FROM Users");
+        const result = await pool.request().query("SELECT Id, Username, Role, HubAccess, CreatedAt FROM Users");
         res.json({ ok: true, users: result.recordset });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+// Toggle User Access Endpoint
+app.post('/api/users/:id/access', async (req, res) => {
+    const { id } = req.params;
+    const { access } = req.body; // boolean
+
+    try {
+        const pool = await db.getPool();
+        await pool.request()
+            .input('id', db.sql.Int, id)
+            .input('access', db.sql.Bit, access ? 1 : 0)
+            .query("UPDATE Users SET HubAccess = @access WHERE Id = @id");
+        
+        res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });
     }

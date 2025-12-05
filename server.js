@@ -17,7 +17,7 @@ process.emit = function (name, data, ...args) {
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
-const sql = require('mssql');
+// const sql = require('mssql'); // Removed to use db.sql
 const { exec } = require('child_process');
 const db = require('./script/db');
 const nasManager = require('./script/nasManager');
@@ -113,11 +113,18 @@ async function initHubConfigFromDB() {
 
     } catch (err) {
         console.error('Database sync error (SystemConfig):', err.message);
+        return { success: false, error: err.message };
     }
+    return { success: true };
 }
 
 // Run DB sync asynchronously
 initHubConfigFromDB();
+
+app.get('/api/system/sync-db', async (req, res) => {
+    const result = await initHubConfigFromDB();
+    res.json(result);
+});
 
 // Start mDNS Advertisement
 try {

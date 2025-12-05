@@ -35,11 +35,13 @@ class ApiService {
 
   Future<void> sendCommand(String deviceId, String command, [Map<String, dynamic>? params]) async {
     final baseUrl = await getBaseUrl();
-    final url = Uri.parse('$baseUrl/api/device/$command');
+    // Corrected URL to match server.js: /api/devices/:id/command
+    final url = Uri.parse('$baseUrl/api/devices/$deviceId/command');
     
+    // Corrected Body to match server.js expectation: { command, value }
     final body = {
-      'id': deviceId,
-      ...?params,
+      'command': command,
+      'value': params?['value'],
     };
 
     try {

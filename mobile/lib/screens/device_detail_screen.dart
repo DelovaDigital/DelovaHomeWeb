@@ -104,13 +104,19 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Future<void> _initCamera(String user, String pass) async {
     final baseUrl = await _apiService.getBaseUrl();
     final uri = Uri.parse(baseUrl);
-    final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
     
     // Construct RTSP URL with credentials
     // Defaulting to /stream1, but this might need to be configurable
     final rtspUrl = 'rtsp://$user:$pass@${widget.device.ip}:554/stream1';
-    
-    final wsUrl = '$scheme://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
+
+    String wsUrl;
+    if (uri.scheme == 'https') {
+       // Use the HTTP port (port + 1) for WS to avoid SSL issues in WebView
+       final httpPort = int.parse(uri.port.toString()) + 1;
+       wsUrl = 'ws://${uri.host}:$httpPort/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
+    } else {
+       wsUrl = 'ws://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
+    }
     
     // Fetch JSMpeg script content to avoid SSL/CORS issues in WebView
     String jsmpegContent = '';

@@ -1274,6 +1274,8 @@ class DeviceManager extends EventEmitter {
     }
 
     async handleSamsungCommand(device, command, value) {
+        console.log(`[Samsung] Handling command '${command}' for ${device.name} (${device.ip})`);
+
         // Handle Turn On via Wake-on-LAN
         if (command === 'turn_on' || (command === 'toggle' && !device.state.on)) {
             const mac = await this.getMacAddress(device.ip);
@@ -1284,11 +1286,12 @@ class DeviceManager extends EventEmitter {
                 device.state.on = true;
                 this.emit('device-updated', device);
                 return;
+            } else {
+                console.log(`[Samsung] Could not resolve MAC for WoL`);
             }
         }
 
         // Custom Samsung Tizen Control via WebSocket (Port 8002 for secure, 8001 for insecure)
-        // This avoids using the vulnerable 'samsung-tv-control' package
         
         const sendKey = (ws, key) => {
             const commandData = {
@@ -1301,7 +1304,10 @@ class DeviceManager extends EventEmitter {
                 }
             };
             if (ws.readyState === WebSocket.OPEN) {
+                console.log(`[Samsung] Sending key: ${key}`);
                 ws.send(JSON.stringify(commandData));
+            } else {
+                console.log(`[Samsung] WebSocket not open (State: ${ws.readyState}), cannot send key: ${key}`);
             }
         };
 
@@ -1377,62 +1383,82 @@ class DeviceManager extends EventEmitter {
             }
         }
 
-        const appName = Buffer.from('DelovaHome').toString('base64');
-        let url = `wss://${device.ip}:8002/api/v2/channels/samsung.remote.control?name=${appName}`;
-        
-        // If we have a saved token, append it to the URL
-        if (device.token) {
-            url += `&token=${device.token}`;
-        } else if (this.samsungCredentials[device.ip]) {
-            // Check if we have a saved token in credentials
-            device.token = this.samsungCredentials[device.ip];
-            url += `&token=${device.token}`;
-            console.log(`[Samsung] Using saved token for ${device.ip}`);
-        }
-
-        // Ignore self-signed certs for local TV
-        const ws = new WebSocket(url, {
-            rejectUnauthorized: false
-        });
-
-        ws.on('error', (e) => {
-            console.error('Samsung TV Connection Error:', e.message);
-            this.samsungConnections.delete(device.ip);
-        });
-
-        ws.on('close', () => {
-            this.samsungConnections.delete(device.ip);
-        });
-
-        ws.on('message', (data) => {
-            try {
-                const msgStr = data.toString();
-                const response = JSON.parse(msgStr);
-                // Save the token if the TV sends one
-                if (response.data && response.data.token) {
-                    console.log(`Received new token for Samsung TV (${device.ip}): ${response.data.token}`);
-                    device.token = response.data.token;
-                    this.saveSamsungToken(device.ip, device.token);
-                }
-            } catch (e) {
-                // Ignore parse errors
-            }
-        });
-
-        ws.on('open', () => {
-            // Store connection
-            const timeout = setTimeout(() => {
-                console.log(`Closing idle Samsung connection for ${device.ip}`);
-                ws.close();
-                this.samsungConnections.delete(device.ip);
-            }, device.token ? 15000 : 60000); // 15s normally, 60s if waiting for pairing
-
-            this.samsungConnections.set(device.ip, { ws, timeout });
-
-            if (!device.token) console.log('Waiting for Samsung TV pairing...');
+        const connectToTv = (port) => {
+            const appName = Buffer.from('DelovaHome').toString('base64');
+            const protocol = port === 8002 ? 'wss' : 'ws';
+            let url = `${protocol}://${device.ip}:${port}/api/v2/channels/samsung.remote.control?name=${appName}`;
             
-            executeCommand(ws);
-        });
+            // If we have a saved token, append it to the URL
+            if (device.token) {
+                url += `&token=${device.token}`;
+            } else if (this.samsungCredentials[device.ip]) {
+                // Check if we have a saved token in credentials
+                device.token = this.samsungCredentials[device.ip];
+                url += `&token=${device.token}`;
+                console.log(`[Samsung] Using saved token for ${device.ip}`);
+            }
+
+            console.log(`[Samsung] Connecting to ${url}...`);
+
+            // Ignore self-signed certs for local TV
+            const ws = new WebSocket(url, {
+                rejectUnauthorized: false,
+                timeout: 5000
+            });
+
+            ws.on('error', (e) => {
+                console.error(`[Samsung] Connection Error (Port ${port}):`, e.message);
+                this.samsungConnections.delete(device.ip);
+                
+                // Fallback to 8001 if 8002 fails
+                if (port === 8002) {
+                    console.log('[Samsung] Retrying on port 8001...');
+                    connectToTv(8001);
+                }
+            });
+
+            ws.on('close', () => {
+                // console.log(`[Samsung] Connection closed for ${device.ip}`);
+                this.samsungConnections.delete(device.ip);
+            });
+
+            ws.on('message', (data) => {
+                try {
+                    const msgStr = data.toString();
+                    const response = JSON.parse(msgStr);
+                    // Save the token if the TV sends one
+                    if (response.data && response.data.token) {
+                        console.log(`Received new token for Samsung TV (${device.ip}): ${response.data.token}`);
+                        device.token = response.data.token;
+                        this.saveSamsungToken(device.ip, device.token);
+                        
+                        // Re-execute command now that we are paired
+                        executeCommand(ws);
+                    }
+                } catch (e) {
+                    // Ignore parse errors
+                }
+            });
+
+            ws.on('open', () => {
+                console.log(`[Samsung] Connected to ${device.ip} on port ${port}`);
+                
+                // Store connection
+                const timeout = setTimeout(() => {
+                    console.log(`Closing idle Samsung connection for ${device.ip}`);
+                    ws.close();
+                    this.samsungConnections.delete(device.ip);
+                }, device.token ? 15000 : 60000); // 15s normally, 60s if waiting for pairing
+
+                this.samsungConnections.set(device.ip, { ws, timeout });
+
+                if (!device.token) console.log('Waiting for Samsung TV pairing...');
+                
+                executeCommand(ws);
+            });
+        };
+
+        connectToTv(8002);
     }
 
     getMacAddress(ip) {

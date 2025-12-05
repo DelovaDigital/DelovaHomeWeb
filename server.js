@@ -735,26 +735,12 @@ app.post('/api/system/update', (req, res) => {
 });
 
 const https = require('https');
-
-let server;
-try {
-    const httpsOptions = {
-        key: fs.readFileSync('server.key'),
-        cert: fs.readFileSync('server.cert')
-    };
-    server = https.createServer(httpsOptions, app);
-    server.listen(port, () => {
-        console.log(`Server running at https://localhost:${port}`);
-    });
-} catch (e) {
-    console.log('SSL certificates not found or invalid, falling back to HTTP');
-    server = app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
-}
+const http = require('http');
 
 // WebSocket Upgrade Handling
 const wss = new WebSocket.Server({ noServer: true });
 
-server.on('upgrade', (request, socket, head) => {
+const handleUpgrade = (request, socket, head) => {
     const parsedUrl = url.parse(request.url, true);
     const pathname = parsedUrl.pathname;
     
@@ -774,7 +760,33 @@ server.on('upgrade', (request, socket, head) => {
     } else {
         socket.destroy();
     }
-});
+};
+
+let server;
+try {
+    const httpsOptions = {
+        key: fs.readFileSync('server.key'),
+        cert: fs.readFileSync('server.cert')
+    };
+    server = https.createServer(httpsOptions, app);
+    server.listen(port, () => {
+        console.log(`Server running at https://localhost:${port}`);
+    });
+
+    // Also start HTTP server for local devices (Mobile App WebView) to bypass SSL
+    const httpPort = parseInt(port) + 1;
+    const httpServer = http.createServer(app);
+    httpServer.listen(httpPort, () => {
+        console.log(`HTTP Server (for local streaming) running at http://localhost:${httpPort}`);
+    });
+    httpServer.on('upgrade', handleUpgrade);
+
+} catch (e) {
+    console.log('SSL certificates not found or invalid, falling back to HTTP');
+    server = app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
+}
+
+server.on('upgrade', handleUpgrade);
 
 (async () => {
   try {

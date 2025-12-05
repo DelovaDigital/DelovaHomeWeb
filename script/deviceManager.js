@@ -994,7 +994,14 @@ class DeviceManager extends EventEmitter {
 
         console.log(`[DeviceManager] Spawning persistent ATV service for ${ip}...`);
         const { spawn } = require('child_process');
-        const pythonPath = path.join(__dirname, '../.venv/bin/python');
+        
+        // Try to find the correct python executable
+        let pythonPath = path.join(__dirname, '../.venv/bin/python');
+        if (!fs.existsSync(pythonPath)) {
+            console.warn(`[DeviceManager] Virtual env python not found at ${pythonPath}, falling back to 'python3'`);
+            pythonPath = 'python3';
+        }
+
         const scriptPath = path.join(__dirname, 'atv_service.py');
         
         const process = spawn(pythonPath, [scriptPath, ip]);
@@ -1581,39 +1588,23 @@ class DeviceManager extends EventEmitter {
 
     getAppleTVState(ip) {
         return new Promise((resolve) => {
-            const { spawn } = require('child_process');
-            const pythonPath = path.join(__dirname, '../.venv/bin/python');
-            const scriptPath = path.join(__dirname, 'control_atv.py');
-            
-            // Use 'status' command to get power, volume, and metadata
-            const proc = spawn(pythonPath, [scriptPath, 'status', '--ip', ip]);
-            let output = '';
-
-            proc.stdout.on('data', (data) => {
-                output += data.toString();
-            });
-
-            proc.on('close', (code) => {
-                if (code === 0) {
-                    try {
-                        const data = JSON.parse(output.trim());
-                        // Normalize keys
-                        resolve({
-                            on: data.on,
-                            volume: data.volume,
-                            state: data.playing_state || 'stopped',
-                            title: data.title,
-                            artist: data.artist,
-                            album: data.album,
-                            app: data.app
-                        });
-                    } catch (e) {
-                        resolve(null);
+            const device = Array.from(this.devices.values()).find(d => d.ip === ip);
+            if (device) {
+                // Trigger a refresh via the persistent process if available
+                if (this.atvProcesses.has(ip)) {
+                    const proc = this.atvProcesses.get(ip);
+                    if (proc && proc.stdin) {
+                        try {
+                            proc.stdin.write(JSON.stringify({ command: 'status' }) + '\n');
+                        } catch (e) {
+                            console.error(`[DeviceManager] Failed to request status for ${ip}:`, e);
+                        }
                     }
-                } else {
-                    resolve(null);
                 }
-            });
+                resolve(device.state);
+            } else {
+                resolve({ on: false });
+            }
         });
     }
 

@@ -175,6 +175,11 @@ async def main():
                         except:
                             p_state_str = 'stopped'
 
+                    # Safely get app name
+                    app_name = ''
+                    if playing and hasattr(playing, 'app') and playing.app:
+                        app_name = playing.app.name
+
                     output = {
                         'on': is_on, 
                         'volume': vol,
@@ -182,7 +187,7 @@ async def main():
                         'title': playing.title if playing else '',
                         'artist': playing.artist if playing else '',
                         'album': playing.album if playing else '',
-                        'app': playing.app.name if playing and playing.app else ''
+                        'app': app_name
                     }
                     print(json.dumps({"type": "status", "data": output}), flush=True)
                     continue # Skip success message for status

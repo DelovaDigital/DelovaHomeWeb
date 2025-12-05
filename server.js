@@ -581,7 +581,6 @@ app.post('/api/system/update', (req, res) => {
 });
 
 const https = require('https');
-const fs = require('fs');
 
 let server;
 try {

@@ -71,9 +71,13 @@ async function initHubConfigFromDB() {
         const pool = await db.getPool();
         console.log('Step 1: Pool acquired.');
 
+        // SIMPLE TEST FIRST - Like test_crash.js
+        console.log('Step 1.5: Running simple test query...');
+        await pool.request().query('SELECT 1 as val');
+        console.log('Step 1.5: Simple query passed.');
+
         const sql = db.sql; 
         if (!sql) throw new Error('db.sql is undefined - check db.js exports');
-        console.log('Step 2: SQL instance verified.');
         
         // Ensure SystemConfig table exists
         console.log('Step 3: Checking SystemConfig table...');
@@ -102,7 +106,6 @@ async function initHubConfigFromDB() {
 
         if (dbHubId) {
             console.log(`Step 4a: Found DB Hub ID: ${dbHubId}`);
-            // DB has priority if local is different (or we can decide otherwise, but DB is usually source of truth)
             if (hubConfig.hubId !== dbHubId) {
                 console.log(`Updating local Hub ID from DB: ${dbHubId}`);
                 hubConfig.hubId = dbHubId;
@@ -110,10 +113,9 @@ async function initHubConfigFromDB() {
             }
         } else {
             console.log('Step 4b: DB Hub ID empty. Saving local ID to DB...');
-            // DB is empty, save local ID to DB
-            await pool.request()
-                .input('val', sql.NVarChar, hubConfig.hubId)
-                .query("INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubId', @val)");
+            // Use simple string concatenation for debug safety if parameters are crashing
+            const q = `INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubId', '${hubConfig.hubId}')`;
+            await pool.request().query(q);
             console.log('Saved Hub ID to SQL Server');
         }
 
@@ -131,9 +133,8 @@ async function initHubConfigFromDB() {
                 fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
             }
         } else {
-            await pool.request()
-                .input('val', sql.NVarChar, hubConfig.name)
-                .query("INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubName', @val)");
+             const q = `INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubName', '${hubConfig.name}')`;
+             await pool.request().query(q);
         }
         
         console.log('DB Sync completed successfully.');

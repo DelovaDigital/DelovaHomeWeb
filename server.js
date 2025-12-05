@@ -146,7 +146,7 @@ async function initHubConfigFromDB() {
     }
 }
 
-// Ensure Users table exists
+// Ensure Users table exists and has correct schema
 async function initUsersTable() {
     try {
         const pool = await db.getPool();
@@ -165,6 +165,45 @@ async function initUsersTable() {
                 )
             `);
             console.log('Created Users table.');
+        } else {
+            console.log('Users table exists. Verifying schema...');
+            const colsRes = await pool.request().query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND TABLE_SCHEMA = 'dbo'");
+            const cols = colsRes.recordset.map(r => r.COLUMN_NAME);
+
+            // Check for Role
+            if (!cols.find(c => c.toLowerCase() === 'role')) {
+                console.log('Schema Update: Adding Role column...');
+                await pool.request().query("ALTER TABLE Users ADD Role NVARCHAR(50) DEFAULT 'User'");
+            }
+
+            // Check for Id
+            const idCol = cols.find(c => c.toLowerCase() === 'id');
+            if (!idCol) {
+                // Check for other common ID names
+                const otherId = cols.find(c => /^(user_id|userid)$/i.test(c));
+                if (otherId) {
+                    console.log(`Schema Update: Renaming ${otherId} to Id...`);
+                    await pool.request().query(`EXEC sp_rename 'Users.${otherId}', 'Id', 'COLUMN'`);
+                } else {
+                    console.log('Schema Update: Adding Id column...');
+                    // Attempt to add IDENTITY column. This works in SQL Server even if table has data.
+                    try {
+                        await pool.request().query("ALTER TABLE Users ADD Id INT IDENTITY(1,1) PRIMARY KEY");
+                    } catch (e) {
+                        console.error('Failed to add Id column (might already have a PK):', e.message);
+                        // Fallback: Try adding just the column without PK constraint if PK exists
+                        if (e.message.includes('Primary Key')) {
+                             await pool.request().query("ALTER TABLE Users ADD Id INT IDENTITY(1,1)");
+                        }
+                    }
+                }
+            }
+            
+            // Check for CreatedAt
+            if (!cols.find(c => c.toLowerCase() === 'createdat')) {
+                 console.log('Schema Update: Adding CreatedAt column...');
+                 await pool.request().query("ALTER TABLE Users ADD CreatedAt DATETIME DEFAULT GETDATE()");
+            }
         }
     } catch (err) {
         console.error('Error initializing Users table:', err);

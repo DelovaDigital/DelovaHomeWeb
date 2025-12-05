@@ -17,6 +17,7 @@ process.emit = function (name, data, ...args) {
 const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
+const sql = require('mssql');
 const { exec } = require('child_process');
 const db = require('./script/db');
 const nasManager = require('./script/nasManager');
@@ -52,6 +53,71 @@ if (!hubConfig.hubId) {
         console.log('Generated new Hub ID:', hubConfig.hubId);
     } catch (e) { console.error('Error saving hub config:', e); }
 }
+
+// Sync with Database (SystemConfig table)
+async function initHubConfigFromDB() {
+    try {
+        const pool = await db.getPool();
+        
+        // Ensure SystemConfig table exists
+        const tableRes = await pool.request().query("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'SystemConfig'");
+        if (tableRes.recordset.length === 0) {
+            await pool.request().query(`
+                CREATE TABLE SystemConfig (
+                    KeyName NVARCHAR(50) PRIMARY KEY,
+                    KeyValue NVARCHAR(255)
+                )
+            `);
+            console.log('Created SystemConfig table in SQL Server');
+        }
+
+        // Sync HubId
+        let dbHubId = null;
+        const idRes = await pool.request().query("SELECT KeyValue FROM SystemConfig WHERE KeyName = 'HubId'");
+        if (idRes.recordset.length > 0) {
+            dbHubId = idRes.recordset[0].KeyValue;
+        }
+
+        if (dbHubId) {
+            // DB has priority if local is different (or we can decide otherwise, but DB is usually source of truth)
+            if (hubConfig.hubId !== dbHubId) {
+                console.log(`Updating local Hub ID from DB: ${dbHubId}`);
+                hubConfig.hubId = dbHubId;
+                fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
+            }
+        } else {
+            // DB is empty, save local ID to DB
+            await pool.request()
+                .input('val', sql.NVarChar, hubConfig.hubId)
+                .query("INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubId', @val)");
+            console.log('Saved Hub ID to SQL Server');
+        }
+
+        // Sync HubName
+        let dbHubName = null;
+        const nameRes = await pool.request().query("SELECT KeyValue FROM SystemConfig WHERE KeyName = 'HubName'");
+        if (nameRes.recordset.length > 0) {
+            dbHubName = nameRes.recordset[0].KeyValue;
+        }
+
+        if (dbHubName) {
+            if (hubConfig.name !== dbHubName) {
+                hubConfig.name = dbHubName;
+                fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
+            }
+        } else {
+            await pool.request()
+                .input('val', sql.NVarChar, hubConfig.name)
+                .query("INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubName', @val)");
+        }
+
+    } catch (err) {
+        console.error('Database sync error (SystemConfig):', err.message);
+    }
+}
+
+// Run DB sync asynchronously
+initHubConfigFromDB();
 
 // Start mDNS Advertisement
 try {

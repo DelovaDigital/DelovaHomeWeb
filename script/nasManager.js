@@ -230,12 +230,19 @@ class NasManager {
         const config = this.config.find(c => c.id === id);
         if (!config) throw new Error('NAS not found');
 
+        // Force disable native mode on Linux/Pi to prevent infinite recursion
+        if (config.mode === 'native' && process.platform !== 'darwin') {
+            config.mode = 'smb2'; // Downgrade to smb2
+        }
+
         if (config.mode === 'native') {
             return this.listNativeFiles(config, dirPath);
         }
 
         // Normalize path: ensure backslashes for SMB
-        const smbPath = dirPath.replace(/\//g, '');
+        // Also, if dirPath is empty, use empty string, otherwise ensure no leading slash if not needed
+        // SMB2 lib usually expects 'folder\\subfolder'
+        const smbPath = dirPath.replace(/\//g, '\\');
 
         return new Promise((resolve, reject) => {
             const client = new SMB2({
@@ -249,18 +256,9 @@ class NasManager {
                 if (err) {
                     reject(err);
                 } else {
-                    // Add metadata if possible, or just return names
-                    // smb2 readdir returns strings (filenames)
-                    // To get isDirectory, we might need to try to read it or use another method?
-                    // smb2 has readdir which returns names.
-                    // We can try to stat them, but that's slow for many files.
-                    // Let's just return names for now and maybe try to guess or fetch details on demand.
-                    // Actually, standard readdir just gives names.
-                    
-                    // Map to object structure
                     const fileList = files.map(f => ({
                         name: f,
-                        isDirectory: !f.includes('.') // Very naive guess, but smb2 lib is limited
+                        isDirectory: !f.includes('.') // Naive guess
                     }));
                     resolve(fileList);
                 }
@@ -269,8 +267,15 @@ class NasManager {
     }
 
     async listNativeFiles(config, dirPath) {
-        // This method is deprecated and should not be used on Linux/Pi
-        // Redirect to standard listFiles which uses SMB2 lib
+        if (process.platform !== 'darwin') {
+             // If we somehow got here on Linux, redirect back to listFiles but ensure mode is NOT native
+             // to avoid recursion.
+             config.mode = 'smb2';
+             return this.listFiles(config.id, dirPath);
+        }
+        
+        // ... (rest of native implementation for macOS) ...
+        // Since we removed the implementation, let's just throw error or use SMB2
         return this.listFiles(config.id, dirPath);
     }
 

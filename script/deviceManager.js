@@ -1309,6 +1309,22 @@ class DeviceManager extends EventEmitter {
                 sendKey(ws, 'KEY_FF');
             } else if (command === 'previous') {
                 sendKey(ws, 'KEY_REWIND');
+            } else if (command === 'up') {
+                sendKey(ws, 'KEY_UP');
+            } else if (command === 'down') {
+                sendKey(ws, 'KEY_DOWN');
+            } else if (command === 'left') {
+                sendKey(ws, 'KEY_LEFT');
+            } else if (command === 'right') {
+                sendKey(ws, 'KEY_RIGHT');
+            } else if (command === 'select' || command === 'enter') {
+                sendKey(ws, 'KEY_ENTER');
+            } else if (command === 'back') {
+                sendKey(ws, 'KEY_RETURN');
+            } else if (command === 'home') {
+                sendKey(ws, 'KEY_HOME');
+            } else if (command === 'menu') {
+                sendKey(ws, 'KEY_MENU');
             } else if (command === 'set_input') {
                 const keyMap = {
                     'tv': 'KEY_TV',

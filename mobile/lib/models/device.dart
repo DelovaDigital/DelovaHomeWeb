@@ -35,6 +35,17 @@ class DeviceStatus {
   final String? artist;
   final double volume;
   final double brightness;
+  final String? color; // Hex color like "#FF0000"
+  
+  // Extended properties
+  final double? temperature;
+  final double? targetTemperature;
+  final double? humidity;
+  final int? battery;
+  final bool? isLocked;
+  final int? position; // 0-100 for blinds
+  final String? mode; // heat, cool, auto, etc.
+  final int? fanSpeed;
 
   DeviceStatus({
     required this.powerState,
@@ -44,6 +55,15 @@ class DeviceStatus {
     this.artist,
     required this.volume,
     required this.brightness,
+    this.color,
+    this.temperature,
+    this.targetTemperature,
+    this.humidity,
+    this.battery,
+    this.isLocked,
+    this.position,
+    this.mode,
+    this.fanSpeed,
   });
 
   factory DeviceStatus.fromJson(Map<String, dynamic> json) {
@@ -63,6 +83,15 @@ class DeviceStatus {
       artist: json['artist'],
       volume: (json['volume'] ?? 0).toDouble(),
       brightness: (json['brightness'] ?? 0).toDouble(),
+      color: json['color'],
+      temperature: json['temperature']?.toDouble(),
+      targetTemperature: json['targetTemperature']?.toDouble(),
+      humidity: json['humidity']?.toDouble(),
+      battery: json['battery'],
+      isLocked: json['isLocked'],
+      position: json['position'],
+      mode: json['mode'],
+      fanSpeed: json['fanSpeed'],
     );
   }
 }

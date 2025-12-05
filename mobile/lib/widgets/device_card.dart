@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
+import '../screens/device_detail_screen.dart';
 
 class DeviceCard extends StatelessWidget {
   final Device device;
@@ -13,149 +14,151 @@ class DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPoweredOn = device.status.isOn;
     final isLight = device.type.toLowerCase() == 'light' || device.type.toLowerCase().contains('bulb');
-    final isMedia = !isLight; // Assume everything else is media for now
+    final isMedia = !isLight;
 
-    return Card(
-      margin: const EdgeInsets.all(8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        device.name,
-                        style: Theme.of(context).textTheme.titleLarge,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        device.type,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.power_settings_new,
-                    color: isPoweredOn ? Colors.green : Colors.red,
-                    size: 32,
-                  ),
-                  onPressed: () async {
-                    await apiService.sendCommand(device.id, 'toggle');
-                    onRefresh();
-                  },
-                ),
-              ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DeviceDetailScreen(
+              device: device,
+              onRefresh: onRefresh,
             ),
-            if (isPoweredOn) ...[
-              const Divider(),
-              
-              // Media Info
-              if (isMedia && device.status.title != null) ...[
-                Text(
-                  device.status.title!,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (device.status.artist != null) 
-                  Text(
-                    device.status.artist!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          ),
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.all(8.0),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Icon + Name
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Hero(
+                          tag: 'device_icon_${device.id}',
+                          child: Icon(
+                            _getDeviceIcon(device.type),
+                            size: 40,
+                            color: isPoweredOn ? Colors.amber : Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Hero(
+                                tag: 'device_name_${device.id}',
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: Text(
+                                    device.name,
+                                    style: Theme.of(context).textTheme.titleLarge,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                device.type,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                const SizedBox(height: 8),
+                  // Quick Power Button
+                  IconButton(
+                    icon: Icon(
+                      Icons.power_settings_new,
+                      color: isPoweredOn ? Colors.green : Colors.red,
+                      size: 32,
+                    ),
+                    onPressed: () async {
+                      await apiService.sendCommand(device.id, 'toggle');
+                      onRefresh();
+                    },
+                  ),
+                ],
+              ),
+              
+              // Quick Status Info (if on)
+              if (isPoweredOn) ...[
+                const SizedBox(height: 12),
+                const Divider(),
+                if (isMedia && device.status.title != null && device.status.title!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      "Playing: ${device.status.title}",
+                      style: const TextStyle(fontStyle: FontStyle.italic),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                
+                // Hint to tap
+                Center(
+                  child: Text(
+                    "Tap for controls",
+                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                  ),
+                ),
               ],
-
-              // Media Controls
-              if (isMedia)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.skip_previous),
-                      onPressed: () async {
-                        await apiService.sendCommand(device.id, 'previous');
-                        onRefresh();
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.play_arrow),
-                      onPressed: () async {
-                        await apiService.sendCommand(device.id, 'play');
-                        onRefresh();
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.pause),
-                      onPressed: () async {
-                        await apiService.sendCommand(device.id, 'pause');
-                        onRefresh();
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.skip_next),
-                      onPressed: () async {
-                        await apiService.sendCommand(device.id, 'next');
-                        onRefresh();
-                      },
-                    ),
-                  ],
-                ),
-
-              // Volume Control
-              if (isMedia)
-                Row(
-                  children: [
-                    const Icon(Icons.volume_down),
-                    Expanded(
-                      child: Slider(
-                        value: device.status.volume.clamp(0, 100),
-                        min: 0,
-                        max: 100,
-                        onChanged: (value) {}, // Optimistic update?
-                        onChangeEnd: (value) async {
-                          await apiService.sendCommand(device.id, 'set_volume', {'value': value.toInt()});
-                          onRefresh();
-                        },
-                      ),
-                    ),
-                    const Icon(Icons.volume_up),
-                  ],
-                ),
-
-              // Brightness Control
-              if (isLight)
-                Row(
-                  children: [
-                    const Icon(Icons.brightness_low),
-                    Expanded(
-                      child: Slider(
-                        value: device.status.brightness.clamp(0, 100),
-                        min: 0,
-                        max: 100,
-                        activeColor: Colors.orange,
-                        onChanged: (value) {},
-                        onChangeEnd: (value) async {
-                          await apiService.sendCommand(device.id, 'set_brightness', {'value': value.toInt()});
-                          onRefresh();
-                        },
-                      ),
-                    ),
-                    const Icon(Icons.brightness_high),
-                  ],
-                ),
             ],
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  IconData _getDeviceIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'light':
+      case 'bulb':
+        return Icons.lightbulb;
+      case 'switch':
+      case 'outlet':
+      case 'plug':
+        return Icons.power;
+      case 'tv':
+        return Icons.tv;
+      case 'speaker':
+        return Icons.speaker;
+      case 'camera':
+        return Icons.videocam;
+      case 'printer':
+        return Icons.print;
+      case 'thermostat':
+      case 'ac':
+      case 'climate':
+        return Icons.thermostat;
+      case 'lock':
+      case 'security':
+        return Icons.lock;
+      case 'cover':
+      case 'blind':
+      case 'curtain':
+        return Icons.curtains;
+      case 'vacuum':
+      case 'robot':
+        return Icons.cleaning_services;
+      case 'sensor':
+        return Icons.sensors;
+      case 'fan':
+        return Icons.mode_fan_off;
+      default:
+        return Icons.devices;
+    }
   }
 }

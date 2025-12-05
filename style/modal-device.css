@@ -1,0 +1,240 @@
+/* Device Detail Modal */
+.device-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s;
+}
+
+.device-modal-content {
+    background-color: #1e1e1e;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    position: relative;
+    animation: slideUp 0.3s;
+}
+
+.device-modal-header {
+    padding: 20px;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.device-modal-header h2 {
+    margin: 0;
+    font-size: 1.5em;
+}
+
+.close-modal {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.close-modal:hover {
+    color: white;
+}
+
+.device-modal-body {
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Big Icon */
+.modal-device-icon {
+    font-size: 80px;
+    color: #555;
+    margin-bottom: 10px;
+    transition: color 0.3s;
+}
+.modal-device-icon.on {
+    color: #ffc107;
+}
+
+/* Big Power Button */
+.big-power-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: none;
+    background-color: #333;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.big-power-btn.on {
+    background-color: white;
+    color: black;
+    box-shadow: 0 0 20px rgba(255,255,255,0.4);
+}
+
+.big-power-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Sliders */
+.modal-slider-container {
+    width: 100%;
+    margin: 10px 0;
+}
+.modal-slider-label {
+    color: #aaa;
+    margin-bottom: 5px;
+    display: block;
+}
+.modal-slider {
+    width: 100%;
+    height: 6px;
+    background: #444;
+    outline: none;
+    border-radius: 3px;
+    -webkit-appearance: none;
+}
+.modal-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+}
+
+/* Color Palette */
+.color-palette {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px 0;
+    width: 100%;
+    justify-content: center;
+}
+.color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.2);
+    transition: transform 0.2s;
+}
+.color-swatch:hover {
+    transform: scale(1.1);
+    border-color: white;
+}
+
+/* Remote Control */
+.remote-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    width: 200px;
+}
+.remote-btn {
+    background: #333;
+    border: none;
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.2em;
+}
+.remote-btn:active {
+    background: #555;
+}
+
+/* D-Pad */
+.d-pad {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    background: #2a2a2a;
+    border-radius: 50%;
+    margin: 20px 0;
+}
+.d-pad-btn {
+    position: absolute;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.d-pad-up { top: 10px; left: 65px; }
+.d-pad-down { bottom: 10px; left: 65px; }
+.d-pad-left { top: 65px; left: 10px; }
+.d-pad-right { top: 65px; right: 10px; }
+.d-pad-center { 
+    top: 55px; left: 55px; 
+    width: 70px; height: 70px; 
+    background: #444; 
+    border-radius: 50%;
+}
+
+/* Thermostat */
+.temp-display-large {
+    font-size: 4em;
+    font-weight: bold;
+    margin: 10px 0;
+}
+.mode-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+.mode-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: none;
+    border: none;
+    color: #777;
+    cursor: pointer;
+}
+.mode-btn.active {
+    color: #007bff;
+}
+.mode-btn i {
+    font-size: 24px;
+    margin-bottom: 5px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes slideUp {
+    from { transform: translateY(50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}

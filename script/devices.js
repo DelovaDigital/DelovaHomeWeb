@@ -49,9 +49,39 @@ document.addEventListener('DOMContentLoaded', () => {
     function startCameraStream(deviceId, ip, containerId) {
         if (activeStreams.has(deviceId)) return;
 
-        // Default RTSP URL (User would ideally configure this)
-        // Using a common pattern or a test stream
-        const rtspUrl = `rtsp://admin:admin@${ip}:554/stream1`; 
+        const storedCreds = localStorage.getItem(`camera_creds_${deviceId}`);
+        
+        if (!storedCreds) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = `
+                    <div class="camera-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #333; background: #f8f9fa; border-radius: 10px;">
+                        <i class="fas fa-lock" style="font-size: 2em; margin-bottom: 15px; color: #666;"></i>
+                        <h3 style="margin-bottom: 15px; color: #333;">Camera Login</h3>
+                        <input type="text" id="cam-user-${deviceId}" placeholder="Gebruikersnaam" style="margin-bottom: 10px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 80%;">
+                        <input type="password" id="cam-pass-${deviceId}" placeholder="Wachtwoord" style="margin-bottom: 15px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 80%;">
+                        <button id="btn-connect-${deviceId}" style="padding: 8px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Verbinden</button>
+                    </div>
+                `;
+                
+                const btn = document.getElementById(`btn-connect-${deviceId}`);
+                if (btn) {
+                    btn.onclick = () => {
+                        const user = document.getElementById(`cam-user-${deviceId}`).value;
+                        const pass = document.getElementById(`cam-pass-${deviceId}`).value;
+                        if (user && pass) {
+                            localStorage.setItem(`camera_creds_${deviceId}`, JSON.stringify({ user, pass }));
+                            // Retry stream
+                            startCameraStream(deviceId, ip, containerId);
+                        }
+                    };
+                }
+            }
+            return;
+        }
+
+        const { user, pass } = JSON.parse(storedCreds);
+        const rtspUrl = `rtsp://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${ip}:554/stream1`; 
 
         fetch('/api/camera/stream', {
             method: 'POST',
@@ -81,6 +111,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         container.innerHTML = '<p style="color:red">JSMpeg library missing</p>';
                     }
                 }
+            } else {
+                 console.error('Stream start failed', data);
+                 const container = document.getElementById(containerId);
+                 if (container) {
+                     container.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #333;">
+                            <p style="color: #dc3545; margin-bottom: 10px;">Verbinding mislukt</p>
+                            <button id="btn-retry-${deviceId}" style="padding: 5px 15px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Opnieuw inloggen</button>
+                        </div>
+                     `;
+                     const retryBtn = document.getElementById(`btn-retry-${deviceId}`);
+                     if(retryBtn) {
+                        retryBtn.onclick = () => {
+                            localStorage.removeItem(`camera_creds_${deviceId}`);
+                            startCameraStream(deviceId, ip, containerId);
+                        };
+                     }
+                 }
             }
         })
         .catch(err => console.error('Error starting stream:', err));

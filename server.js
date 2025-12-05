@@ -747,21 +747,45 @@ app.get('/api/system/info', (req, res) => {
 });
 
 app.get('/api/system/check-update', (req, res) => {
-    // Check if we are behind origin/main
-    exec('git fetch && git status -uno', (err, stdout, stderr) => {
-        if (err) {
-            console.error('Git check failed:', err);
-            return res.status(500).json({ error: 'Failed to check for updates' });
-        }
-        // "Your branch is behind" indicates an update is available
-        const canUpdate = stdout.includes('Your branch is behind');
-        res.json({ canUpdate, message: stdout });
+    // 1. Check Git
+    exec('git fetch && git status -uno', (err, stdoutGit, stderrGit) => {
+        const gitUpdateAvailable = !err && stdoutGit.includes('Your branch is behind');
+        
+        // 2. Check APT (Simulate) - Uses cached lists, so it might be slightly stale but safe without sudo
+        exec('apt-get -s upgrade', (err2, stdoutApt, stderrApt) => {
+            let aptUpdateAvailable = false;
+            let aptMessage = "";
+            
+            if (!err2) {
+                // Look for "X upgraded"
+                const match = stdoutApt.match(/(\d+) upgraded/);
+                if (match && parseInt(match[1]) > 0) {
+                    aptUpdateAvailable = true;
+                    aptMessage = `${match[1]} system packages available.`;
+                }
+            }
+            
+            const canUpdate = gitUpdateAvailable || aptUpdateAvailable;
+            let message = "";
+            if (gitUpdateAvailable) message += "Hub software update available.\n";
+            if (aptUpdateAvailable) message += aptMessage;
+            
+            if (!canUpdate) message = "System is up to date.";
+
+            res.json({ canUpdate, message, git: gitUpdateAvailable, apt: aptUpdateAvailable });
+        });
     });
 });
 
 app.post('/api/system/update', (req, res) => {
     console.log('Starting system update...');
-    exec('git pull && npm install', (err, stdout, stderr) => {
+    
+    // We attempt to update both. 
+    // Note: sudo apt-get upgrade -y requires passwordless sudo for the user running this script.
+    const cmd = 'git pull && npm install && sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get autoremove -y';
+
+    // Increase maxBuffer to 5MB to handle verbose apt output
+    exec(cmd, { maxBuffer: 1024 * 1024 * 5 }, (err, stdout, stderr) => {
         if (err) {
             console.error('Update failed:', stderr);
             return res.status(500).json({ error: 'Update failed', details: stderr });

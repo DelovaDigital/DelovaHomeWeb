@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Input Selector (Only for real TVs, not Apple TV or Mac)
                 let inputSelector = '';
+                let mediaControls = '';
                 const isAppleDevice = device.name.toLowerCase().includes('apple tv') || device.name.toLowerCase().includes('mac');
                 
                 if (!isAppleDevice) {
@@ -163,6 +164,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <option value="" disabled selected>Bron selecteren</option>
                                 ${inputOptions}
                             </select>
+                        </div>
+                    `;
+                } else {
+                    // Always show media controls for Apple devices
+                    mediaControls = `
+                        <div class="control-group" style="justify-content: center; gap: 15px; margin-top: 10px;">
+                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'previous', null)"><i class="fas fa-step-backward"></i></button>
+                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'play', null)"><i class="fas fa-play"></i></button>
+                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'pause', null)"><i class="fas fa-pause"></i></button>
+                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'next', null)"><i class="fas fa-step-forward"></i></button>
                         </div>
                     `;
                 }
@@ -184,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             onchange="controlDevice('${device.id}', 'set_volume', this.value)">
                         <button class="btn-mini" onclick="controlDevice('${device.id}', 'volume_up', null)"><i class="fas fa-plus"></i></button>
                     </div>
+                    ${mediaControls}
                     ${inputSelector}
                 `;
             } else if (device.type === 'thermostat') {

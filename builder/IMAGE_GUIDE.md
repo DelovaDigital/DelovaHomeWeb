@@ -11,7 +11,11 @@ This method involves setting up one Pi manually, then copying its SD card to a f
 2.  **Boot the Pi** and connect via SSH.
 3.  **Copy the setup script** to the Pi:
     ```bash
+    # If you set the hostname to 'delovahome' in step 1:
     scp builder/setup_delovahome.sh pi@delovahome.local:/home/pi/
+    
+    # OR use the IP address if that doesn't work:
+    scp builder/setup_delovahome.sh pi@<YOUR_PI_IP_ADDRESS>:/home/pi/
     ```
 4.  **Run the script** on the Pi:
     ```bash

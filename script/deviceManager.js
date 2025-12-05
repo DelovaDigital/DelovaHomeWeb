@@ -1086,6 +1086,15 @@ class DeviceManager extends EventEmitter {
             this.handleAirPlayCommand(device, command, value);
         } else if (device.protocol === 'denon-avr') {
             this.handleDenonCommand(device, command, value);
+        } else if (device.type === 'camera') {
+            // Camera commands are handled by cameraStreamManager via WebSocket usually,
+            // but we can handle PTZ or other commands here if needed.
+            // For 'start_stream', we just acknowledge it as it's a signal to the UI/Server.
+            if (command === 'start_stream') {
+                console.log(`[Camera] Stream start requested for ${device.name}`);
+                // Optionally trigger something in cameraStreamManager if needed, 
+                // but the WebSocket connection is the main trigger.
+            }
         }
 
         // Emit update

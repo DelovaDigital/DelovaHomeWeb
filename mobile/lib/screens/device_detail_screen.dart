@@ -130,7 +130,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
     // Trigger the stream start on the backend (pre-warm)
     try {
-      await _apiService.sendCommand(widget.device.id, 'start_stream', {'rtspUrl': rtspUrl});
+      await _apiService.sendCommand(widget.device.id, 'start_stream', {'value': {'rtspUrl': rtspUrl}});
     } catch (e) {
       debugPrint('Error starting stream: $e');
     }
@@ -174,6 +174,63 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Future<void> _sendCommand(String command, [Map<String, dynamic>? args]) async {
     await _apiService.sendCommand(widget.device.id, command, args);
     widget.onRefresh();
+  }
+
+  Future<void> _showSpotifyDevicesDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final devices = await _apiService.getSpotifyDevices();
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: const Text('Select Spotify Device', style: TextStyle(color: Colors.white)),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: devices.length,
+                itemBuilder: (context, index) {
+                  final d = devices[index];
+                  final isActive = d['is_active'] == true;
+                  return ListTile(
+                    leading: Icon(
+                      d['type'] == 'Computer' ? Icons.computer : 
+                      d['type'] == 'Smartphone' ? Icons.smartphone : Icons.speaker,
+                      color: isActive ? Colors.green : Colors.grey,
+                    ),
+                    title: Text(d['name'], style: TextStyle(color: isActive ? Colors.green : Colors.white)),
+                    subtitle: Text(d['type'], style: const TextStyle(color: Colors.grey)),
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _apiService.transferSpotifyPlayback(d['id']);
+                      widget.onRefresh();
+                    },
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 
   @override
@@ -590,6 +647,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     _mediaButton(Icons.pause, () => _sendCommand('pause'), size: 64),
                     _mediaButton(Icons.skip_next, () => _sendCommand('next')),
                   ],
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.speaker_group, color: Colors.green),
+                    label: const Text('Select Spotify Device', style: TextStyle(color: Colors.green)),
+                    onPressed: _showSpotifyDevicesDialog,
+                  ),
                 ),
               ],
 

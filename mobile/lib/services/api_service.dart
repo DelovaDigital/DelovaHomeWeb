@@ -97,4 +97,31 @@ class ApiService {
       throw Exception('Connection error: $e');
     }
   }
+
+  Future<List<dynamic>> getSpotifyDevices() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/devices'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> transferSpotifyPlayback(String deviceId) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/api/spotify/control'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'command': 'transfer', 'value': deviceId}),
+      );
+    } catch (e) {
+      debugPrint('Error transferring playback: $e');
+    }
+  }
 }

@@ -37,6 +37,13 @@ document.addEventListener('DOMContentLoaded', () => {
         usernameDisplay.textContent = `Hallo, ${username}`;
     }
 
+    // Display Hub Name if available (e.g. in header or title)
+    const hubName = localStorage.getItem('hubName');
+    const brandHeader = document.querySelector('.nav-brand h1');
+    if (brandHeader && hubName) {
+        brandHeader.textContent = hubName;
+    }
+
     const logoutLink = document.querySelector('.logout');
     if (logoutLink) {
         logoutLink.addEventListener('click', (e) => {
@@ -89,6 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Login succeeded - save user data to localStorage
                 localStorage.setItem('username', data.username);
                 localStorage.setItem('userId', data.userId);
+                
+                if (data.hubInfo) {
+                    localStorage.setItem('hubId', data.hubInfo.id);
+                    localStorage.setItem('hubName', data.hubInfo.name);
+                }
+
                 window.location.href = '../pages/dashboard.html';
             } else {
                 alert(data.message || 'Inloggen mislukt');

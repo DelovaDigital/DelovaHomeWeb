@@ -170,7 +170,17 @@ app.post('/api/login', async (req, res) => {
 
     // Authentication succeeded. For now respond with a simple success payload.
     // In production, create a session or issue a JWT instead of returning raw user data.
-    res.json({ ok: true, userId: user.id || null, username: user.username, meta: foundMeta });
+    res.json({ 
+        ok: true, 
+        userId: user.id || null, 
+        username: user.username, 
+        meta: foundMeta,
+        hubInfo: {
+            id: hubConfig.hubId,
+            name: hubConfig.name,
+            version: hubConfig.version
+        }
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ ok: false, message: 'Server error' });

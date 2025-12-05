@@ -97,8 +97,11 @@ class DeviceManager extends EventEmitter {
         // 1. Custom SSDP Discovery (UPnP) using dgram
         // Replaces node-ssdp to avoid 'ip' package vulnerability
         this.setupSsdpDiscovery();
+        
+        // 2. ONVIF Discovery (WS-Discovery) for IP Cameras (Tapo, etc.)
+        this.setupOnvifDiscovery();
 
-        // 2. mDNS Discovery (Bonjour/Zeroconf)
+        // 3. mDNS Discovery (Bonjour/Zeroconf)
         this.bonjour = new Bonjour();
         
         const browser = this.bonjour.find({ type: 'http' }, (service) => {
@@ -300,6 +303,87 @@ class DeviceManager extends EventEmitter {
                 }, 500);
             } catch (e) { console.error('SSDP send error:', e); }
         }, 10000);
+    }
+
+    setupOnvifDiscovery() {
+        const ONVIF_ADDR = '239.255.255.250';
+        const ONVIF_PORT = 3702;
+        const crypto = require('crypto');
+        
+        // WS-Discovery Probe Message
+        const PROBE_MESSAGE = `
+            <e:Envelope xmlns:e="http://www.w3.org/2003/05/soap-envelope"
+                        xmlns:w="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+                        xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"
+                        xmlns:dn="http://www.onvif.org/ver10/network/wsdl">
+                <e:Header>
+                    <w:MessageID>uuid:${crypto.randomUUID()}</w:MessageID>
+                    <w:To e:mustUnderstand="true">urn:schemas-xmlsoap-org:ws:2005:04:discovery</w:To>
+                    <w:Action a:mustUnderstand="true">http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe</w:Action>
+                </e:Header>
+                <e:Body>
+                    <d:Probe>
+                        <d:Types>dn:NetworkVideoTransmitter</d:Types>
+                    </d:Probe>
+                </e:Body>
+            </e:Envelope>
+        `.trim().replace(/\s+/g, ' ');
+
+        this.onvifSocket = dgram.createSocket('udp4');
+
+        this.onvifSocket.on('error', (err) => {
+            console.error(`ONVIF socket error:\n${err.stack}`);
+            this.onvifSocket.close();
+        });
+
+        this.onvifSocket.on('message', (msg, rinfo) => {
+            const msgString = msg.toString();
+            // Check if it's a ProbeMatch
+            if (msgString.includes('ProbeMatch') && (msgString.includes('NetworkVideoTransmitter') || msgString.includes('onvif'))) {
+                // Extract Scopes to find name
+                const scopesMatch = msgString.match(/<d:Scopes>([^<]+)<\/d:Scopes>/) || msgString.match(/Scopes>([^<]+)</);
+                
+                let name = `ONVIF Camera (${rinfo.address})`;
+                
+                if (scopesMatch) {
+                    const scopes = scopesMatch[1].split(' ');
+                    const nameScope = scopes.find(s => s.includes('name=') || s.includes('Name='));
+                    const hardwareScope = scopes.find(s => s.includes('hardware=') || s.includes('Hardware='));
+                    
+                    if (nameScope) name = decodeURIComponent(nameScope.split('=').pop());
+                    else if (hardwareScope) name = decodeURIComponent(hardwareScope.split('=').pop());
+                }
+
+                // Tapo specific cleanup
+                if (name.includes('Tapo')) {
+                    name = name.replace(/_/g, ' ');
+                }
+
+                this.addDevice({
+                    id: `onvif-${rinfo.address}`,
+                    name: name,
+                    type: 'camera',
+                    ip: rinfo.address,
+                    protocol: 'onvif',
+                    state: { on: true }
+                });
+            }
+        });
+
+        this.onvifSocket.bind(0, () => {
+            this.onvifSocket.setBroadcast(true);
+            this.onvifSocket.setMulticastTTL(128);
+            this.onvifSocket.addMembership(ONVIF_ADDR);
+            
+            const sendProbe = () => {
+                const msg = Buffer.from(PROBE_MESSAGE);
+                this.onvifSocket.send(msg, 0, msg.length, ONVIF_PORT, ONVIF_ADDR);
+            };
+
+            sendProbe();
+            // Periodically probe every 30s
+            setInterval(sendProbe, 30000);
+        });
     }
 
     processMdnsService(service, sourceType) {

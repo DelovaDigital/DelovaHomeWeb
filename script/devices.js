@@ -124,6 +124,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (type === 'thermostat') summary = `${device.state.temperature}°C`;
                 else if (type === 'sensor') summary = `${device.state.temperature}°C`;
                 else if (type === 'lock') summary = device.state.isLocked ? 'Locked' : 'Unlocked';
+                else if ((type === 'tv' || type === 'speaker' || type === 'receiver') && device.state.mediaTitle) {
+                    summary = `<span style="font-size: 0.9em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaTitle}</span>`;
+                    if (device.state.mediaArtist) {
+                        summary += `<span style="font-size: 0.8em; color: #aaa; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaArtist}</span>`;
+                    }
+                }
                 else summary = 'Aan';
             } else {
                 summary = 'Uit';

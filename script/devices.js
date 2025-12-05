@@ -55,17 +55,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById(containerId);
             if (container) {
                 container.innerHTML = `
-                    <div class="camera-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #333; background: #f8f9fa; border-radius: 10px;">
-                        <i class="fas fa-lock" style="font-size: 2em; margin-bottom: 15px; color: #666;"></i>
-                        <h3 style="margin-bottom: 15px; color: #333;">Camera Login</h3>
-                        <input type="text" id="cam-user-${deviceId}" placeholder="Gebruikersnaam" style="margin-bottom: 10px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 80%;">
-                        <input type="password" id="cam-pass-${deviceId}" placeholder="Wachtwoord" style="margin-bottom: 15px; padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 80%;">
-                        <button id="btn-connect-${deviceId}" style="padding: 8px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Verbinden</button>
+                    <div id="camera-login-${deviceId}" class="camera-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #eee; background: #2a2a2a; border-radius: 10px; padding: 20px;">
+                        <i class="fas fa-lock" style="font-size: 2em; margin-bottom: 15px; color: #aaa;"></i>
+                        <h3 style="margin-bottom: 20px; color: #fff; font-weight: normal;">Camera Login</h3>
+                        <input type="text" id="cam-user-${deviceId}" placeholder="Gebruikersnaam" style="margin-bottom: 15px; padding: 12px; border-radius: 8px; border: 1px solid #444; width: 80%; background: #333; color: white; outline: none;">
+                        <input type="password" id="cam-pass-${deviceId}" placeholder="Wachtwoord" style="margin-bottom: 20px; padding: 12px; border-radius: 8px; border: 1px solid #444; width: 80%; background: #333; color: white; outline: none;">
+                        <button id="btn-connect-${deviceId}" style="padding: 10px 30px; background: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; transition: background 0.2s;">Verbinden</button>
                     </div>
                 `;
                 
+                // Add hover effect via JS since we are using inline styles for quickness
                 const btn = document.getElementById(`btn-connect-${deviceId}`);
                 if (btn) {
+                    btn.onmouseover = () => btn.style.background = '#0056b3';
+                    btn.onmouseout = () => btn.style.background = '#007bff';
+                    
                     btn.onclick = () => {
                         const user = document.getElementById(`cam-user-${deviceId}`).value;
                         const pass = document.getElementById(`cam-pass-${deviceId}`).value;
@@ -280,17 +284,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         device.name.toLowerCase().includes('denon')) && isOn;
         const isCamera = type === 'camera';
 
-        // Avoid full refresh for camera if stream is active
-        if (isCamera && activeStreams.has(device.id)) {
-             const leftCol = document.querySelector('.modal-left-col');
-             if (leftCol) {
-                 const iconEl = leftCol.querySelector('.modal-device-icon');
-                 if (iconEl) {
-                     if (isOn) iconEl.classList.add('on');
-                     else iconEl.classList.remove('on');
+        // Avoid full refresh for camera if stream is active OR if login form is present
+        if (isCamera) {
+             // Check if stream is active
+             if (activeStreams.has(device.id)) {
+                 const leftCol = document.querySelector('.modal-left-col');
+                 if (leftCol) {
+                     const iconEl = leftCol.querySelector('.modal-device-icon');
+                     if (iconEl) {
+                         if (isOn) iconEl.classList.add('on');
+                         else iconEl.classList.remove('on');
+                     }
                  }
+                 return; 
              }
-             return; 
+             
+             // Check if login form is present (to prevent overwriting while typing)
+             const loginForm = document.getElementById(`camera-login-${device.id}`);
+             if (loginForm) {
+                 return;
+             }
         }
 
         if (isMedia || isCamera) {

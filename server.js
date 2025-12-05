@@ -21,21 +21,27 @@ const { exec } = require('child_process');
 const db = require('./script/db');
 const nasManager = require('./script/nasManager');
 const cameraStreamManager = require('./script/cameraStream');
+const WebSocket = require('ws');
+const url = require('url');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 // Serve static files from project root
-app.use(express.static(path.join(__dirname)));
-
 app.post('/api/camera/stream', (req, res) => {
     const { deviceId, rtspUrl } = req.body;
     if (!deviceId || !rtspUrl) {
         return res.status(400).json({ ok: false, message: 'Missing deviceId or rtspUrl' });
     }
     
-    const port = cameraStreamManager.startStream(deviceId, rtspUrl);
+    // We don't start the stream here anymore, we just confirm we are ready.
+    // The stream will start when the WebSocket connects.
+    // Or we can pre-warm it.
+    cameraStreamManager.getStream(deviceId, rtspUrl);
+    
+    res.json({ ok: true });
+}); const port = cameraStreamManager.startStream(deviceId, rtspUrl);
     res.json({ ok: true, port });
 });
 
@@ -528,23 +534,50 @@ app.post('/api/system/update', (req, res) => {
         setTimeout(() => {
             console.log('Restarting server...');
             process.exit(0); // Systemd/PM2 should restart this process
-        }, 1000);
-    });
-});
-
 const https = require('https');
 const fs = require('fs');
 
+let server;
 try {
     const httpsOptions = {
         key: fs.readFileSync('server.key'),
         cert: fs.readFileSync('server.cert')
     };
-    https.createServer(httpsOptions, app).listen(port, () => {
+    server = https.createServer(httpsOptions, app);
+    server.listen(port, () => {
         console.log(`Server running at https://localhost:${port}`);
     });
 } catch (e) {
     console.log('SSL certificates not found or invalid, falling back to HTTP');
+    server = app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
+}
+
+// WebSocket Upgrade Handling
+const wss = new WebSocket.Server({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+    const parsedUrl = url.parse(request.url, true);
+    const pathname = parsedUrl.pathname;
+    
+    if (pathname === '/api/camera/stream/ws') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            const query = parsedUrl.query;
+            const deviceId = query.deviceId;
+            const rtspUrl = query.rtspUrl;
+            
+            if (deviceId && rtspUrl) {
+                const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
+                stream.addClient(ws);
+            } else {
+                ws.close();
+            }
+        });
+    } else {
+        socket.destroy();
+    }
+});
+
+(async () => {g('SSL certificates not found or invalid, falling back to HTTP');
     app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
 }
 

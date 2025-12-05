@@ -95,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(res => res.json())
         .then(data => {
             if (data.ok) {
-                const port = data.port;
                 const container = document.getElementById(containerId);
                 if (container) {
                     container.innerHTML = ''; // Clear placeholder
@@ -105,7 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     canvas.style.borderRadius = '10px';
                     container.appendChild(canvas);
 
-                    const url = `ws://${window.location.hostname}:${port}`;
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const url = `${protocol}//${window.location.host}/api/camera/stream/ws?deviceId=${deviceId}&rtspUrl=${encodeURIComponent(rtspUrl)}`;
+                    
                     // Ensure JSMpeg is loaded
                     if (typeof JSMpeg !== 'undefined') {
                         const player = new JSMpeg.Player(url, { canvas: canvas });

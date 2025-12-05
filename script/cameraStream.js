@@ -1,59 +1,114 @@
-const Stream = require('node-rtsp-stream');
+const { spawn } = require('child_process');
+const EventEmitter = require('events');
+
+class CameraStream extends EventEmitter {
+    constructor(url) {
+        super();
+        this.url = url;
+        this.clients = new Set();
+        this.process = null;
+        this.start();
+    }
+
+    start() {
+        if (this.process) return;
+
+        const args = [
+            '-rtsp_transport', 'tcp',
+            '-i', this.url,
+            '-f', 'mpegts',
+            '-codec:v', 'mpeg1video',
+            '-codec:a', 'mp2',
+            '-stats',
+            '-r', '25',
+            '-q:v', '3',
+            '-vf', 'scale=1280:-1',
+            '-b:v', '2000k',
+            '-bufsize', '4000k',
+            '-maxrate', '2000k',
+            '-ar', '44100',
+            '-ac', '1',
+            '-b:a', '128k',
+            '-'
+        ];
+
+        console.log(`[CameraStream] Spawning ffmpeg for ${this.url}`);
+        this.process = spawn('ffmpeg', args);
+
+        this.process.stdout.on('data', (data) => {
+            this.broadcast(data);
+        });
+
+        this.process.stderr.on('data', (data) => {
+            // console.log(`[ffmpeg] ${data}`); // Optional: verbose logging
+        });
+
+        this.process.on('close', (code) => {
+            console.log(`[CameraStream] ffmpeg exited with code ${code}`);
+            this.process = null;
+            // Auto-restart if we still have clients
+            if (this.clients.size > 0) {
+                setTimeout(() => this.start(), 2000);
+            }
+        });
+    }
+
+    stop() {
+        if (this.process) {
+            this.process.kill();
+            this.process = null;
+        }
+    }
+
+    addClient(ws) {
+        this.clients.add(ws);
+        console.log(`[CameraStream] Client connected. Total: ${this.clients.size}`);
+        
+        // Send magic bytes for JSMpeg
+        const STREAM_MAGIC_BYTES = "jsmp";
+        if (ws.readyState === 1) {
+             ws.send(Buffer.from(STREAM_MAGIC_BYTES), { binary: true });
+        }
+
+        ws.on('close', () => {
+            this.clients.delete(ws);
+            console.log(`[CameraStream] Client disconnected. Total: ${this.clients.size}`);
+            if (this.clients.size === 0) {
+                this.stop();
+            }
+        });
+    }
+
+    broadcast(data) {
+        for (const client of this.clients) {
+            if (client.readyState === 1) {
+                try {
+                    client.send(data, { binary: true });
+                } catch (e) {
+                    console.error('[CameraStream] Error sending to client:', e);
+                }
+            }
+        }
+    }
+}
 
 class CameraStreamManager {
     constructor() {
-        this.streams = new Map(); // deviceId -> { stream, wsPort }
-        this.basePort = 9900;
+        this.streams = new Map(); // deviceId -> CameraStream
     }
 
-    startStream(deviceId, rtspUrl) {
-        if (this.streams.has(deviceId)) {
-            console.log(`Stream for device ${deviceId} already running on port ${this.streams.get(deviceId).wsPort}`);
-            return this.streams.get(deviceId).wsPort;
+    getStream(deviceId, rtspUrl) {
+        if (!this.streams.has(deviceId)) {
+            this.streams.set(deviceId, new CameraStream(rtspUrl));
         }
-
-        const port = this.basePort + this.streams.size + 1;
-        
-        console.log(`Starting stream for ${deviceId} on port ${port} with URL: ${rtspUrl}`);
-        
-        try {
-            const stream = new Stream({
-                name: deviceId,
-                streamUrl: rtspUrl,
-                wsPort: port,
-                ffmpegOptions: { // options ffmpeg flags
-                    '-stats': '', 
-                    '-r': 25,
-                    '-q:v': 3, // Quality setting
-                    '-vf': 'scale=1280:-1' // Resize to 720p-ish to reduce CPU load on client
-                }
-            });
-
-            this.streams.set(deviceId, { stream, wsPort: port });
-            return port;
-        } catch (e) {
-            console.error('Error starting stream:', e);
-            return null;
-        }
+        return this.streams.get(deviceId);
     }
 
     stopStream(deviceId) {
         if (this.streams.has(deviceId)) {
-            const { stream } = this.streams.get(deviceId);
-            try {
-                stream.stop();
-            } catch (e) {
-                console.error('Error stopping stream:', e);
-            }
+            this.streams.get(deviceId).stop();
             this.streams.delete(deviceId);
         }
-    }
-    
-    getStreamPort(deviceId) {
-        if (this.streams.has(deviceId)) {
-            return this.streams.get(deviceId).wsPort;
-        }
-        return null;
     }
 }
 

@@ -147,6 +147,14 @@ class DeviceManager extends EventEmitter {
             this.processMdnsService(service, 'nanoleaf');
         });
 
+        // IP Cameras (Axis, RTSP)
+        this.bonjour.find({ type: 'axis-video' }, (service) => {
+            this.processMdnsService(service, 'camera');
+        });
+        this.bonjour.find({ type: 'rtsp' }, (service) => {
+            this.processMdnsService(service, 'camera');
+        });
+
         // LG WebOS TV Discovery
         this.bonjour.find({ type: 'webos-second-screen' }, (service) => {
              const ip = service.addresses && service.addresses.length > 0 ? service.addresses[0] : null;
@@ -364,6 +372,8 @@ class DeviceManager extends EventEmitter {
             type = 'light';
         } else if (sourceType === 'nanoleaf') {
             type = 'light';
+        } else if (sourceType === 'camera') {
+            type = 'camera';
         } else if (lowerName.includes('shelly')) {
             type = 'switch';
         } else if (lowerName.includes('printer') || lowerName.includes('officejet') || lowerName.includes('deskjet') || lowerName.includes('laserjet') || lowerName.includes('envy')) {

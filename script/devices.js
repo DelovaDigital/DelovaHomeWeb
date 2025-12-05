@@ -238,7 +238,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'back')"><i class="fas fa-arrow-left"></i></button>
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'home')"><i class="fas fa-home"></i></button>
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'menu')"><i class="fas fa-bars"></i></button>
+                        
+                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'previous')"><i class="fas fa-step-backward"></i></button>
+                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'play')"><i class="fas fa-play"></i></button>
+                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'next')"><i class="fas fa-step-forward"></i></button>
+                        
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_down')"><i class="fas fa-minus"></i></button>
+                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
@@ -291,6 +297,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     </select>
                 </div>
                 <div class="remote-grid" style="margin-top: 20px;">
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'previous')"><i class="fas fa-step-backward"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'play')"><i class="fas fa-play"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'next')"><i class="fas fa-step-forward"></i></button>
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_down')"><i class="fas fa-minus"></i></button>
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>

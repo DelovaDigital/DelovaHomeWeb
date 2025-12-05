@@ -87,4 +87,37 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Kon geen verbinding maken met de server');
         }
     }
+
+    // Check for NAS and add "Bestanden" tab if configured
+    const navUl = document.querySelector('.main-nav ul');
+    if (navUl) {
+        fetch('/api/nas')
+            .then(res => res.json())
+            .then(nasList => {
+                if (nasList && nasList.length > 0) {
+                    // Check if already exists to avoid duplicates
+                    if (!navUl.innerHTML.includes('Bestanden')) {
+                        const li = document.createElement('li');
+                        // Determine if we are on files.html to set active class
+                        const isActive = window.location.pathname.includes('files.html') ? 'class="active"' : '';
+                        li.innerHTML = `<a href="files.html" ${isActive}><i class="fas fa-folder-open"></i> Bestanden</a>`;
+                        
+                        // Insert before "Instellingen" if possible
+                        const settingsLi = Array.from(navUl.children).find(child => child.textContent.includes('Instellingen'));
+                        if (settingsLi) {
+                            navUl.insertBefore(li, settingsLi);
+                        } else {
+                            // Otherwise just append before the user menu (last item)
+                            const userMenu = navUl.querySelector('.user-menu-container');
+                            if (userMenu) {
+                                navUl.insertBefore(li, userMenu);
+                            } else {
+                                navUl.appendChild(li);
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(err => console.log('Error checking NAS status:', err));
+    }
 });

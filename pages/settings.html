@@ -15,7 +15,7 @@
             </div>
             <ul>
                 <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
-                <li><a href="rooms.html" class="active"><i class="fas fa-door-open"></i> Kamers</a></li>
+                <li><a href="rooms.html"><i class="fas fa-door-open"></i> Kamers</a></li>
                 <li><a href="devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
                 <li><a href="settings.html" class="active"><i class="fas fa-cog"></i> Instellingen</a></li>
                 <li class="user-menu-container">
@@ -83,6 +83,69 @@
                         <p>DelovaHub Versie 0.0.3+Beta</p>
                         <button type="submit" class="btn btn-primary btnCheck">Check for updates</button>
                         <p>© 2025 DelovaHub. Alle rechten voorbehouden.</p>
+                    </div>
+                </div>
+
+                <!-- Apple Device Pairing -->
+                <div class="card settings-card">
+                    <div class="card-header">
+                        <i class="fab fa-apple"></i>
+                        <h3>Apple Apparaat Koppelen</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted" style="margin-bottom: 15px; font-size: 0.9em;">
+                            Koppel een Apple TV of Mac (AirPlay Receiver) om deze te bedienen.
+                        </p>
+                        <div id="atv-pairing-step-1">
+                            <div class="form-group">
+                                <label for="atv-ip">IP Adres</label>
+                                <input type="text" id="atv-ip" placeholder="192.168.0.x">
+                            </div>
+                            <button id="btn-start-pairing" class="btn btn-primary">Start Koppelen</button>
+                        </div>
+                        <div id="atv-pairing-step-2" style="display:none;">
+                            <p>Voer de PIN code in die op je TV verschijnt:</p>
+                            <div class="form-group">
+                                <label for="atv-pin">PIN Code</label>
+                                <input type="text" id="atv-pin" placeholder="1234" maxlength="4">
+                            </div>
+                            <button id="btn-submit-pin" class="btn btn-primary">Verstuur PIN</button>
+                        </div>
+                        <div id="atv-pairing-status" style="margin-top: 10px; font-weight: bold;"></div>
+                    </div>
+                </div>
+
+                <!-- NAS Pairing -->
+                <div class="card settings-card">
+                    <div class="card-header">
+                        <i class="fas fa-hdd"></i>
+                        <h3>NAS Koppelen</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="nas-form" onsubmit="event.preventDefault();">
+                            <div class="form-group">
+                                <label for="nas-host">Host / IP</label>
+                                <input type="text" id="nas-host" placeholder="192.168.0.x">
+                            </div>
+                            <div class="form-group">
+                                <label for="nas-share">Share Naam</label>
+                                <input type="text" id="nas-share" placeholder="public">
+                            </div>
+                            <div class="form-group">
+                                <label for="nas-domain">Domein (Optioneel)</label>
+                                <input type="text" id="nas-domain" placeholder="WORKGROUP">
+                            </div>
+                            <div class="form-group">
+                                <label for="nas-user">Gebruikersnaam</label>
+                                <input type="text" id="nas-user" placeholder="admin">
+                            </div>
+                            <div class="form-group">
+                                <label for="nas-pass">Wachtwoord</label>
+                                <input type="password" id="nas-pass" placeholder="••••••">
+                            </div>
+                            <button id="btn-add-nas" class="btn btn-primary">Verbinden</button>
+                        </form>
+                        <div id="nas-status" style="margin-top: 10px; font-weight: bold;"></div>
                     </div>
                 </div>
 

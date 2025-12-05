@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delova - Bestanden</title>
+    <link rel="stylesheet" id="theme-stylesheet" href="../style/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .file-browser {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 20px;
+            height: calc(100vh - 150px);
+        }
+        .nas-list {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .nas-item {
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-color);
+        }
+        .nas-item:hover, .nas-item.active {
+            background: var(--bg-color);
+        }
+        .file-view {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .file-list {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            color: var(--text-color);
+        }
+        .file-item:hover {
+            background: var(--bg-color);
+        }
+        .file-icon {
+            margin-right: 15px;
+            width: 20px;
+            text-align: center;
+        }
+        .file-name {
+            flex-grow: 1;
+        }
+        .breadcrumb {
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            color: var(--text-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .breadcrumb span {
+            cursor: pointer;
+            color: var(--primary-color);
+        }
+        .breadcrumb span:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="main-nav">
+            <div class="nav-brand">
+                <h1>DelovaHome</h1>
+            </div>
+            <ul>
+                <li><a href="dashboard.html"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="rooms.html"><i class="fas fa-door-open"></i> Kamers</a></li>
+                <li><a href="devices.html"><i class="fas fa-laptop-house"></i> Apparaten</a></li>
+                <li><a href="files.html" class="active"><i class="fas fa-folder-open"></i> Bestanden</a></li>
+                <li><a href="settings.html"><i class="fas fa-cog"></i> Instellingen</a></li>
+                <li class="user-menu-container">
+                    <span id="usernameDisplay"></span>
+                    <div class="user-avatar"></div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#"><i class="fas fa-user"></i> Profiel</a>
+                        <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content-area">
+            <header class="page-header">
+                <h2>Bestanden</h2>
+                <p>Blader door je netwerkopslag</p>
+            </header>
+
+            <div class="file-browser">
+                <div class="nas-list" id="nas-list">
+                    <h3>Bronnen</h3>
+                    <!-- NAS items here -->
+                </div>
+                <div class="file-view">
+                    <div class="breadcrumb" id="breadcrumb">/</div>
+                    <div class="file-list" id="file-list">
+                        <!-- Files here -->
+                        <div style="text-align:center; padding: 20px; color: #888;">Selecteer een bron</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../script/script.js"></script>
+    <script src="../script/files.js"></script>
+</body>
+</html>

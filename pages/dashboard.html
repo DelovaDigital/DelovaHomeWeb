@@ -39,9 +39,16 @@
 
             <div class="dashboard-grid">
                 <aside class="widgets-panel">
+                    <div id="spotify-widget-container"></div>
+
                     <div class="widget" id="weatherWidget">
                         <h4>Weer</h4>
-                        <div id="weatherContent">Laden…</div>
+                        <div id="weatherContent" class="weather-container">Laden…</div>
+                    </div>
+
+                    <div class="widget" id="printerWidget" style="display: none;">
+                        <h4>Printer Status</h4>
+                        <div id="printerContent">Laden...</div>
                     </div>
 
                     <div class="widget" id="speedtestWidget">
@@ -59,5 +66,6 @@
     <script src="../script/script.js"></script>
     <script src="../script/modal.js"></script>
     <script src="../script/dashboard.js"></script>
+    <script src="../script/spotify-widget.js"></script>
 </body>
 </html>

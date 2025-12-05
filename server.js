@@ -18,6 +18,7 @@ const express = require('express');
 const path = require('path');
 const bcrypt = require('bcrypt');
 const db = require('./script/db');
+const nasManager = require('./script/nasManager');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -193,6 +194,57 @@ app.post('/api/register', async (req, res) => {
 });
 
 const deviceManager = require('./script/deviceManager');
+const spotifyManager = require('./script/spotifyManager');
+
+// --- Spotify API ---
+app.get('/api/spotify/login', (req, res) => {
+    const url = spotifyManager.getAuthUrl();
+    if (url) res.redirect(url);
+    else res.status(500).send('Spotify Client ID not configured');
+});
+
+app.get('/api/spotify/callback', async (req, res) => {
+    const code = req.query.code;
+    if (await spotifyManager.handleCallback(code)) {
+        res.redirect('/');
+    } else {
+        res.status(500).send('Spotify authentication failed');
+    }
+});
+
+app.get('/api/spotify/status', async (req, res) => {
+    const state = await spotifyManager.getPlaybackState();
+    res.json(state || { is_playing: false });
+});
+
+app.post('/api/spotify/control', async (req, res) => {
+    const { command, value } = req.body;
+    if (command === 'play') await spotifyManager.play();
+    else if (command === 'pause') await spotifyManager.pause();
+    else if (command === 'next') await spotifyManager.next();
+    else if (command === 'previous') await spotifyManager.previous();
+    else if (command === 'set_volume') await spotifyManager.setVolume(value);
+    else if (command === 'transfer') await spotifyManager.transferPlayback(value);
+    else if (command === 'play_context') await spotifyManager.playContext(value);
+    res.json({ ok: true });
+});
+
+app.get('/api/spotify/devices', async (req, res) => {
+    const devices = await spotifyManager.getDevices();
+    res.json(devices);
+});
+
+app.get('/api/spotify/playlists', async (req, res) => {
+    const playlists = await spotifyManager.getUserPlaylists();
+    res.json(playlists);
+});
+
+app.get('/api/spotify/albums', async (req, res) => {
+    const albums = await spotifyManager.getUserAlbums();
+    res.json(albums);
+});
+
+// --- Device API ---
 const roomsStore = require('./script/roomsStore');
 
 // Simple SSE (Server-Sent Events) broadcaster for rooms changes
@@ -317,7 +369,114 @@ app.post('/api/devices/:id/command', async (req, res) => {
     }
 });
 
-app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
+app.post('/api/devices/:id/refresh', async (req, res) => {
+    const { id } = req.params;
+    await deviceManager.refreshDevice(id);
+    res.json({ ok: true });
+});
+
+app.get('/api/devices/:id/state', async (req, res) => {
+    const { id } = req.params;
+    const device = deviceManager.getDevice(id);
+    if (!device) {
+        return res.status(404).json({ ok: false, message: 'Device not found' });
+    }
+    
+    const state = await deviceManager.getDeviceState(device.ip, device.protocol);
+    res.json({ ok: true, state });
+});
+
+app.post('/api/pair/start', async (req, res) => {
+    const { ip } = req.body;
+    if (!ip) return res.status(400).json({ ok: false, message: 'IP address required' });
+
+    try {
+        const result = await deviceManager.startPairing(ip);
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        res.status(500).json({ ok: false, message: err.message });
+    }
+});
+
+app.post('/api/pair/pin', async (req, res) => {
+    const { pin } = req.body;
+    if (!pin) return res.status(400).json({ ok: false, message: 'PIN required' });
+
+    try {
+        const result = await deviceManager.submitPairingPin(pin);
+        res.json({ ok: true, ...result });
+    } catch (err) {
+        res.status(500).json({ ok: false, message: err.message });
+    }
+});
+
+// NAS API
+app.get('/api/nas', (req, res) => {
+    res.json(nasManager.getNasList());
+});
+
+app.post('/api/nas', async (req, res) => {
+    try {
+        const result = await nasManager.addNas(req.body);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ ok: false, message: err.message });
+    }
+});
+
+app.get('/api/nas/:id/files', async (req, res) => {
+    const { id } = req.params;
+    const { path } = req.query;
+    try {
+        const files = await nasManager.listFiles(id, path || '');
+        
+        // Filter out . and ..
+        const filtered = files.filter(f => f.name !== '.' && f.name !== '..');
+        
+        // Sort folders first
+        filtered.sort((a, b) => {
+            if (a.isDirectory === b.isDirectory) return a.name.localeCompare(b.name);
+            return a.isDirectory ? -1 : 1;
+        });
+        
+        res.json(filtered);
+    } catch (err) {
+        console.error('Error listing files:', err);
+        res.status(500).json({ ok: false, message: err.message });
+    }
+});
+
+app.get('/api/nas/:id/stream', async (req, res) => {
+    const { id } = req.params;
+    const { path: filePath } = req.query;
+    
+    try {
+        const localPath = await nasManager.getLocalFilePath(id, filePath);
+        if (!localPath) {
+            return res.status(404).send('File not found or not accessible');
+        }
+        res.sendFile(localPath);
+    } catch (err) {
+        console.error('Stream error:', err);
+        res.status(500).send('Error streaming file');
+    }
+});
+
+const https = require('https');
+const fs = require('fs');
+
+try {
+    const httpsOptions = {
+        key: fs.readFileSync('server.key'),
+        cert: fs.readFileSync('server.cert')
+    };
+    https.createServer(httpsOptions, app).listen(port, () => {
+        console.log(`Server running at https://localhost:${port}`);
+    });
+} catch (e) {
+    console.log('SSL certificates not found or invalid, falling back to HTTP');
+    app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
+}
 
 (async () => {
   try {

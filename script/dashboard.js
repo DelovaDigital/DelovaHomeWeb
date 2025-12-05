@@ -93,58 +93,231 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Weather widget (Open-Meteo fallback location Amsterdam)
+  // Weather widget (Open-Meteo)
   async function loadWeather(){
     try{
-      const lat = 52.3676, lon = 4.9041;
-      const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+      let loc = { name: 'Amsterdam', lat: 52.3676, lon: 4.9041 };
+      try {
+          const saved = localStorage.getItem('weather_location');
+          if(saved) loc = JSON.parse(saved);
+      } catch(e){}
+
+      const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current_weather=true`)
         .then(r => r.json());
+      
       if(w && w.current_weather){
-        weatherContent.innerHTML = `<div class="temp">${w.current_weather.temperature}°C</div><div>Wind ${w.current_weather.windspeed} km/h</div>`;
+        const code = w.current_weather.weathercode;
+        const temp = w.current_weather.temperature;
+        const wind = w.current_weather.windspeed;
+        
+        let iconHtml = '';
+        let desc = '';
+
+        // WMO Weather interpretation codes (WW)
+        if (code === 0) {
+            iconHtml = '<div class="sun"></div>';
+            desc = 'Zonnig';
+        } else if (code >= 1 && code <= 3) {
+            iconHtml = '<div class="cloud"></div>';
+            if (code === 1) { iconHtml += '<div class="sun" style="left: 40px; top: -10px; width: 30px; height: 30px;"></div>'; desc = 'Licht bewolkt'; }
+            else desc = 'Bewolkt';
+        } else if (code >= 45 && code <= 48) {
+            iconHtml = '<div class="cloud" style="background: #bdc3c7;"></div>';
+            desc = 'Mist';
+        } else if (code >= 51 && code <= 67) {
+            iconHtml = '<div class="cloud" style="background: #7f8c8d;"></div><div class="rain-drop"></div><div class="rain-drop"></div><div class="rain-drop"></div>';
+            desc = 'Regen';
+        } else if (code >= 71 && code <= 77) {
+            iconHtml = '<div class="cloud" style="background: #bdc3c7;"></div><div class="snowflake">❄</div><div class="snowflake" style="left: 20px; animation-delay: 1s;">❄</div>';
+            desc = 'Sneeuw';
+        } else if (code >= 80 && code <= 82) {
+            iconHtml = '<div class="cloud" style="background: #34495e;"></div><div class="rain-drop"></div><div class="rain-drop"></div><div class="rain-drop"></div>';
+            desc = 'Buien';
+        } else if (code >= 95) {
+            iconHtml = '<div class="cloud" style="background: #2c3e50;"></div><div style="position: absolute; bottom: -20px; left: 20px; color: #f1c40f; font-size: 20px;">⚡</div>';
+            desc = 'Onweer';
+        } else {
+            iconHtml = '<div class="sun"></div>';
+            desc = 'Onbekend';
+        }
+
+        weatherContent.style.position = 'relative';
+        weatherContent.innerHTML = `
+            <div style="position: absolute; top: 0; right: 0; cursor: pointer; color: #aaa; padding: 5px;" onclick="changeWeatherLocation()" title="Locatie wijzigen">
+                <i class="fas fa-map-marker-alt"></i>
+            </div>
+            <div class="weather-icon">${iconHtml}</div>
+            <div class="weather-temp">${temp}°C</div>
+            <div class="weather-desc">${desc}</div>
+            <div style="font-size: 1em; font-weight: bold; margin-top: 8px; color: #444;">
+                <i class="fas fa-location-arrow" style="font-size: 0.8em; margin-right: 5px;"></i>${loc.name}
+            </div>
+            <div style="font-size: 0.8em; color: #888; margin-top: 2px;">Wind: ${wind} km/h</div>
+        `;
       } else {
         weatherContent.innerText = 'Weer informatie niet beschikbaar';
       }
     }catch(e){ weatherContent.innerText = 'Weer service niet bereikbaar'; }
   }
 
-  async function runDownloadTest(sizeBytes = 5 * 1024 * 1024){
-    const resp = await fetch(`/api/speedtest/file?size=${sizeBytes}`);
-    if(!resp.ok) throw new Error('Speedtest file request failed');
+  window.changeWeatherLocation = async () => {
+      const city = prompt('Voer stad in voor weerbericht:');
+      if(!city) return;
+      
+      try {
+          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=nl&format=json`);
+          const data = await res.json();
+          
+          if(data.results && data.results.length > 0) {
+              const result = data.results[0];
+              const newLoc = {
+                  name: result.name,
+                  lat: result.latitude,
+                  lon: result.longitude
+              };
+              localStorage.setItem('weather_location', JSON.stringify(newLoc));
+              loadWeather();
+          } else {
+              alert('Stad niet gevonden.');
+          }
+      } catch(e) {
+          console.error(e);
+          alert('Fout bij zoeken naar stad.');
+      }
+  };
+
+  // Printer Widget
+  async function loadPrinterStatus() {
+    const printerWidget = document.getElementById('printerWidget');
+    const printerContent = document.getElementById('printerContent');
+    if (!printerWidget || !printerContent) return;
+
+    try {
+        const devices = await fetchDevices();
+        const printer = devices.find(d => d.type === 'printer');
+
+        if (printer) {
+            printerWidget.style.display = 'block';
+            
+            if (printer.state && printer.state.inks && printer.state.inks.length > 0) {
+                let inkHtml = '<div class="ink-level-container">';
+                printer.state.inks.forEach(ink => {
+                    let colorCode = '#000';
+                    let label = ink.color;
+                    if (ink.color === 'C') { colorCode = '#00FFFF'; label = 'Cyaan'; }
+                    else if (ink.color === 'M') { colorCode = '#FF00FF'; label = 'Magenta'; }
+                    else if (ink.color === 'Y') { colorCode = '#FFFF00'; label = 'Geel'; }
+                    else if (ink.color === 'K') { colorCode = '#000000'; label = 'Zwart'; }
+                    
+                    inkHtml += `
+                        <div class="ink-cartridge">
+                            <div class="ink-bar-wrapper">
+                                <div class="ink-bar" style="height: ${ink.level}%; background-color: ${colorCode};"></div>
+                            </div>
+                            <div class="ink-label">${label}</div>
+                            <div style="font-size: 0.7em;">${ink.level}%</div>
+                        </div>
+                    `;
+                });
+                inkHtml += '</div>';
+                printerContent.innerHTML = inkHtml;
+            } else {
+                printerContent.innerHTML = '<div style="text-align: center; padding: 10px;">Inktstatus ophalen...</div>';
+            }
+        } else {
+            printerWidget.style.display = 'none';
+        }
+    } catch (e) {
+        console.error('Error loading printer status:', e);
+    }
+  }
+
+  async function runDownloadTest(){
+    // Use Cloudflare speedtest endpoint (HTTPS, CORS enabled) to test actual Internet speed
+    // instead of local network speed
+    const size = 10000000; // 10MB
+    const url = `https://speed.cloudflare.com/__down?bytes=${size}`;
+    
+    const startPing = performance.now();
+    const resp = await fetch(url);
+    const endPing = performance.now();
+    const ping = Math.round(endPing - startPing); // TTFB as rough ping
+
+    if(!resp.ok) throw new Error('Speedtest request failed');
+    
     const reader = resp.body.getReader();
     let received = 0;
-    let start = 0;
+    const startDl = performance.now();
+    
     while(true){
       const { done, value } = await reader.read();
       if(done) break;
-      // start timer on first received chunk to measure throughput (exclude request/setup latency)
-      if(!start) start = performance.now();
-      // prefer byteLength for TypedArrays; fallback to length
-      const bytes = (value && (value.byteLength || value.length)) || 0;
-      received += bytes;
+      received += value.length;
     }
-    const duration = ((performance.now() - start) / 1000) || 0.001;
+    
+    const duration = (performance.now() - startDl) / 1000;
     const mbps = (received * 8) / (duration * 1000000);
-    return { mbps: mbps.toFixed(2), bytes: received, secs: duration.toFixed(2) };
+    
+    return { mbps: mbps.toFixed(2), bytes: received, secs: duration.toFixed(2), ping };
+  }
+
+  function getSpeedEvaluation(mbps) {
+      const speed = parseFloat(mbps);
+      if (speed > 500) return { text: 'Uitstekend (Fiber)', color: '#2ecc71' };
+      if (speed > 100) return { text: 'Zeer Goed', color: '#27ae60' };
+      if (speed > 50) return { text: 'Goed', color: '#f1c40f' };
+      if (speed > 20) return { text: 'Redelijk', color: '#e67e22' };
+      return { text: 'Traag', color: '#e74c3c' };
+  }
+
+  function renderSpeedResult(ping, mbps, dateStr) {
+      if (!speedtestResults) return;
+      const eval = getSpeedEvaluation(mbps);
+      speedtestResults.innerHTML = `
+        <div style="text-align: center; margin-top: 10px;">
+            <div style="font-size: 2.5em; font-weight: bold; color: #333;">${mbps} <span style="font-size: 0.4em; color: #666;">Mbps</span></div>
+            <div style="color: ${eval.color}; font-weight: bold; margin-bottom: 5px;">${eval.text}</div>
+            <div style="font-size: 0.9em; color: #666;">Ping: ${ping} ms</div>
+            ${dateStr ? `<div style="font-size: 0.8em; color: #999; margin-top: 5px;">Laatste test: ${dateStr}</div>` : ''}
+        </div>
+      `;
   }
 
   if (runSpeedtest) {
-    runSpeedtest.addEventListener('click', async ()=>{
-      if (speedtestResults) speedtestResults.innerText = 'Running...';
-      try{
-        // ping
-        const t0 = performance.now();
-        await fetch('/api/speedtest/ping');
-        const ping = Math.round(performance.now() - t0);
+    // Load saved result
+    const saved = localStorage.getItem('last_speedtest');
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            renderSpeedResult(data.ping, data.mbps, new Date(data.ts).toLocaleString());
+        } catch(e) {}
+    }
 
+    runSpeedtest.addEventListener('click', async ()=>{
+      if (speedtestResults) speedtestResults.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 2em; color: #3498db;"></i><div style="margin-top: 10px;">Internet snelheid testen...</div></div>';
+      try{
         const dl = await runDownloadTest();
-        if (speedtestResults) speedtestResults.innerHTML = `Ping: ${ping} ms<br>Download: ${dl.mbps} Mbps (${dl.bytes} bytes in ${dl.secs}s)`;
-      }catch(e){ if (speedtestResults) speedtestResults.innerText = 'Speedtest failed'; }
+        
+        const result = {
+            ping: dl.ping,
+            mbps: dl.mbps,
+            ts: Date.now()
+        };
+        localStorage.setItem('last_speedtest', JSON.stringify(result));
+        renderSpeedResult(dl.ping, dl.mbps, 'Zojuist');
+        
+      }catch(e){ 
+          console.error(e);
+          if (speedtestResults) speedtestResults.innerText = 'Speedtest mislukt (Check internet)'; 
+      }
     });
   }
 
   // initial
   if (roomsList) render();
   loadWeather();
+  loadPrinterStatus();
+  setInterval(loadPrinterStatus, 10000); // Poll printer every 10s
   // subscribe to server events to refresh widgets when rooms/mapping change
   if (typeof EventSource !== 'undefined'){
     try{

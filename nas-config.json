@@ -1,0 +1,12 @@
+[
+  {
+    "share": "\\\\192.168.0.114\\Backup",
+    "username": "pi",
+    "password": "Wcltjaaae7",
+    "host": "192.168.0.114",
+    "shareName": "Backup",
+    "name": "192.168.0.114",
+    "id": "1764886141931",
+    "mode": "native"
+  }
+]

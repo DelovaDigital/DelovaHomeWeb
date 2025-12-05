@@ -9,6 +9,14 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "none"
+		},
+		{
+			"label": "append_css",
+			"type": "shell",
+			"command": "echo \".btn-assign { width: 100%; margin-top: auto; background-color: #e0e0e0; color: #333; } .btn-assign:hover { background-color: #d0d0d0; }\" >> /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/style.css",
+			"args": [],
+			"isBackground": false,
+			"group": "none"
 		}
 	]
 }

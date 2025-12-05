@@ -14,9 +14,19 @@ class DeviceManager extends EventEmitter {
         super();
         this.devices = new Map(); // id -> device
         this.samsungConnections = new Map(); // ip -> { ws, timeout }
+        this.pairingProcess = null;
         this.appleTvCredentials = {};
         this.loadAppleTvCredentials();
         this.startDiscovery();
+        this.startPolling();
+    }
+
+    startPolling() {
+        setInterval(() => {
+            for (const id of this.devices.keys()) {
+                this.refreshDevice(id);
+            }
+        }, 5000);
     }
 
     loadAppleTvCredentials() {
@@ -25,6 +35,22 @@ class DeviceManager extends EventEmitter {
             if (fs.existsSync(credPath)) {
                 this.appleTvCredentials = JSON.parse(fs.readFileSync(credPath));
                 console.log(`Loaded credentials for ${Object.keys(this.appleTvCredentials).length} Apple TV(s)`);
+                
+                // Add known devices from credentials immediately
+                for (const [deviceId, creds] of Object.entries(this.appleTvCredentials)) {
+                    if (creds.ip) {
+                        console.log(`[DeviceManager] Restoring known device: ${creds.name || deviceId} (${creds.ip})`);
+                        this.addDevice({
+                            id: deviceId, // Use the MAC/ID as the device ID
+                            name: creds.name || `Apple Device (${creds.ip})`,
+                            type: 'tv', // Treat as TV to get full controls
+                            ip: creds.ip,
+                            protocol: 'mdns-airplay',
+                            deviceId: deviceId,
+                            state: { on: false, volume: 0 }
+                        });
+                    }
+                }
             }
         } catch (e) {
             console.error('Failed to load Apple TV credentials:', e.message);
@@ -60,6 +86,31 @@ class DeviceManager extends EventEmitter {
         // Samsung TV (AirPlay)
         this.bonjour.find({ type: 'airplay' }, (service) => {
             this.processMdnsService(service, 'airplay');
+        });
+
+        // Printers (IPP)
+        this.bonjour.find({ type: 'ipp' }, (service) => {
+            this.processMdnsService(service, 'printer');
+        });
+
+        // Sonos Speakers
+        this.bonjour.find({ type: 'sonos' }, (service) => {
+            this.processMdnsService(service, 'sonos');
+        });
+
+        // Philips Hue
+        this.bonjour.find({ type: 'hue' }, (service) => {
+            this.processMdnsService(service, 'hue');
+        });
+
+        // Elgato Key Lights
+        this.bonjour.find({ type: 'elg' }, (service) => {
+            this.processMdnsService(service, 'elgato');
+        });
+
+        // Nanoleaf
+        this.bonjour.find({ type: 'nanoleafapi' }, (service) => {
+            this.processMdnsService(service, 'nanoleaf');
         });
 
         // LG WebOS TV Discovery
@@ -142,9 +193,27 @@ class DeviceManager extends EventEmitter {
             } else if (server.includes('Sonos')) {
                 type = 'speaker';
                 name = 'Sonos Speaker';
+            } else if (server.toLowerCase().includes('denon') || usn.toLowerCase().includes('denon') || server.toLowerCase().includes('marantz') || usn.toLowerCase().includes('marantz')) {
+                type = 'receiver';
+                name = server.toLowerCase().includes('marantz') ? 'Marantz AVR' : 'Denon AVR';
+            } else if (server.toLowerCase().includes('yamaha') || usn.toLowerCase().includes('yamaha')) {
+                type = 'receiver';
+                name = 'Yamaha AVR';
+            } else if (server.toLowerCase().includes('onkyo') || usn.toLowerCase().includes('onkyo')) {
+                type = 'receiver';
+                name = 'Onkyo AVR';
+            } else if (server.toLowerCase().includes('pioneer') || usn.toLowerCase().includes('pioneer')) {
+                type = 'receiver';
+                name = 'Pioneer AVR';
             } else if (server.toLowerCase().includes('samsung') || server.toLowerCase().includes('tizen') || st.includes('samsung')) {
                 type = 'tv';
                 name = 'Samsung Smart TV';
+            } else if (server.includes('Roku')) {
+                type = 'tv';
+                name = 'Roku Device';
+            } else if (st.includes('MediaRenderer') || usn.includes('MediaRenderer')) {
+                type = 'speaker';
+                name = 'UPnP Media Renderer';
             } else if (server.includes('UPnP/1.0') && location) {
                 name = `UPnP Device (${rinfo.address})`;
             } else {
@@ -164,7 +233,7 @@ class DeviceManager extends EventEmitter {
                 name: name,
                 type: type,
                 ip: rinfo.address,
-                protocol: type === 'tv' && name.includes('Samsung') ? 'samsung-tizen' : 'ssdp',
+                protocol: (type === 'tv' && name.includes('Samsung')) ? 'samsung-tizen' : (name.includes('Denon') ? 'denon-avr' : 'ssdp'),
                 location: location,
                 state: { on: false }
             });
@@ -250,7 +319,20 @@ class DeviceManager extends EventEmitter {
             if (/^[0-9a-fA-F]{12}/.test(name)) {
                  name = name.substring(12);
             }
-        } else if (lowerName.includes('printer')) {
+        } else if (sourceType === 'printer') {
+            type = 'printer';
+        } else if (sourceType === 'sonos') {
+            type = 'speaker';
+        } else if (sourceType === 'hue') {
+            type = 'light';
+            name = 'Philips Hue Bridge';
+        } else if (sourceType === 'elgato') {
+            type = 'light';
+        } else if (sourceType === 'nanoleaf') {
+            type = 'light';
+        } else if (lowerName.includes('shelly')) {
+            type = 'switch';
+        } else if (lowerName.includes('printer') || lowerName.includes('officejet') || lowerName.includes('deskjet') || lowerName.includes('laserjet') || lowerName.includes('envy')) {
             type = 'printer';
         } else if (lowerName.includes('tv') || lowerName.includes('chromecast')) {
             type = 'tv';
@@ -258,6 +340,14 @@ class DeviceManager extends EventEmitter {
             type = 'light';
         } else if (lowerName.includes('speaker') || lowerName.includes('sonos')) {
             type = 'speaker';
+        } else if (lowerName.includes('denon') || model.toLowerCase().includes('denon') || lowerName.includes('marantz') || model.toLowerCase().includes('marantz')) {
+            type = 'receiver';
+        } else if (lowerName.includes('yamaha') || model.toLowerCase().includes('yamaha')) {
+            type = 'receiver';
+        } else if (lowerName.includes('onkyo') || model.toLowerCase().includes('onkyo')) {
+            type = 'receiver';
+        } else if (lowerName.includes('pioneer') || model.toLowerCase().includes('pioneer')) {
+            type = 'receiver';
         } else if (lowerName.includes('sensor') || lowerName.includes('homepod') || model.includes('AudioAccessory')) {
             type = 'sensor';
             if (model.includes('AudioAccessory5')) name = 'HomePod Mini';
@@ -265,8 +355,13 @@ class DeviceManager extends EventEmitter {
             else if (model.includes('AudioAccessory6')) name = 'HomePod (Gen 2)';
         }
 
-        // Resolve IP (use the first address found)
-        const ip = service.addresses && service.addresses.length > 0 ? service.addresses[0] : null;
+        // Resolve IP (prefer IPv4)
+        let ip = null;
+        if (service.addresses && service.addresses.length > 0) {
+            // Try to find an IPv4 address first
+            const ipv4 = service.addresses.find(addr => addr.includes('.') && !addr.includes(':'));
+            ip = ipv4 || service.addresses[0];
+        }
 
         if (ip) {
             let initialState = { on: false };
@@ -274,12 +369,15 @@ class DeviceManager extends EventEmitter {
                 // Default sensor state (mock values since we can't read HAP without pairing)
                 initialState = { temperature: 21.5, humidity: 45 };
             }
-
             let protocol = `mdns-${sourceType}`;
             // If we identify a Samsung TV via mDNS, use the Tizen protocol for control
             if (type === 'tv' && (name.toLowerCase().includes('samsung') || model.toLowerCase().includes('samsung'))) {
                 protocol = 'samsung-tizen';
+            } else if (type === 'receiver' || name.toLowerCase().includes('denon') || model.toLowerCase().includes('denon') || name.toLowerCase().includes('marantz')) {
+                protocol = 'denon-avr'; // Use Denon protocol for Marantz too as they are often compatible
             }
+
+            // Sanitize ID
 
             // Sanitize ID
             const safeId = `mdns-${service.fqdn || name}-${sourceType}`.replace(/[^a-zA-Z0-9-_]/g, '_');
@@ -343,6 +441,12 @@ class DeviceManager extends EventEmitter {
                 updated = true;
             }
 
+            // Upgrade type from unknown to printer
+            if (existingDevice.type === 'unknown' && device.type === 'printer') {
+                existingDevice.type = 'printer';
+                updated = true;
+            }
+
             if (updated) {
                 this.emit('device-updated', existingDevice);
             }
@@ -355,6 +459,11 @@ class DeviceManager extends EventEmitter {
             this.devices.set(device.id, device);
             this.emit('device-added', device);
             console.log(`Device discovered: ${device.name} (${device.type}) via ${device.protocol || 'mock'}`);
+
+            // If Denon, try to fetch inputs
+            if (device.protocol === 'denon-avr') {
+                this.fetchDenonInputs(device);
+            }
         }
     }
 
@@ -364,6 +473,399 @@ class DeviceManager extends EventEmitter {
 
     getDevice(id) {
         return this.devices.get(id);
+    }
+
+    async fetchDenonInputs(device) {
+        // Try to fetch inputs from Denon Web Interface (XML)
+        // Common paths: /goform/formMainZone_MainZoneXml.xml or /goform/AppCommand.xml
+        const http = require('http');
+        
+        const fetchXml = (path) => {
+            return new Promise((resolve, reject) => {
+                const req = http.get(`http://${device.ip}${path}`, { timeout: 2000 }, (res) => {
+                    if (res.statusCode !== 200) {
+                        res.resume();
+                        return reject(new Error(`Status ${res.statusCode}`));
+                    }
+                    let data = '';
+                    res.on('data', (chunk) => data += chunk);
+                    res.on('end', () => resolve(data));
+                });
+                req.on('error', (err) => reject(err));
+                req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+            });
+        };
+
+        try {
+            // Try MainZone XML first (older/standard models)
+            const xml = await fetchXml('/goform/formMainZone_MainZoneXml.xml');
+            
+            // Simple regex parsing to avoid heavy XML parser dependency
+            // Look for <InputFuncList>...</InputFuncList> or similar structures
+            // Actually, often it's just current status.
+            // Let's try to find renamed sources if possible.
+            // Some models expose /goform/formMainZone_MainZoneXmlStatusLite.xml
+            
+            // If we can't find a list, we might just have to stick to defaults.
+            // But let's look for <RenameSource> tags if they exist in config endpoints.
+            
+            // NOTE: Fetching the full list of *renamed* inputs is tricky without a specific API doc for the model.
+            // However, we can try to just check if the device responds to HTTP, and if so, maybe we can assume it supports more.
+            
+            // For now, let's just log that we connected.
+            // console.log(`[Denon] Connected to HTTP interface of ${device.name}`);
+            
+        } catch (e) {
+            // console.log(`[Denon] Could not fetch XML from ${device.name}: ${e.message}`);
+        }
+    }
+
+    async refreshDevice(id) {
+        const device = this.devices.get(id);
+        if (!device) return;
+
+        // Refresh Local Mac
+        if (this.isLocalMachine(device.ip)) {
+             const state = await this.getMacState(device.ip);
+             if (state) {
+                 let updated = false;
+                 if (device.state.on !== state.on) { device.state.on = state.on; updated = true; }
+                 if (device.state.volume !== state.volume) { device.state.volume = state.volume; updated = true; }
+                 if (device.state.mediaTitle !== state.title) { device.state.mediaTitle = state.title; updated = true; }
+                 
+                 if (updated) this.emit('device-updated', device);
+             }
+             return;
+        }
+
+        if (device.protocol === 'mdns-airplay' && device.type === 'tv') {
+            // Check credentials
+            if (!this.appleTvCredentials[device.deviceId]) return;
+
+            const { spawn } = require('child_process');
+            const pythonPath = path.join(__dirname, '../.venv/bin/python');
+            const scriptPath = path.join(__dirname, 'control_atv.py');
+            
+            // Use 'status' and pass IP
+            const pythonProcess = spawn(pythonPath, [scriptPath, 'status', '--ip', device.ip]);
+            
+            pythonProcess.stdout.on('data', (data) => {
+                try {
+                    const str = data.toString().trim();
+                    // Filter out non-JSON lines if any
+                    const jsonLine = str.split('\n').find(l => l.startsWith('{'));
+                    if (jsonLine) {
+                        const status = JSON.parse(jsonLine);
+                        let updated = false;
+                        
+                        if (status.on !== undefined && device.state.on !== status.on) {
+                            device.state.on = status.on;
+                            updated = true;
+                        }
+                        if (status.volume !== undefined && device.state.volume !== status.volume) {
+                            device.state.volume = status.volume;
+                            updated = true;
+                        }
+                        
+                        // Media info
+                        if (status.title !== device.state.mediaTitle) {
+                            device.state.mediaTitle = status.title;
+                            updated = true;
+                        }
+                        if (status.artist !== device.state.mediaArtist) {
+                            device.state.mediaArtist = status.artist;
+                            updated = true;
+                        }
+
+                        if (updated) {
+                            // console.log(`[DeviceManager] Updated status for ${device.name}`);
+                            this.emit('device-updated', device);
+                        }
+                    }
+                } catch (e) {
+                    // console.error('Error parsing ATV status:', e);
+                }
+            });
+        } else if (device.type === 'light' && (device.name.toLowerCase().includes('yeelight') || device.name.toLowerCase().includes('ylbulb'))) {
+            // Refresh Yeelight
+            const socket = new net.Socket();
+            const id = 2; // Request ID for status
+            const msg = { id, method: 'get_prop', params: ['power', 'bright'] };
+            
+            socket.setTimeout(2000);
+            socket.connect(55443, device.ip, () => {
+                socket.write(JSON.stringify(msg) + '\r\n');
+            });
+
+            socket.on('data', (data) => {
+                try {
+                    const response = JSON.parse(data.toString());
+                    if (response.id === id && response.result) {
+                        const [power, bright] = response.result;
+                        let updated = false;
+                        
+                        const isOn = power === 'on';
+                        if (device.state.on !== isOn) {
+                            device.state.on = isOn;
+                            updated = true;
+                        }
+                        
+                        const brightness = parseInt(bright);
+                        if (device.state.brightness !== brightness) {
+                            device.state.brightness = brightness;
+                            updated = true;
+                        }
+
+                        if (updated) {
+                            this.emit('device-updated', device);
+                        }
+                    }
+                } catch (e) {
+                    // console.error('Error parsing Yeelight status:', e);
+                }
+                socket.destroy();
+            });
+
+            socket.on('error', () => socket.destroy());
+            socket.on('timeout', () => socket.destroy());
+        } else if (device.protocol === 'mdns-googlecast') {
+            // Refresh Cast Device
+            const client = new CastClient();
+            client.connect(device.ip, () => {
+                client.getStatus((err, status) => {
+                    if (!err && status) {
+                        let updated = false;
+                        
+                        // Volume
+                        if (status.volume) {
+                            const vol = Math.round((status.volume.level || 0) * 100);
+                            if (device.state.volume !== vol) {
+                                device.state.volume = vol;
+                                updated = true;
+                            }
+                            // Muted = Off? Or just muted. Let's say muted is off for toggle purposes
+                            const isOn = !status.volume.muted;
+                            if (device.state.on !== isOn) {
+                                device.state.on = isOn;
+                                updated = true;
+                            }
+                        }
+
+                        // Application (Media)
+                        if (status.applications && status.applications.length > 0) {
+                            const app = status.applications[0];
+                            if (app.displayName !== 'Backdrop') {
+                                device.state.mediaApp = app.displayName;
+                                device.state.mediaTitle = app.statusText || app.displayName;
+                                device.state.state = 'playing'; // Assume playing if app is open
+                                updated = true;
+                            } else {
+                                if (device.state.state !== 'idle') {
+                                    device.state.state = 'idle';
+                                    device.state.mediaTitle = '';
+                                    updated = true;
+                                }
+                            }
+                        }
+
+                        if (updated) this.emit('device-updated', device);
+                    }
+                    client.close();
+                });
+            });
+            client.on('error', () => {});
+        } else if (device.protocol === 'samsung-tizen') {
+            // Refresh Samsung TV (Basic On/Off check via TCP)
+            const socket = new net.Socket();
+            socket.setTimeout(2000);
+            socket.connect(8002, device.ip, () => {
+                // Connected = ON
+                if (!device.state.on) {
+                    device.state.on = true;
+                    this.emit('device-updated', device);
+                }
+                socket.destroy();
+            });
+            socket.on('error', () => {
+                // Error = OFF (likely)
+                if (device.state.on) {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
+                socket.destroy();
+            });
+            socket.on('timeout', () => {
+                if (device.state.on) {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
+                socket.destroy();
+            });
+        } else if (device.protocol === 'denon-avr') {
+            // Refresh Denon AVR
+            const socket = new net.Socket();
+            socket.setTimeout(2000);
+            
+            let buffer = '';
+            socket.connect(23, device.ip, () => {
+                socket.write('PW?\rMV?\rSI?\r');
+            });
+
+            socket.on('data', (data) => {
+                buffer += data.toString();
+                const lines = buffer.split('\r');
+                let updated = false;
+                
+                lines.forEach(line => {
+                    if (line.startsWith('PW')) {
+                        const isOn = line === 'PWON';
+                        if (device.state.on !== isOn) {
+                            device.state.on = isOn;
+                            updated = true;
+                        }
+                    } else if (line.startsWith('MV')) {
+                        if (line.length > 2 && !isNaN(line.substring(2))) {
+                            let volStr = line.substring(2);
+                            if (volStr.length === 3) volStr = volStr.substring(0, 2);
+                            const vol = parseInt(volStr);
+                            if (device.state.volume !== vol) {
+                                device.state.volume = vol;
+                                updated = true;
+                            }
+                        }
+                    } else if (line.startsWith('SI')) {
+                        const source = line.substring(2);
+                        if (device.state.mediaTitle !== source) {
+                            device.state.mediaTitle = source;
+                            updated = true;
+                        }
+                    }
+                });
+
+                if (updated) this.emit('device-updated', device);
+            });
+
+            socket.on('error', () => socket.destroy());
+            socket.on('timeout', () => socket.destroy());
+            setTimeout(() => socket.destroy(), 1000);
+        } else if (device.type === 'printer') {
+            this.refreshPrinter(device);
+        }
+    }
+
+    async refreshPrinter(device) {
+        const http = require('http');
+        const https = require('https');
+        
+        const fetchXml = (protocol, port, path) => {
+            return new Promise((resolve, reject) => {
+                const lib = protocol === 'https' ? https : http;
+                const options = {
+                    hostname: device.ip,
+                    port: port,
+                    path: path,
+                    method: 'GET',
+                    timeout: 3000,
+                    rejectUnauthorized: false // Ignore self-signed certs
+                };
+
+                const req = lib.request(options, (res) => {
+                    if (res.statusCode !== 200) {
+                        res.resume();
+                        return reject(new Error(`Status ${res.statusCode}`));
+                    }
+                    let data = '';
+                    res.on('data', (chunk) => data += chunk);
+                    res.on('end', () => resolve(data));
+                });
+                req.on('error', (err) => reject(err));
+                req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+                req.end();
+            });
+        };
+
+        const parseInks = (xml) => {
+            const inks = [];
+            
+            // Helper to find values with optional namespaces
+            const findValue = (block, tagName) => {
+                const regex = new RegExp(`<([a-zA-Z0-9]+:)?${tagName}>([^<]+)</([a-zA-Z0-9]+:)?${tagName}>`);
+                const match = regex.exec(block);
+                return match ? match[2] : null;
+            };
+
+            // Split into ConsumableInfo blocks (handling namespaces like ccdyn:ConsumableInfo)
+            const blocks = xml.split(/<([a-zA-Z0-9]+:)?ConsumableInfo>/);
+            
+            blocks.forEach(block => {
+                if (!block.includes('ConsumableLabelCode')) return;
+                
+                const label = findValue(block, 'ConsumableLabelCode');
+                const level = findValue(block, 'ConsumablePercentageLevelRemaining');
+                
+                if (label && level) {
+                    // Filter out non-ink consumables (like printheads which might be labeled CMYK)
+                    // Usually single letters C, M, Y, K are inks.
+                    if (['C', 'M', 'Y', 'K'].includes(label)) {
+                        inks.push({ color: label, level: parseInt(level) });
+                    }
+                }
+            });
+            
+            // Fallback for older MarkerColor style
+            if (inks.length === 0) {
+                 const regex2 = /<MarkerColor>(\w+)<\/MarkerColor>[\s\S]*?<Level>(\d+)<\/Level>/g;
+                 let match;
+                 while ((match = regex2.exec(xml)) !== null) {
+                     inks.push({ color: match[1], level: parseInt(match[2]) });
+                 }
+            }
+            
+            return inks;
+        };
+
+        try {
+            let xml = '';
+            let inks = [];
+
+            // Try ProductStatusDyn first
+            try {
+                xml = await fetchXml('https', 443, '/DevMgmt/ProductStatusDyn.xml');
+                inks = parseInks(xml);
+            } catch (e) {}
+
+            // If no inks found, try ConsumableConfigDyn
+            if (inks.length === 0) {
+                try {
+                    xml = await fetchXml('https', 443, '/DevMgmt/ConsumableConfigDyn.xml');
+                    inks = parseInks(xml);
+                } catch (e) {}
+            }
+            
+            // If still nothing, try HTTP ports
+            if (inks.length === 0) {
+                 try {
+                    xml = await fetchXml('http', 80, '/DevMgmt/ProductStatusDyn.xml');
+                    inks = parseInks(xml);
+                    if (inks.length === 0) {
+                        xml = await fetchXml('http', 80, '/DevMgmt/ConsumableConfigDyn.xml');
+                        inks = parseInks(xml);
+                    }
+                } catch (e) {}
+            }
+            
+            if (inks.length > 0) {
+                const currentInks = JSON.stringify(device.state.inks);
+                const newInks = JSON.stringify(inks);
+                if (currentInks !== newInks) {
+                    device.state.inks = inks;
+                    this.emit('device-updated', device);
+                }
+            }
+            
+        } catch (e) {
+            // console.log(`[Printer] Error: ${e.message}`);
+        }
     }
 
     async controlDevice(id, command, value) {
@@ -389,6 +891,8 @@ class DeviceManager extends EventEmitter {
             device.state.volume = Math.max((parseInt(device.state.volume) || 0) - 5, 0);
         } else if (command === 'set_target_temp') {
             device.state.target = value;
+        } else if (command === 'set_input') {
+            device.state.input = value;
         }
 
         // Handle Protocol Specific Actions
@@ -402,6 +906,8 @@ class DeviceManager extends EventEmitter {
             this.handleSamsungCommand(device, command, value);
         } else if (device.protocol === 'mdns-airplay') {
             this.handleAirPlayCommand(device, command, value);
+        } else if (device.protocol === 'denon-avr') {
+            this.handleDenonCommand(device, command, value);
         }
 
         // Emit update
@@ -433,6 +939,12 @@ class DeviceManager extends EventEmitter {
     }
 
     async handleAirPlayCommand(device, command, value) {
+        // Check if target is local machine (Server running on the Mac we want to control)
+        if (this.isLocalMachine(device.ip)) {
+             console.log(`[Local Control] Executing command '${command}' locally via AppleScript...`);
+             return this.handleLocalMacCommand(command, value);
+        }
+
         if (!device.deviceId) {
             console.log(`[AirPlay] Cannot control ${device.name}: No device ID found.`);
             return;
@@ -467,7 +979,10 @@ class DeviceManager extends EventEmitter {
         else if (command === 'volume_up') pyCommand = 'volume_up';
         else if (command === 'volume_down') pyCommand = 'volume_down';
         else if (command === 'set_volume') pyCommand = 'set_volume';
-        else if (command === 'toggle') pyCommand = 'play'; // Fallback for toggle
+        else if (command === 'toggle') {
+            // Use current state (which was just toggled in controlDevice) to decide
+            pyCommand = device.state.on ? 'turn_on' : 'turn_off';
+        }
         
         if (!pyCommand) {
             console.log(`[AirPlay] Command ${command} not supported via Python script yet.`);
@@ -483,6 +998,9 @@ class DeviceManager extends EventEmitter {
         if (value !== undefined && value !== null) {
             args.push(String(value));
         }
+        
+        // Add IP argument to ensure we control the correct device
+        args.push('--ip', device.ip);
         
         const pythonProcess = spawn(pythonPath, args);
 
@@ -531,6 +1049,17 @@ class DeviceManager extends EventEmitter {
                 sendKey(ws, 'KEY_VOLUP');
             } else if (command === 'volume_down') {
                 sendKey(ws, 'KEY_VOLDOWN');
+            } else if (command === 'set_input') {
+                const keyMap = {
+                    'tv': 'KEY_TV',
+                    'hdmi1': 'KEY_HDMI1',
+                    'hdmi2': 'KEY_HDMI2',
+                    'hdmi3': 'KEY_HDMI3',
+                    'hdmi4': 'KEY_HDMI4'
+                };
+                const key = keyMap[value.toLowerCase()];
+                if (key) sendKey(ws, key);
+                else sendKey(ws, `KEY_${value.toUpperCase()}`);
             }
         };
 
@@ -607,6 +1136,119 @@ class DeviceManager extends EventEmitter {
         });
     }
 
+    startPairing(ip) {
+        return new Promise((resolve, reject) => {
+            if (this.pairingProcess) {
+                reject(new Error('Pairing already in progress'));
+                return;
+            }
+
+            const { spawn } = require('child_process');
+            const pythonPath = path.join(__dirname, '../.venv/bin/python');
+            const scriptPath = path.join(__dirname, 'pair_atv_interactive.py');
+
+            console.log(`Starting pairing for ${ip}...`);
+            this.pairingProcess = spawn(pythonPath, [scriptPath, ip]);
+
+            let outputBuffer = '';
+
+            this.pairingProcess.stdout.on('data', (data) => {
+                const str = data.toString();
+                outputBuffer += str;
+                console.log(`[Pairing] ${str.trim()}`);
+
+                if (str.includes('WAITING_FOR_PIN')) {
+                    resolve({ status: 'waiting_for_pin' });
+                }
+            });
+
+            this.pairingProcess.stderr.on('data', (data) => {
+                console.error(`[Pairing Error] ${data.toString()}`);
+            });
+
+            this.pairingProcess.on('close', (code) => {
+                console.log(`Pairing process exited with code ${code}`);
+                if (code !== 0 && !outputBuffer.includes('PAIRING_SUCCESS')) {
+                    this.pairingProcess = null;
+                    reject(new Error('Pairing process failed'));
+                }
+            });
+        });
+    }
+
+    submitPairingPin(pin) {
+        return new Promise((resolve, reject) => {
+            if (!this.pairingProcess) {
+                reject(new Error('No pairing in progress'));
+                return;
+            }
+
+            console.log(`Submitting PIN: ${pin}`);
+            this.pairingProcess.stdin.write(pin + '\n');
+
+            let outputBuffer = '';
+
+            const dataHandler = (data) => {
+                const str = data.toString();
+                outputBuffer += str;
+                
+                if (str.includes('PAIRING_SUCCESS')) {
+                    // Extract JSON
+                    const lines = outputBuffer.split('\n');
+                    const jsonLine = lines.find(l => l.trim().startsWith('{'));
+                    if (jsonLine) {
+                        try {
+                            const creds = JSON.parse(jsonLine);
+                            this.saveCredentials(creds);
+                            
+                            // Immediately add/update the device in the list
+                            for (const [deviceId, c] of Object.entries(creds)) {
+                                if (c.ip) {
+                                    this.addDevice({
+                                        id: deviceId,
+                                        name: c.name || `Apple Device (${c.ip})`,
+                                        type: 'tv',
+                                        ip: c.ip,
+                                        protocol: 'mdns-airplay',
+                                        deviceId: deviceId,
+                                        state: { on: true, volume: 0 }
+                                    });
+                                }
+                            }
+                            
+                            resolve({ status: 'success', credentials: creds });
+                        } catch (e) {
+                            console.error('Failed to parse credentials JSON:', e);
+                            resolve({ status: 'success', warning: 'Failed to parse credentials but pairing succeeded' });
+                        }
+                    } else {
+                        resolve({ status: 'success' }); 
+                    }
+                    this.pairingProcess = null;
+                } else if (str.includes('ERROR')) {
+                    reject(new Error(str));
+                    this.pairingProcess = null;
+                }
+            };
+
+            this.pairingProcess.stdout.on('data', dataHandler);
+        });
+    }
+
+    saveCredentials(newCreds) {
+        const credsPath = path.join(__dirname, '../appletv-credentials.json');
+        let existing = {};
+        if (fs.existsSync(credsPath)) {
+            try {
+                existing = JSON.parse(fs.readFileSync(credsPath));
+            } catch (e) {}
+        }
+        Object.assign(existing, newCreds);
+        fs.writeFileSync(credsPath, JSON.stringify(existing, null, 2));
+        this.appleTvCredentials = existing; // Update in-memory
+        console.log('Credentials saved.');
+    }
+
     handleYeelightCommand(device, command, value) {
         const socket = new net.Socket();
         const id = 1; // Request ID
@@ -633,6 +1275,66 @@ class DeviceManager extends EventEmitter {
                     console.warn('⚠️  HINT: Zorg ervoor dat "LAN Control" is ingeschakeld in de Yeelight app voor dit apparaat.');
                 }
             });
+        }
+    }
+
+    handleDenonCommand(device, command, value) {
+        const socket = new net.Socket();
+        socket.setTimeout(2000);
+        
+        const send = (cmd) => {
+            socket.connect(23, device.ip, () => {
+                socket.write(cmd + '\r');
+                setTimeout(() => socket.destroy(), 500);
+            });
+        };
+
+        socket.on('error', (err) => {
+            console.error('Denon AVR Error:', err.message);
+            socket.destroy();
+        });
+
+        if (command === 'turn_on') send('PWON');
+        else if (command === 'turn_off') send('PWSTANDBY');
+        else if (command === 'toggle') {
+            if (device.state.on) send('PWSTANDBY');
+            else send('PWON');
+        }
+        else if (command === 'set_volume') {
+            // Denon volume is 0-98 (usually). Web is 0-100.
+            let vol = Math.min(Math.max(parseInt(value), 0), 98);
+            if (vol < 10) vol = '0' + vol;
+            send(`MV${vol}`);
+        }
+        else if (command === 'volume_up') send('MVUP');
+        else if (command === 'volume_down') send('MVDOWN');
+        else if (command === 'mute') send('MUON');
+        else if (command === 'unmute') send('MUOFF');
+        else if (command === 'set_input') {
+            // Map generic inputs to Denon codes
+            // If we have a custom mapping from fetchDenonInputs, use it?
+            // For now, use standard mapping + direct pass-through if it looks like a code
+            const inputMap = {
+                'tv': 'SITV',
+                'hdmi1': 'SIBD',      // Often Blu-ray
+                'hdmi2': 'SIDVD',     // Often DVD
+                'hdmi3': 'SIGAME',    // Often Game
+                'hdmi4': 'SIMPLAY',   // Often Media Player
+                'bluetooth': 'SIBT',
+                'aux': 'SIAUX1',
+                'tuner': 'SITUNER',
+                'net': 'SINET',
+                'phono': 'SIPHONO',
+                'cd': 'SICD'
+            };
+            
+            // If value is already a code (starts with SI), use it
+            if (value.startsWith('SI')) {
+                send(value);
+            } else {
+                const code = inputMap[value.toLowerCase()] || `SI${value.toUpperCase()}`;
+                send(code);
+            }
         }
     }
 
@@ -680,6 +1382,183 @@ class DeviceManager extends EventEmitter {
             return device;
         }
         return null;
+    }
+
+    isLocalMachine(ip) {
+        const os = require('os');
+        const interfaces = os.networkInterfaces();
+        for (const name of Object.keys(interfaces)) {
+            for (const iface of interfaces[name]) {
+                if (iface.address === ip) return true;
+            }
+        }
+        return false;
+    }
+
+    handleLocalMacCommand(command, value) {
+        const { exec } = require('child_process');
+        let script = '';
+        
+        if (command === 'volume_up') script = 'set volume output volume ((output volume of (get volume settings)) + 5)';
+        else if (command === 'volume_down') script = 'set volume output volume ((output volume of (get volume settings)) - 5)';
+        else if (command === 'set_volume') script = `set volume output volume ${value}`;
+        else if (command === 'toggle' || command === 'turn_off') script = 'set volume output muted not (output muted of (get volume settings))';
+        else if (command === 'play' || command === 'pause' || command === 'next' || command === 'previous') {
+            let action = '';
+            if (command === 'play' || command === 'pause') action = 'playpause';
+            else if (command === 'next') action = 'next track';
+            else if (command === 'previous') action = 'previous track';
+
+            script = `
+                tell application "System Events"
+                    set musicRunning to (name of processes) contains "Music"
+                    set spotifyRunning to (name of processes) contains "Spotify"
+                end tell
+
+                if musicRunning then
+                    tell application "Music" to ${action}
+                else if spotifyRunning then
+                    tell application "Spotify" to ${action}
+                end if
+            `;
+        }
+        
+        if (script) {
+            exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
+                if (error) console.error(`Local Mac Control Error: ${error.message}`);
+            });
+        }
+    }
+
+    getDeviceState(ip, protocol) {
+        if (this.isLocalMachine(ip)) {
+            return this.getMacState(ip);
+        } else if (protocol === 'mdns-airplay') {
+            return this.getAppleTVState(ip);
+        }
+        return Promise.resolve(null);
+    }
+
+    getAppleTVState(ip) {
+        return new Promise((resolve) => {
+            const { spawn } = require('child_process');
+            const pythonPath = path.join(__dirname, '../.venv/bin/python');
+            const scriptPath = path.join(__dirname, 'control_atv.py');
+            
+            // Use 'status' command to get power, volume, and metadata
+            const proc = spawn(pythonPath, [scriptPath, 'status', '--ip', ip]);
+            let output = '';
+
+            proc.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            proc.on('close', (code) => {
+                if (code === 0) {
+                    try {
+                        const data = JSON.parse(output.trim());
+                        // Normalize keys
+                        resolve({
+                            on: data.on,
+                            volume: data.volume,
+                            state: data.playing_state || 'stopped',
+                            title: data.title,
+                            artist: data.artist,
+                            album: data.album,
+                            app: data.app
+                        });
+                    } catch (e) {
+                        resolve(null);
+                    }
+                } else {
+                    resolve(null);
+                }
+            });
+        });
+    }
+
+    getMacState(ip) {
+        return new Promise((resolve) => {
+            // Check if it's the local mac
+            const isLocal = this.isLocalMachine(ip);
+            if (!isLocal) {
+                resolve(null); // Remote mac state not implemented yet
+                return;
+            }
+
+            const script = `
+            set vol to output volume of (get volume settings)
+            set isMuted to output muted of (get volume settings)
+            
+            tell application "System Events"
+                set musicRunning to (name of processes) contains "Music"
+                set spotifyRunning to (name of processes) contains "Spotify"
+            end tell
+
+            set mediaState to "stopped"
+            set mediaTitle to ""
+            set mediaArtist to ""
+            set mediaApp to ""
+
+            if musicRunning then
+                tell application "Music"
+                    if player state is playing then
+                        set mediaState to "playing"
+                        set mediaTitle to name of current track
+                        set mediaArtist to artist of current track
+                        set mediaApp to "Music"
+                    else if player state is paused then
+                        set mediaState to "paused"
+                        set mediaTitle to name of current track
+                        set mediaArtist to artist of current track
+                        set mediaApp to "Music"
+                    end if
+                end tell
+            end if
+
+            if mediaState is "stopped" and spotifyRunning then
+                tell application "Spotify"
+                    if player state is playing then
+                        set mediaState to "playing"
+                        set mediaTitle to name of current track
+                        set mediaArtist to artist of current track
+                        set mediaApp to "Spotify"
+                    else if player state is paused then
+                        set mediaState to "paused"
+                        set mediaTitle to name of current track
+                        set mediaArtist to artist of current track
+                        set mediaApp to "Spotify"
+                    end if
+                end tell
+            end if
+            
+            -- Escape quotes for JSON
+            -- Simple replacement, might need more robust handling for complex strings
+            
+            return "{ \\"volume\\": " & vol & ", \\"muted\\": " & isMuted & ", \\"state\\": \\"" & mediaState & "\\", \\"title\\": \\"" & mediaTitle & "\\", \\"artist\\": \\"" & mediaArtist & "\\", \\"app\\": \\"" & mediaApp & "\\" }"
+            `;
+
+            const { exec } = require('child_process');
+            exec(`osascript -e '${script}'`, (error, stdout, stderr) => {
+                if (error) {
+                    resolve({ state: 'stopped', volume: 0, on: true });
+                } else {
+                    try {
+                        const data = JSON.parse(stdout.trim());
+                        resolve({
+                            on: !data.muted, // Treat unmuted as "on" for simplicity, or just always true for Mac
+                            volume: data.volume,
+                            state: data.state,
+                            title: data.title,
+                            artist: data.artist,
+                            app: data.app
+                        });
+                    } catch (e) {
+                        resolve({ state: 'stopped', volume: 0, on: true });
+                    }
+                }
+            });
+        });
     }
 }
 

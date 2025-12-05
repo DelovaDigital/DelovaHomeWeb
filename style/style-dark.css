@@ -152,7 +152,7 @@ nav a:hover {
 
 .main-nav ul {
     display: flex;
-    gap: 20px;
+    gap: 10px;
     margin: 0;
     padding: 0;
 }
@@ -169,12 +169,17 @@ nav a:hover {
 
 .main-nav a {
     color: #b0b0b0;
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.8rem;
     border-radius: 8px;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    font-size: 0.95rem;
+}
+
+.main-nav a i {
+    font-size: 0.9rem;
 }
 
 .main-nav a:hover,
@@ -220,17 +225,24 @@ nav a:hover {
 }
 
 /* Cards */
-    .dashboard-grid {
-        display: grid;
-        /* place widgets in the left column and content on the right */
-        grid-template-columns: 260px 1fr;
-        gap: 20px;
-        align-items: start;
-    }
+.card.settings-card {
+    background: #2d2d2d;
+    backdrop-filter: blur(10px);
+    border: 1px solid #404040;
+    border-radius: 16px;
+    padding: 0;
     margin: 0;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
     overflow: hidden;
     transition: transform 0.3s ease;
+}
+
+.dashboard-grid {
+    display: grid;
+    /* place widgets in the left column and content on the right */
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
+    align-items: start;
 }
 
 .card.settings-card:hover {
@@ -270,6 +282,8 @@ nav a:hover {
     border: none;
     background: transparent;
     box-shadow: none;
+}
+
 .widgets-panel { display:flex; flex-direction: column; gap:12px; }
 /* Ensure widgets-panel stays narrow and aligns to the left column */
 .widgets-panel { max-width: 260px; width: 100%; margin-right: auto; }
@@ -573,6 +587,9 @@ input:checked+.slider:before {
     cursor: pointer;
     color: #aaa;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-toggle.active {
@@ -610,4 +627,23 @@ input:checked+.slider:before {
     padding: 40px;
     color: #888;
     font-size: 1.1em;
+}
+
+.btn-mini {
+    background: #404040;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-mini:hover {
+    background: #505050;
+    color: white;
 }

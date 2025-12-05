@@ -7,6 +7,7 @@ const WebSocket = require('ws');
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
 const lgtv = require('lgtv2');
+const spotifyManager = require('./spotifyManager');
 // const { scan, parseCredentials, AppleTV } = require('node-appletv-x');
 
 class DeviceManager extends EventEmitter {
@@ -873,6 +874,46 @@ class DeviceManager extends EventEmitter {
         if (!device) return null;
 
         console.log(`Controlling ${device.name} (${device.protocol}): ${command} = ${value}`);
+
+        // Check if this device is the active Spotify device
+        // If so, route media/volume commands to Spotify
+        try {
+            const spotifyState = await spotifyManager.getPlaybackState();
+            if (spotifyState && spotifyState.device) {
+                const spotifyName = spotifyState.device.name.toLowerCase();
+                const deviceName = device.name.toLowerCase();
+                
+                // Fuzzy match names
+                if (deviceName.includes(spotifyName) || spotifyName.includes(deviceName)) {
+                    console.log(`[DeviceManager] Routing command to Spotify for ${device.name}`);
+                    
+                    if (command === 'play') await spotifyManager.play();
+                    else if (command === 'pause') await spotifyManager.pause();
+                    else if (command === 'next') await spotifyManager.next();
+                    else if (command === 'previous') await spotifyManager.previous();
+                    else if (command === 'set_volume') await spotifyManager.setVolume(value);
+                    else if (command === 'volume_up') {
+                        const currentVol = spotifyState.device.volume_percent || 50;
+                        await spotifyManager.setVolume(Math.min(currentVol + 5, 100));
+                    } else if (command === 'volume_down') {
+                        const currentVol = spotifyState.device.volume_percent || 50;
+                        await spotifyManager.setVolume(Math.max(currentVol - 5, 0));
+                    }
+                    
+                    // If it was a media command, we might be done. 
+                    // But for volume, we might want to let the native handler try too?
+                    // Usually Spotify volume IS the system volume for Connect devices.
+                    if (['play', 'pause', 'next', 'previous', 'set_volume', 'volume_up', 'volume_down'].includes(command)) {
+                        // Update local state optimistically
+                        if (command === 'set_volume') device.state.volume = value;
+                        this.emit('device-updated', device);
+                        return device;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error checking Spotify state in controlDevice:', e);
+        }
 
         // Update state object first (Optimistic UI)
         if (command === 'toggle') {

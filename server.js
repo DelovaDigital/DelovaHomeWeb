@@ -452,6 +452,23 @@ app.get('/api/nas/:id/stream', async (req, res) => {
     const { path: filePath } = req.query;
     
     try {
+        // Try to get a stream directly (supports SMB2/Linux fallback)
+        const stream = await nasManager.getFileStream(id, filePath);
+        if (stream) {
+            // Set headers for video streaming
+            res.setHeader('Content-Type', 'video/mp4'); // Default to mp4, browser will handle others usually
+            // Note: smbclient stream doesn't support range requests easily, so seeking might be limited.
+            
+            // Pipe the stream to the response
+            stream.pipe(res);
+            stream.on('error', (err) => {
+                console.error('Stream error:', err);
+                if (!res.headersSent) res.status(500).send('Stream error');
+            });
+            return;
+        }
+
+        // Fallback to local file path (Native mode legacy)
         const localPath = await nasManager.getLocalFilePath(id, filePath);
         if (!localPath) {
             return res.status(404).send('File not found or not accessible');
@@ -459,7 +476,7 @@ app.get('/api/nas/:id/stream', async (req, res) => {
         res.sendFile(localPath);
     } catch (err) {
         console.error('Stream error:', err);
-        res.status(500).send('Error streaming file');
+        if (!res.headersSent) res.status(500).send('Error streaming file');
     }
 });
 

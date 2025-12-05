@@ -242,8 +242,6 @@ class NasManager {
         }
 
         // Normalize path: ensure backslashes for SMB
-        // Also, if dirPath is empty, use empty string, otherwise ensure no leading slash if not needed
-        // SMB2 lib usually expects 'folder\\subfolder'
         const smbPath = dirPath.replace(/\//g, '\\');
 
         return new Promise((resolve, reject) => {
@@ -258,6 +256,19 @@ class NasManager {
                 client.readdir(smbPath, (err, files) => {
                     if (err) {
                         console.error('[NAS] SMB2 readdir error:', err);
+                        
+                        // Fallback to smbclient on Linux if authentication fails
+                        if (process.platform === 'linux' && (err.code === 'STATUS_LOGON_FAILURE' || err.message.includes('LOGON_FAILURE'))) {
+                            console.log('[NAS] SMB2 library failed. Trying smbclient fallback...');
+                            this.listWithSmbClient(config, dirPath)
+                                .then(resolve)
+                                .catch(fallbackErr => {
+                                    console.error('[NAS] smbclient fallback failed:', fallbackErr);
+                                    reject(err); // Return original error if fallback fails
+                                });
+                            return;
+                        }
+                        
                         reject(err);
                     } else {
                         const fileList = files.map(f => ({
@@ -271,6 +282,72 @@ class NasManager {
                 console.error('[NAS] SMB2 client init error:', err);
                 reject(err);
             }
+        });
+    }
+
+    async listWithSmbClient(config, dirPath) {
+        const { exec } = require('child_process');
+        
+        // Convert share to forward slashes for smbclient (//host/share)
+        const shareUrl = config.share.replace(/\\/g, '/');
+        
+        // Construct user%password
+        let userAuth = config.username;
+        if (config.domain) {
+            userAuth = `${config.domain}\\${config.username}`;
+        }
+        // Escape single quotes in password for shell
+        const safePassword = config.password.replace(/'/g, "'\\''");
+        const auth = `${userAuth}%${safePassword}`;
+        
+        // Command: smbclient //host/share -U user%pass -D path -c ls
+        // Note: dirPath needs to be backslashes for -D? Or forward? smbclient usually takes backslashes for internal paths
+        const internalPath = dirPath.replace(/\//g, '\\');
+        
+        // Add legacy support options just in case
+        const options = "--option='client min protocol=NT1'";
+        
+        let cmd = `smbclient '${shareUrl}' ${options} -U '${auth}' -c 'ls'`;
+        if (internalPath) {
+            cmd = `smbclient '${shareUrl}' ${options} -U '${auth}' -D '${internalPath}' -c 'ls'`;
+        }
+        
+        console.log(`[NAS] Executing smbclient: ${cmd.replace(safePassword, '***')}`);
+
+        return new Promise((resolve, reject) => {
+            exec(cmd, { maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
+                if (err) {
+                    console.error('[NAS] smbclient error:', stderr);
+                    if (stderr.includes('not found')) {
+                        return reject(new Error('smbclient not installed. Run: sudo apt-get install smbclient'));
+                    }
+                    return reject(new Error(stderr || err.message));
+                }
+                
+                console.log('[NAS] smbclient success. Parsing output...');
+                // console.log('[NAS] Raw output (first 5 lines):', stdout.split('\n').slice(0, 5).join('\n'));
+                
+                const files = [];
+                const lines = stdout.split('\n');
+                for (const line of lines) {
+                    // Parse output: "  filename   D   0  Date..."
+                    // Regex: space + name + space + attributes + space + size
+                    // Attributes can be D, A, H, S, R, N, etc.
+                    const match = line.match(/^\s+(.*?)\s+([DAHSRN]+)\s+(\d+)\s+\w+/);
+                    if (match) {
+                        const name = match[1].trim();
+                        const attr = match[2];
+                        if (name === '.' || name === '..') continue;
+                        
+                        files.push({
+                            name: name,
+                            isDirectory: attr.includes('D')
+                        });
+                    }
+                }
+                console.log(`[NAS] Parsed ${files.length} files.`);
+                resolve(files);
+            });
         });
     }
 
@@ -336,6 +413,74 @@ class NasManager {
                 else resolve(stats);
             });
          });
+    }
+
+    async getFileStream(id, filePath) {
+        const config = this.config.find(c => c.id === id);
+        if (!config) throw new Error('NAS not found');
+
+        // Normalize path
+        const smbPath = filePath.replace(/\//g, '\\');
+
+        if (config.mode === 'native') {
+             const localPath = await this.getLocalFilePath(id, filePath);
+             if (localPath) return fs.createReadStream(localPath);
+        }
+
+        // Try SMB2 lib first
+        try {
+             const client = new SMB2({
+                share: config.share,
+                domain: config.domain || '',
+                username: config.username,
+                password: config.password
+            });
+            
+            // Check if createReadStream is available and works
+            return await client.createReadStream(smbPath);
+        } catch (err) {
+            console.error('[NAS] SMB2 stream error:', err);
+            // Fallback to smbclient on Linux
+             if (process.platform === 'linux') {
+                 console.log('[NAS] Falling back to smbclient stream');
+                 return this.getSmbClientStream(config, filePath);
+             }
+             throw err;
+        }
+    }
+
+    getSmbClientStream(config, filePath) {
+        const { spawn } = require('child_process');
+        
+        const shareUrl = config.share.replace(/\\/g, '/');
+        let userAuth = config.username;
+        if (config.domain) userAuth = `${config.domain}\\${config.username}`;
+        
+        const auth = `${userAuth}%${config.password}`;
+        const internalPath = filePath.replace(/\//g, '\\');
+        
+        // smbclient //host/share -U user%pass -c 'get "path" -'
+        // Note: When using spawn, do NOT wrap arguments in quotes like in shell
+        const args = [
+            shareUrl,
+            "--option=client min protocol=NT1",
+            '-U', auth,
+            '-c', `get "${internalPath}" -`
+        ];
+        
+        console.log(`[NAS] Spawning smbclient stream for ${internalPath}`);
+        const child = spawn('smbclient', args);
+        
+        // Log stderr for debugging
+        child.stderr.on('data', (data) => {
+             console.error(`[NAS Stream Stderr]: ${data.toString()}`);
+        });
+        
+        child.on('close', (code) => {
+            console.log(`[NAS] smbclient stream process exited with code ${code}`);
+        });
+
+        return child.stdout;
     }
 
     async getLocalFilePath(id, filePath) {

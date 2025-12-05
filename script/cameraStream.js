@@ -14,11 +14,15 @@ class CameraStream extends EventEmitter {
         if (this.process) return;
 
         const args = [
+            '-loglevel', 'warning',
             '-rtsp_transport', 'tcp',
+            '-analyzeduration', '10000000',
+            '-probesize', '10000000',
             '-i', this.url,
             '-f', 'mpegts',
             '-codec:v', 'mpeg1video',
-            '-codec:a', 'mp2',
+            // '-codec:a', 'mp2', // Disable audio for stability
+            '-an',
             '-stats',
             '-r', '25',
             '-q:v', '3',
@@ -26,9 +30,9 @@ class CameraStream extends EventEmitter {
             '-b:v', '2000k',
             '-bufsize', '4000k',
             '-maxrate', '2000k',
-            '-ar', '44100',
-            '-ac', '1',
-            '-b:a', '128k',
+            // '-ar', '44100',
+            // '-ac', '1',
+            // '-b:a', '128k',
             '-'
         ];
 
@@ -40,7 +44,7 @@ class CameraStream extends EventEmitter {
         });
 
         this.process.stderr.on('data', (data) => {
-            // console.log(`[ffmpeg] ${data}`); // Optional: verbose logging
+            console.log(`[ffmpeg] ${data}`); // Optional: verbose logging
         });
 
         this.process.on('close', (code) => {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
 
@@ -20,12 +21,65 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   final ApiService _apiService = ApiService();
   late double _currentBrightness;
   late double _currentVolume;
+  WebViewController? _webViewController;
 
   @override
   void initState() {
     super.initState();
     _currentBrightness = widget.device.status.brightness;
     _currentVolume = widget.device.status.volume;
+    
+    if (widget.device.type.toLowerCase() == 'camera') {
+      _initCamera();
+    }
+  }
+
+  Future<void> _initCamera() async {
+    final baseUrl = await _apiService.getBaseUrl();
+    final uri = Uri.parse(baseUrl);
+    final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
+    final wsUrl = '$scheme://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(widget.device.ip)}';
+    
+    // Trigger the stream start on the backend (pre-warm)
+    try {
+      await _apiService.sendCommand(widget.device.id, 'start_stream', {'rtspUrl': widget.device.ip});
+      // Note: The backend endpoint is actually /api/camera/stream, but ApiService.sendCommand uses /api/devices/:id/command
+      // We might need a specific call for camera stream start if it's not a device command.
+      // Looking at server.js, /api/camera/stream is a separate endpoint.
+      // However, the WebSocket connection also triggers the stream in the new implementation.
+      // So we might just rely on the WebSocket connection.
+    } catch (e) {
+      print('Error starting stream: $e');
+    }
+
+    final html = '''
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+          canvas { width: 100%; height: 100%; object-fit: contain; }
+        </style>
+        <script src="$baseUrl/script/jsmpeg.min.js"></script>
+      </head>
+      <body>
+        <canvas id="video-canvas"></canvas>
+        <script>
+          var canvas = document.getElementById('video-canvas');
+          var url = '$wsUrl';
+          var player = new JSMpeg.Player(url, {canvas: canvas, autoplay: true, audio: false, loop: true});
+        </script>
+      </body>
+      </html>
+    ''';
+
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
+      ..loadHtmlString(html);
+      
+    if (mounted) setState(() {});
   }
 
   Future<void> _sendCommand(String command, [Map<String, dynamic>? args]) async {
@@ -243,23 +297,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.grey[800]!),
                   ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.videocam_off, size: 64, color: Colors.grey[700]),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "Live Stream Unavailable",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "IP: ${widget.device.ip}",
-                          style: TextStyle(color: Colors.grey[800], fontSize: 12),
-                        ),
-                      ],
-                    ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: _webViewController != null
+                        ? WebViewWidget(controller: _webViewController!)
+                        : const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(color: Colors.amber),
+                                SizedBox(height: 16),
+                                Text("Connecting to stream...", style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -516,9 +567,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               // You'd need to implement color conversion logic here
               final color = colors[index];
               _sendCommand('set_color', {
-                'r': (color.r * 255).round(), 
-                'g': (color.g * 255).round(), 
-                'b': (color.b * 255).round()
+                'value': {
+                  'r': (color.r * 255).round(), 
+                  'g': (color.g * 255).round(), 
+                  'b': (color.b * 255).round()
+                }
               });
             },
             child: Container(

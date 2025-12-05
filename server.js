@@ -41,8 +41,6 @@ app.post('/api/camera/stream', (req, res) => {
     cameraStreamManager.getStream(deviceId, rtspUrl);
     
     res.json({ ok: true });
-}); const port = cameraStreamManager.startStream(deviceId, rtspUrl);
-    res.json({ ok: true, port });
 });
 
 app.post('/api/camera/stop', (req, res) => {
@@ -534,6 +532,10 @@ app.post('/api/system/update', (req, res) => {
         setTimeout(() => {
             console.log('Restarting server...');
             process.exit(0); // Systemd/PM2 should restart this process
+        }, 1000);
+    });
+});
+
 const https = require('https');
 const fs = require('fs');
 
@@ -576,10 +578,6 @@ server.on('upgrade', (request, socket, head) => {
         socket.destroy();
     }
 });
-
-(async () => {g('SSL certificates not found or invalid, falling back to HTTP');
-    app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
-}
 
 (async () => {
   try {

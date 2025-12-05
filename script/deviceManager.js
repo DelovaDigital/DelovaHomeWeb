@@ -1446,10 +1446,17 @@ class DeviceManager extends EventEmitter {
             }
 
             const { spawn } = require('child_process');
-            const pythonPath = path.join(__dirname, '../.venv/bin/python');
+            
+            // Try to find the correct python executable
+            let pythonPath = path.join(__dirname, '../.venv/bin/python');
+            if (!fs.existsSync(pythonPath)) {
+                // Fallback to system python
+                pythonPath = 'python3';
+            }
+
             const scriptPath = path.join(__dirname, 'pair_atv_interactive.py');
 
-            console.log(`Starting pairing for ${ip}...`);
+            console.log(`Starting pairing for ${ip} using ${pythonPath}...`);
             this.pairingProcess = spawn(pythonPath, [scriptPath, ip]);
 
             let outputBuffer = '';

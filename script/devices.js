@@ -105,7 +105,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         tempDisplay.textContent = `${device.state.temperature}°C`;
                     }
 
-                    // Trigger media update if applicable
+                    // Update Play/Pause Button Icon and Command
+                    const playBtn = card.querySelector('.btn-play-pause');
+                    if (playBtn) {
+                        const isPlaying = device.state.playingState === 'playing';
+                        const icon = playBtn.querySelector('i');
+                        if (icon) icon.className = `fas fa-${isPlaying ? 'pause' : 'play'}`;
+                        // Update onclick to send the correct command
+                        playBtn.setAttribute('onclick', `controlDevice('${device.id}', '${isPlaying ? 'pause' : 'play'}', null)`);
+                    }
+
+                    // Trigger media update if applicable (for title/artist text only)
                     const isMediaPlayer = device.protocol === 'mdns-airplay' || 
                                           device.protocol === 'samsung-tizen' || 
                                           device.protocol === 'lg-webos' ||
@@ -168,11 +178,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 } else {
                     // Always show media controls for Apple devices
+                    const isPlaying = device.state.playingState === 'playing';
+                    const playIcon = isPlaying ? 'fa-pause' : 'fa-play';
+                    // Use explicit play/pause commands to avoid toggling power
+                    const playCmd = isPlaying ? 'pause' : 'play';
+
                     mediaControls = `
                         <div class="control-group" style="justify-content: center; gap: 15px; margin-top: 10px;">
                             <button class="btn-mini" onclick="controlDevice('${device.id}', 'previous', null)"><i class="fas fa-step-backward"></i></button>
-                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'play', null)"><i class="fas fa-play"></i></button>
-                            <button class="btn-mini" onclick="controlDevice('${device.id}', 'pause', null)"><i class="fas fa-pause"></i></button>
+                            <button class="btn-mini btn-play-pause" onclick="controlDevice('${device.id}', '${playCmd}', null)"><i class="fas ${playIcon}"></i></button>
                             <button class="btn-mini" onclick="controlDevice('${device.id}', 'next', null)"><i class="fas fa-step-forward"></i></button>
                         </div>
                     `;
@@ -355,8 +369,35 @@ document.addEventListener('DOMContentLoaded', () => {
                                   device.protocol === 'lg-webos' ||
                                   (device.name && device.name.toLowerCase().includes('mac'));
 
-            if (isMediaPlayer) {
+            // Special handling for unpaired AirPlay devices
+            // Check for false OR undefined (using !device.paired)
+            if (device.protocol === 'mdns-airplay' && !device.paired) {
+                controls = `
+                    <div class="control-group" style="flex-direction: column; gap: 10px;">
+                        <div style="font-size: 0.9em; color: #f39c12; text-align: center;">
+                            <i class="fas fa-exclamation-triangle"></i> Niet gekoppeld
+                        </div>
+                        <button class="btn-action" onclick="startPairing('${device.ip}', '${device.name}')" style="width:100%; background-color: #e67e22; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-link"></i> Koppelen
+                        </button>
+                    </div>
+                `;
+            }
+
+            if (isMediaPlayer && device.paired !== false) {
                  controls += `<div id="now-playing-${device.id}" class="now-playing-info"></div>`;
+                 
+                 // Add Re-pair button for AirPlay devices (in case they are paired but broken)
+                 if (device.protocol === 'mdns-airplay') {
+                     controls += `
+                        <div style="margin-top: 10px; text-align: center;">
+                            <button class="btn-link" onclick="startPairing('${device.ip}', '${device.name}')" style="font-size: 0.8em; color: #888; background: none; border: none; text-decoration: underline; cursor: pointer;">
+                                Opnieuw koppelen
+                            </button>
+                        </div>
+                     `;
+                 }
+
                  // Trigger update after render
                  setTimeout(() => updateDeviceState(device.id), 100);
             }
@@ -383,13 +424,69 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    window.startPairing = (ip, name) => {
+        if (!confirm(`Wil je ${name} (${ip}) koppelen? Zorg dat het apparaat aan staat.`)) return;
+        
+        fetch('/api/pair/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) {
+                const pin = prompt('Voer de PIN-code in die op het apparaat verschijnt:');
+                if (pin) {
+                    fetch('/api/pair/pin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pin })
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.ok) {
+                            alert('Koppelen geslaagd!');
+                            fetchDevices();
+                        } else {
+                            alert('Koppelen mislukt: ' + res.message);
+                        }
+                    });
+                }
+            } else {
+                alert('Kon koppelen niet starten: ' + data.message);
+            }
+        });
+    };
+
     window.updateDeviceState = (id) => {
         fetch(`/api/devices/${id}/state`)
             .then(res => res.json())
             .then(data => {
                 if (data.ok && data.state) {
+                    // We only want to update the text info, not inject controls again
+                    // But we need a container for the text info.
+                    // Let's check if we have a dedicated info container, or if we are using the old 'now-playing' one.
+                    
+                    // If we have a dedicated info container created in renderDevices (we don't yet), we use that.
+                    // Or we can just use the existing 'now-playing' container but ONLY put text in it.
+                    
                     const container = document.getElementById(`now-playing-${id}`);
-                    if (!container) return;
+                    if (!container) {
+                        // If container doesn't exist, maybe we should create it inside the card?
+                        // But renderDevices doesn't create it.
+                        // Let's try to find the card and append it if missing, but only for text.
+                        const card = document.getElementById(`device-card-${id}`);
+                        if (card) {
+                            const div = document.createElement('div');
+                            div.id = `now-playing-${id}`;
+                            div.className = 'now-playing-info';
+                            // Insert after controls
+                            const controls = card.querySelector('.device-body');
+                            if (controls) controls.appendChild(div);
+                        }
+                        return; // Wait for next cycle or let the above creation handle it next time? 
+                        // Actually if we just created it, we can populate it.
+                    }
                     
                     const s = data.state;
                     if (s.state === 'playing' || s.state === 'paused') {
@@ -398,18 +495,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div style="font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.title || 'Unknown Title'}</div>
                                 <div style="font-size: 0.9em; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.artist || 'Unknown Artist'}</div>
                                 <div style="font-size: 0.8em; opacity: 0.6;">${s.app || ''} - ${s.state}</div>
-                        `;
-                        
-                        // Add controls
-                        html += `
-                            <div class="media-controls" style="display: flex; justify-content: center; gap: 15px; margin-top: 10px;">
-                                <button class="btn-mini" onclick="controlDevice('${id}', 'previous', null)"><i class="fas fa-step-backward"></i></button>
-                                <button class="btn-mini" onclick="controlDevice('${id}', '${s.state === 'playing' ? 'pause' : 'play'}', null)">
-                                    <i class="fas fa-${s.state === 'playing' ? 'pause' : 'play'}"></i>
-                                </button>
-                                <button class="btn-mini" onclick="controlDevice('${id}', 'next', null)"><i class="fas fa-step-forward"></i></button>
                             </div>
-                        </div>`;
+                        `;
+                        // Removed controls injection to avoid duplicates
                         
                         container.innerHTML = html;
                     } else {

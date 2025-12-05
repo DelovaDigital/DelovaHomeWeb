@@ -105,15 +105,52 @@ async def main():
                     pass
                 print("Warning: turn_off not supported by this protocol. Hint: Power control requires MRP pairing. Please re-pair your Apple TV.")
         elif cmd == 'play':
-            await atv.remote_control.play()
+            try:
+                await atv.remote_control.play()
+                print(f"Command '{cmd}' executed successfully.")
+            except Exception:
+                # Try play_pause as fallback
+                try:
+                    await atv.remote_control.play_pause()
+                    print(f"Command '{cmd}' (via play_pause) executed successfully.")
+                except Exception:
+                    print("Error executing command: play is not supported")
+                    sys.exit(1)
+
         elif cmd == 'pause':
-            await atv.remote_control.pause()
+            try:
+                await atv.remote_control.pause()
+                print(f"Command '{cmd}' executed successfully.")
+            except Exception:
+                # Try play_pause as fallback
+                try:
+                    await atv.remote_control.play_pause()
+                    print(f"Command '{cmd}' (via play_pause) executed successfully.")
+                except Exception:
+                    print("Error executing command: pause is not supported")
+                    sys.exit(1)
+                    
         elif cmd == 'stop':
-            await atv.remote_control.stop()
+            try:
+                await atv.remote_control.stop()
+                print(f"Command '{cmd}' executed successfully.")
+            except Exception:
+                print("Error executing command: stop is not supported")
+                sys.exit(1)
         elif cmd == 'next':
-            await atv.remote_control.next()
+            try:
+                await atv.remote_control.next()
+                print(f"Command '{cmd}' executed successfully.")
+            except Exception:
+                print("Error executing command: next is not supported")
+                sys.exit(1)
         elif cmd == 'previous':
-            await atv.remote_control.previous()
+            try:
+                await atv.remote_control.previous()
+                print(f"Command '{cmd}' executed successfully.")
+            except Exception:
+                print("Error executing command: previous is not supported")
+                sys.exit(1)
         elif cmd == 'select':
             await atv.remote_control.select()
         elif cmd == 'menu':
@@ -205,12 +242,15 @@ async def main():
             print(json.dumps(info))
         else:
             print(f"Unknown command: {cmd}")
-            
-        if cmd != 'status' and cmd != 'get_state':
-            print(f"Command '{cmd}' executed successfully.")
+            sys.exit(1)
+
+        # Success messages are now handled inside individual blocks for critical commands
+        if cmd not in ['status', 'get_state', 'play', 'pause', 'stop', 'next', 'previous']:
+             print(f"Command '{cmd}' executed successfully.")
 
     except Exception as e:
         print(f"Error executing command: {e}")
+        sys.exit(1)
     finally:
         if atv:
             # print(f"DEBUG: atv type: {type(atv)}")

@@ -15,6 +15,7 @@ class DeviceManager extends EventEmitter {
         super();
         this.devices = new Map(); // id -> device
         this.samsungConnections = new Map(); // ip -> { ws, timeout }
+        this.atvProcesses = new Map(); // ip -> process
         this.pairingProcess = null;
         this.appleTvCredentials = {};
         this.loadAppleTvCredentials();
@@ -383,6 +384,20 @@ class DeviceManager extends EventEmitter {
             // Sanitize ID
             const safeId = `mdns-${service.fqdn || name}-${sourceType}`.replace(/[^a-zA-Z0-9-_]/g, '_');
 
+            // Check pairing status for AirPlay devices
+            let isPaired = false;
+            if (protocol === 'mdns-airplay') {
+                // If we have a deviceId, check credentials
+                if (deviceId && this.appleTvCredentials[deviceId]) {
+                    isPaired = true;
+                } else if (!deviceId) {
+                    // If no deviceId in TXT, try to match by IP in credentials
+                    const creds = Object.values(this.appleTvCredentials);
+                    const match = creds.find(c => c.ip === ip);
+                    if (match) isPaired = true;
+                }
+            }
+
             this.addDevice({
                 id: safeId,
                 name: name,
@@ -392,6 +407,7 @@ class DeviceManager extends EventEmitter {
                 port: service.port,
                 model: model,
                 deviceId: deviceId,
+                paired: isPaired,
                 state: initialState
             });
         }
@@ -425,6 +441,12 @@ class DeviceManager extends EventEmitter {
             if (isExistingGeneric && !isNewGeneric) {
                 console.log(`[DeviceManager] Updating name for ${device.ip}: ${existingDevice.name} -> ${device.name}`);
                 existingDevice.name = device.name;
+                updated = true;
+            }
+
+            // Update paired status if changed
+            if (device.paired !== undefined && existingDevice.paired !== device.paired) {
+                existingDevice.paired = device.paired;
                 updated = true;
             }
 
@@ -543,50 +565,11 @@ class DeviceManager extends EventEmitter {
             // Check credentials
             if (!this.appleTvCredentials[device.deviceId]) return;
 
-            const { spawn } = require('child_process');
-            const pythonPath = path.join(__dirname, '../.venv/bin/python');
-            const scriptPath = path.join(__dirname, 'control_atv.py');
+            // Use persistent process
+            const process = this.getAtvProcess(device.ip);
+            process.stdin.write(JSON.stringify({ command: 'status' }) + '\n');
             
-            // Use 'status' and pass IP
-            const pythonProcess = spawn(pythonPath, [scriptPath, 'status', '--ip', device.ip]);
-            
-            pythonProcess.stdout.on('data', (data) => {
-                try {
-                    const str = data.toString().trim();
-                    // Filter out non-JSON lines if any
-                    const jsonLine = str.split('\n').find(l => l.startsWith('{'));
-                    if (jsonLine) {
-                        const status = JSON.parse(jsonLine);
-                        let updated = false;
-                        
-                        if (status.on !== undefined && device.state.on !== status.on) {
-                            device.state.on = status.on;
-                            updated = true;
-                        }
-                        if (status.volume !== undefined && device.state.volume !== status.volume) {
-                            device.state.volume = status.volume;
-                            updated = true;
-                        }
-                        
-                        // Media info
-                        if (status.title !== device.state.mediaTitle) {
-                            device.state.mediaTitle = status.title;
-                            updated = true;
-                        }
-                        if (status.artist !== device.state.mediaArtist) {
-                            device.state.mediaArtist = status.artist;
-                            updated = true;
-                        }
-
-                        if (updated) {
-                            // console.log(`[DeviceManager] Updated status for ${device.name}`);
-                            this.emit('device-updated', device);
-                        }
-                    }
-                } catch (e) {
-                    // console.error('Error parsing ATV status:', e);
-                }
-            });
+            // Output is handled in getAtvProcess
         } else if (device.type === 'light' && (device.name.toLowerCase().includes('yeelight') || device.name.toLowerCase().includes('ylbulb'))) {
             // Refresh Yeelight
             const socket = new net.Socket();
@@ -879,16 +862,33 @@ class DeviceManager extends EventEmitter {
         // If so, route media/volume commands to Spotify
         try {
             const spotifyState = await spotifyManager.getPlaybackState();
+            
             if (spotifyState && spotifyState.device) {
                 const spotifyName = spotifyState.device.name.toLowerCase();
                 const deviceName = device.name.toLowerCase();
                 
+                console.log(`[DeviceManager] Checking Spotify match: Device='${deviceName}' vs Spotify='${spotifyName}'`);
+
                 // Fuzzy match names
-                if (deviceName.includes(spotifyName) || spotifyName.includes(deviceName)) {
-                    console.log(`[DeviceManager] Routing command to Spotify for ${device.name}`);
+                let isMatch = deviceName.includes(spotifyName) || spotifyName.includes(deviceName);
+                
+                if (!isMatch) {
+                    // Token based matching for cases like "Alessio's MacBook" vs "MacBook van Alessio"
+                    const tokens = deviceName.split(/[\s\-_']+/).filter(t => t.length > 2 && !['van', 'the', 'for'].includes(t));
+                    const spotifyTokens = spotifyName.split(/[\s\-_']+/);
+                    const matches = tokens.filter(t => spotifyTokens.some(st => st.includes(t) || t.includes(st)));
+                    if (matches.length >= 2) isMatch = true; // At least 2 significant words match (e.g. "MacBook", "Alessio")
+                }
+
+                if (isMatch) {
+                    console.log(`[DeviceManager] Routing command to Spotify for ${device.name} (matched with ${spotifyState.device.name})`);
                     
                     if (command === 'play') await spotifyManager.play();
                     else if (command === 'pause') await spotifyManager.pause();
+                    else if (command === 'toggle') {
+                        if (spotifyState.is_playing) await spotifyManager.pause();
+                        else await spotifyManager.play();
+                    }
                     else if (command === 'next') await spotifyManager.next();
                     else if (command === 'previous') await spotifyManager.previous();
                     else if (command === 'set_volume') await spotifyManager.setVolume(value);
@@ -909,7 +909,11 @@ class DeviceManager extends EventEmitter {
                         this.emit('device-updated', device);
                         return device;
                     }
+                } else {
+                    console.log(`[DeviceManager] Spotify match failed for ${device.name} vs ${spotifyState.device.name}`);
                 }
+            } else {
+                console.log('[DeviceManager] Spotify state is null or no active device');
             }
         } catch (e) {
             console.error('Error checking Spotify state in controlDevice:', e);
@@ -918,6 +922,10 @@ class DeviceManager extends EventEmitter {
         // Update state object first (Optimistic UI)
         if (command === 'toggle') {
             device.state.on = !device.state.on;
+        } else if (command === 'play') {
+            device.state.playingState = 'playing';
+        } else if (command === 'pause') {
+            device.state.playingState = 'paused';
         } else if (command === 'turn_on') {
             device.state.on = true;
         } else if (command === 'turn_off') {
@@ -979,6 +987,77 @@ class DeviceManager extends EventEmitter {
         lgtvClient.on('error', (err) => console.error('LG TV Error:', err));
     }
 
+    getAtvProcess(ip) {
+        if (this.atvProcesses.has(ip)) {
+            return this.atvProcesses.get(ip);
+        }
+
+        console.log(`[DeviceManager] Spawning persistent ATV service for ${ip}...`);
+        const { spawn } = require('child_process');
+        const pythonPath = path.join(__dirname, '../.venv/bin/python');
+        const scriptPath = path.join(__dirname, 'atv_service.py');
+        
+        const process = spawn(pythonPath, [scriptPath, ip]);
+        
+        process.stdout.on('data', (data) => {
+            const lines = data.toString().split('\n');
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                try {
+                    const msg = JSON.parse(line);
+                    if (msg.status === 'connected') {
+                        console.log(`[ATV Service] Connected to ${ip}`);
+                    } else if (msg.error) {
+                        console.error(`[ATV Service Error] ${ip}: ${msg.error}`);
+                    } else if (msg.type === 'status') {
+                        // Update device state
+                        const device = Array.from(this.devices.values()).find(d => d.ip === ip);
+                        if (device) {
+                            const status = msg.data;
+                            let updated = false;
+                            
+                            if (status.on !== undefined && device.state.on !== status.on) {
+                                device.state.on = status.on;
+                                updated = true;
+                            }
+                            if (status.volume !== undefined && device.state.volume !== status.volume) {
+                                device.state.volume = status.volume;
+                                updated = true;
+                            }
+                            if (status.title !== device.state.mediaTitle) {
+                                device.state.mediaTitle = status.title;
+                                updated = true;
+                            }
+                            if (status.artist !== device.state.mediaArtist) {
+                                device.state.mediaArtist = status.artist;
+                                updated = true;
+                            }
+                            if (status.playing_state !== undefined && device.state.playingState !== status.playing_state) {
+                                device.state.playingState = status.playing_state;
+                                updated = true;
+                            }
+                            if (updated) this.emit('device-updated', device);
+                        }
+                    }
+                } catch (e) {
+                    // console.error('[ATV Service] Parse error:', e);
+                }
+            });
+        });
+
+        process.stderr.on('data', (data) => {
+            console.error(`[ATV Service Stderr] ${ip}: ${data.toString()}`);
+        });
+
+        process.on('close', (code) => {
+            console.log(`[ATV Service] Process for ${ip} exited with code ${code}`);
+            this.atvProcesses.delete(ip);
+        });
+
+        this.atvProcesses.set(ip, process);
+        return process;
+    }
+
     async handleAirPlayCommand(device, command, value) {
         // Check if target is local machine (Server running on the Mac we want to control)
         if (this.isLocalMachine(device.ip)) {
@@ -999,7 +1078,7 @@ class DeviceManager extends EventEmitter {
             return;
         }
 
-        console.log(`[AirPlay] Sending command '${command}' to ${device.name} via Python script...`);
+        console.log(`[AirPlay] Sending command '${command}' to ${device.name} via Persistent Service...`);
 
         // Map commands to Python script arguments
         let pyCommand = null;
@@ -1021,8 +1100,11 @@ class DeviceManager extends EventEmitter {
         else if (command === 'volume_down') pyCommand = 'volume_down';
         else if (command === 'set_volume') pyCommand = 'set_volume';
         else if (command === 'toggle') {
-            // Use current state (which was just toggled in controlDevice) to decide
-            pyCommand = device.state.on ? 'turn_on' : 'turn_off';
+            // For toggle, we can send play/pause if it's media, or turn_on/off if it's power
+            // But here we are likely talking about media toggle since we fixed the UI
+            // Let's check if we have playing state
+            if (device.state.playingState === 'playing') pyCommand = 'pause';
+            else pyCommand = 'play';
         }
         
         if (!pyCommand) {
@@ -1030,34 +1112,13 @@ class DeviceManager extends EventEmitter {
             return;
         }
 
-        const { spawn } = require('child_process');
-        // Use the virtual environment python
-        const pythonPath = path.join(__dirname, '../.venv/bin/python');
-        const scriptPath = path.join(__dirname, 'control_atv.py');
-        
-        const args = [scriptPath, pyCommand];
+        const process = this.getAtvProcess(device.ip);
+        const payload = { command: pyCommand };
         if (value !== undefined && value !== null) {
-            args.push(String(value));
+            payload.value = value;
         }
         
-        // Add IP argument to ensure we control the correct device
-        args.push('--ip', device.ip);
-        
-        const pythonProcess = spawn(pythonPath, args);
-
-        pythonProcess.stdout.on('data', (data) => {
-            console.log(`[Python ATV] ${data.toString().trim()}`);
-        });
-
-        pythonProcess.stderr.on('data', (data) => {
-            console.error(`[Python ATV Error] ${data.toString().trim()}`);
-        });
-        
-        pythonProcess.on('close', (code) => {
-            if (code !== 0) {
-                console.log(`[Python ATV] Process exited with code ${code}`);
-            }
-        });
+        process.stdin.write(JSON.stringify(payload) + '\n');
     }
 
     handleSamsungCommand(device, command, value) {
@@ -1252,6 +1313,7 @@ class DeviceManager extends EventEmitter {
                                         ip: c.ip,
                                         protocol: 'mdns-airplay',
                                         deviceId: deviceId,
+                                        paired: true, // Explicitly set paired to true
                                         state: { on: true, volume: 0 }
                                     });
                                 }
@@ -1471,13 +1533,51 @@ class DeviceManager extends EventEmitter {
         }
     }
 
-    getDeviceState(ip, protocol) {
+    async getDeviceState(ip, protocol) {
+        // 1. Check Local Mac
         if (this.isLocalMachine(ip)) {
             return this.getMacState(ip);
-        } else if (protocol === 'mdns-airplay') {
+        } 
+        
+        // 2. Check Spotify (Global check)
+        // If Spotify is playing on this device, return Spotify state
+        try {
+            // Find device name
+            let deviceName = '';
+            for (const [id, d] of this.devices) {
+                if (d.ip === ip) {
+                    deviceName = d.name;
+                    break;
+                }
+            }
+
+            if (deviceName) {
+                const spotifyState = await spotifyManager.getPlaybackState();
+                if (spotifyState && spotifyState.device) {
+                    const spotifyName = spotifyState.device.name.toLowerCase();
+                    const myName = deviceName.toLowerCase();
+                    // Fuzzy match
+                    if (myName.includes(spotifyName) || spotifyName.includes(myName)) {
+                        return {
+                            on: true,
+                            volume: spotifyState.device.volume_percent,
+                            state: spotifyState.is_playing ? 'playing' : 'paused',
+                            title: spotifyState.item ? spotifyState.item.name : '',
+                            artist: spotifyState.item ? spotifyState.item.artists.map(a=>a.name).join(', ') : '',
+                            app: 'Spotify'
+                        };
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore spotify errors
+        }
+
+        // 3. Fallback to AirPlay/AppleTV status
+        if (protocol === 'mdns-airplay') {
             return this.getAppleTVState(ip);
         }
-        return Promise.resolve(null);
+        return null;
     }
 
     getAppleTVState(ip) {

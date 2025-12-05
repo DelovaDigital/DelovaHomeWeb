@@ -23,9 +23,40 @@ const nasManager = require('./script/nasManager');
 const cameraStreamManager = require('./script/cameraStream');
 const WebSocket = require('ws');
 const url = require('url');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const Bonjour = require('bonjour-service');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// --- Hub Identity & Discovery ---
+const HUB_CONFIG_PATH = path.join(__dirname, 'hub_config.json');
+let hubConfig = {
+    hubId: null,
+    name: 'DelovaHome Hub',
+    version: '1.0.0'
+};
+
+// Load or Generate Hub ID
+if (fs.existsSync(HUB_CONFIG_PATH)) {
+    try {
+        hubConfig = JSON.parse(fs.readFileSync(HUB_CONFIG_PATH, 'utf8'));
+    } catch (e) { console.error('Error reading hub config:', e); }
+}
+
+if (!hubConfig.hubId) {
+    hubConfig.hubId = uuidv4();
+    try {
+        fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
+        console.log('Generated new Hub ID:', hubConfig.hubId);
+    } catch (e) { console.error('Error saving hub config:', e); }
+}
+
+// Start mDNS Advertisement
+const bonjour = new Bonjour();
+bonjour.publish({ name: `DelovaHome-${hubConfig.hubId.substring(0, 8)}`, type: 'delovahome', port: port, txt: { id: hubConfig.hubId, version: hubConfig.version } });
+console.log(`Advertising DelovaHome Hub on network (ID: ${hubConfig.hubId})`);
 
 app.use(express.json());
 // Serve static files from project root
@@ -506,6 +537,17 @@ app.get('/api/nas/:id/stream', async (req, res) => {
 });
 
 // --- System Update Endpoints ---
+
+app.get('/api/system/info', (req, res) => {
+    res.json({
+        ok: true,
+        hubId: hubConfig.hubId,
+        name: hubConfig.name,
+        version: hubConfig.version,
+        status: 'online',
+        uptime: process.uptime()
+    });
+});
 
 app.get('/api/system/check-update', (req, res) => {
     // Check if we are behind origin/main

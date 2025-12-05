@@ -38,6 +38,8 @@ dependencies:
   shared_preferences: ^2.5.3
   provider: ^6.1.5+1
   webview_flutter: ^4.13.0
+  nsd: ^4.0.3
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:

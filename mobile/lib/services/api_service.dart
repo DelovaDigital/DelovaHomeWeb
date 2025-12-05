@@ -9,8 +9,23 @@ class ApiService {
 
   Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    final ip = prefs.getString('hub_ip') ?? _defaultIp;
-    return 'https://$ip:$_port';
+    final ip = prefs.getString('hub_ip');
+    final port = prefs.getString('hub_port') ?? _port;
+    
+    if (ip == null) {
+      throw Exception('Hub not connected');
+    }
+    return 'https://$ip:$port';
+  }
+
+  Future<Map<String, dynamic>> getSystemInfo() async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.get(Uri.parse('$baseUrl/api/system/info'));
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to load system info');
+    }
   }
 
   Future<void> setHubIp(String ip) async {

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../services/api_service.dart';
+import 'hub_discovery_screen.dart';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({super.key});
@@ -9,28 +12,54 @@ class SettingsTab extends StatefulWidget {
 }
 
 class _SettingsTabState extends State<SettingsTab> {
-  final _ipController = TextEditingController();
   final _apiService = ApiService();
   bool _isCheckingUpdate = false;
   bool _isUpdating = false;
+  
+  String _hubIp = 'Unknown';
+  String _hubId = 'Unknown';
+  String _hubVersion = 'Unknown';
+  String _appVersion = 'Unknown';
 
   @override
   void initState() {
     super.initState();
-    _loadIp();
+    _loadInfo();
   }
 
-  Future<void> _loadIp() async {
-    final url = await _apiService.getBaseUrl();
-    final uri = Uri.parse(url);
-    _ipController.text = uri.host;
+  Future<void> _loadInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final packageInfo = await PackageInfo.fromPlatform();
+    
+    setState(() {
+      _hubIp = prefs.getString('hub_ip') ?? 'Unknown';
+      _hubId = prefs.getString('hub_id') ?? 'Unknown';
+      _appVersion = packageInfo.version;
+    });
+
+    // Fetch Hub Info from API
+    try {
+      final info = await _apiService.getSystemInfo();
+      if (mounted) {
+        setState(() {
+          _hubVersion = info['version'] ?? 'Unknown';
+          if (info['hubId'] != null) _hubId = info['hubId'];
+        });
+      }
+    } catch (e) {
+      print('Error fetching hub info: $e');
+    }
   }
 
-  Future<void> _saveIp() async {
-    await _apiService.setHubIp(_ipController.text);
+  Future<void> _disconnect() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('hub_ip');
+    await prefs.remove('hub_port');
+    await prefs.remove('hub_id');
+    
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hub IP Saved')),
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HubDiscoveryScreen()),
       );
     }
   }
@@ -98,39 +127,61 @@ class _SettingsTabState extends State<SettingsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ListView(
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          const Text('Connection Settings', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Account & Hub',
+            style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 10),
-          TextField(
-            controller: _ipController,
-            decoration: const InputDecoration(
-              labelText: 'Hub IP Address',
-              hintText: '192.168.0.xxx',
-              border: OutlineInputBorder(),
+          _buildInfoCard('Connected Hub', _hubIp, Icons.router),
+          _buildInfoCard('Hub ID', _hubId, Icons.fingerprint),
+          _buildInfoCard('Hub Version', _hubVersion, Icons.info_outline),
+          _buildInfoCard('App Version', _appVersion, Icons.mobile_friendly),
+          
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.logout),
+            label: const Text('Disconnect / Switch Hub'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[900],
+              foregroundColor: Colors.white,
             ),
-            keyboardType: TextInputType.number,
+            onPressed: _disconnect,
           ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: _saveIp,
-            child: const Text('Save IP'),
+
+          const SizedBox(height: 30),
+          const Text(
+            'System Management',
+            style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
           ),
-          const Divider(height: 40),
-          const Text('System Management', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           ListTile(
-            leading: const Icon(Icons.system_update),
-            title: const Text('Check for Updates'),
-            subtitle: const Text('Check if a new version of Delova Home is available'),
-            trailing: _isCheckingUpdate || _isUpdating
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.arrow_forward_ios),
-            onTap: (_isCheckingUpdate || _isUpdating) ? null : _checkForUpdates,
+            tileColor: Colors.grey[900],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.system_update, color: Colors.blue),
+            title: const Text('Check for Updates', style: TextStyle(color: Colors.white)),
+            trailing: _isCheckingUpdate 
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: _isCheckingUpdate ? null : _checkForUpdates,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(String title, String value, IconData icon) {
+    return Card(
+      color: Colors.grey[900],
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(icon, color: Colors.amber),
+        title: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        subtitle: Text(value, style: const TextStyle(color: Colors.white, fontSize: 16)),
       ),
     );
   }

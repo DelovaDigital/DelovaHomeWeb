@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'screens/main_screen.dart';
+import 'screens/hub_discovery_screen.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -27,7 +27,7 @@ class OmniHomeApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.dark, // Matching the dark theme of the web app
       ),
-      home: const MainScreen(),
+      home: const HubDiscoveryScreen(),
     );
   }
 }

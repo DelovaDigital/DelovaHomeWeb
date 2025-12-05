@@ -1,4 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Auth Guard ---
+    // Check if we are on a protected page (anything inside /pages/)
+    if (window.location.pathname.includes('/pages/')) {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+            // Not logged in, redirect to login page
+            window.location.href = '../index.html';
+            return; // Stop execution
+        }
+    }
+
     const avatar = document.querySelector('.user-avatar');
     const dropdown = document.getElementById('userDropdown');
     const btnLogin = document.getElementById('btnLogin');
@@ -86,6 +97,21 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Login request failed', err);
             alert('Kon geen verbinding maken met de server');
         }
+    }
+
+    // --- Hub Info Loader (Settings Page) ---
+    const hubIdEl = document.getElementById('hubId');
+    if (hubIdEl) {
+        fetch('/api/system/info')
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    document.getElementById('hubName').textContent = data.name;
+                    document.getElementById('hubId').textContent = data.hubId;
+                    document.getElementById('hubVersion').textContent = data.version;
+                }
+            })
+            .catch(err => console.error('Failed to load hub info', err));
     }
 
     // Check for NAS and add "Bestanden" tab if configured

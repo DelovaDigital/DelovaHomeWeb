@@ -5,7 +5,7 @@ class SpotifyManager {
     constructor() {
         this.clientId = process.env.SPOTIFY_CLIENT_ID;
         this.clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-        this.redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'http://localhost:3000/api/spotify/callback';
+        this.redirectUri = process.env.SPOTIFY_REDIRECT_URI || 'https://localhost:3000/api/spotify/callback';
         this.scopes = [
             'user-read-playback-state',
             'user-modify-playback-state',

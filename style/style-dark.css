@@ -30,6 +30,9 @@ body {
 .main-nav a { color: var(--muted); }
 .main-nav a:hover, .main-nav a.active { background-color: rgba(255,255,255,0.03); color: var(--text); }
 
+/* Ensure nav links have same sizing as light theme */
+.main-nav a { color: var(--muted); }
+
 /* Generic components: use color variables only (no layout changes) */
 .widget, .card, .device-card, .room-card, .modal-content, .modal {
     background: var(--card);

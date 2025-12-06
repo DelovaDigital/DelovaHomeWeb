@@ -220,19 +220,7 @@ nav a:hover {
     margin: 0;
 }
 
-.main-nav a {
-    color: #666;
-    padding: 0.5rem 0.9rem;
-    min-height: 40px;
-    line-height: 1;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.98rem;
-    box-sizing: border-box;
-}
+.main-nav a { color: #666; }
 
 .main-nav a i { font-size: 1rem; }
 

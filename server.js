@@ -416,7 +416,34 @@ app.post('/api/users/:id/access', async (req, res) => {
 });
 
 const deviceManager = require('./script/deviceManager');
-const spotifyManager = require('./script/spotifyManager');
+
+// Load spotifyManager defensively to avoid crashing the whole server if the module has syntax errors
+let spotifyManager;
+try {
+    spotifyManager = require('./script/spotifyManager');
+    spotifyManager.available = true;
+} catch (e) {
+    console.error('Failed to load spotifyManager module:', e);
+    // Provide a safe fallback so routes can still operate without Spotify
+    spotifyManager = {
+        available: false,
+        getAuthUrl: () => null,
+        handleCallback: async () => false,
+        getPlaybackState: async () => null,
+        play: async () => { throw new Error('Spotify unavailable'); },
+        pause: async () => { throw new Error('Spotify unavailable'); },
+        next: async () => { throw new Error('Spotify unavailable'); },
+        previous: async () => { throw new Error('Spotify unavailable'); },
+        setVolume: async () => { throw new Error('Spotify unavailable'); },
+        transferPlayback: async () => { throw new Error('Spotify unavailable'); },
+        playContext: async () => { throw new Error('Spotify unavailable'); },
+        playUris: async () => { throw new Error('Spotify unavailable'); },
+        getDevices: async () => [],
+        getUserPlaylists: async () => [],
+        getUserAlbums: async () => [],
+        search: async () => ({ tracks: [], artists: [] })
+    };
+}
 
 // --- Spotify API ---
 app.get('/api/spotify/login', (req, res) => {
@@ -435,8 +462,25 @@ app.get('/api/spotify/callback', async (req, res) => {
 });
 
 app.get('/api/spotify/status', async (req, res) => {
-    const state = await spotifyManager.getPlaybackState();
-    res.json(state || { is_playing: false });
+    try {
+        const state = await spotifyManager.getPlaybackState();
+        res.json(state || { is_playing: false });
+    } catch (e) {
+        console.error('Error getting spotify status:', e);
+        res.json({ is_playing: false, error: 'Spotify unavailable' });
+    }
+});
+
+// Lightweight endpoint to report Spotify availability and current device
+app.get('/api/spotify/me', async (req, res) => {
+    try {
+        const available = spotifyManager && spotifyManager.available === true;
+        const state = available ? await spotifyManager.getPlaybackState() : null;
+        res.json({ available, device: state && state.device ? state.device : null });
+    } catch (e) {
+        console.error('Error in /api/spotify/me:', e);
+        res.json({ available: false, device: null });
+    }
 });
 
 app.post('/api/spotify/control', async (req, res) => {
@@ -493,18 +537,33 @@ app.post('/api/spotify/control', async (req, res) => {
 });
 
 app.get('/api/spotify/devices', async (req, res) => {
-    const devices = await spotifyManager.getDevices();
-    res.json(devices);
+    try {
+        const devices = await spotifyManager.getDevices();
+        res.json(devices);
+    } catch (e) {
+        console.error('Error getting spotify devices:', e);
+        res.json([]);
+    }
 });
 
 app.get('/api/spotify/playlists', async (req, res) => {
-    const playlists = await spotifyManager.getUserPlaylists();
-    res.json(playlists);
+    try {
+        const playlists = await spotifyManager.getUserPlaylists();
+        res.json(playlists);
+    } catch (e) {
+        console.error('Error getting spotify playlists:', e);
+        res.json([]);
+    }
 });
 
 app.get('/api/spotify/albums', async (req, res) => {
-    const albums = await spotifyManager.getUserAlbums();
-    res.json(albums);
+    try {
+        const albums = await spotifyManager.getUserAlbums();
+        res.json(albums);
+    } catch (e) {
+        console.error('Error getting spotify albums:', e);
+        res.json([]);
+    }
 });
 
 // Search endpoint used by mobile app

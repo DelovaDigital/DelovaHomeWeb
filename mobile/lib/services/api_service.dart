@@ -174,6 +174,19 @@ class ApiService {
     return {'tracks': [], 'artists': []};
   }
 
+  Future<Map<String, dynamic>> getSpotifyMe() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/me'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error getting spotify me: $e');
+    }
+    return {'available': false, 'device': null};
+  }
+
   Future<void> spotifyControl(String command, [dynamic value]) async {
     final baseUrl = await getBaseUrl();
     try {

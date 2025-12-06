@@ -8,7 +8,25 @@ const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
-const spotifyManager = require('./spotifyManager');
+// Load spotifyManager defensively to avoid crashing discovery if spotifyManager is broken
+let spotifyManager;
+try {
+    spotifyManager = require('./spotifyManager');
+} catch (e) {
+    console.error('Failed to load spotifyManager in deviceManager:', e && e.message ? e.message : e);
+    spotifyManager = {
+        available: false,
+        getPlaybackState: async () => null,
+        play: async () => { throw new Error('Spotify unavailable'); },
+        pause: async () => { throw new Error('Spotify unavailable'); },
+        next: async () => { throw new Error('Spotify unavailable'); },
+        previous: async () => { throw new Error('Spotify unavailable'); },
+        setVolume: async () => { throw new Error('Spotify unavailable'); },
+        transferPlayback: async () => { throw new Error('Spotify unavailable'); },
+        playContext: async () => { throw new Error('Spotify unavailable'); },
+        playUris: async () => { throw new Error('Spotify unavailable'); }
+    };
+}
 
 class DeviceManager extends EventEmitter {
     constructor() {

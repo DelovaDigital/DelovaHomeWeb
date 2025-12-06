@@ -581,7 +581,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("${ink['label'] ?? colorCode} (${level}%)", style: const TextStyle(color: Colors.grey)),
+                          Text("${ink['label'] ?? colorCode} ($level%)", style: const TextStyle(color: Colors.grey)),
                           const SizedBox(height: 5),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),

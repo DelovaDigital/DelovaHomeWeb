@@ -235,11 +235,9 @@ import '../widgets/device_card.dart';
                             }
 
                             String? playUri;
-                            if (status != null) {
-                              playUri = status['item'] != null ? status['item']['uri'] : null;
-                              playUri ??= status['context'] != null ? status['context']['uri'] : null;
-                            }
-
+                            playUri = status['item'] != null ? status['item']['uri'] : null;
+                            playUri ??= status['context'] != null ? status['context']['uri'] : null;
+                          
                             if (playUri == null) {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No current Spotify track to play on Sonos')));
                               return;
@@ -277,8 +275,11 @@ import '../widgets/device_card.dart';
 
                             final ok = await _apiService.playOnSonos(chosen['uuid'] ?? chosen['uuid'], playUri);
                             if (!context.mounted) return;
-                            if (ok) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Started playing on ${chosen['name']}')));
-                            else ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to start Sonos playback')));
+                            if (ok) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Started playing on ${chosen['name']}')));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to start Sonos playback')));
+                            }
                           } catch (e) {
                             debugPrint('Error playing on Sonos: $e');
                             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error starting Sonos playback')));

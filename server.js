@@ -542,7 +542,7 @@ app.get('/api/spotify/callback', async (req, res) => {
 
 // A middleware to extract userId for spotify routes
 const requireSpotifyUser = (req, res, next) => {
-    const userId = req.query.userId || req.body.userId;
+    const userId = req.query.userId || (req.body && req.body.userId);
     if (!userId) {
         return res.status(400).json({ ok: false, message: 'Missing userId for Spotify request' });
     }

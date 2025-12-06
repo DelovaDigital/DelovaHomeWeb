@@ -176,7 +176,15 @@ class SpotifyManager {
             headers: { ...headers, 'Content-Type': 'application/json' },
             body
         });
-        if (!resp.ok) throw new Error(`Spotify play failed: ${resp.status}`);
+        if (!resp.ok) {
+            if (resp.status === 404) {
+                const error = await resp.json().catch(() => ({}));
+                if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
+                    throw new Error('No active Spotify device found. Please start playing on a device first.');
+                }
+            }
+            throw new Error(`Spotify play failed: ${resp.status}`);
+        }
     }
 
     async pause(userId) {
@@ -266,7 +274,15 @@ class SpotifyManager {
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ context_uri: contextUri })
         });
-        if (!resp.ok) throw new Error(`Spotify playContext failed: ${resp.status}`);
+        if (!resp.ok) {
+            if (resp.status === 404) {
+                const error = await resp.json().catch(() => ({}));
+                if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
+                    throw new Error('No active Spotify device found. Please start playing on a device first.');
+                }
+            }
+            throw new Error(`Spotify playContext failed: ${resp.status}`);
+        }
     }
 
     async playUris(userId, uris) {
@@ -277,7 +293,15 @@ class SpotifyManager {
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ uris: uris })
         });
-        if (!resp.ok) throw new Error(`Spotify playUris failed: ${resp.status}`);
+        if (!resp.ok) {
+            if (resp.status === 404) {
+                const error = await resp.json().catch(() => ({}));
+                if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
+                    throw new Error('No active Spotify device found. Please start playing on a device first.');
+                }
+            }
+            throw new Error(`Spotify playUris failed: ${resp.status}`);
+        }
     }
 
     async search(userId, q) {

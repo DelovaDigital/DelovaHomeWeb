@@ -595,7 +595,22 @@ app.get('/api/status', (req, res) => {
 
 // Device API
 app.get('/api/devices', (req, res) => {
-    res.json(deviceManager.getAllDevices());
+    const devices = deviceManager.getAllDevices();
+    const map = roomsStore.getMap();
+    const rooms = roomsStore.getRooms();
+
+    // Merge room info
+    const enrichedDevices = devices.map(d => {
+        const roomId = map[d.id];
+        const room = rooms.find(r => r.id === roomId);
+        return {
+            ...d,
+            roomId: roomId || null,
+            roomName: room ? room.name : null
+        };
+    });
+
+    res.json(enrichedDevices);
 });
 
 app.post('/api/devices/:id/command', async (req, res) => {

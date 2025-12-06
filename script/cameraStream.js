@@ -11,7 +11,7 @@ class WebRtcCameraStream extends EventEmitter {
         this.udpPort = 0;
         this.ffmpeg = null;
         this.connections = new Set();
-        this.tracks = []; // Array of { track, ssrc }
+        this.tracks = []; // Array of { track, ssrc, pt }
     }
 
     async startUDP() {
@@ -26,16 +26,22 @@ class WebRtcCameraStream extends EventEmitter {
         });
 
         this.udpSocket.on("message", msg => {
-            // Broadcast RTP to all tracks, patching SSRC
+            // Broadcast RTP to all tracks, patching SSRC and Payload Type
             this.tracks.forEach(context => {
-                if (context.ssrc) {
+                if (context.ssrc && context.pt) {
                     // Clone buffer to avoid race conditions/corruption
                     const packet = Buffer.from(msg);
-                    // Overwrite SSRC (bytes 8-11) with the one expected by this client
+                    
+                    // Patch Payload Type (Byte 1)
+                    // Keep the Marker bit (0x80) and inject new PT (0x7F)
+                    packet[1] = (packet[1] & 0x80) | (context.pt & 0x7F);
+
+                    // Patch SSRC (Bytes 8-11)
                     packet.writeUInt32BE(context.ssrc, 8);
+                    
                     context.track.writeRtp(packet);
                 } else {
-                    // Fallback if SSRC not found (shouldn't happen)
+                    // Fallback
                     context.track.writeRtp(msg);
                 }
             });
@@ -126,13 +132,18 @@ class WebRtcCameraStream extends EventEmitter {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        // Extract SSRC from the generated answer SDP
-        // Look for a=ssrc:<number>
+        // 1. Extract SSRC from the generated answer SDP
         const ssrcMatch = answer.sdp.match(/a=ssrc:(\d+)/);
         const ssrc = ssrcMatch ? parseInt(ssrcMatch[1], 10) : 0;
-        console.log(`[WebRTC] Client connected. Assigned SSRC: ${ssrc}`);
 
-        const trackContext = { track, ssrc };
+        // 2. Extract Negotiated Payload Type (PT) for H264
+        // Look for a=rtpmap:<pt> H264/90000
+        const ptMatch = answer.sdp.match(/a=rtpmap:(\d+) H264\/90000/i);
+        const pt = ptMatch ? parseInt(ptMatch[1], 10) : 96;
+
+        console.log(`[WebRTC] Client connected. SSRC: ${ssrc}, PT: ${pt}`);
+
+        const trackContext = { track, ssrc, pt };
         this.tracks.push(trackContext);
 
         pc.connectionStateChange.subscribe(state => {

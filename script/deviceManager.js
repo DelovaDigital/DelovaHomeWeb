@@ -2060,15 +2060,47 @@ class DeviceManager extends EventEmitter {
                 // Try to use the DefaultMediaReceiver player controls
                 try {
                     await launchAndRun((player, done) => {
-                        if (command === 'play') player.play(() => done());
-                        else if (command === 'pause') player.pause(() => done());
-                        else if (command === 'stop') player.stop(() => done());
-                        else if (command === 'next' && typeof player.next === 'function') player.next(() => done());
-                        else if (command === 'previous' && typeof player.previous === 'function') player.previous(() => done());
+                        const fallbackPlayPause = () => {
+                            // Fallback to sending media play/pause keycode (Android KEYCODE_MEDIA_PLAY_PAUSE = 85)
+                            const payload = { type: 'KEYCODE', keyCode: 85 };
+                            try {
+                                client.send('urn:x-cast:com.google.cast.receiver', payload, (err) => {
+                                    if (err) console.warn('[Cast] Fallback key send failed:', err);
+                                    try { client.close(); } catch (e) {}
+                                    done();
+                                });
+                            } catch (e) {
+                                console.error('[Cast] Fallback key send exception:', e);
+                                try { client.close(); } catch (ee) {}
+                                done();
+                            }
+                        };
+
+                        const safe = (fn) => {
+                            try {
+                                fn(() => done());
+                            } catch (err) {
+                                console.warn('[Cast] player action failed, falling back to keycode:', err && err.message ? err.message : err);
+                                fallbackPlayPause();
+                            }
+                        };
+
+                        if (command === 'play') safe(cb => player.play(cb));
+                        else if (command === 'pause') safe(cb => player.pause(cb));
+                        else if (command === 'stop') safe(cb => player.stop(cb));
+                        else if (command === 'next' && typeof player.next === 'function') safe(cb => player.next(cb));
+                        else if (command === 'previous' && typeof player.previous === 'function') safe(cb => player.previous(cb));
                         else if (command === 'toggle') {
-                            // Toggle based on device state if known
-                            if (device.state && device.state.playingState === 'playing') player.pause(() => done());
-                            else player.play(() => done());
+                            // Try to inspect player state first
+                            try {
+                                player.getStatus((err, status) => {
+                                    if (!err && status && status.playerState === 'PLAYING') safe(cb => player.pause(cb));
+                                    else safe(cb => player.play(cb));
+                                });
+                            } catch (e) {
+                                // If getStatus isn't available, fallback to play/pause toggle
+                                safe(cb => player.play(cb));
+                            }
                         } else {
                             // Fallback: just resolve
                             done();
@@ -2076,7 +2108,7 @@ class DeviceManager extends EventEmitter {
                     });
                 } catch (e) {
                     // If launching DefaultMediaReceiver fails, fallback to simple connect actions
-                    console.error('[Cast] DefaultMediaReceiver control failed:', e);
+                    console.error('[Cast] DefaultMediaReceiver control failed:', e && e.message ? e.message : e);
                     if (command === 'play' || command === 'pause' || command === 'stop') {
                         await connect();
                         client.getStatus((err, status) => { try { client.close(); } catch (er) {} });

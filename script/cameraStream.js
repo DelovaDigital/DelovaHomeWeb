@@ -16,40 +16,41 @@ class CameraStream extends EventEmitter {
         const args = [
     '-loglevel', 'error',
 
+    // RTSP stabiliteit zoals VLC
     '-rtsp_transport', 'tcp',
-    '-timeout', '2000000',     // 2 sec i.p.v. freeze
+    '-stimeout', '2000000',
+    '-rw_timeout', '2000000',
 
-    '-fflags', '+genpts',      // genereer timestamps → geen stops
+    // VLC-style buffer (BELANGRIJK!)
+    '-fflags', '+genpts+discardcorrupt',
+    '-max_delay', '500000',      // 500ms jitterbuffer
+    '-fflags', 'flush_packets',
     '-flags', 'low_delay',
+    
+    // iets grotere analyze voor smooth stream
+    '-probesize', '1M',
+    '-analyzeduration', '1M',
 
-    '-probesize', '256k',
-    '-analyzeduration', '256k',
-
-    // bron
     '-i', this.url,
 
-    // output
+    // OUTPUT
     '-f', 'mpegts',
     '-codec:v', 'mpeg1video',
 
     '-r', '25',
     '-g', '25',
 
-    '-q:v', '4',               // iets hoger → encoder minder druk → stabieler
+    '-q:v', '3',                // betere smoothness
 
     '-vf', 'scale=1280:-1',
 
     '-an',
+    '-preset', 'veryfast',
     '-tune', 'zerolatency',
-
-    // voorkom freezes
-    '-max_delay', '0',
-    '-reorder_queue_size', '0',
-
-    '-preset', 'ultrafast',
 
     '-'
 ];
+
 
 
 

@@ -1,5 +1,4 @@
 const fs = require('fs');
-const fs = require('fs');
 const path = require('path');
 const fetch = global.fetch || require('node-fetch');
 
@@ -301,4 +300,3 @@ class SpotifyManager {
 }
 
 module.exports = new SpotifyManager();
-                    const data = await response.json();

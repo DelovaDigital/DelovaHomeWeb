@@ -11,24 +11,36 @@ class WebRtcCameraStream extends EventEmitter {
         this.udpPort = 0;
         this.ffmpeg = null;
         this.connections = new Set();
-        this.tracks = [];
+        this.tracks = []; // Array of { track, ssrc }
     }
 
-async startUDP() {
-    if (this.udpSocket) return;
-    this.udpSocket = dgram.createSocket("udp4");
-    await new Promise(resolve => {
-        this.udpSocket.bind(0, "127.0.0.1", () => {
-            this.udpPort = this.udpSocket.address().port;
-            console.log(`[WebRTC] UDP socket bound to port ${this.udpPort}`);
-            resolve();
+    async startUDP() {
+        if (this.udpSocket) return;
+        this.udpSocket = dgram.createSocket("udp4");
+        await new Promise(resolve => {
+            this.udpSocket.bind(0, "127.0.0.1", () => {
+                this.udpPort = this.udpSocket.address().port;
+                console.log(`[WebRTC] UDP socket bound to port ${this.udpPort}`);
+                resolve();
+            });
         });
-    });
 
-    this.udpSocket.on("message", msg => {
-        this.tracks.forEach(track => track.writeRtp(msg));
-    });
-}
+        this.udpSocket.on("message", msg => {
+            // Broadcast RTP to all tracks, patching SSRC
+            this.tracks.forEach(context => {
+                if (context.ssrc) {
+                    // Clone buffer to avoid race conditions/corruption
+                    const packet = Buffer.from(msg);
+                    // Overwrite SSRC (bytes 8-11) with the one expected by this client
+                    packet.writeUInt32BE(context.ssrc, 8);
+                    context.track.writeRtp(packet);
+                } else {
+                    // Fallback if SSRC not found (shouldn't happen)
+                    context.track.writeRtp(msg);
+                }
+            });
+        });
+    }
 
     startFFmpeg() {
         if (this.ffmpeg) return;
@@ -52,7 +64,7 @@ async startUDP() {
             
             "-f", "rtp",
             "-payload_type", "96",
-            "-ssrc", "12345678", // Fixed SSRC to help debugging/stability
+            "-ssrc", "12345678", // Fixed SSRC (we overwrite it in Node.js)
             `rtp://127.0.0.1:${this.udpPort}?pkt_size=1200`
         ];
 
@@ -69,17 +81,19 @@ async startUDP() {
         });
     }
 
-stop() {
-    if (this.ffmpeg) this.ffmpeg.kill();
-    this.ffmpeg = null;
-
-    if (this.udpSocket) this.udpSocket.close();
-    this.udpSocket = null;
-
-    this.connections.forEach(pc => pc.close());
-    this.connections.clear();
-    this.tracks = [];
-}
+    stop() {
+        if (this.ffmpeg) {
+            this.ffmpeg.kill();
+            this.ffmpeg = null;
+        }
+        if (this.udpSocket) {
+            this.udpSocket.close();
+            this.udpSocket = null;
+        }
+        this.connections.forEach(pc => pc.close());
+        this.connections.clear();
+        this.tracks = [];
+    }
 
     async handleOffer(offerSdp) {
         await this.startUDP();
@@ -106,18 +120,26 @@ stop() {
         this.connections.add(pc);
 
         const track = new MediaStreamTrack({ kind: "video" });
-        this.tracks.push(track);
         pc.addTrack(track);
 
         await pc.setRemoteDescription({ type: "offer", sdp: offerSdp });
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
+        // Extract SSRC from the generated answer SDP
+        // Look for a=ssrc:<number>
+        const ssrcMatch = answer.sdp.match(/a=ssrc:(\d+)/);
+        const ssrc = ssrcMatch ? parseInt(ssrcMatch[1], 10) : 0;
+        console.log(`[WebRTC] Client connected. Assigned SSRC: ${ssrc}`);
+
+        const trackContext = { track, ssrc };
+        this.tracks.push(trackContext);
+
         pc.connectionStateChange.subscribe(state => {
             console.log(`[WebRTC] Connection state: ${state}`);
             if (state === "closed" || state === "failed") {
                 this.connections.delete(pc);
-                const idx = this.tracks.indexOf(track);
+                const idx = this.tracks.indexOf(trackContext);
                 if (idx > -1) this.tracks.splice(idx, 1);
             }
         });
@@ -127,28 +149,26 @@ stop() {
 
         return answer.sdp;
     }
-
 }
 
 class CameraStreamManager {
-constructor() {
-this.streams = new Map();
-}
-
-getStream(deviceId, rtspUrl) {
-    if (!this.streams.has(deviceId)) {
-        this.streams.set(deviceId, new WebRtcCameraStream(rtspUrl));
+    constructor() {
+        this.streams = new Map();
     }
-    return this.streams.get(deviceId);
-}
 
-stopStream(deviceId) {
-    if (this.streams.has(deviceId)) {
-        this.streams.get(deviceId).stop();
-        this.streams.delete(deviceId);
+    getStream(deviceId, rtspUrl) {
+        if (!this.streams.has(deviceId)) {
+            this.streams.set(deviceId, new WebRtcCameraStream(rtspUrl));
+        }
+        return this.streams.get(deviceId);
     }
-}
 
+    stopStream(deviceId) {
+        if (this.streams.has(deviceId)) {
+            this.streams.get(deviceId).stop();
+            this.streams.delete(deviceId);
+        }
+    }
 }
 
 module.exports = new CameraStreamManager();

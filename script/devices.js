@@ -55,21 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById(containerId);
             if (container) {
                 container.innerHTML = `
-                    <div id="camera-login-${deviceId}" class="camera-login" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #eee; background: #2a2a2a; border-radius: 10px; padding: 20px;">
-                        <i class="fas fa-lock" style="font-size: 2em; margin-bottom: 15px; color: #aaa;"></i>
-                        <h3 style="margin-bottom: 20px; color: #fff; font-weight: normal;">Camera Login</h3>
-                        <input type="text" id="cam-user-${deviceId}" placeholder="Gebruikersnaam" style="margin-bottom: 15px; padding: 12px; border-radius: 8px; border: 1px solid #444; width: 80%; background: #333; color: white; outline: none;">
-                        <input type="password" id="cam-pass-${deviceId}" placeholder="Wachtwoord" style="margin-bottom: 20px; padding: 12px; border-radius: 8px; border: 1px solid #444; width: 80%; background: #333; color: white; outline: none;">
-                        <button id="btn-connect-${deviceId}" style="padding: 10px 30px; background: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; transition: background 0.2s;">Verbinden</button>
+                    <div id="camera-login-${deviceId}" class="camera-login">
+                        <i class="fas fa-lock camera-icon"></i>
+                        <h3>Camera Login</h3>
+                        <input class="camera-input" type="text" id="cam-user-${deviceId}" placeholder="Gebruikersnaam">
+                        <input class="camera-input" type="password" id="cam-pass-${deviceId}" placeholder="Wachtwoord">
+                        <button id="btn-connect-${deviceId}" class="camera-btn">Verbinden</button>
                     </div>
                 `;
-                
-                // Add hover effect via JS since we are using inline styles for quickness
+
                 const btn = document.getElementById(`btn-connect-${deviceId}`);
                 if (btn) {
-                    btn.onmouseover = () => btn.style.background = '#0056b3';
-                    btn.onmouseout = () => btn.style.background = '#007bff';
-                    
                     btn.onclick = () => {
                         const user = document.getElementById(`cam-user-${deviceId}`).value;
                         const pass = document.getElementById(`cam-pass-${deviceId}`).value;
@@ -263,6 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3>${device.name}</h3>
                         <p class="device-ip">${summary}</p>
                     </div>
+                    <button class="device-menu-btn" onclick="showDeviceMenu('${device.id}', event); event.stopPropagation();" title="Meer opties">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
                     <button class="btn-toggle ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}'); event.stopPropagation();">
                         <i class="fas fa-power-off"></i>
                     </button>
@@ -336,6 +335,80 @@ document.addEventListener('DOMContentLoaded', () => {
                          if (isOn) iconEl.classList.add('on');
                          else iconEl.classList.remove('on');
                      }
+
+                    // --- Device context menu ---
+                    window.showDeviceMenu = (deviceId, ev) => {
+                        // remove existing menu
+                        const existing = document.getElementById('device-context-menu');
+                        if (existing) existing.remove();
+
+                        const device = allDevices.find(d => d.id === deviceId);
+                        if (!device) return;
+
+                        const menu = document.createElement('div');
+                        menu.id = 'device-context-menu';
+                        menu.style.position = 'absolute';
+                        menu.style.zIndex = 20000;
+                        menu.style.minWidth = '180px';
+                        menu.style.background = 'var(--card)';
+                        menu.style.color = 'var(--text)';
+                        menu.style.border = '1px solid var(--border)';
+                        menu.style.borderRadius = '8px';
+                        menu.style.boxShadow = '0 10px 30px rgba(2,6,23,0.6)';
+                        menu.style.padding = '6px';
+
+                        const actions = [
+                            { label: 'Details', cb: () => openDeviceDetail(deviceId) },
+                            { label: device.state.on ? 'Uitzetten' : 'Aanzetten', cb: () => toggleDevice(deviceId) },
+                            { label: 'Hernoemen', cb: async () => {
+                                const name = prompt('Nieuwe naam:', device.name);
+                                if (name && name.trim() && name !== device.name) {
+                                    await fetch(`/api/devices/${deviceId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name: name.trim() }) });
+                                    fetchDevices();
+                                }
+                            }},
+                            { label: 'Verplaatsen naar kamer', cb: async () => {
+                                if (typeof window.showRoomPicker === 'function') {
+                                    const roomId = await window.showRoomPicker({ deviceId });
+                                    if (roomId) { await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId }) }); fetchDevices(); }
+                                } else {
+                                    alert('Room picker niet beschikbaar');
+                                }
+                            }}
+                        ];
+
+                        actions.forEach(a => {
+                            const item = document.createElement('button');
+                            item.className = 'context-item';
+                            item.textContent = a.label;
+                            item.style.display = 'block';
+                            item.style.width = '100%';
+                            item.style.padding = '8px 10px';
+                            item.style.border = 'none';
+                            item.style.background = 'transparent';
+                            item.style.textAlign = 'left';
+                            item.style.cursor = 'pointer';
+                            item.style.borderRadius = '6px';
+                            item.onmouseover = () => item.style.background = 'rgba(255,255,255,0.02)';
+                            item.onmouseout = () => item.style.background = 'transparent';
+                            item.onclick = (e) => { e.stopPropagation(); a.cb(); menu.remove(); };
+                            menu.appendChild(item);
+                        });
+
+                        document.body.appendChild(menu);
+
+                        // position it near event
+                        const x = ev.pageX || (ev.clientX + window.scrollX);
+                        const y = ev.pageY || (ev.clientY + window.scrollY);
+                        menu.style.left = (x + 6) + 'px';
+                        menu.style.top = (y + 6) + 'px';
+
+                        // click outside to close
+                        const closer = (evt) => {
+                            if (!menu.contains(evt.target)) { menu.remove(); window.removeEventListener('click', closer); }
+                        };
+                        setTimeout(() => window.addEventListener('click', closer), 0);
+                    };
                  }
                  return; 
              }

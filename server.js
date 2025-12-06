@@ -265,6 +265,20 @@ async function initUsersTable() {
                  console.log('Schema Update: Adding CreatedAt column...');
                  await pool.request().query("ALTER TABLE Users ADD CreatedAt DATETIME DEFAULT GETDATE()");
             }
+
+            // --- Add columns for Spotify per-user auth ---
+            if (!cols.includes('spotifyaccesstoken')) {
+                console.log('Schema Update: Adding SpotifyAccessToken column...');
+                await pool.request().query("ALTER TABLE Users ADD SpotifyAccessToken NVARCHAR(512) NULL");
+            }
+            if (!cols.includes('spotifyrefreshtoken')) {
+                console.log('Schema Update: Adding SpotifyRefreshToken column...');
+                await pool.request().query("ALTER TABLE Users ADD SpotifyRefreshToken NVARCHAR(512) NULL");
+            }
+            if (!cols.includes('spotifytokenexpiration')) {
+                console.log('Schema Update: Adding SpotifyTokenExpiration column...');
+                await pool.request().query("ALTER TABLE Users ADD SpotifyTokenExpiration BIGINT NULL");
+            }
         }
     } catch (err) {
         console.error('Error initializing Users table:', err);
@@ -499,24 +513,46 @@ try {
 }
 
 // --- Spotify API ---
+
+// This endpoint starts the OAuth flow for a specific user.
 app.get('/api/spotify/login', (req, res) => {
-    const url = spotifyManager.getAuthUrl();
-    if (url) res.redirect(url);
-    else res.status(500).send('Spotify Client ID not configured');
+    // The user ID must be passed to know who to link the token to.
+    const { userId } = req.query;
+    if (!userId) {
+        return res.status(400).send('User ID is required to link Spotify account.');
+    }
+    const url = spotifyManager.getAuthUrl(userId);
+    if (url) {
+        res.redirect(url);
+    } else {
+        res.status(500).send('Spotify Client ID not configured');
+    }
 });
 
+// Spotify redirects here after the user grants permission.
 app.get('/api/spotify/callback', async (req, res) => {
-    const code = req.query.code;
-    if (await spotifyManager.handleCallback(code)) {
-        res.redirect('/');
+    const { code, state } = req.query;
+    if (await spotifyManager.handleCallback(code, state)) {
+        // You can redirect to a success page or just close the window.
+        res.send('<script>window.close();</script>');
     } else {
         res.status(500).send('Spotify authentication failed');
     }
 });
 
-app.get('/api/spotify/status', async (req, res) => {
+// A middleware to extract userId for spotify routes
+const requireSpotifyUser = (req, res, next) => {
+    const userId = req.query.userId || req.body.userId;
+    if (!userId) {
+        return res.status(400).json({ ok: false, message: 'Missing userId for Spotify request' });
+    }
+    req.userId = userId;
+    next();
+};
+
+app.get('/api/spotify/status', requireSpotifyUser, async (req, res) => {
     try {
-        const state = await spotifyManager.getPlaybackState();
+        const state = await spotifyManager.getPlaybackState(req.userId);
         res.json(state || { is_playing: false });
     } catch (e) {
         console.error('Error getting spotify status:', e);
@@ -524,63 +560,36 @@ app.get('/api/spotify/status', async (req, res) => {
     }
 });
 
-// Lightweight endpoint to report Spotify availability and current device
-app.get('/api/spotify/me', async (req, res) => {
+// This 'me' is about the Spotify connection, not the hub user. 
+app.get('/api/spotify/me', requireSpotifyUser, async (req, res) => { 
     try {
-        const available = spotifyManager && spotifyManager.available === true;
-        const state = available ? await spotifyManager.getPlaybackState() : null;
-        res.json({ available, device: state && state.device ? state.device : null });
+        const headers = await spotifyManager.getHeaders(req.userId);
+        if (!headers) {
+            return res.json({ available: false, device: null, message: 'Spotify not linked' });
+        }
+        
+        // We can optionally fetch the device state here too
+        const state = await spotifyManager.getPlaybackState(req.userId);
+        res.json({ available: true, device: state && state.device ? state.device : null });
+
     } catch (e) {
         console.error('Error in /api/spotify/me:', e);
         res.json({ available: false, device: null });
     }
 });
 
-app.post('/api/spotify/control', async (req, res) => {
+app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
     const { command, value } = req.body;
     try {
-        if (command === 'play') await spotifyManager.play();
-        else if (command === 'pause') await spotifyManager.pause();
-        else if (command === 'next') await spotifyManager.next();
-        else if (command === 'previous') await spotifyManager.previous();
-        else if (command === 'set_volume') {
-            // Try Spotify first
-            try {
-                await spotifyManager.setVolume(value);
-                return res.json({ ok: true, method: 'spotify' });
-            } catch (err) {
-                console.warn('Spotify setVolume failed, attempting local fallback:', err.message || err);
-                // Attempt to find local device that matches the active Spotify device
-                try {
-                    const state = await spotifyManager.getPlaybackState();
-                    const spotifyDeviceName = state && state.device && state.device.name ? state.device.name.toLowerCase() : null;
-                    if (spotifyDeviceName) {
-                        // Find best matching local device
-                        let matched = null;
-                        for (const d of deviceManager.getAllDevices()) {
-                            const nm = (d.name || '').toLowerCase();
-                            if (!nm) continue;
-                            if (nm.includes(spotifyDeviceName) || spotifyDeviceName.includes(nm)) {
-                                matched = d;
-                                break;
-                            }
-                        }
-                        if (matched) {
-                            await deviceManager.controlDevice(matched.id, 'set_volume', value);
-                            return res.json({ ok: true, method: 'local', deviceId: matched.id });
-                        }
-                    }
-                } catch (e2) {
-                    console.error('Local fallback attempt failed:', e2);
-                }
-
-                // If no local match or fallback failed, return error
-                return res.status(500).json({ ok: false, message: 'Failed to set volume via Spotify and local fallback' });
-            }
-        }
-        else if (command === 'transfer') await spotifyManager.transferPlayback(value);
-        else if (command === 'play_context') await spotifyManager.playContext(value);
-        else if (command === 'play_uris') await spotifyManager.playUris(value);
+        if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined);
+        else if (command === 'pause') await spotifyManager.pause(req.userId);
+        else if (command === 'next') await spotifyManager.next(req.userId);
+        else if (command === 'previous') await spotifyManager.previous(req.userId);
+        else if (command === 'set_volume') await spotifyManager.setVolume(req.userId, value);
+        else if (command === 'transfer') await spotifyManager.transferPlayback(req.userId, value);
+        else if (command === 'play_context') await spotifyManager.playContext(req.userId, value);
+        else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value);
+        else return res.status(400).json({ ok: false, message: `Invalid command: ${command}`});
 
         res.json({ ok: true });
     } catch (err) {
@@ -589,9 +598,9 @@ app.post('/api/spotify/control', async (req, res) => {
     }
 });
 
-app.get('/api/spotify/devices', async (req, res) => {
+app.get('/api/spotify/devices', requireSpotifyUser, async (req, res) => {
     try {
-        const devices = await spotifyManager.getDevices();
+        const devices = await spotifyManager.getDevices(req.userId);
         res.json(devices);
     } catch (e) {
         console.error('Error getting spotify devices:', e);
@@ -599,9 +608,9 @@ app.get('/api/spotify/devices', async (req, res) => {
     }
 });
 
-app.get('/api/spotify/playlists', async (req, res) => {
+app.get('/api/spotify/playlists', requireSpotifyUser, async (req, res) => {
     try {
-        const playlists = await spotifyManager.getUserPlaylists();
+        const playlists = await spotifyManager.getUserPlaylists(req.userId);
         res.json(playlists);
     } catch (e) {
         console.error('Error getting spotify playlists:', e);
@@ -609,9 +618,9 @@ app.get('/api/spotify/playlists', async (req, res) => {
     }
 });
 
-app.get('/api/spotify/albums', async (req, res) => {
+app.get('/api/spotify/albums', requireSpotifyUser, async (req, res) => {
     try {
-        const albums = await spotifyManager.getUserAlbums();
+        const albums = await spotifyManager.getUserAlbums(req.userId);
         res.json(albums);
     } catch (e) {
         console.error('Error getting spotify albums:', e);
@@ -619,11 +628,10 @@ app.get('/api/spotify/albums', async (req, res) => {
     }
 });
 
-// Search endpoint used by mobile app
-app.get('/api/spotify/search', async (req, res) => {
-    const q = req.query.q || req.query.q || '';
+app.get('/api/spotify/search', requireSpotifyUser, async (req, res) => {
+    const q = req.query.q || '';
     try {
-        const results = await spotifyManager.search(q);
+        const results = await spotifyManager.search(req.userId, q);
         res.json(results);
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });

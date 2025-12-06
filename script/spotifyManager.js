@@ -1,6 +1,5 @@
-const fs = require('fs');
-const path = require('path');
 const fetch = global.fetch || require('node-fetch');
+const db = require('./db'); // Import the database module
 
 class SpotifyManager {
     constructor() {
@@ -16,52 +15,36 @@ class SpotifyManager {
             'playlist-read-private',
             'playlist-read-collaborative'
         ];
-        this.credentialsPath = path.join(__dirname, '../spotify-credentials.json');
-        this.accessToken = null;
-        this.refreshToken = null;
-        this.tokenExpiration = 0;
-
-        this.loadCredentials();
     }
 
-    loadCredentials() {
-        if (fs.existsSync(this.credentialsPath)) {
-            try {
-                const creds = JSON.parse(fs.readFileSync(this.credentialsPath));
-                this.accessToken = creds.accessToken;
-                this.refreshToken = creds.refreshToken;
-                this.tokenExpiration = creds.tokenExpiration;
-            } catch (e) {
-                console.error('Error loading Spotify credentials:', e);
-            }
-        }
-    }
-
-    saveCredentials() {
-        const creds = {
-            accessToken: this.accessToken,
-            refreshToken: this.refreshToken,
-            tokenExpiration: this.tokenExpiration
-        };
-        try {
-            fs.writeFileSync(this.credentialsPath, JSON.stringify(creds, null, 2));
-        } catch (e) {
-            console.error('Failed saving Spotify credentials:', e);
-        }
-    }
-
-    getAuthUrl() {
+    getAuthUrl(userId) {
         if (!this.clientId) return null;
+        // Use the 'state' parameter to pass the userId back to the callback for security
+        const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
         const params = new URLSearchParams({
             response_type: 'code',
             client_id: this.clientId,
             scope: this.scopes.join(' '),
-            redirect_uri: this.redirectUri
+            redirect_uri: this.redirectUri,
+            state: state
         });
         return `https://accounts.spotify.com/authorize?${params.toString()}`;
     }
 
-    async handleCallback(code) {
+    async handleCallback(code, state) {
+        let userId;
+        try {
+            userId = JSON.parse(Buffer.from(state, 'base64').toString('utf8')).userId;
+        } catch (e) {
+            console.error('Invalid state received from Spotify callback:', e);
+            return false;
+        }
+
+        if (!userId) {
+            console.error('No userId found in Spotify callback state');
+            return false;
+        }
+        
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
             code: code,
@@ -79,22 +62,36 @@ class SpotifyManager {
 
         const data = await response.json();
         if (data.access_token) {
-            this.accessToken = data.access_token;
-            this.refreshToken = data.refresh_token;
-            this.tokenExpiration = Date.now() + (data.expires_in * 1000);
-            this.saveCredentials();
-            return true;
+            const tokenExpiration = Date.now() + (data.expires_in * 1000);
+            
+            try {
+                const pool = await db.getPool();
+                await pool.request()
+                    .input('userId', db.sql.Int, userId)
+                    .input('accessToken', db.sql.NVarChar(512), data.access_token)
+                    .input('refreshToken', db.sql.NVarChar(512), data.refresh_token)
+                    .input('tokenExpiration', db.sql.BigInt, tokenExpiration)
+                    .query(`UPDATE Users SET 
+                                SpotifyAccessToken = @accessToken, 
+                                SpotifyRefreshToken = @refreshToken, 
+                                SpotifyTokenExpiration = @tokenExpiration
+                            WHERE Id = @userId`);
+                return true;
+            } catch (dbError) {
+                console.error('Failed to save Spotify tokens to database:', dbError);
+                return false;
+            }
         }
         console.error('Spotify token exchange failed:', data);
         return false;
     }
 
-    async refreshAccessToken() {
-        if (!this.refreshToken) return false;
+    async refreshAccessToken(userId, refreshToken) {
+        if (!refreshToken) return null;
 
         const params = new URLSearchParams({
             grant_type: 'refresh_token',
-            refresh_token: this.refreshToken
+            refresh_token: refreshToken
         });
 
         try {
@@ -109,41 +106,60 @@ class SpotifyManager {
 
             const data = await response.json();
             if (data.access_token) {
-                this.accessToken = data.access_token;
-                if (data.refresh_token) this.refreshToken = data.refresh_token;
-                this.tokenExpiration = Date.now() + (data.expires_in * 1000);
-                this.saveCredentials();
-                return true;
+                const newAccessToken = data.access_token;
+                const newRefreshToken = data.refresh_token || refreshToken;
+                const newExpiration = Date.now() + (data.expires_in * 1000);
+
+                const pool = await db.getPool();
+                await pool.request()
+                    .input('userId', db.sql.Int, userId)
+                    .input('accessToken', db.sql.NVarChar(512), newAccessToken)
+                    .input('refreshToken', db.sql.NVarChar(512), newRefreshToken)
+                    .input('tokenExpiration', db.sql.BigInt, newExpiration)
+                    .query(`UPDATE Users SET 
+                                SpotifyAccessToken = @accessToken, 
+                                SpotifyRefreshToken = @refreshToken, 
+                                SpotifyTokenExpiration = @tokenExpiration
+                            WHERE Id = @userId`);
+                
+                return { accessToken: newAccessToken };
             }
-            console.error('Failed to refresh Spotify token:', data);
+            console.error(`Failed to refresh Spotify token for user ${userId}:`, data);
         } catch (e) {
-            console.error('Error refreshing Spotify token:', e);
+            console.error(`Error refreshing Spotify token for user ${userId}:`, e);
         }
-        return false;
+        return null;
     }
 
-    async getHeaders() {
-        if (!this.accessToken) return null;
-        if (Date.now() > this.tokenExpiration - 60000) {
-            await this.refreshAccessToken();
+    async getHeaders(userId) {
+        if (!userId) return null;
+
+        const pool = await db.getPool();
+        const result = await pool.request()
+            .input('userId', db.sql.Int, userId)
+            .query('SELECT SpotifyAccessToken, SpotifyRefreshToken, SpotifyTokenExpiration FROM Users WHERE Id = @userId');
+        
+        let user = result.recordset[0];
+        if (!user || !user.SpotifyAccessToken) {
+            return null; // User has not linked their Spotify account
         }
-        return {
-            'Authorization': `Bearer ${this.accessToken}`
-        };
+
+        if (Date.now() > user.SpotifyTokenExpiration - 60000) {
+            const newTokens = await this.refreshAccessToken(userId, user.SpotifyRefreshToken);
+            if (!newTokens) return null;
+            user.SpotifyAccessToken = newTokens.accessToken;
+        }
+
+        return { 'Authorization': `Bearer ${user.SpotifyAccessToken}` };
     }
 
-    async getPlaybackState() {
-        const headers = await this.getHeaders();
+    async getPlaybackState(userId) {
+        const headers = await this.getHeaders(userId);
         if (!headers) return null;
-
         try {
             const response = await fetch('https://api.spotify.com/v1/me/player', { headers });
             if (response.status === 204) return { is_playing: false };
-            if (!response.ok) {
-                const body = await response.text();
-                console.error('Spotify getPlaybackState failed:', response.status, body);
-                return null;
-            }
+            if (!response.ok) return null;
             return await response.json();
         } catch (e) {
             console.error('Error fetching Spotify state:', e);
@@ -151,79 +167,73 @@ class SpotifyManager {
         }
     }
 
-    async play() {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
-        const resp = await fetch('https://api.spotify.com/v1/me/player/play', { method: 'PUT', headers });
+    async play(userId, uris) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
+        const body = uris ? JSON.stringify({ uris }) : undefined;
+        const resp = await fetch('https://api.spotify.com/v1/me/player/play', { 
+            method: 'PUT', 
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body
+        });
         if (!resp.ok) throw new Error(`Spotify play failed: ${resp.status}`);
     }
 
-    async pause() {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
+    async pause(userId) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/pause', { method: 'PUT', headers });
         if (!resp.ok) throw new Error(`Spotify pause failed: ${resp.status}`);
     }
 
-    async next() {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
+    async next(userId) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/next', { method: 'POST', headers });
         if (!resp.ok) throw new Error(`Spotify next failed: ${resp.status}`);
     }
 
-    async previous() {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
+    async previous(userId) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/previous', { method: 'POST', headers });
         if (!resp.ok) throw new Error(`Spotify previous failed: ${resp.status}`);
     }
 
-    async setVolume(volume) {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
+    async setVolume(userId, volume) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
         const url = `https://api.spotify.com/v1/me/player/volume?volume_percent=${parseInt(volume, 10)}`;
         const resp = await fetch(url, { method: 'PUT', headers });
-        if (!resp.ok) {
-            const body = await resp.text();
-            throw new Error(`Spotify setVolume failed: ${resp.status} ${body}`);
-        }
+        if (!resp.ok) throw new Error(`Spotify setVolume failed: ${resp.status}`);
     }
 
-    async getDevices() {
-        const headers = await this.getHeaders();
+    async getDevices(userId) {
+        const headers = await this.getHeaders(userId);
         if (!headers) return [];
         try {
             const response = await fetch('https://api.spotify.com/v1/me/player/devices', { headers });
-            if (!response.ok) {
-                const text = await response.text();
-                console.error('Spotify getDevices failed:', response.status, text);
-                return [];
-            }
+            if (!response.ok) return [];
             const data = await response.json();
             return data.devices || [];
         } catch (e) {
-            console.error('Error fetching Spotify devices:', e);
             return [];
         }
     }
 
-    async transferPlayback(deviceId) {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
+    async transferPlayback(userId, deviceId) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player', {
             method: 'PUT',
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ device_ids: [deviceId], play: true })
         });
-        if (!resp.ok) {
-            const body = await resp.text();
-            throw new Error(`Spotify transferPlayback failed: ${resp.status} ${body}`);
-        }
+        if (!resp.ok) throw new Error(`Spotify transferPlayback failed: ${resp.status}`);
     }
 
-    async getUserPlaylists() {
-        const headers = await this.getHeaders();
+    async getUserPlaylists(userId) {
+        const headers = await this.getHeaders(userId);
         if (!headers) return [];
         try {
             const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=20', { headers });
@@ -231,13 +241,12 @@ class SpotifyManager {
             const data = await response.json();
             return data.items || [];
         } catch (e) {
-            console.error('Error fetching playlists:', e);
             return [];
         }
     }
 
-    async getUserAlbums() {
-        const headers = await this.getHeaders();
+    async getUserAlbums(userId) {
+        const headers = await this.getHeaders(userId);
         if (!headers) return [];
         try {
             const response = await fetch('https://api.spotify.com/v1/me/albums?limit=20', { headers });
@@ -245,14 +254,13 @@ class SpotifyManager {
             const data = await response.json();
             return data.items ? data.items.map(i => i.album) : [];
         } catch (e) {
-            console.error('Error fetching albums:', e);
             return [];
         }
     }
 
-    async playContext(contextUri) {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
+    async playContext(userId, contextUri) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/play', {
             method: 'PUT',
             headers: { ...headers, 'Content-Type': 'application/json' },
@@ -261,27 +269,19 @@ class SpotifyManager {
         if (!resp.ok) throw new Error(`Spotify playContext failed: ${resp.status}`);
     }
 
-    async playUris(uris) {
-        const headers = await this.getHeaders();
-        if (!headers) throw new Error('No Spotify access token');
-        try {
-            const resp = await fetch('https://api.spotify.com/v1/me/player/play', {
-                method: 'PUT',
-                headers: { ...headers, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ uris: uris })
-            });
-            if (!resp.ok) {
-                const body = await resp.text();
-                throw new Error(`Spotify playUris failed: ${resp.status} ${body}`);
-            }
-        } catch (e) {
-            console.error('Error playing URIs:', e);
-            throw e;
-        }
+    async playUris(userId, uris) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) throw new Error('No valid Spotify token for user');
+        const resp = await fetch('https://api.spotify.com/v1/me/player/play', {
+            method: 'PUT',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uris: uris })
+        });
+        if (!resp.ok) throw new Error(`Spotify playUris failed: ${resp.status}`);
     }
 
-    async search(q) {
-        const headers = await this.getHeaders();
+    async search(userId, q) {
+        const headers = await this.getHeaders(userId);
         if (!headers) return { tracks: [], artists: [] };
         try {
             const params = new URLSearchParams({ q: q, type: 'track,artist', limit: '20' });
@@ -293,7 +293,6 @@ class SpotifyManager {
                 artists: data.artists ? data.artists.items : []
             };
         } catch (e) {
-            console.error('Error searching Spotify:', e);
             return { tracks: [], artists: [] };
         }
     }

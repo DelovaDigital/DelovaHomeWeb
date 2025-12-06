@@ -32,10 +32,15 @@ class _DashboardTabState extends State<DashboardTab> {
     _fetchStats();
     _fetchWeather();
     _fetchSpotifyStatus();
-    // Periodically refresh Spotify status so UI stays live
     _spotifyTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _fetchSpotifyStatus();
     });
+  }
+
+  @override
+  void dispose() {
+    _spotifyTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchSpotifyStatus() async {
@@ -47,12 +52,6 @@ class _DashboardTabState extends State<DashboardTab> {
     }
   }
 
-  @override
-  void dispose() {
-    _spotifyTimer?.cancel();
-    super.dispose();
-  }
-
   Future<void> _openSpotifyLogin() async {
     try {
       final baseUrl = await _apiService.getBaseUrl();
@@ -60,42 +59,135 @@ class _DashboardTabState extends State<DashboardTab> {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot open browser')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot open browser')));
       }
     } catch (e) {
       debugPrint('Open spotify login error: $e');
     }
   }
 
-  Future<void> _showSpotifyDevicesDialog() async {
-    final devices = await _apiService.getSpotifyDevices();
-    if (!mounted) return;
+  Future<String?> _showSpotifySearchDialog() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Search Spotify', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(hintText: 'Search for tracks or artists', hintStyle: TextStyle(color: Colors.grey)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Search')),
+        ],
+      ),
+    );
+    return result;
+  }
+
+  void _showSpotifySearchResults(Map<String, dynamic> results) {
+    final tracks = results['tracks'] as List<dynamic>? ?? [];
+    final artists = results['artists'] as List<dynamic>? ?? [];
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        title: const Text('Select Spotify Device', style: TextStyle(color: Colors.white)),
+        title: const Text('Search Results', style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.builder(
+          child: ListView(
             shrinkWrap: true,
-            itemCount: devices.length,
-            itemBuilder: (context, index) {
-              final d = devices[index];
-              return ListTile(
-                title: Text(d['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
-                subtitle: Text(d['type'] ?? '', style: const TextStyle(color: Colors.grey)),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await _apiService.transferSpotifyPlayback(d['id']);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
-                },
-              );
-            },
+            children: [
+              if (tracks.isNotEmpty) ...[
+                const Text('Tracks', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                ...tracks.map((t) {
+                  return ListTile(
+                    leading: (t['album'] != null && t['album']['images'] != null && (t['album']['images'] as List).isNotEmpty)
+                        ? Image.network(t['album']['images'][0]['url'], width: 48, height: 48, fit: BoxFit.cover)
+                        : const SizedBox(width: 48, height: 48),
+                    title: Text(t['name'] ?? '', style: const TextStyle(color: Colors.white)),
+                    subtitle: Text((t['artists'] != null && (t['artists'] as List).isNotEmpty) ? t['artists'][0]['name'] : '', style: const TextStyle(color: Colors.grey)),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final uri = t['uri'];
+                      if (uri != null) {
+                        await _apiService.spotifyControl('play_uris', [uri]);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${t['name']}')));
+                        await _fetchSpotifyStatus();
+                      }
+                    },
+                  );
+                })
+              ],
+              if (artists.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text('Artists', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                ...artists.map((a) {
+                  return ListTile(
+                    title: Text(a['name'] ?? '', style: const TextStyle(color: Colors.white)),
+                    subtitle: Text(a['type'] ?? '', style: const TextStyle(color: Colors.grey)),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final uri = a['uri'];
+                      if (uri != null) {
+                        await _apiService.spotifyControl('play_context', uri);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${a['name']}')));
+                        await _fetchSpotifyStatus();
+                      }
+                    },
+                  );
+                })
+              ],
+              if (tracks.isEmpty && artists.isEmpty)
+                const Text('No results', style: TextStyle(color: Colors.grey)),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _showSpotifyDevicesDialog() async {
+    try {
+      final devices = await _apiService.getSpotifyDevices();
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text('Select Spotify Device', style: TextStyle(color: Colors.white)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: devices.length,
+              itemBuilder: (context, index) {
+                final d = devices[index];
+                return ListTile(
+                  title: Text(d['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
+                  subtitle: Text(d['type'] ?? '', style: const TextStyle(color: Colors.grey)),
+                  onTap: () async {
+                    Navigator.of(context).pop();
+                    await _apiService.transferSpotifyPlayback(d['id']);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error fetching devices: $e');
+    }
   }
 
   Future<void> _showSpotifyMusicPicker() async {
@@ -134,8 +226,9 @@ class _DashboardTabState extends State<DashboardTab> {
                           onTap: () async {
                             Navigator.of(context).pop();
                             await _apiService.spotifyControl('play_context', p['uri']);
+                            if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${p['name']}')));
-                            _fetchSpotifyStatus();
+                            await _fetchSpotifyStatus();
                           },
                         );
                       },
@@ -153,8 +246,9 @@ class _DashboardTabState extends State<DashboardTab> {
                           onTap: () async {
                             Navigator.of(context).pop();
                             await _apiService.spotifyControl('play_context', a['uri']);
+                            if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${a['name']}')));
-                            _fetchSpotifyStatus();
+                            await _fetchSpotifyStatus();
                           },
                         );
                       },
@@ -170,12 +264,8 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Future<void> _fetchWeather() async {
-    // Using Open-Meteo API (Free, no key required)
-    // Defaulting to a generic location (London) if no GPS. 
-    // In a real app, use geolocator package.
     try {
-      final response = await http.get(Uri.parse(
-          'https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current_weather=true'));
+      final response = await http.get(Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=51.5074&longitude=-0.1278&current_weather=true'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (mounted) {
@@ -196,10 +286,9 @@ class _DashboardTabState extends State<DashboardTab> {
         setState(() {
           _totalDevices = devices.length;
           _activeDevices = devices.where((d) => d.status.powerState == 'on' || d.status.powerState == 'playing').length;
-          // Simple "Favorites" logic: First 3 active devices, or just first 3 devices
           _favoriteDevices = devices.where((d) => d.status.powerState == 'on').take(3).toList();
           if (_favoriteDevices.isEmpty) {
-             _favoriteDevices = devices.take(3).toList();
+            _favoriteDevices = devices.take(3).toList();
           }
           _isLoading = false;
         });
@@ -218,17 +307,11 @@ class _DashboardTabState extends State<DashboardTab> {
     try {
       await _apiService.activateScene(sceneName);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Scene activated: $sceneName')),
-        );
-        _fetchStats(); // Refresh status
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Scene activated: $sceneName')));
+        _fetchStats();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to activate scene: $e')),
-        );
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to activate scene: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -250,18 +333,9 @@ class _DashboardTabState extends State<DashboardTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Text(
-              'Welcome Home',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              dateStr,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
-            ),
+            Text('Welcome Home', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(dateStr, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey)),
             const SizedBox(height: 20),
-
-            // Weather & Status Row
             Row(
               children: [
                 Expanded(
@@ -284,8 +358,6 @@ class _DashboardTabState extends State<DashboardTab> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // Quick Actions
             const Text('Quick Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             Row(
@@ -298,14 +370,10 @@ class _DashboardTabState extends State<DashboardTab> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // Spotify
             const Text('Spotify', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             _buildSpotifyCard(),
             const SizedBox(height: 24),
-
-            // Favorites / Active Devices
             if (_favoriteDevices.isNotEmpty) ...[
               const Text('Favorites', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
@@ -314,10 +382,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _favoriteDevices.length,
                 itemBuilder: (context, index) {
-                  return DeviceCard(
-                    device: _favoriteDevices[index],
-                    onRefresh: _fetchStats,
-                  );
+                  return DeviceCard(device: _favoriteDevices[index], onRefresh: _fetchStats);
                 },
               ),
             ],
@@ -330,43 +395,13 @@ class _DashboardTabState extends State<DashboardTab> {
   Widget _buildStatusCard({required IconData icon, required String title, required String subtitle, required Color color}) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(16)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon, color: color, size: 32), const SizedBox(height: 12), Text(title, style: const TextStyle(color: Colors.grey, fontSize: 14)), const SizedBox(height: 4), Text(subtitle, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))]),
     );
   }
 
   Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.white),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-      ],
-    );
+    return Column(children: [InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Container(width: 60, height: 60, decoration: BoxDecoration(color: Colors.grey[900], shape: BoxShape.circle), child: Icon(icon, color: Colors.white))), const SizedBox(height: 8), Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12))]);
   }
 
   IconData _getWeatherIcon(int? code) {
@@ -374,127 +409,47 @@ class _DashboardTabState extends State<DashboardTab> {
     if (code == 0) return Icons.wb_sunny;
     if (code < 3) return Icons.wb_cloudy;
     if (code < 50) return Icons.foggy;
-    if (code < 70) return Icons.grain; // Rain
-    if (code < 80) return Icons.ac_unit; // Snow
+    if (code < 70) return Icons.grain;
+    if (code < 80) return Icons.ac_unit;
     return Icons.thunderstorm;
   }
 
   Widget _buildSpotifyCard() {
     final isPlaying = _spotifyStatus?['is_playing'] == true;
     final item = _spotifyStatus != null && _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : 'Not playing';
-    final albumImages = _spotifyStatus != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null
-      ? _spotifyStatus!['item']['album']['images'] as List<dynamic>?
-      : null;
+    final albumImages = _spotifyStatus != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null ? _spotifyStatus!['item']['album']['images'] as List<dynamic>? : null;
     final artwork = (albumImages != null && albumImages.isNotEmpty) ? albumImages[0]['url'] : null;
-    final progress = (_spotifyStatus != null && _spotifyStatus!['progress_ms'] != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['duration_ms'] != null)
-      ? (_spotifyStatus!['progress_ms'] as num) / (_spotifyStatus!['item']['duration_ms'] as num)
-      : 0.0;
+    final progress = (_spotifyStatus != null && _spotifyStatus!['progress_ms'] != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['duration_ms'] != null) ? (_spotifyStatus!['progress_ms'] as num) / (_spotifyStatus!['item']['duration_ms'] as num) : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.music_note, color: Color(0xFF1DB954), size: 36),
-              const SizedBox(width: 12),
-              artwork != null
-                  ? Image.network(artwork, width: 64, height: 64, fit: BoxFit.cover)
-                  : Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Spotify', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 4),
-                          Text(item, style: const TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Spotify', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(item, style: const TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      backgroundColor: Colors.grey[800],
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _openSpotifyLogin,
-                child: const Text('Connect'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-                  Row(
-                children: [
-                  IconButton(
-                    onPressed: () async { await _apiService.spotifyControl('previous'); _fetchSpotifyStatus(); },
-                    icon: const Icon(Icons.skip_previous),
-                    color: Colors.white,
-                  ),
-                  IconButton(
-                    onPressed: () async {
-                      if (isPlaying) await _apiService.spotifyControl('pause');
-                      else await _apiService.spotifyControl('play');
-                      _fetchSpotifyStatus();
-                    Row(
-                    icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                    color: Colors.white,
-                  ),
-                  IconButton(
-                    onPressed: () async { await _apiService.spotifyControl('next'); _fetchSpotifyStatus(); },
-                    const SizedBox(width: 8),
-                    TextButton(
-                      onPressed: () async {
-                        final q = await _showSpotifySearchDialog();
-                        if (q != null && q.isNotEmpty) {
-                          final results = await _apiService.searchSpotify(q);
-                          if (!mounted) return;
-                          _showSpotifySearchResults(results);
-                        }
-                      },
-                      child: const Text('Search'),
-                    ),
-                    icon: const Icon(Icons.skip_next),
-                    color: Colors.white,
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _showSpotifyMusicPicker,
-                    child: const Text('Choose Music'),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _showSpotifyDevicesDialog,
-                    child: const Text('Choose Device'),
-                  ),
-                ],
-              )
-            ],
-          )
-        ],
-      ),
+      decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(12)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.music_note, color: Color(0xFF1DB954), size: 36),
+          const SizedBox(width: 12),
+          artwork != null ? Image.network(artwork, width: 64, height: 64, fit: BoxFit.cover) : Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Spotify', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text(item, style: const TextStyle(color: Colors.grey))])),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Spotify', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), const SizedBox(height: 4), Text(item, style: const TextStyle(color: Colors.grey)), const SizedBox(height: 8), LinearProgressIndicator(value: progress.clamp(0.0, 1.0), backgroundColor: Colors.grey[800], valueColor: AlwaysStoppedAnimation<Color>(Colors.green))])),
+          ElevatedButton(onPressed: _openSpotifyLogin, child: const Text('Connect'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green)),
+        ]),
+        const SizedBox(height: 12),
+        Column(children: [
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            IconButton(onPressed: () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); }, icon: const Icon(Icons.skip_previous), color: Colors.white),
+            IconButton(onPressed: () async { if (isPlaying) await _apiService.spotifyControl('pause'); else await _apiService.spotifyControl('play'); await _fetchSpotifyStatus(); }, icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow), color: Colors.white),
+            IconButton(onPressed: () async { await _apiService.spotifyControl('next'); await _fetchSpotifyStatus(); }, icon: const Icon(Icons.skip_next), color: Colors.white),
+          ]),
+          const SizedBox(height: 8),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            TextButton(onPressed: _showSpotifyMusicPicker, child: const Text('Choose Music')),
+            const SizedBox(width: 8),
+            TextButton(onPressed: () async { final q = await _showSpotifySearchDialog(); if (q != null && q.isNotEmpty) { final results = await _apiService.searchSpotify(q); if (!mounted) return; _showSpotifySearchResults(results); } }, child: const Text('Search')),
+            const SizedBox(width: 8),
+            TextButton(onPressed: _showSpotifyDevicesDialog, child: const Text('Choose Device')),
+          ])
+        ])
+      ]),
     );
   }
 }

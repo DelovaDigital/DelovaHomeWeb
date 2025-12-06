@@ -2,11 +2,13 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: rgb(191, 227, 215);
+    background-color: var(--bg, rgb(191, 227, 215));
+    color: var(--text, #000);
+    transition: background-color 240ms ease, color 240ms ease;
 }
 
 p {
-    color: black;
+    color: var(--text, black);
 }
 
 #usernameDisplay {
@@ -156,7 +158,18 @@ nav a:hover {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    background-color: rgb(191, 227, 215);
+        background-color: var(--app-bg, rgb(191, 227, 215));
+}
+
+/* Theme variables (light theme defaults) */
+:root {
+    --bg: #bfe3d7;
+    --app-bg: #bfe3d7;
+    --text: #111;
+    --card: #ffffff;
+    --muted: #666;
+    --accent-color: #4aa3ff;
+    --primary: #007BFF;
 }
 
 /* Navigation */

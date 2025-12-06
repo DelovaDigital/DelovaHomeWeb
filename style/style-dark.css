@@ -2,8 +2,9 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: #1a1a1a;
-    color: #e0e0e0;
+    background-color: var(--bg, #1a1a1a);
+    color: var(--text, #e0e0e0);
+    transition: background-color 240ms ease, color 240ms ease;
 }
 
 p {
@@ -129,7 +130,18 @@ nav a:hover {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    background-color: #1a1a1a;
+        background-color: var(--app-bg, #1a1a1a);
+}
+
+/* Dark theme variables override */
+:root {
+    --bg: #121212;
+    --app-bg: #121212;
+    --text: #e6e6e6;
+    --card: #1f1f1f;
+    --muted: #9aa5b1;
+    --accent-color: #1db954;
+    --primary: #4a7ba7;
 }
 
 /* Navigation */

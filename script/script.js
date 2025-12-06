@@ -30,6 +30,28 @@ document.addEventListener('DOMContentLoaded', () => {
             themeStylesheet.href = '../style/style-dark.css';
         }
     }
+        // Theme toggle control (if present on settings page)
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        if (themeStylesheet) {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                if (darkModeToggle) darkModeToggle.checked = true;
+            } else {
+                if (darkModeToggle) darkModeToggle.checked = false;
+            }
+
+            if (darkModeToggle) {
+                darkModeToggle.addEventListener('change', () => {
+                    if (darkModeToggle.checked) {
+                        themeStylesheet.href = '../style/style-dark.css';
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        themeStylesheet.href = '../style/style.css';
+                        localStorage.setItem('theme', 'light');
+                    }
+                });
+            }
+        }
 
     const username = localStorage.getItem('username');
     const usernameDisplay = document.getElementById('usernameDisplay');

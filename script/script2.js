@@ -4,44 +4,6 @@ const updates = document.querySelector('.btnCheck');
 const darkModeToggle = document.getElementById('darkModeToggle');
 const themeStylesheet = document.getElementById('theme-stylesheet');
 
-document.addEventListener('DOMContentLoaded', () => {
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') {
-    themeStylesheet.href = '../style/style-dark.css';
-    if (darkModeToggle) darkModeToggle.checked = true;
-  }
-
-  const username = localStorage.getItem('username');
-  const usernameDisplay = document.getElementById('usernameDisplay');
-  if (usernameDisplay && username) {
-    usernameDisplay.textContent = `Hallo, ${username}`;
-  }
-
-  const logoutLink = document.querySelector('.logout');
-  if (logoutLink) {
-    logoutLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      localStorage.removeItem('username');
-      localStorage.removeItem('userId');
-      window.location.href = '../index.html';
-    });
-  }
-});
-
-if (darkModeToggle) {
-  darkModeToggle.addEventListener('change', () => {
-    if (darkModeToggle.checked) {
-      themeStylesheet.href = '../style/style-dark.css';
-      localStorage.setItem('theme', 'dark');
-      console.log('Dark mode ingeschakeld');
-    } else {
-      themeStylesheet.href = '../style/style.css';
-      localStorage.setItem('theme', 'light');
-      console.log('Light mode ingeschakeld');
-    }
-  });
-}
-
 
 updates.addEventListener('click', async () => {
     const btn = updates;
@@ -102,26 +64,7 @@ opslaan.addEventListener('click', () => {
     });
 
 
-document.addEventListener('DOMContentLoaded', () => {
-  const avatar = document.querySelector('.user-avatar');
-  const dropdown = document.getElementById('userDropdown');
-
-  const closeDropdown = () => {
-    if (dropdown) dropdown.classList.remove('show');
-  };
-
-  const toggleDropdown = (e) => {
-    if (!dropdown) return;
-    e.stopPropagation();
-    dropdown.classList.toggle('show');
-  };
-
-  if (avatar) avatar.addEventListener('click', toggleDropdown);
-  if (dropdown) dropdown.addEventListener('click', (e) => e.stopPropagation());
-
-  document.addEventListener('click', closeDropdown);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDropdown(); });
-});
+// Dropdown and logout logic centralized in script.js to avoid duplication.
 
 // Apple TV Pairing Logic
 const btnStartPairing = document.getElementById('btn-start-pairing');

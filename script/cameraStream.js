@@ -40,7 +40,7 @@ startFFmpeg() {
     "-preset", "ultrafast",
     "-tune", "zerolatency",
     "-profile:v", "baseline",
-    "-level", "3.1",
+    "-level", "4.0",
     "-fflags", "+genpts",
     "-f", "rtp",
     "-payload_type", "96",

@@ -468,6 +468,7 @@ app.get('/api/users', async (req, res) => {
 });
 
 const deviceManager = require('./script/deviceManager');
+const sonosManager = require('./script/sonosManager');
 
 // Load spotifyManager defensively to avoid crashing the whole server if the module has syntax errors
 let spotifyManager;
@@ -624,6 +625,58 @@ app.get('/api/spotify/search', async (req, res) => {
     try {
         const results = await spotifyManager.search(q);
         res.json(results);
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+// --- Sonos API ---
+app.get('/api/sonos/devices', (req, res) => {
+    try {
+        const devices = sonosManager.getDiscoveredDevices();
+        res.json({ ok: true, devices });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+app.get('/api/sonos/:uuid/state', async (req, res) => {
+    const { uuid } = req.params;
+    try {
+        const state = await sonosManager.getPlaybackState(uuid);
+        res.json({ ok: true, state });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+app.post('/api/sonos/:uuid/command', async (req, res) => {
+    const { uuid } = req.params;
+    const { command, value } = req.body;
+
+    try {
+        let result = null;
+        switch (command) {
+            case 'play':
+                const { uri, metadata } = value || {};
+                result = await sonosManager.play(uuid, uri, metadata);
+                break;
+            case 'pause':
+                result = await sonosManager.pause(uuid);
+                break;
+            case 'next':
+                result = await sonosManager.next(uuid);
+                break;
+            case 'previous':
+                result = await sonosManager.previous(uuid);
+                break;
+            case 'set_volume':
+                result = await sonosManager.setVolume(uuid, value);
+                break;
+            default:
+                return res.status(400).json({ ok: false, message: 'Invalid command' });
+        }
+        res.json({ ok: true, result });
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });
     }

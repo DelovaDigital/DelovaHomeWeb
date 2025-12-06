@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@marsaud/smb2": "^0.18.0",
+    "@svrooij/sonos": "^1.19.0",
     "bcrypt": "^6.0.0",
     "bonjour-service": "^1.3.0",
     "castv2-client": "^1.2.0",

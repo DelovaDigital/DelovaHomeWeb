@@ -14,12 +14,10 @@ this.connections = new Set();
 this.tracks = [];
 }
 
-async start() {
+async startUDP() {
     if (this.udpSocket) return;
-
-    // 1. Create UDP socket
     this.udpSocket = dgram.createSocket("udp4");
-    await new Promise((resolve) => {
+    await new Promise(resolve => {
         this.udpSocket.bind(0, "127.0.0.1", () => {
             this.udpPort = this.udpSocket.address().port;
             console.log(`[WebRTC] UDP socket bound to port ${this.udpPort}`);
@@ -27,16 +25,17 @@ async start() {
         });
     });
 
-    // 2. Forward RTP packets to werift tracks
-    this.udpSocket.on("message", (msg) => {
+    this.udpSocket.on("message", msg => {
         this.tracks.forEach(track => track.writeRtp(msg));
     });
+}
 
-    // 3. Start FFmpeg
+startFFmpeg() {
+    if (this.ffmpeg) return;
     const args = [
         "-rtsp_transport", "tcp",
         "-i", this.url,
-        "-an", // no audio
+        "-an",
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-tune", "zerolatency",
@@ -44,44 +43,40 @@ async start() {
         "-level", "3.1",
         "-pix_fmt", "yuv420p",
         "-r", "25",
-        "-g", "25", // keyframe every 1 second
+        "-g", "25",
         "-x264opts", "keyint=25:min-keyint=25:no-scenecut",
         "-f", "rtp",
         "-payload_type", "96",
-        "-ssrc", "12345678",
         `rtp://127.0.0.1:${this.udpPort}?pkt_size=1200`
     ];
 
     console.log(`[WebRTC] Starting ffmpeg: ffmpeg ${args.join(" ")}`);
     this.ffmpeg = spawn("ffmpeg", args);
 
-    this.ffmpeg.stderr.on("data", (d) => {
-        // Optional: uncomment to debug
-        // console.log(`[ffmpeg] ${d}`);
+    this.ffmpeg.stderr.on("data", d => {
+        console.log(`[ffmpeg] ${d}`);
     });
 
-    this.ffmpeg.on("close", (code) => {
+    this.ffmpeg.on("close", code => {
         console.log(`[WebRTC] ffmpeg exited with code ${code}`);
-        this.stop();
+        this.ffmpeg = null;
     });
 }
 
 stop() {
-    if (this.ffmpeg) {
-        this.ffmpeg.kill();
-        this.ffmpeg = null;
-    }
-    if (this.udpSocket) {
-        this.udpSocket.close();
-        this.udpSocket = null;
-    }
+    if (this.ffmpeg) this.ffmpeg.kill();
+    this.ffmpeg = null;
+
+    if (this.udpSocket) this.udpSocket.close();
+    this.udpSocket = null;
+
     this.connections.forEach(pc => pc.close());
     this.connections.clear();
     this.tracks = [];
 }
 
 async handleOffer(offerSdp) {
-    if (!this.udpSocket) await this.start();
+    await this.startUDP();
 
     const pc = new RTCPeerConnection({
         codecs: {
@@ -112,7 +107,7 @@ async handleOffer(offerSdp) {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
-    pc.connectionStateChange.subscribe((state) => {
+    pc.connectionStateChange.subscribe(state => {
         console.log(`[WebRTC] Connection state: ${state}`);
         if (state === "closed" || state === "failed") {
             this.connections.delete(pc);
@@ -121,9 +116,11 @@ async handleOffer(offerSdp) {
         }
     });
 
+    // Start FFmpeg nu we weten dat er een client is
+    this.startFFmpeg();
+
     return answer.sdp;
 }
-
 
 }
 
@@ -131,7 +128,6 @@ class CameraStreamManager {
 constructor() {
 this.streams = new Map();
 }
-
 
 getStream(deviceId, rtspUrl) {
     if (!this.streams.has(deviceId)) {

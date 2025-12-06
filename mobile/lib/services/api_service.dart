@@ -122,6 +122,71 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getSpotifyStatus() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/status'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching spotify status: $e');
+    }
+    return {'is_playing': false};
+  }
+
+  Future<List<dynamic>> getSpotifyPlaylists() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/playlists'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching playlists: $e');
+    }
+    return [];
+  }
+
+  Future<List<dynamic>> getSpotifyAlbums() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/albums'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching albums: $e');
+    }
+    return [];
+  }
+
+  Future<Map<String, dynamic>> searchSpotify(String q) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/search?q=${Uri.encodeComponent(q)}'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error searching spotify: $e');
+    }
+    return {'tracks': [], 'artists': []};
+  }
+
+  Future<void> spotifyControl(String command, [dynamic value]) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/api/spotify/control'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'command': command, 'value': value}),
+      );
+    } catch (e) {
+      debugPrint('Error sending spotify control: $e');
+    }
+  }
+
   Future<void> transferSpotifyPlayback(String deviceId) async {
     final baseUrl = await getBaseUrl();
     try {

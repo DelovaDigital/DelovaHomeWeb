@@ -448,6 +448,7 @@ app.post('/api/spotify/control', async (req, res) => {
     else if (command === 'set_volume') await spotifyManager.setVolume(value);
     else if (command === 'transfer') await spotifyManager.transferPlayback(value);
     else if (command === 'play_context') await spotifyManager.playContext(value);
+    else if (command === 'play_uris') await spotifyManager.playUris(value);
     res.json({ ok: true });
 });
 
@@ -464,6 +465,17 @@ app.get('/api/spotify/playlists', async (req, res) => {
 app.get('/api/spotify/albums', async (req, res) => {
     const albums = await spotifyManager.getUserAlbums();
     res.json(albums);
+});
+
+// Search endpoint used by mobile app
+app.get('/api/spotify/search', async (req, res) => {
+    const q = req.query.q || req.query.q || '';
+    try {
+        const results = await spotifyManager.search(q);
+        res.json(results);
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
 });
 
 // --- Device API ---

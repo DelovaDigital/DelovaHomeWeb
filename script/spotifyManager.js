@@ -228,6 +228,38 @@ class SpotifyManager {
             body: JSON.stringify({ context_uri: contextUri })
         });
     }
+
+    async playUris(uris) {
+        const headers = await this.getHeaders();
+        if (!headers) return;
+        try {
+            await fetch('https://api.spotify.com/v1/me/player/play', {
+                method: 'PUT',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ uris: uris })
+            });
+        } catch (e) {
+            console.error('Error playing URIs:', e);
+        }
+    }
+
+    async search(q) {
+        const headers = await this.getHeaders();
+        if (!headers) return { tracks: [], artists: [] };
+        try {
+            const params = new URLSearchParams({ q: q, type: 'track,artist', limit: '20' });
+            const response = await fetch(`https://api.spotify.com/v1/search?${params.toString()}`, { headers });
+            if (response.status !== 200) return { tracks: [], artists: [] };
+            const data = await response.json();
+            return {
+                tracks: data.tracks ? data.tracks.items : [],
+                artists: data.artists ? data.artists.items : []
+            };
+        } catch (e) {
+            console.error('Error searching Spotify:', e);
+            return { tracks: [], artists: [] };
+        }
+    }
 }
 
 module.exports = new SpotifyManager();

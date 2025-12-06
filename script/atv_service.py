@@ -108,9 +108,17 @@ async def main():
                         print(json.dumps({"status": "success", "command": cmd, "note": "fallback_stop"}), flush=True)
                         continue
                 elif cmd == 'play':
-                    await atv.remote_control.play()
+                    try:
+                        await atv.remote_control.play()
+                    except:
+                        await atv.remote_control.play_pause()
                 elif cmd == 'pause':
-                    await atv.remote_control.pause()
+                    try:
+                        await atv.remote_control.pause()
+                    except:
+                        await atv.remote_control.play_pause()
+                elif cmd == 'play_pause':
+                    await atv.remote_control.play_pause()
                 elif cmd == 'stop':
                     await atv.remote_control.stop()
                 elif cmd == 'next':

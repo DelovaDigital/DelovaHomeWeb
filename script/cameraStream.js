@@ -1,95 +1,114 @@
+const { RTCPeerConnection, RTCRtpCodecParameters, MediaStreamTrack } = require("werift");
 const { spawn } = require("child_process");
+const dgram = require("dgram");
 const EventEmitter = require("events");
 
-class CameraStream extends EventEmitter {
+class WebRtcCameraStream extends EventEmitter {
     constructor(url) {
         super();
         this.url = url;
-        this.clients = new Set();
-        this.process = null;
-        this.restartTimeout = null;
+        this.udpSocket = null;
+        this.udpPort = 0;
+        this.ffmpeg = null;
+        this.connections = new Set();
+        this.tracks = [];
         this.start();
     }
 
-    start() {
-        if (this.process) return;
+    async start() {
+        if (this.udpSocket) return;
 
-        console.log(`[CameraStream] Starting ffmpeg for ${this.url}`);
+        // 1. Create UDP socket
+        this.udpSocket = dgram.createSocket("udp4");
+        
+        // Bind to random port
+        await new Promise((resolve) => {
+            this.udpSocket.bind(0, '127.0.0.1', () => {
+                this.udpPort = this.udpSocket.address().port;
+                console.log(`[WebRTC] UDP socket bound to port ${this.udpPort}`);
+                resolve();
+            });
+        });
 
+        this.udpSocket.on("message", (msg) => {
+            // Broadcast RTP to all tracks
+            this.tracks.forEach(track => {
+                track.writeRtp(msg);
+            });
+        });
+
+        // 2. Start FFmpeg
         const args = [
             "-rtsp_transport", "tcp",
             "-i", this.url,
-
-            // Stabiliteit zoals VLC
-            "-fflags", "+genpts",
-            "-probesize", "2M",
-            "-analyzeduration", "2M",
-
-            // OUTPUT: MPEG-TS (browser friendly)
-            "-f", "mpegts",
-            "-codec:v", "mpeg1video",
-            "-q:v", "4",
-            "-r", "25",
-            "-g", "25",
-
-            "-an",
-            "-"
+            "-an", // No audio for now
+            "-c:v", "copy", // Pass-through H.264 (Very low CPU)
+            "-f", "rtp",
+            `rtp://127.0.0.1:${this.udpPort}`
         ];
 
-        this.process = spawn("ffmpeg", args);
+        console.log(`[WebRTC] Starting ffmpeg: ffmpeg ${args.join(" ")}`);
+        this.ffmpeg = spawn("ffmpeg", args);
 
-        this.process.stdout.on("data", (data) => {
-            this.broadcast(data);
-        });
-
-        this.process.stderr.on("data", (d) => {
-            // Uncomment om te debuggen:
+        this.ffmpeg.stderr.on("data", (d) => {
             // console.log(`[ffmpeg] ${d}`);
         });
 
-        this.process.on("close", (code) => {
-            console.log(`[CameraStream] ffmpeg exited with code ${code}`);
-
-            this.process = null;
-
-            if (this.clients.size > 0) {
-                console.log("[CameraStream] Restarting stream in 2s (clients still connected)");
-                this.restartTimeout = setTimeout(() => this.start(), 2000);
-            }
+        this.ffmpeg.on("close", (code) => {
+            console.log(`[WebRTC] ffmpeg exited with code ${code}`);
+            this.stop();
         });
     }
 
     stop() {
-        console.log(`[CameraStream] Stopping ffmpeg for ${this.url}`);
-        if (this.restartTimeout) clearTimeout(this.restartTimeout);
-        if (this.process) this.process.kill();
-        this.process = null;
+        if (this.ffmpeg) {
+            this.ffmpeg.kill();
+            this.ffmpeg = null;
+        }
+        if (this.udpSocket) {
+            this.udpSocket.close();
+            this.udpSocket = null;
+        }
+        this.connections.forEach(pc => pc.close());
+        this.connections.clear();
+        this.tracks = [];
     }
 
-    addClient(ws) {
-        this.clients.add(ws);
-        console.log(`[CameraStream] Client connected. Total: ${this.clients.size}`);
+    async handleOffer(offerSdp) {
+        if (!this.udpSocket) await this.start();
 
-        // jsmpeg header
-        const STREAM_MAGIC_BYTES = "jsmp";
-        if (ws.readyState === 1) {
-            ws.send(Buffer.from(STREAM_MAGIC_BYTES), { binary: true });
-        }
-
-        ws.on("close", () => {
-            this.clients.delete(ws);
-            console.log(`[CameraStream] Client disconnected. Total: ${this.clients.size}`);
-
-            if (this.clients.size === 0) this.stop();
+        const pc = new RTCPeerConnection({
+            codecs: {
+                video: [
+                    new RTCRtpCodecParameters({
+                        mimeType: "video/H264",
+                        clockRate: 90000,
+                        payloadType: 96,
+                    }),
+                ],
+            },
         });
-    }
 
-    broadcast(data) {
-        for (const client of this.clients) {
-            if (client.readyState === 1) {
-                client.send(data, { binary: true });
+        this.connections.add(pc);
+
+        const track = new MediaStreamTrack({ kind: "video" });
+        this.tracks.push(track);
+        pc.addTrack(track);
+
+        await pc.setRemoteDescription({ type: "offer", sdp: offerSdp });
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        pc.connectionStateChange.subscribe((state) => {
+            console.log(`[WebRTC] Connection state: ${state}`);
+            if (state === "closed" || state === "failed") {
+                this.connections.delete(pc);
+                const idx = this.tracks.indexOf(track);
+                if (idx > -1) this.tracks.splice(idx, 1);
             }
-        }
+        });
+
+        return answer.sdp;
     }
 }
 
@@ -100,7 +119,7 @@ class CameraStreamManager {
 
     getStream(deviceId, rtspUrl) {
         if (!this.streams.has(deviceId)) {
-            this.streams.set(deviceId, new CameraStream(rtspUrl));
+            this.streams.set(deviceId, new WebRtcCameraStream(rtspUrl));
         }
         return this.streams.get(deviceId);
     }

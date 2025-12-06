@@ -120,22 +120,6 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
        wsUrl = 'ws://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
     }
     
-    // Fetch JSMpeg script content to avoid SSL/CORS issues in WebView
-    String jsmpegContent = '';
-    try {
-      final client = HttpClient()
-        ..badCertificateCallback = (cert, host, port) => true;
-      final request = await client.getUrl(Uri.parse('$baseUrl/script/jsmpeg.min.js'));
-      final response = await request.close();
-      if (response.statusCode == 200) {
-        jsmpegContent = await response.transform(utf8.decoder).join();
-      } else {
-        debugPrint('Failed to load jsmpeg.min.js: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error fetching jsmpeg.min.js: $e');
-    }
-
     // Trigger the stream start on the backend (pre-warm)
     try {
       await _apiService.sendCommand(widget.device.id, 'start_stream', {'value': {'rtspUrl': rtspUrl}});
@@ -150,22 +134,44 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
           body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-          canvas { width: 100%; height: 100%; object-fit: contain; }
+          video { width: 100%; height: 100%; object-fit: contain; }
         </style>
-        <script>
-          $jsmpegContent
-        </script>
       </head>
       <body>
-        <canvas id="video-canvas"></canvas>
+        <video id="v" autoplay muted playsinline></video>
         <script>
-          if (typeof JSMpeg === 'undefined') {
-             document.body.innerHTML = '<h3 style="color:white">Failed to load Player</h3>';
-          } else {
-             var canvas = document.getElementById('video-canvas');
-             var url = '$wsUrl';
-             var player = new JSMpeg.Player(url, {canvas: canvas, autoplay: true, audio: false, loop: true});
-          }
+          var video = document.getElementById('v');
+          var deviceId = '${widget.device.id}';
+          var rtspUrl = '$rtspUrl';
+          var baseUrl = '$baseUrl';
+          
+          var pc = new RTCPeerConnection({
+              iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+          });
+
+          pc.addTransceiver('video', { direction: 'recvonly' });
+
+          pc.ontrack = function(event) {
+              video.srcObject = event.streams[0];
+          };
+
+          pc.createOffer().then(function(offer) {
+              return pc.setLocalDescription(offer);
+          }).then(function() {
+              return fetch(baseUrl + '/api/camera/webrtc/offer', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      deviceId: deviceId,
+                      rtspUrl: rtspUrl,
+                      sdp: pc.localDescription.sdp
+                  })
+              });
+          }).then(function(res) { return res.json(); })
+          .then(function(data) {
+              return pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+          })
+          .catch(function(e) { console.error('WebRTC Error:', e); });
         </script>
       </body>
       </html>

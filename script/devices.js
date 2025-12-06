@@ -98,49 +98,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 const container = document.getElementById(containerId);
                 if (container) {
                     container.innerHTML = ''; // Clear placeholder
-                    const canvas = document.createElement('canvas');
-                    canvas.style.width = '100%';
-                    canvas.style.height = '100%';
-                    canvas.style.borderRadius = '10px';
-                    container.appendChild(canvas);
+                    const video = document.createElement('video');
+                    video.style.width = '100%';
+                    video.style.height = '100%';
+                    video.style.borderRadius = '10px';
+                    video.autoplay = true;
+                    video.muted = true;
+                    video.playsInline = true;
+                    container.appendChild(video);
 
-                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    const url = `${protocol}//${window.location.host}/api/camera/stream/ws?deviceId=${deviceId}&rtspUrl=${encodeURIComponent(rtspUrl)}`;
-                    
-                    // Ensure JSMpeg is loaded
-                    if (typeof JSMpeg !== 'undefined') {
-                        const player = new JSMpeg.Player(url, { 
-                            canvas: canvas,
-                            pauseWhenHidden: false, 
-                            disableGl: false,
-                            audio: false,
-                            videoBufferSize: 2 * 1024 * 1024, // 2MB buffer for HD stream
-                            preserveDrawingBuffer: true
+                    const pc = new RTCPeerConnection({
+                        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                    });
+
+                    pc.addTransceiver('video', { direction: 'recvonly' });
+
+                    pc.ontrack = (event) => {
+                        video.srcObject = event.streams[0];
+                    };
+
+                    pc.createOffer().then(offer => {
+                        return pc.setLocalDescription(offer);
+                    }).then(() => {
+                        return fetch('/api/camera/webrtc/offer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                deviceId: deviceId,
+                                rtspUrl: rtspUrl,
+                                sdp: pc.localDescription.sdp
+                            })
                         });
-                        activeStreams.set(deviceId, player);
-                        
-                        // Hack: Start silent audio context to prevent browser throttling in background
-                        if (!window.keepAliveAudio) {
-                            try {
-                                window.keepAliveAudio = new (window.AudioContext || window.webkitAudioContext)();
-                                // Create a silent oscillator
-                                const osc = window.keepAliveAudio.createOscillator();
-                                const gain = window.keepAliveAudio.createGain();
-                                gain.gain.value = 0.001; // Almost silent but active
-                                osc.connect(gain);
-                                gain.connect(window.keepAliveAudio.destination);
-                                osc.start();
-                                console.log('Keep-alive audio started');
-                            } catch(e) { console.error('AudioContext failed', e); }
-                        }
-                        if (window.keepAliveAudio && window.keepAliveAudio.state === 'suspended') {
-                            window.keepAliveAudio.resume();
-                        }
+                    }).then(res => res.json())
+                    .then(data => {
+                        return pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+                    })
+                    .catch(e => console.error('WebRTC Error:', e));
 
-                    } else {
-                        console.error('JSMpeg library not loaded');
-                        container.innerHTML = '<p style="color:red">JSMpeg library missing</p>';
-                    }
+                    activeStreams.set(deviceId, { 
+                        destroy: () => { 
+                            pc.close(); 
+                            video.srcObject = null; 
+                            activeStreams.delete(deviceId);
+                        } 
+                    });
                 }
             } else {
                  console.error('Stream start failed', data);

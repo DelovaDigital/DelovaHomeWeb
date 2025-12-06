@@ -613,6 +613,22 @@ app.get('/api/devices', (req, res) => {
     res.json(enrichedDevices);
 });
 
+app.post('/api/camera/webrtc/offer', async (req, res) => {
+    const { deviceId, rtspUrl, sdp } = req.body;
+    if (!deviceId || !rtspUrl || !sdp) {
+        return res.status(400).json({ error: 'Missing parameters' });
+    }
+
+    try {
+        const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
+        const answerSdp = await stream.handleOffer(sdp);
+        res.json({ sdp: answerSdp });
+    } catch (e) {
+        console.error('WebRTC Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/api/devices/:id/command', async (req, res) => {
     const { id } = req.params;
     const { command, value } = req.body;

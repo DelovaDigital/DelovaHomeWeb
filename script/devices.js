@@ -114,7 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             pauseWhenHidden: false, 
                             disableGl: false,
                             audio: false,
-                            videoBufferSize: 256 * 1024 // 256kb buffer (approx 1-2 sec)
+                            videoBufferSize: 100 * 1024, // Reduced buffer to ~100kb for lower latency
+                            preserveDrawingBuffer: true
                         });
                         activeStreams.set(deviceId, player);
                         

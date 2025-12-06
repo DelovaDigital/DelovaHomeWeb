@@ -18,20 +18,21 @@ class CameraStream extends EventEmitter {
             '-rtsp_transport', 'tcp',
             '-fflags', 'nobuffer',
             '-flags', 'low_delay',
-            '-analyzeduration', '50000', // 50ms
+            '-analyzeduration', '50000',
             '-probesize', '50000',
             '-i', this.url,
             '-f', 'mpegts',
             '-codec:v', 'mpeg1video',
             '-an',
             '-stats',
-            '-r', '20', // Lower framerate slightly to reduce load/buffer buildup
-            '-g', '20', // Keyframe every second (GOP)
-            '-q:v', '3',
-            '-vf', 'scale=1280:-1',
-            '-b:v', '1500k', // Slightly lower bitrate
-            '-bufsize', '1000k', // Reduced buffer
-            '-maxrate', '2000k',
+            '-r', '15', // Lower FPS to 15 for stability
+            '-g', '30', // Keyframe every 2 seconds
+            '-vf', 'scale=854:-1', // Downscale to 480p to reduce load
+            '-b:v', '800k', // Lower bitrate
+            '-bufsize', '800k',
+            '-maxrate', '1000k',
+            '-muxdelay', '0', // No muxer delay
+            '-flush_packets', '1', // Flush packets immediately
             '-tune', 'zerolatency',
             '-'
         ];

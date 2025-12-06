@@ -51,9 +51,11 @@ class WebRtcCameraStream extends EventEmitter {
             "-level", "3.0",
             "-pix_fmt", "yuv420p",
             "-g", "30", // Keyframe every ~1s for fast startup
+            "-bsf:v", "h264_mp4toannexb", // Ensure Annex B format for RTP
             
             "-f", "rtp",
             "-payload_type", "96",
+            "-ssrc", "12345678", // Fixed SSRC to help debugging/stability
             `rtp://127.0.0.1:${this.udpPort}`
         ];
 
@@ -100,6 +102,7 @@ class WebRtcCameraStream extends EventEmitter {
                             { type: "ccm", parameter: "fir" },
                             { type: "goog-remb" },
                         ],
+                        parameters: "packetization-mode=1;profile-level-id=42e01f;level-asymmetry-allowed=1",
                     }),
                 ],
             },

@@ -962,10 +962,43 @@ class DeviceManager extends EventEmitter {
                 const level = findValue(block, 'ConsumablePercentageLevelRemaining');
                 
                 if (label && level) {
-                    // Filter out non-ink consumables (like printheads which might be labeled CMYK)
-                    // Usually single letters C, M, Y, K are inks.
-                    if (['C', 'M', 'Y', 'K'].includes(label)) {
-                        inks.push({ color: label, level: parseInt(level) });
+                    const lvl = parseInt(level);
+                    // Normalize label (remove spaces/slashes and uppercase)
+                    const norm = label.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+
+                    // Helper mapping for full-word labels
+                    const wordMap = { 'CYAN': 'C', 'MAGENTA': 'M', 'YELLOW': 'Y', 'BLACK': 'K' };
+
+                    // Single-letter labels (C, M, Y, K)
+                    if (norm.length === 1 && ['C', 'M', 'Y', 'K'].includes(norm)) {
+                        inks.push({ color: norm, level: lvl });
+                    }
+                    // Combined labels that contain C, M and Y (e.g., "CMY", "C/M/Y", "TriColor")
+                    else if ((norm.includes('C') && norm.includes('M') && norm.includes('Y')) || norm.includes('TRI')) {
+                        const components = { C: lvl, M: lvl, Y: lvl };
+                        // If the label also references K or CMYK, include black as well
+                        if (norm.includes('K') || norm.includes('CMYK')) components.K = lvl;
+                        inks.push({ color: norm, label: 'Tri-color', components });
+                    }
+                    // Full-word labels (e.g., "Cyan", "Magenta")
+                    else if (wordMap[norm]) {
+                        inks.push({ color: wordMap[norm], level: lvl });
+                    }
+                    // Fallback: if label looks like multiple letters (e.g., "CM", "MY"), try to split
+                    else if (norm.length > 1 && /[CMYK]/.test(norm)) {
+                        // Build components for any of the CMYK letters present
+                        const components = {};
+                        ['C', 'M', 'Y', 'K'].forEach(ch => { if (norm.includes(ch)) components[ch] = lvl; });
+                        // If we found multiple components, treat as a multi-component cartridge
+                        if (Object.keys(components).length > 1) {
+                            inks.push({ color: norm, label: 'Multi-color', components });
+                        } else {
+                            // Unknown label, store raw
+                            inks.push({ color: label, level: lvl });
+                        }
+                    } else {
+                        // Unknown label, store raw
+                        inks.push({ color: label, level: lvl });
                     }
                 }
             });

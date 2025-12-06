@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const track = state.item;
+        // expose current track URI globally for widget actions
+        window._spotifyCurrentUri = track.uri;
         const artist = track.artists.map(a => a.name).join(', ');
         const image = track.album.images[0]?.url;
         const deviceName = state.device ? state.device.name : 'Unknown Device';
@@ -46,8 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i class="fab fa-spotify" style="font-size: 1.2em;"></i>
                         <span style="font-weight: bold;">Spotify</span>
                     </div>
-                    <div style="font-size: 0.8em; opacity: 0.9; cursor: pointer;" onclick="toggleSpotifyDevices()">
-                        <i class="fas fa-desktop"></i> ${deviceName} <i class="fas fa-chevron-down"></i>
+                    <div style="font-size: 0.8em; opacity: 0.9; cursor: pointer; display:flex; gap:8px; align-items:center;" >
+                        <div onclick="toggleSpotifyDevices()" style="cursor:pointer;"><i class="fas fa-desktop"></i> ${deviceName} <i class="fas fa-chevron-down"></i></div>
+                        <div title="Play on Sonos" style="cursor:pointer;" onclick="openSonosPickerForUri()"><i class="fas fa-volume-up"></i></div>
                     </div>
                 </div>
                 
@@ -132,20 +135,84 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="modal-body">
                 <div class="list-group">
-                    ${devices.map(d => `
-                        <div class="list-item ${d.is_active ? 'active' : ''}" onclick="controlSpotify('transfer', '${d.id}'); closeModal();">
-                            <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
-                            <div style="flex: 1; margin-left: 10px;">
-                                <div style="font-weight: bold;">${d.name}</div>
-                                <div style="font-size: 0.8em; color: #666;">${d.type}</div>
-                            </div>
-                            ${d.is_active ? '<i class="fas fa-check" style="color: #1db954;"></i>' : ''}
-                        </div>
-                    `).join('')}
+                                        ${devices.map(d => `
+                                                <div class="list-item ${d.is_active ? 'active' : ''}" style="display:flex; align-items:center;">
+                                                        <div style="flex:1; cursor:pointer;" onclick="controlSpotify('transfer', '${d.id}'); closeModal();">
+                                                            <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
+                                                            <div style="display:inline-block; margin-left: 10px; vertical-align: middle;">
+                                                                <div style="font-weight: bold;">${d.name}</div>
+                                                                <div style="font-size: 0.8em; color: #666;">${d.type}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div style="display:flex; gap:8px; align-items:center;">
+                                                            ${d.is_active ? '<i class="fas fa-check" style="color: #1db954;"></i>' : ''}
+                                                            <button class="btn-mini" onclick="event.stopPropagation(); openSonosPickerForUri(); closeModal();" title="Play on Sonos"><i class="fas fa-play-circle"></i></button>
+                                                        </div>
+                                                </div>
+                                        `).join('')}
                 </div>
             </div>
         `;
         showModal(modalHtml);
+    };
+
+    window.openSonosPickerForUri = async (spotifyUri) => {
+        try {
+            const uri = spotifyUri || window._spotifyCurrentUri;
+            if (!uri) return alert('No Spotify track available to play on Sonos');
+
+            // fetch Sonos devices
+            const res = await fetch('/api/sonos/devices');
+            const data = await res.json();
+            const sonos = (data && data.devices) ? data.devices : [];
+            if (!sonos.length) return alert('Geen Sonos-apparaten gevonden');
+
+            const modalHtml = `
+                <div class="modal-header">
+                    <h3>Kies Sonos-apparaat</h3>
+                    <button class="close-modal" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="list-group">
+                        ${sonos.map(s => `
+                            <div class="list-item" onclick="(function(){ playOnSonos('${s.uuid}', '${encodeURIComponent(uri)}'); closeModal(); })();">
+                                <div style="font-weight:bold;">${s.name}</div>
+                                <div style="font-size:0.8em; color:#666;">${s.uuid}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            showModal(modalHtml);
+        } catch (e) {
+            console.error('Error opening Sonos picker:', e);
+            alert('Fout bij ophalen Sonos-apparaten');
+        }
+    };
+
+    window.playOnSonos = async (uuid, encodedUri) => {
+        try {
+            const spotifyUri = decodeURIComponent(encodedUri);
+            const userId = getUserId();
+            const body = { spotifyUri };
+            if (userId) body.userId = userId;
+
+            const res = await fetch(`/api/sonos/${uuid}/play-spotify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                alert('Playback started on Sonos');
+            } else {
+                console.error('Sonos play failed', data);
+                alert('Kon niet afspelen op Sonos');
+            }
+        } catch (e) {
+            console.error('Error playing on Sonos:', e);
+            alert('Fout bij starten Sonos-afspelen');
+        }
     };
 
     window.toggleSpotifyLibrary = async () => {

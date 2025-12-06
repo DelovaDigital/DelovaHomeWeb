@@ -231,17 +231,48 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final body = {
-        'command': 'transfer',
-        'value': deviceId,
+        'deviceId': deviceId,
         if (userId != null) 'userId': userId,
       };
       await http.post(
-        Uri.parse('$baseUrl/api/spotify/control'),
+        Uri.parse('$baseUrl/api/spotify/transfer-or-sonos'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(body),
       );
     } catch (e) {
-      debugPrint('Error transferring playback: $e');
+      debugPrint('Error transferring playback (transfer-or-sonos): $e');
     }
+  }
+
+  Future<List<dynamic>> getSonosDevices() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/sonos/devices'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map && data['ok'] == true) return data['devices'] ?? [];
+      }
+    } catch (e) {
+      debugPrint('Error fetching Sonos devices: $e');
+    }
+    return [];
+  }
+
+  Future<bool> playOnSonos(String uuid, String spotifyUri, {String? metadata}) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/sonos/$uuid/play-spotify'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'spotifyUri': spotifyUri, if (metadata != null) 'metadata': metadata}),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['ok'] == true;
+      }
+    } catch (e) {
+      debugPrint('Error requesting Sonos play: $e');
+    }
+    return false;
   }
 }

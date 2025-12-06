@@ -598,6 +598,56 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
     }
 });
 
+// Try transfer via Spotify Connect, if that fails and a Sonos UUID is provided, attempt Sonos playback.
+app.post('/api/spotify/transfer-or-sonos', requireSpotifyUser, async (req, res) => {
+    const { deviceId, sonosUuid, uris } = req.body || {};
+    if (!deviceId && !sonosUuid) {
+        return res.status(400).json({ ok: false, message: 'deviceId or sonosUuid required' });
+    }
+
+    try {
+        if (deviceId) {
+            // Try Spotify transfer first
+            try {
+                await spotifyManager.transferPlayback(req.userId, deviceId);
+                return res.json({ ok: true, method: 'spotify', message: 'Transferred via Spotify' });
+            } catch (e) {
+                console.warn('Spotify transfer failed, will attempt Sonos fallback if provided:', e.message || e);
+            }
+        }
+
+        if (sonosUuid) {
+            // Determine a URI to play: prefer provided uris, then current playback
+            let playUri = null;
+            if (uris && Array.isArray(uris) && uris.length > 0) playUri = uris[0];
+            if (!playUri) {
+                try {
+                    const state = await spotifyManager.getPlaybackState(req.userId);
+                    if (state && state.item && state.item.uri) playUri = state.item.uri;
+                    else if (state && state.context && state.context.uri) playUri = state.context.uri;
+                } catch (e) {
+                    console.warn('Could not fetch playback state for Sonos fallback:', e.message || e);
+                }
+            }
+
+            if (!playUri) return res.status(400).json({ ok: false, message: 'No URI available for Sonos playback' });
+
+            try {
+                const result = await sonosManager.play(sonosUuid, playUri, null);
+                return res.json({ ok: true, method: 'sonos', result });
+            } catch (e) {
+                console.error('Sonos fallback failed:', e);
+                return res.status(500).json({ ok: false, message: 'Sonos playback failed', error: e.message || e });
+            }
+        }
+
+        return res.status(500).json({ ok: false, message: 'Transfer failed and no Sonos fallback performed' });
+    } catch (err) {
+        console.error('Error in transfer-or-sonos:', err);
+        res.status(500).json({ ok: false, message: err.message || 'transfer-or-sonos failed' });
+    }
+});
+
 app.get('/api/spotify/devices', requireSpotifyUser, async (req, res) => {
     try {
         const devices = await spotifyManager.getDevices(req.userId);
@@ -687,6 +737,52 @@ app.post('/api/sonos/:uuid/command', async (req, res) => {
         res.json({ ok: true, result });
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+// Play a Spotify URI on a Sonos device (best-effort)
+// Body: { spotifyUri: string, metadata?: string }
+// Note: Sonos may accept different URI/metadata formats; this endpoint forwards the provided URI
+// to the Sonos manager which attempts to set AVTransportURI and start playback.
+const { createDidlLiteForSpotifyTrack } = require('./script/sonosHelper');
+
+app.post('/api/sonos/:uuid/play-spotify', async (req, res) => {
+    const { uuid } = req.params;
+    const { spotifyUri, metadata, userId } = req.body || {};
+
+    if (!spotifyUri) {
+        return res.status(400).json({ ok: false, message: 'spotifyUri is required' });
+    }
+
+    try {
+        let metaToUse = metadata || null;
+
+        // If spotifyUri looks like a Spotify track and we have a userId, fetch track metadata and build DIDL-Lite
+        try {
+            let trackId = null;
+            const m = spotifyUri.match(/(?:spotify:track:|track\/)([A-Za-z0-9_-]{10,})/);
+            if (m && m[1]) trackId = m[1];
+            // Also handle https://open.spotify.com/track/{id}
+            if (!trackId) {
+                const m2 = spotifyUri.match(/open\.spotify\.com\/track\/([A-Za-z0-9_-]{10,})/);
+                if (m2 && m2[1]) trackId = m2[1];
+            }
+
+            if (trackId && userId) {
+                const track = await spotifyManager.getTrack(userId, trackId);
+                if (track) {
+                    metaToUse = createDidlLiteForSpotifyTrack(track);
+                }
+            }
+        } catch (e) {
+            console.warn('Could not enrich metadata for Sonos playback:', e.message || e);
+        }
+
+        const result = await sonosManager.play(uuid, spotifyUri, metaToUse);
+        res.json({ ok: true, result, metadataUsed: !!metaToUse });
+    } catch (e) {
+        console.error(`Error playing Spotify URI on Sonos ${uuid}:`, e);
+        res.status(500).json({ ok: false, message: e.message || 'Failed to play on Sonos' });
     }
 });
 

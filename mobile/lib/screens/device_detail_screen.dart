@@ -499,8 +499,74 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 const SizedBox(height: 20),
                 if (widget.device.status.inks != null)
                   ...widget.device.status.inks!.map((ink) {
-                    final colorCode = ink['color'] as String;
-                    final level = ink['level'] as int;
+                    // Support tri-color components when present
+                    if (ink['components'] != null && ink['components'] is Map) {
+                      final comps = Map<String, dynamic>.from(ink['components'] as Map);
+                      final c = (comps['C'] ?? 0) as int;
+                      final m = (comps['M'] ?? 0) as int;
+                      final y = (comps['Y'] ?? 0) as int;
+                      final k = (comps['K'] != null) ? (comps['K'] as int) : null;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("${ink['label'] ?? ink['color'] ?? 'Tri-color'}", style: const TextStyle(color: Colors.grey)),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                _triBar('C', c, Colors.cyan),
+                                const SizedBox(width: 8),
+                                _triBar('M', m, const Color(0xFFFF00FF)),
+                                const SizedBox(width: 8),
+                                _triBar('Y', y, Colors.yellow),
+                                if (k != null) ...[
+                                  const SizedBox(width: 8),
+                                  _triBar('K', k, Colors.black),
+                                ]
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${['C:$c%', 'M:$m%', 'Y:$y%']..removeWhere((s) => s.endsWith(':0%'))..join(' • ')}${k != null ? ' • K:$k%' : ''}',
+                              style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Replace Cartridge'),
+                                        content: const Text('Markeer deze cartridge als vervangen?'),
+                                        actions: [
+                                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nee')),
+                                          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ja')),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      await _sendCommand('replace_cartridge', {'value': {'label': ink['label'] ?? ink['color']}});
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cartridge gemarkeerd als vervangen')));
+                                      widget.onRefresh();
+                                    }
+                                  },
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('Replace Cartridge'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    // Fallback single-color cartridge rendering
+                    final colorCode = (ink['color'] ?? '') as String;
+                    final level = (ink['level'] ?? 0) as int;
                     Color color;
                     switch (colorCode.toUpperCase()) {
                       case 'C': color = Colors.cyan; break;
@@ -509,13 +575,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       case 'K': color = Colors.black; break;
                       default: color = Colors.grey;
                     }
-                    
+
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("$colorCode ($level%)", style: const TextStyle(color: Colors.grey)),
+                          Text("${ink['label'] ?? colorCode} (${level}%)", style: const TextStyle(color: Colors.grey)),
                           const SizedBox(height: 5),
                           ClipRRect(
                             borderRadius: BorderRadius.circular(4),
@@ -722,6 +788,37 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         ),
         const SizedBox(height: 8),
         Text(label, style: const TextStyle(color: Colors.white70)),
+      ],
+    );
+  }
+
+  Widget _triBar(String label, int level, Color color) {
+    final barHeight = 60.0;
+    final fill = (level.clamp(0, 100)) / 100.0;
+    return Column(
+      children: [
+        Container(
+          width: 18,
+          height: barHeight,
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.grey[800]!),
+          ),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: 18,
+              height: barHeight * fill,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
       ],
     );
   }

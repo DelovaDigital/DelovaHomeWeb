@@ -236,22 +236,38 @@ document.addEventListener('DOMContentLoaded', () => {
             if (printer.state && printer.state.inks && printer.state.inks.length > 0) {
                 let inkHtml = '<div class="ink-level-container">';
                 printer.state.inks.forEach(ink => {
+                  // Support standard single-color cartridges and multi-component (tri-color) cartridges.
+                  if (ink.components && typeof ink.components === 'object') {
+                    // components example: { C: 80, M: 60, Y: 50 }
+                    inkHtml += `<div class="ink-cartridge">
+                      <div class="ink-bar-wrapper tri-components">
+                        ${['C','M','Y'].map(c => {
+                          const lvl = ink.components[c] != null ? ink.components[c] : 0;
+                          const col = c === 'C' ? '#00FFFF' : c === 'M' ? '#FF00FF' : '#FFFF00';
+                          return `<div class="tri-bar" style="height:${lvl}%; background:${col};" title="${c}: ${lvl}%"></div>`;
+                        }).join('')}
+                      </div>
+                      <div class="ink-label">${ink.label || ink.color || 'Tri-color'}</div>
+                    <div style="font-size: 0.7em;">${Object.keys(ink.components).map(k => k + ': ' + ink.components[k] + '%').join(' • ')}</div>
+                    </div>`;
+                  } else {
                     let colorCode = '#000';
                     let label = ink.color;
                     if (ink.color === 'C') { colorCode = '#00FFFF'; label = 'Cyaan'; }
                     else if (ink.color === 'M') { colorCode = '#FF00FF'; label = 'Magenta'; }
                     else if (ink.color === 'Y') { colorCode = '#FFFF00'; label = 'Geel'; }
                     else if (ink.color === 'K') { colorCode = '#000000'; label = 'Zwart'; }
-                    
+                        
                     inkHtml += `
-                        <div class="ink-cartridge">
-                            <div class="ink-bar-wrapper">
-                                <div class="ink-bar" style="height: ${ink.level}%; background-color: ${colorCode};"></div>
-                            </div>
-                            <div class="ink-label">${label}</div>
-                            <div style="font-size: 0.7em;">${ink.level}%</div>
+                      <div class="ink-cartridge">
+                        <div class="ink-bar-wrapper">
+                          <div class="ink-bar" style="height: ${ink.level}%; background-color: ${colorCode};"></div>
                         </div>
+                        <div class="ink-label">${label}</div>
+                        <div style="font-size: 0.7em;">${ink.level}%</div>
+                      </div>
                     `;
+                  }
                 });
                 inkHtml += '</div>';
                 printerContent.innerHTML = inkHtml;

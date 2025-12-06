@@ -232,12 +232,62 @@ class SpotifyManager {
     async transferPlayback(userId, deviceId) {
         const headers = await this.getHeaders(userId);
         if (!headers) throw new Error('No valid Spotify token for user');
-        const resp = await fetch('https://api.spotify.com/v1/me/player', {
+
+        // Accept either a string deviceId or an object { deviceId, uris }
+        let targetId = deviceId;
+        let uris = null;
+        if (typeof deviceId === 'object' && deviceId !== null) {
+            targetId = deviceId.deviceId || deviceId.id;
+            uris = deviceId.uris || null;
+        }
+
+        // First try a normal transfer with play:true
+        let resp = await fetch('https://api.spotify.com/v1/me/player', {
             method: 'PUT',
             headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device_ids: [deviceId], play: true })
+            body: JSON.stringify({ device_ids: [targetId], play: true })
         });
-        if (!resp.ok) throw new Error(`Spotify transferPlayback failed: ${resp.status}`);
+
+        if (resp.ok) return;
+
+        // If transfer failed, attempt to fetch current playback and explicitly start playback on the target device
+        try {
+            const state = await this.getPlaybackState(userId);
+            let playBody = null;
+            if (uris && Array.isArray(uris) && uris.length > 0) {
+                playBody = { uris };
+            } else if (state && state.item && state.item.uri) {
+                // Try to continue playing the currently playing track
+                playBody = { uris: [state.item.uri] };
+            } else if (state && state.context && state.context.uri) {
+                playBody = { context_uri: state.context.uri };
+            }
+
+            if (playBody) {
+                // Use the play endpoint with the device_id query param to target the device
+                const playUrl = `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(targetId)}`;
+                const playResp = await fetch(playUrl, {
+                    method: 'PUT',
+                    headers: { ...headers, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(playBody)
+                });
+                if (playResp.ok) return;
+            }
+
+            // As a last resort, try transferring again without play flag
+            resp = await fetch('https://api.spotify.com/v1/me/player', {
+                method: 'PUT',
+                headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_ids: [targetId] })
+            });
+            if (resp.ok) return;
+
+        } catch (e) {
+            console.error('Error attempting fallback playback on transfer:', e);
+        }
+
+        // If we reach here, all attempts failed
+        throw new Error(`Spotify transferPlayback failed: ${resp.status}`);
     }
 
     async getUserPlaylists(userId) {
@@ -250,6 +300,20 @@ class SpotifyManager {
             return data.items || [];
         } catch (e) {
             return [];
+        }
+    }
+
+    async getTrack(userId, trackId) {
+        const headers = await this.getHeaders(userId);
+        if (!headers) return null;
+        try {
+            const url = `https://api.spotify.com/v1/tracks/${encodeURIComponent(trackId)}`;
+            const resp = await fetch(url, { headers });
+            if (!resp.ok) return null;
+            return await resp.json();
+        } catch (e) {
+            console.error(`Error fetching track ${trackId}:`, e);
+            return null;
         }
     }
 

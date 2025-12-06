@@ -216,12 +216,75 @@ import '../widgets/device_card.dart';
                   return ListTile(
                     title: Text(d['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
                     subtitle: Text(d['type'] ?? '', style: const TextStyle(color: Colors.grey)),
-                    onTap: () async {
-                      await _apiService.transferSpotifyPlayback(d['id']);
-                      if (!context.mounted) return;
-                      Navigator.of(context).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
-                    },
+                      onTap: () async {
+                        await _apiService.transferSpotifyPlayback(d['id']);
+                        if (!context.mounted) return;
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
+                      },
+                      trailing: IconButton(
+                        icon: const Icon(Icons.speaker, color: Colors.white),
+                        onPressed: () async {
+                          // Play current Spotify track on a Sonos device
+                          try {
+                            var status = _spotifyStatus;
+                            if (status == null) {
+                              status = await _apiService.getSpotifyStatus();
+                              if (!mounted) return;
+                              setState(() => _spotifyStatus = status);
+                            }
+
+                            String? playUri;
+                            if (status != null) {
+                              playUri = status['item'] != null ? status['item']['uri'] : null;
+                              playUri ??= status['context'] != null ? status['context']['uri'] : null;
+                            }
+
+                            if (playUri == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No current Spotify track to play on Sonos')));
+                              return;
+                            }
+
+                            final sonos = await _apiService.getSonosDevices();
+                            if (sonos.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No Sonos devices found')));
+                              return;
+                            }
+
+                            final chosen = await showDialog<Map<String, dynamic>?>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: Colors.grey[900],
+                                title: const Text('Choose Sonos Device', style: TextStyle(color: Colors.white)),
+                                content: SizedBox(
+                                  width: double.maxFinite,
+                                  child: ListView.builder(
+                                    shrinkWrap: true,
+                                    itemCount: sonos.length,
+                                    itemBuilder: (c, i) {
+                                      final s = sonos[i];
+                                      return ListTile(
+                                        title: Text(s['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
+                                        onTap: () => Navigator.of(ctx).pop(s),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+
+                            if (chosen == null) return;
+
+                            final ok = await _apiService.playOnSonos(chosen['uuid'] ?? chosen['uuid'], playUri);
+                            if (!context.mounted) return;
+                            if (ok) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Started playing on ${chosen['name']}')));
+                            else ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to start Sonos playback')));
+                          } catch (e) {
+                            debugPrint('Error playing on Sonos: $e');
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error starting Sonos playback')));
+                          }
+                        },
+                      ),
                   );
                 },
               ),

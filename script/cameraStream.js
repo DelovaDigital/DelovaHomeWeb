@@ -56,7 +56,7 @@ class WebRtcCameraStream extends EventEmitter {
             "-f", "rtp",
             "-payload_type", "96",
             "-ssrc", "12345678", // Fixed SSRC to help debugging/stability
-            `rtp://127.0.0.1:${this.udpPort}`
+            `rtp://127.0.0.1:${this.udpPort}?pkt_size=1200`
         ];
 
         console.log(`[WebRTC] Starting ffmpeg: ffmpeg ${args.join(" ")}`);
@@ -102,7 +102,7 @@ class WebRtcCameraStream extends EventEmitter {
                             { type: "ccm", parameter: "fir" },
                             { type: "goog-remb" },
                         ],
-                        parameters: "packetization-mode=1;profile-level-id=42e01f;level-asymmetry-allowed=1",
+                        // parameters: "packetization-mode=1;profile-level-id=42e01f;level-asymmetry-allowed=1",
                     }),
                 ],
             },

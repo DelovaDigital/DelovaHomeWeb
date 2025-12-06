@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../models/device.dart';
@@ -92,7 +93,10 @@ import '../widgets/device_card.dart';
     Future<void> _openSpotifyLogin() async {
       try {
         final baseUrl = await _apiService.getBaseUrl();
-        final url = Uri.parse('$baseUrl/api/spotify/login');
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getString('userId');
+        final uriString = userId != null ? '$baseUrl/api/spotify/login?userId=$userId' : '$baseUrl/api/spotify/login';
+        final url = Uri.parse(uriString);
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: LaunchMode.externalApplication);
         } else {

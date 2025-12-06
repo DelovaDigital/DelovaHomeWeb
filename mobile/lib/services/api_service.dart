@@ -111,7 +111,10 @@ class ApiService {
   Future<List<dynamic>> getSpotifyDevices() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/devices'));
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final url = userId != null ? '$baseUrl/api/spotify/devices?userId=$userId' : '$baseUrl/api/spotify/devices';
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -125,7 +128,10 @@ class ApiService {
   Future<Map<String, dynamic>> getSpotifyStatus() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/status'));
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final url = userId != null ? '$baseUrl/api/spotify/status?userId=$userId' : '$baseUrl/api/spotify/status';
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -138,7 +144,10 @@ class ApiService {
   Future<List<dynamic>> getSpotifyPlaylists() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/playlists'));
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final url = userId != null ? '$baseUrl/api/spotify/playlists?userId=$userId' : '$baseUrl/api/spotify/playlists';
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -151,7 +160,10 @@ class ApiService {
   Future<List<dynamic>> getSpotifyAlbums() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/albums'));
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final url = userId != null ? '$baseUrl/api/spotify/albums?userId=$userId' : '$baseUrl/api/spotify/albums';
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -164,7 +176,10 @@ class ApiService {
   Future<Map<String, dynamic>> searchSpotify(String q) async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/search?q=${Uri.encodeComponent(q)}'));
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final userPart = userId != null ? '&userId=$userId' : '';
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/search?q=${Uri.encodeComponent(q)}${userPart}'));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -177,7 +192,10 @@ class ApiService {
   Future<Map<String, dynamic>> getSpotifyMe() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/me'));
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final url = userId != null ? '$baseUrl/api/spotify/me?userId=$userId' : '$baseUrl/api/spotify/me';
+      final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -190,10 +208,17 @@ class ApiService {
   Future<void> spotifyControl(String command, [dynamic value]) async {
     final baseUrl = await getBaseUrl();
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final body = {
+        'command': command,
+        'value': value,
+        if (userId != null) 'userId': userId,
+      };
       await http.post(
         Uri.parse('$baseUrl/api/spotify/control'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'command': command, 'value': value}),
+        body: json.encode(body),
       );
     } catch (e) {
       debugPrint('Error sending spotify control: $e');
@@ -203,10 +228,17 @@ class ApiService {
   Future<void> transferSpotifyPlayback(String deviceId) async {
     final baseUrl = await getBaseUrl();
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId');
+      final body = {
+        'command': 'transfer',
+        'value': deviceId,
+        if (userId != null) 'userId': userId,
+      };
       await http.post(
         Uri.parse('$baseUrl/api/spotify/control'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({'command': 'transfer', 'value': deviceId}),
+        body: json.encode(body),
       );
     } catch (e) {
       debugPrint('Error transferring playback: $e');

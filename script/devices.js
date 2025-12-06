@@ -109,7 +109,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Ensure JSMpeg is loaded
                     if (typeof JSMpeg !== 'undefined') {
-                        const player = new JSMpeg.Player(url, { canvas: canvas });
+                        const player = new JSMpeg.Player(url, { 
+                            canvas: canvas,
+                            pauseWhenHidden: false, // Keep playing when tab is backgrounded/minimized
+                            disableGl: false // Try WebGL first
+                        });
                         activeStreams.set(deviceId, player);
                     } else {
                         console.error('JSMpeg library not loaded');
@@ -262,6 +266,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.closeDeviceDetail = () => {
         document.getElementById('deviceModal').style.display = 'none';
         activeStreams.forEach((player, deviceId) => {
+            // Check if PiP is active for this device
+            const pipVideo = document.getElementById(`pip-video-${deviceId}`);
+            if (pipVideo && document.pictureInPictureElement === pipVideo) {
+                console.log('Keeping stream active for PiP');
+                return; // Don't destroy
+            }
+
             try { player.destroy(); } catch(e) {}
             // Notify backend to stop stream
             fetch('/api/camera/stop', {
@@ -270,7 +281,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ deviceId })
             });
         });
-        activeStreams.clear();
+        // Only clear inactive streams
+        for (const [deviceId, player] of activeStreams) {
+             const pipVideo = document.getElementById(`pip-video-${deviceId}`);
+             if (!pipVideo || document.pictureInPictureElement !== pipVideo) {
+                 activeStreams.delete(deviceId);
+             }
+        }
     };
 
     function updateModalContent(device) {
@@ -508,27 +525,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (type === 'camera') {
             controlsHtml += `
                 <div class="d-pad" style="margin-bottom: 20px;">
-                    <button class="d-pad-btn d-pad-up" 
-                        onmousedown="controlDevice('${device.id}', 'tilt_up')" onmouseup="controlDevice('${device.id}', 'stop')"
-                        ontouchstart="controlDevice('${device.id}', 'tilt_up'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
-                    ><i class="fas fa-chevron-up"></i></button>
+                    <button class="d-pad-btn d-pad-up" onclick="controlDevice('${device.id}', 'nudge_up')"><i class="fas fa-chevron-up"></i></button>
                     
-                    <button class="d-pad-btn d-pad-left" 
-                        onmousedown="controlDevice('${device.id}', 'pan_left')" onmouseup="controlDevice('${device.id}', 'stop')"
-                        ontouchstart="controlDevice('${device.id}', 'pan_left'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
-                    ><i class="fas fa-chevron-left"></i></button>
+                    <button class="d-pad-btn d-pad-left" onclick="controlDevice('${device.id}', 'nudge_left')"><i class="fas fa-chevron-left"></i></button>
                     
                     <button class="d-pad-btn d-pad-center" onclick="controlDevice('${device.id}', 'ptz_home')"><i class="fas fa-home"></i></button>
                     
-                    <button class="d-pad-btn d-pad-right" 
-                        onmousedown="controlDevice('${device.id}', 'pan_right')" onmouseup="controlDevice('${device.id}', 'stop')"
-                        ontouchstart="controlDevice('${device.id}', 'pan_right'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
-                    ><i class="fas fa-chevron-right"></i></button>
+                    <button class="d-pad-btn d-pad-right" onclick="controlDevice('${device.id}', 'nudge_right')"><i class="fas fa-chevron-right"></i></button>
                     
-                    <button class="d-pad-btn d-pad-down" 
-                        onmousedown="controlDevice('${device.id}', 'tilt_down')" onmouseup="controlDevice('${device.id}', 'stop')"
-                        ontouchstart="controlDevice('${device.id}', 'tilt_down'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
-                    ><i class="fas fa-chevron-down"></i></button>
+                    <button class="d-pad-btn d-pad-down" onclick="controlDevice('${device.id}', 'nudge_down')"><i class="fas fa-chevron-down"></i></button>
                 </div>
                 <div class="remote-grid">
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'snapshot')" title="Snapshot"><i class="fas fa-camera"></i></button>
@@ -627,8 +632,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Clean up when PiP closes
             pipVideo.addEventListener('leavepictureinpicture', () => {
-                // Optional: stop stream if we want, but usually we keep it running
-                // pipVideo.remove(); 
+                // If modal is closed, we should now stop the stream
+                const modal = document.getElementById('deviceModal');
+                if (modal.style.display === 'none') {
+                    const player = activeStreams.get(deviceId);
+                    if (player) {
+                        try { player.destroy(); } catch(e) {}
+                        activeStreams.delete(deviceId);
+                        fetch('/api/camera/stop', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ deviceId })
+                        });
+                    }
+                }
+                // pipVideo.remove(); // Optional cleanup
             });
         }
 

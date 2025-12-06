@@ -307,14 +307,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderSpeedResult(ping, mbps, dateStr) {
       if (!speedtestResults) return;
       const eval = getSpeedEvaluation(mbps);
-      speedtestResults.innerHTML = `
-        <div style="text-align: center; margin-top: 10px;">
-            <div style="font-size: 2.5em; font-weight: bold; color: #333;">${mbps} <span style="font-size: 0.4em; color: #666;">Mbps</span></div>
-            <div style="color: ${eval.color}; font-weight: bold; margin-bottom: 5px;">${eval.text}</div>
-            <div style="font-size: 0.9em; color: #666;">Ping: ${ping} ms</div>
-            ${dateStr ? `<div style="font-size: 0.8em; color: #999; margin-top: 5px;">Laatste test: ${dateStr}</div>` : ''}
-        </div>
-      `;
+        speedtestResults.innerHTML = `
+          <div style="text-align: center; margin-top: 10px;">
+              <div style="font-size: 2.5em; font-weight: bold; color: var(--text);">${mbps} <span style="font-size: 0.4em; color: var(--muted);">Mbps</span></div>
+              <div style="color: ${eval.color}; font-weight: bold; margin-bottom: 5px;">${eval.text}</div>
+              <div style="font-size: 0.9em; color: var(--muted);">Ping: ${ping} ms</div>
+              ${dateStr ? `<div style="font-size: 0.8em; color: var(--muted); margin-top: 5px;">Laatste test: ${dateStr}</div>` : ''}
+          </div>
+        `;
   }
 
   if (runSpeedtest) {
@@ -328,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     runSpeedtest.addEventListener('click', async ()=>{
-      if (speedtestResults) speedtestResults.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 2em; color: #3498db;"></i><div style="margin-top: 10px;">Internet snelheid testen...</div></div>';
+      if (speedtestResults) speedtestResults.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 2em; color: var(--accent-color);"></i><div style="margin-top: 10px;">Internet snelheid testen...</div></div>';
       try{
         const dl = await runDownloadTest();
         

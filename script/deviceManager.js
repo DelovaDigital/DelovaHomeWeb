@@ -1916,16 +1916,10 @@ class DeviceManager extends EventEmitter {
                     }
                 };
 
-                // Prefer explicit port if available (mdns provides service.port)
+                // Use host-only connect to avoid mismatched callback signatures in some castv2-client versions
                 try {
-                    if (device.port) {
-                        // Try signature with host + port
-                        client.connect(device.ip, device.port, done);
-                    } else {
-                        client.connect(device.ip, done);
-                    }
+                    client.connect(device.ip, done);
                 } catch (e) {
-                    // Fall back to host-only connect
                     try { client.connect(device.ip, done); } catch (err) { reject(err); }
                 }
             });

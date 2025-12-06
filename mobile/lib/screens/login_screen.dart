@@ -92,48 +92,87 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Login to ${widget.hubName ?? "Hub"}'),
+        title: Text('Login to ${widget.hubName ?? "Hub"}', style: theme.textTheme.titleLarge),
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: colorScheme.onSurface,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 540),
+            child: Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              color: theme.cardColor,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 28.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Branded header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.asset(
+                              'assets/DHLogo.jpeg',
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Delova Home', style: theme.textTheme.titleLarge),
+                              if (widget.hubName != null)
+                                Text(widget.hubName!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.2),
+                    color: colorScheme.error.withAlpha(31),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red),
+                    border: Border.all(color: colorScheme.error),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.red),
+                    style: TextStyle(color: colorScheme.error),
                     textAlign: TextAlign.center,
                   ),
                 ),
               TextFormField(
                 controller: _usernameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
+                style: TextStyle(color: colorScheme.onSurface),
+                decoration: InputDecoration(
                   labelText: 'Username',
-                  labelStyle: TextStyle(color: Colors.grey),
+                  labelStyle: TextStyle(color: colorScheme.onSurface.withAlpha(153)),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey),
+                    borderSide: BorderSide(color: theme.dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.blue),
+                    borderSide: BorderSide(color: colorScheme.primary),
                   ),
-                  prefixIcon: Icon(Icons.person, color: Colors.grey),
+                  prefixIcon: Icon(Icons.person, color: colorScheme.onSurface.withAlpha(153)),
                 ),
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Please enter username' : null,
@@ -142,17 +181,17 @@ class _LoginScreenState extends State<LoginScreen> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
+                style: TextStyle(color: colorScheme.onSurface),
+                decoration: InputDecoration(
                   labelText: 'Password',
-                  labelStyle: TextStyle(color: Colors.grey),
+                  labelStyle: TextStyle(color: colorScheme.onSurface.withAlpha(153)),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey),
+                    borderSide: BorderSide(color: theme.dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.blue),
+                    borderSide: BorderSide(color: colorScheme.primary),
                   ),
-                  prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                  prefixIcon: Icon(Icons.lock, color: colorScheme.onSurface.withAlpha(153)),
                 ),
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Please enter password' : null,
@@ -161,30 +200,34 @@ class _LoginScreenState extends State<LoginScreen> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: colorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: _isLoading
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: colorScheme.onPrimary,
                         ),
                       )
-                    : const Text(
+                    : Text(
                         'Login',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
+                        style: TextStyle(fontSize: 16, color: colorScheme.onPrimary),
                       ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
+                    ), // Column
+                  ), // Form
+                ), // Padding
+              ), // Card
+            ), // ConstrainedBox
+          ), // SingleChildScrollView
+        ), // Center
+      ); // Scaffold
   }
 }

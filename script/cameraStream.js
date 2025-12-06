@@ -42,8 +42,18 @@ class WebRtcCameraStream extends EventEmitter {
             "-rtsp_transport", "tcp",
             "-i", this.url,
             "-an", // No audio for now
-            "-c:v", "copy", // Pass-through H.264 (Very low CPU)
+            
+            // Force Transcode to H.264 Baseline (Browser Compatible)
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-tune", "zerolatency",
+            "-profile:v", "baseline",
+            "-level", "3.0",
+            "-pix_fmt", "yuv420p",
+            "-g", "30", // Keyframe every ~1s for fast startup
+            
             "-f", "rtp",
+            "-payload_type", "96",
             `rtp://127.0.0.1:${this.udpPort}`
         ];
 

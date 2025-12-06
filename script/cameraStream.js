@@ -33,18 +33,18 @@ async startUDP() {
 startFFmpeg() {
     if (this.ffmpeg) return;
     const args = [
-    "-rtsp_transport", "tcp",
-    "-i", this.url,
-    "-an",
-    "-c:v", "libx264",
-    "-preset", "ultrafast",
-    "-tune", "zerolatency",
-    "-profile:v", "baseline",
-    "-level", "4.0",
-    "-fflags", "+genpts",
-    "-f", "rtp",
-    "-payload_type", "96",
-    `rtp://127.0.0.1:${this.udpPort}?pkt_size=1200`
+    '-rtsp_transport', 'tcp',
+    '-i', 'rtsp://Alessio@192.168.0.236:554/stream1',
+    '-an',
+    '-c', 'h264_omx',
+    '-b', '1500k',
+    '-s', '1280x720',
+    '-r', '15',
+    '-preset', 'ultrafast',
+    '-tune', 'zerolatency',
+    '-f', 'rtp',
+    '-payload_type', '96',
+    'rtp://127.0.0.1:39084?pkt_size=1200'
 ];
 
     console.log(`[WebRTC] Starting ffmpeg: ffmpeg ${args.join(" ")}`);

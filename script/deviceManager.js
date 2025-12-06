@@ -16,6 +16,7 @@ class DeviceManager extends EventEmitter {
         this.devices = new Map();
         this.samsungConnections = new Map();
         this.atvProcesses = new Map();
+        this.cameraInstances = new Map(); // Cache for ONVIF camera connections
         this.pairingProcess = null;
         this.appleTvCredentials = {};
         this.samsungCredentials = {};
@@ -1137,8 +1138,44 @@ class DeviceManager extends EventEmitter {
             return;
         }
 
-        // console.log(`[Camera] Executing ${command} on ${device.ip}`);
+        const executeCommand = (cam) => {
+            const speed = 0.5;
+            try {
+                if (command === 'pan_left') {
+                    cam.continuousMove({ x: -speed, y: 0, zoom: 0 });
+                } else if (command === 'pan_right') {
+                    cam.continuousMove({ x: speed, y: 0, zoom: 0 });
+                } else if (command === 'tilt_up') {
+                    cam.continuousMove({ x: 0, y: speed, zoom: 0 });
+                } else if (command === 'tilt_down') {
+                    cam.continuousMove({ x: 0, y: -speed, zoom: 0 });
+                } else if (command === 'stop' || command === 'stop_move') {
+                    cam.stopMove();
+                } else if (command === 'preset') {
+                    cam.gotoPreset({ preset: value });
+                } else if (command === 'nudge_left') {
+                    cam.relativeMove({ x: -0.1, y: 0, zoom: 0 });
+                } else if (command === 'nudge_right') {
+                    cam.relativeMove({ x: 0.1, y: 0, zoom: 0 });
+                } else if (command === 'nudge_up') {
+                    cam.relativeMove({ x: 0, y: 0.1, zoom: 0 });
+                } else if (command === 'nudge_down') {
+                    cam.relativeMove({ x: 0, y: -0.1, zoom: 0 });
+                }
+            } catch (e) {
+                console.error(`[Camera] Error executing command: ${e.message}`);
+            }
+        };
 
+        // Check if we already have a connected instance
+        if (this.cameraInstances.has(device.ip)) {
+            const cam = this.cameraInstances.get(device.ip);
+            executeCommand(cam);
+            return;
+        }
+
+        // Create new connection
+        const self = this;
         new onvif.Cam({
             hostname: device.ip,
             username: creds.username,
@@ -1149,35 +1186,9 @@ class DeviceManager extends EventEmitter {
                 console.error(`[Camera] Connection error for ${device.ip}: ${err.message}`);
                 return;
             }
-
             // 'this' is the camera object
-            const speed = 0.5; // Default speed
-
-            try {
-                if (command === 'pan_left') {
-                    this.continuousMove({ x: -speed, y: 0, zoom: 0 });
-                } else if (command === 'pan_right') {
-                    this.continuousMove({ x: speed, y: 0, zoom: 0 });
-                } else if (command === 'tilt_up') {
-                    this.continuousMove({ x: 0, y: speed, zoom: 0 });
-                } else if (command === 'tilt_down') {
-                    this.continuousMove({ x: 0, y: -speed, zoom: 0 });
-                } else if (command === 'stop' || command === 'stop_move') {
-                    this.stopMove();
-                } else if (command === 'preset') {
-                    this.gotoPreset({ preset: value });
-                } else if (command === 'nudge_left') {
-                    this.relativeMove({ x: -0.1, y: 0, zoom: 0 });
-                } else if (command === 'nudge_right') {
-                    this.relativeMove({ x: 0.1, y: 0, zoom: 0 });
-                } else if (command === 'nudge_up') {
-                    this.relativeMove({ x: 0, y: 0.1, zoom: 0 });
-                } else if (command === 'nudge_down') {
-                    this.relativeMove({ x: 0, y: -0.1, zoom: 0 });
-                }
-            } catch (e) {
-                console.error(`[Camera] Error executing command: ${e.message}`);
-            }
+            self.cameraInstances.set(device.ip, this);
+            executeCommand(this);
         });
     }
 

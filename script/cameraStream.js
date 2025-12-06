@@ -16,8 +16,10 @@ class CameraStream extends EventEmitter {
         const args = [
             '-loglevel', 'warning',
             '-rtsp_transport', 'tcp',
-            '-analyzeduration', '10000000',
-            '-probesize', '10000000',
+            '-fflags', 'nobuffer',
+            '-flags', 'low_delay',
+            '-analyzeduration', '100000',
+            '-probesize', '100000',
             '-i', this.url,
             '-f', 'mpegts',
             '-codec:v', 'mpeg1video',
@@ -28,7 +30,7 @@ class CameraStream extends EventEmitter {
             '-q:v', '3',
             '-vf', 'scale=1280:-1',
             '-b:v', '2000k',
-            '-bufsize', '4000k',
+            '-bufsize', '2000k', // Reduced buffer
             '-maxrate', '2000k',
             // '-ar', '44100',
             // '-ac', '1',

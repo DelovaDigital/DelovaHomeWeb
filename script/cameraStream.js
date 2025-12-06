@@ -61,7 +61,7 @@ class WebRtcCameraStream extends EventEmitter {
         this.ffmpeg = spawn("ffmpeg", args);
 
         this.ffmpeg.stderr.on("data", (d) => {
-            // console.log(`[ffmpeg] ${d}`);
+             console.log(`[ffmpeg] ${d}`);
         });
 
         this.ffmpeg.on("close", (code) => {
@@ -94,6 +94,12 @@ class WebRtcCameraStream extends EventEmitter {
                         mimeType: "video/H264",
                         clockRate: 90000,
                         payloadType: 96,
+                        rtcpFeedback: [
+                            { type: "nack" },
+                            { type: "nack", parameter: "pli" },
+                            { type: "ccm", parameter: "fir" },
+                            { type: "goog-remb" },
+                        ],
                     }),
                 ],
             },

@@ -21,7 +21,7 @@ class Device {
       name: json['name'] ?? 'Unknown',
       type: json['type'] ?? 'unknown',
       ip: json['ip'] ?? '',
-      room: json['room'],
+      room: json['roomName'] ?? json['room'],
       status: DeviceStatus.fromJson(json['state'] ?? json['status'] ?? {}),
     );
   }

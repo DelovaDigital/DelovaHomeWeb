@@ -491,6 +491,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     _actionButton("Home", Icons.home, () => _sendCommand('ptz_home')),
                   ],
                 ),
+                const SizedBox(height: 30),
+                _buildCameraControls(),
               ],
 
               // --- Printer Controls ---
@@ -888,6 +890,72 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       icon: Icon(icon, color: Colors.white),
       iconSize: 48,
       onPressed: () => _sendCommand(cmd),
+    );
+  }
+
+  Widget _buildCameraControls() {
+    return Column(
+      children: [
+        const Text("Camera Control", style: TextStyle(color: Colors.grey)),
+        const SizedBox(height: 20),
+        Container(
+          width: 220,
+          height: 220,
+          decoration: BoxDecoration(
+            color: Colors.grey[800],
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 10,
+                spreadRadius: 2,
+              )
+            ],
+          ),
+          child: Stack(
+            children: [
+              Align(
+                alignment: Alignment.topCenter,
+                child: _dpadBtn(Icons.keyboard_arrow_up, 'nudge_up'),
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: _dpadBtn(Icons.keyboard_arrow_down, 'nudge_down'),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _dpadBtn(Icons.keyboard_arrow_left, 'nudge_left'),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: _dpadBtn(Icons.keyboard_arrow_right, 'nudge_right'),
+              ),
+              Align(
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: () => _sendCommand('stop'),
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 5,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
+                    ),
+                    child: const Icon(Icons.stop, color: Colors.red, size: 40),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

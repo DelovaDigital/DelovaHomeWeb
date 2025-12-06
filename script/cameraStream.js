@@ -14,28 +14,33 @@ class CameraStream extends EventEmitter {
         if (this.process) return;
 
         const args = [
-            '-loglevel', 'warning',
-            '-rtsp_transport', 'tcp',
-            '-fflags', 'nobuffer',
-            '-flags', 'low_delay',
-            '-analyzeduration', '2000000', // Increased to 2M to fix "not enough frames"
-            '-probesize', '1000000',
-            '-i', this.url,
-            '-f', 'mpegts',
-            '-codec:v', 'mpeg1video',
-            '-an',
-            '-stats',
-            '-r', '25',
-            '-g', '30', // Keyframe every 1.2 seconds
-            '-vf', 'scale=1280:-1', // 720p (Higher resolution)
-            '-b:v', '2500k', // Higher bitrate for quality
-            '-bufsize', '6000k', // Larger buffer for ffmpeg
-            '-maxrate', '4500k',
-            '-muxdelay', '0', // Back to 0 for low latency
-            '-flush_packets', '1', // Flush immediately
-            '-tune', 'zerolatency',
-            '-'
-        ];
+    '-loglevel', 'error',
+    '-rtsp_transport', 'tcp',
+    '-fflags', 'discardcorrupt',
+    '-probesize', '500k',
+    '-analyzeduration', '500k',
+
+    '-i', this.url,
+
+    // --- OUTPUT ---
+    '-f', 'mpegts',
+    '-codec:v', 'mpeg1video',
+
+    '-r', '25',
+    '-g', '25',               // keyframe = 1s → vloeiender en stabieler
+    '-q:v', '2',              // betere kwaliteit, minder stutter dan bitrate mode
+
+    '-vf', 'scale=1280:-1',   // HD resolutie
+    '-an',
+    '-tune', 'zerolatency',
+
+    // Bufferinstellingen
+    '-max_delay', '0',
+    '-preset', 'veryfast',
+
+    '-'
+];
+
 
         console.log(`[CameraStream] Spawning ffmpeg for ${this.url}`);
         this.process = spawn('ffmpeg', args);

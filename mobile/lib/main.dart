@@ -23,13 +23,13 @@ void main() async {
 class DelovaHome extends StatefulWidget {
   const DelovaHome({super.key});
 
-  static _DelovaHomeState? of(BuildContext context) => context.findAncestorStateOfType<_DelovaHomeState>();
+  static DelovaHomeState? of(BuildContext context) => context.findAncestorStateOfType<DelovaHomeState>();
 
   @override
-  State<DelovaHome> createState() => _DelovaHomeState();
+  State<DelovaHome> createState() => DelovaHomeState();
 }
 
-class _DelovaHomeState extends State<DelovaHome> {
+class DelovaHomeState extends State<DelovaHome> {
   ThemeMode _themeMode = ThemeMode.system;
 
   @override
@@ -43,9 +43,13 @@ class _DelovaHomeState extends State<DelovaHome> {
       final prefs = await SharedPreferences.getInstance();
       final t = prefs.getString('theme_mode') ?? 'system';
       setState(() {
-        if (t == 'dark') _themeMode = ThemeMode.dark;
-        else if (t == 'light') _themeMode = ThemeMode.light;
-        else _themeMode = ThemeMode.system;
+        if (t == 'dark') {
+          _themeMode = ThemeMode.dark;
+        } else if (t == 'light') {
+          _themeMode = ThemeMode.light;
+        } else {
+          _themeMode = ThemeMode.system;
+        }
       });
     } catch (e) {
       // ignore
@@ -63,9 +67,13 @@ class _DelovaHomeState extends State<DelovaHome> {
 
   void cycleTheme() {
     setState(() {
-      if (_themeMode == ThemeMode.system) _themeMode = ThemeMode.dark;
-      else if (_themeMode == ThemeMode.dark) _themeMode = ThemeMode.light;
-      else _themeMode = ThemeMode.system;
+      if (_themeMode == ThemeMode.system) {
+        _themeMode = ThemeMode.dark;
+      } else if (_themeMode == ThemeMode.dark) {
+        _themeMode = ThemeMode.light;
+      } else {
+        _themeMode = ThemeMode.system;
+      }
     });
   }
 

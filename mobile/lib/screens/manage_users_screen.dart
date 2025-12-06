@@ -83,13 +83,17 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             onPressed: () async {
               if (usernameController.text.isEmpty || passwordController.text.isEmpty) return;
               if (passwordController.text != confirmController.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Passwords do not match')),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Passwords do not match')),
+                  );
+                }
                 return;
               }
 
-              Navigator.pop(context);
+              if (mounted) {
+                Navigator.pop(context);
+              }
               await _performAddUser(usernameController.text, passwordController.text);
             },
             child: const Text('Add'),
@@ -116,19 +120,25 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       final data = jsonDecode(body);
 
       if (data['ok'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User added successfully')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('User added successfully')),
+          );
+        }
         _loadUsers();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? 'Failed to add user')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? 'Failed to add user')),
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
     }
   }
 

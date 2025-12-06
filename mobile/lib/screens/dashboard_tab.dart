@@ -20,11 +20,9 @@ import '../widgets/device_card.dart';
     final ApiService _apiService = ApiService();
     int _activeDevices = 0;
     int _totalDevices = 0;
-    bool _isLoading = true;
     List<Device> _favoriteDevices = [];
     Map<String, dynamic>? _weatherData;
     Map<String, dynamic>? _spotifyStatus;
-    bool _spotifyLoading = false;
     bool _spotifyAvailable = false;
     String? _spotifyDeviceName;
     Timer? _spotifyTimer;
@@ -52,32 +50,42 @@ import '../widgets/device_card.dart';
 
     void _cycleTheme() {
       setState(() {
-        if (_forceDark == null) _forceDark = true;
-        else if (_forceDark == true) _forceDark = false;
-        else _forceDark = null;
+        if (_forceDark == null) {
+          _forceDark = true;
+        } else if (_forceDark == true) {
+          _forceDark = false;
+        } else {
+          _forceDark = null;
+        }
       });
     }
 
     Future<void> _fetchSpotifyStatus() async {
       try {
         final status = await _apiService.getSpotifyStatus();
-        if (mounted) setState(() => _spotifyStatus = status);
+        if (mounted) {
+          setState(() => _spotifyStatus = status);
+        }
       } catch (e) {
         debugPrint('Spotify status error: $e');
-        if (mounted) setState(() => _spotifyStatus = {'is_playing': false});
+        if (mounted) {
+          setState(() => _spotifyStatus = {'is_playing': false});
+        }
       }
     }
 
     Future<void> _fetchSpotifyMe() async {
       try {
         final me = await _apiService.getSpotifyMe();
-        if (mounted) setState(() {
-          _spotifyAvailable = me['available'] == true;
-          _spotifyDeviceName = me['device'] != null ? me['device']['name'] : null;
-        });
+        if (mounted) {
+          setState(() {
+            _spotifyAvailable = me['available'] == true;
+            _spotifyDeviceName = me['device'] != null ? me['device']['name'] : null;
+          });
+        }
       } catch (e) {
         debugPrint('Spotify me error: $e');
-        if (mounted) setState(() { _spotifyAvailable = false; _spotifyDeviceName = null; });
+        if (mounted) { setState(() { _spotifyAvailable = false; _spotifyDeviceName = null; }); }
       }
     }
 
@@ -88,7 +96,9 @@ import '../widgets/device_card.dart';
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: LaunchMode.externalApplication);
         } else {
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot open browser')));
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot open browser')));
+          }
         }
       } catch (e) {
         debugPrint('Open spotify login error: $e');
@@ -141,11 +151,11 @@ import '../widgets/device_card.dart';
                       title: Text(t['name'] ?? '', style: const TextStyle(color: Colors.white)),
                       subtitle: Text((t['artists'] != null && (t['artists'] as List).isNotEmpty) ? t['artists'][0]['name'] : '', style: const TextStyle(color: Colors.grey)),
                       onTap: () async {
-                        Navigator.of(context).pop();
                         final uri = t['uri'];
                         if (uri != null) {
                           await _apiService.spotifyControl('play_uris', [uri]);
-                          if (!mounted) return;
+                          if (!context.mounted) return;
+                          Navigator.of(context).pop();
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${t['name']}')));
                           await _fetchSpotifyStatus();
                         }
@@ -162,11 +172,11 @@ import '../widgets/device_card.dart';
                       title: Text(a['name'] ?? '', style: const TextStyle(color: Colors.white)),
                       subtitle: Text(a['type'] ?? '', style: const TextStyle(color: Colors.grey)),
                       onTap: () async {
-                        Navigator.of(context).pop();
                         final uri = a['uri'];
                         if (uri != null) {
                           await _apiService.spotifyControl('play_context', uri);
-                          if (!mounted) return;
+                          if (!context.mounted) return;
+                          Navigator.of(context).pop();
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${a['name']}')));
                           await _fetchSpotifyStatus();
                         }
@@ -203,9 +213,9 @@ import '../widgets/device_card.dart';
                     title: Text(d['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
                     subtitle: Text(d['type'] ?? '', style: const TextStyle(color: Colors.grey)),
                     onTap: () async {
-                      Navigator.of(context).pop();
                       await _apiService.transferSpotifyPlayback(d['id']);
-                      if (!mounted) return;
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
                     },
                   );
@@ -220,10 +230,8 @@ import '../widgets/device_card.dart';
     }
 
     Future<void> _showSpotifyMusicPicker() async {
-      setState(() => _spotifyLoading = true);
       final playlists = await _apiService.getSpotifyPlaylists();
       final albums = await _apiService.getSpotifyAlbums();
-      setState(() => _spotifyLoading = false);
 
       if (!mounted) return;
       showDialog(
@@ -253,9 +261,9 @@ import '../widgets/device_card.dart';
                             title: Text(p['name'] ?? '', style: const TextStyle(color: Colors.white)),
                             subtitle: Text(p['owner']?['display_name'] ?? '', style: const TextStyle(color: Colors.grey)),
                             onTap: () async {
-                              Navigator.of(context).pop();
                               await _apiService.spotifyControl('play_context', p['uri']);
-                              if (!mounted) return;
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop();
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${p['name']}')));
                               await _fetchSpotifyStatus();
                             },
@@ -273,9 +281,9 @@ import '../widgets/device_card.dart';
                             title: Text(a['name'] ?? '', style: const TextStyle(color: Colors.white)),
                             subtitle: Text((a['artists'] != null && a['artists'].isNotEmpty) ? a['artists'][0]['name'] : '', style: const TextStyle(color: Colors.grey)),
                             onTap: () async {
-                              Navigator.of(context).pop();
                               await _apiService.spotifyControl('play_context', a['uri']);
-                              if (!mounted) return;
+                              if (!context.mounted) return;
+                              Navigator.of(context).pop();
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${a['name']}')));
                               await _fetchSpotifyStatus();
                             },
@@ -319,20 +327,17 @@ import '../widgets/device_card.dart';
             if (_favoriteDevices.isEmpty) {
               _favoriteDevices = devices.take(3).toList();
             }
-            _isLoading = false;
           });
         }
       } catch (e) {
         if (mounted) {
           setState(() {
-            _isLoading = false;
           });
         }
       }
     }
 
     Future<void> _activateScene(String sceneName) async {
-      setState(() => _isLoading = true);
       try {
         await _apiService.activateScene(sceneName);
         if (mounted) {
@@ -340,9 +345,13 @@ import '../widgets/device_card.dart';
           _fetchStats();
         }
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to activate scene: $e')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to activate scene: $e')));
+        }
       } finally {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() {});
+        }
       }
     }
 
@@ -381,7 +390,7 @@ import '../widgets/device_card.dart';
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Welkom Thuis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
                         const SizedBox(height: 4),
-                        Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor.withOpacity(0.8))),
+                        Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor.withAlpha(204))),
                       ]),
                     ),
                     IconButton(
@@ -397,7 +406,9 @@ import '../widgets/device_card.dart';
                         const PopupMenuItem(value: 2, child: Text('Thema wisselen')),
                       ],
                       onSelected: (v) {
-                        if (v == 2) _cycleTheme();
+                        if (v == 2) {
+                          _cycleTheme();
+                        }
                       },
                     )
                   ],
@@ -463,7 +474,6 @@ import '../widgets/device_card.dart';
     }
 
     Future<void> _turnOffLightsOnly() async {
-      setState(() => _isLoading = true);
       try {
         final devices = await _apiService.getDevices();
         final lights = devices.where((d) {
@@ -484,9 +494,13 @@ import '../widgets/device_card.dart';
           _fetchStats();
         }
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fout bij uitschakelen lampen: $e')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fout bij uitschakelen lampen: $e')));
+        }
       } finally {
-        if (mounted) setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() {});
+        }
       }
     }
     Widget _buildStatusCard({required IconData icon, required String title, required String subtitle, required Color color}) {
@@ -502,12 +516,24 @@ import '../widgets/device_card.dart';
     }
 
     IconData _getWeatherIcon(int? code) {
-      if (code == null) return Icons.cloud;
-      if (code == 0) return Icons.wb_sunny;
-      if (code < 3) return Icons.wb_cloudy;
-      if (code < 50) return Icons.foggy;
-      if (code < 70) return Icons.grain;
-      if (code < 80) return Icons.ac_unit;
+      if (code == null) {
+        return Icons.cloud;
+      }
+      if (code == 0) {
+        return Icons.wb_sunny;
+      }
+      if (code < 3) {
+        return Icons.wb_cloudy;
+      }
+      if (code < 50) {
+        return Icons.foggy;
+      }
+      if (code < 70) {
+        return Icons.grain;
+      }
+      if (code < 80) {
+        return Icons.ac_unit;
+      }
       return Icons.thunderstorm;
     }
 
@@ -529,7 +555,7 @@ import '../widgets/device_card.dart';
               duration: const Duration(milliseconds: 350),
               child: artwork != null
                   ? Image.network(artwork, key: ValueKey<String>(artwork), width: 64, height: 64, fit: BoxFit.cover)
-                  : SizedBox(key: const ValueKey('no_art'), width: 64, height: 64),
+                  : const SizedBox(key: ValueKey('no_art'), width: 64, height: 64),
             ),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -537,7 +563,7 @@ import '../widgets/device_card.dart';
               const SizedBox(height: 4),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
-                child: Text(item, key: ValueKey<String>(item), style: TextStyle(color: textColor.withOpacity(0.8))),
+                child: Text(item, key: ValueKey<String>(item), style: TextStyle(color: textColor.withAlpha(204))),
               ),
               const SizedBox(height: 8),
               TweenAnimationBuilder<double>(
@@ -548,20 +574,27 @@ import '../widgets/device_card.dart';
                 },
               ),
               const SizedBox(height: 6),
-              if (_spotifyAvailable && _spotifyDeviceName != null) Text('Apparaat: ${_spotifyDeviceName}', style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12))
+              if (_spotifyAvailable && _spotifyDeviceName != null)
+                Text('Apparaat: $_spotifyDeviceName', style: TextStyle(color: textColor.withAlpha(204), fontSize: 12))
             ])),
             const SizedBox(width: 8),
             if (!_spotifyAvailable)
-              ElevatedButton(onPressed: _openSpotifyLogin, child: const Text('Verbinden'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green))
+              ElevatedButton(onPressed: _openSpotifyLogin, style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text('Verbinden'))
             else
-              TextButton(onPressed: () async { await _fetchSpotifyMe(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Spotify beschikbaar'))); }, child: Text('Ververs', style: TextStyle(color: textColor)))
+              TextButton(child: Text('Ververs', style: TextStyle(color: textColor)), onPressed: () async { await _fetchSpotifyMe(); if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spotify beschikbaar')));
+              } })
           ]),
           const SizedBox(height: 12),
           Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_previous), color: textColor),
               IconButton(
-                onPressed: _spotifyAvailable ? () async { if (isPlaying) await _apiService.spotifyControl('pause'); else await _apiService.spotifyControl('play'); await _fetchSpotifyStatus(); } : null,
+                onPressed: _spotifyAvailable ? () async { if (isPlaying) {
+                  await _apiService.spotifyControl('pause');
+                } else {
+                  await _apiService.spotifyControl('play');
+                } await _fetchSpotifyStatus(); } : null,
                 icon: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),

@@ -179,7 +179,7 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final userPart = userId != null ? '&userId=$userId' : '';
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/search?q=${Uri.encodeComponent(q)}${userPart}'));
+      final response = await http.get(Uri.parse('$baseUrl/api/spotify/search?q=${Uri.encodeComponent(q)}$userPart'));
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }

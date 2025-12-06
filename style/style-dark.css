@@ -135,6 +135,56 @@ body {
     box-shadow: none;
 }
 
+/* Simple site login form (match light layout but dark colors) */
+form {
+    max-width: 300px;
+    margin: 50px auto;
+    padding: 30px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background-color: var(--card);
+}
+
+input[type="text"],
+input[type="password"]{
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    box-sizing: border-box;
+    background: transparent;
+    color: var(--text);
+}
+
+#btnLogin {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--accent-color);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#btnCreateAccount {
+    width: 100%;
+    padding: 10px;
+    margin-top: 10px;
+    background-color: var(--muted);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+header {
+    background: transparent;
+    padding: 10px 0;
+}
+
+header h1 { color: var(--text); }
+
 .form-group {
     margin-bottom: 20px;
 }

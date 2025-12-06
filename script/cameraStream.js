@@ -18,7 +18,7 @@ class CameraStream extends EventEmitter {
             '-rtsp_transport', 'tcp',
             '-fflags', 'nobuffer',
             '-flags', 'low_delay',
-            '-analyzeduration', '1000000', // Increased to 1M to fix "not enough frames"
+            '-analyzeduration', '2000000', // Increased to 2M to fix "not enough frames"
             '-probesize', '1000000',
             '-i', this.url,
             '-f', 'mpegts',
@@ -26,11 +26,11 @@ class CameraStream extends EventEmitter {
             '-an',
             '-stats',
             '-r', '25',
-            '-g', '25', // Keyframe every 1 second
+            '-g', '30', // Keyframe every 1.2 seconds
             '-vf', 'scale=1280:-1', // 720p (Higher resolution)
             '-b:v', '2500k', // Higher bitrate for quality
-            '-bufsize', '5000k', // Larger buffer for ffmpeg
-            '-maxrate', '3500k',
+            '-bufsize', '6000k', // Larger buffer for ffmpeg
+            '-maxrate', '4500k',
             '-muxdelay', '0', // Back to 0 for low latency
             '-flush_packets', '1', // Flush immediately
             '-tune', 'zerolatency',

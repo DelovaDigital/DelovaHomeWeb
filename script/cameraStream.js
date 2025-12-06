@@ -45,12 +45,14 @@ class WebRtcCameraStream extends EventEmitter {
             
             // Force Transcode to H.264 Baseline (Browser Compatible)
             "-c:v", "libx264",
+            "-vf", "scale=1280:720", // Downscale to 720p for better compatibility
+            "-r", "15", // Match input framerate
             "-preset", "ultrafast",
             "-tune", "zerolatency",
             "-profile:v", "baseline",
-            "-level", "4.1",
+            "-level", "3.1",
             "-pix_fmt", "yuv420p",
-            "-g", "30", // Keyframe every ~1s for fast startup
+            "-g", "30", // Keyframe every ~2s
             "-bsf:v", "h264_mp4toannexb", // Ensure Annex B format for RTP
             
             "-f", "rtp",
@@ -102,7 +104,7 @@ class WebRtcCameraStream extends EventEmitter {
                             { type: "ccm", parameter: "fir" },
                             { type: "goog-remb" },
                         ],
-                        parameters: "packetization-mode=1;profile-level-id=42e029;level-asymmetry-allowed=1",
+                        parameters: "packetization-mode=1;profile-level-id=42e01f;level-asymmetry-allowed=1",
                     }),
                 ],
             },

@@ -507,10 +507,33 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else if (type === 'camera') {
             controlsHtml += `
+                <div class="d-pad" style="margin-bottom: 20px;">
+                    <button class="d-pad-btn d-pad-up" 
+                        onmousedown="controlDevice('${device.id}', 'tilt_up')" onmouseup="controlDevice('${device.id}', 'stop')"
+                        ontouchstart="controlDevice('${device.id}', 'tilt_up'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
+                    ><i class="fas fa-chevron-up"></i></button>
+                    
+                    <button class="d-pad-btn d-pad-left" 
+                        onmousedown="controlDevice('${device.id}', 'pan_left')" onmouseup="controlDevice('${device.id}', 'stop')"
+                        ontouchstart="controlDevice('${device.id}', 'pan_left'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
+                    ><i class="fas fa-chevron-left"></i></button>
+                    
+                    <button class="d-pad-btn d-pad-center" onclick="controlDevice('${device.id}', 'ptz_home')"><i class="fas fa-home"></i></button>
+                    
+                    <button class="d-pad-btn d-pad-right" 
+                        onmousedown="controlDevice('${device.id}', 'pan_right')" onmouseup="controlDevice('${device.id}', 'stop')"
+                        ontouchstart="controlDevice('${device.id}', 'pan_right'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
+                    ><i class="fas fa-chevron-right"></i></button>
+                    
+                    <button class="d-pad-btn d-pad-down" 
+                        onmousedown="controlDevice('${device.id}', 'tilt_down')" onmouseup="controlDevice('${device.id}', 'stop')"
+                        ontouchstart="controlDevice('${device.id}', 'tilt_down'); event.preventDefault()" ontouchend="controlDevice('${device.id}', 'stop'); event.preventDefault()"
+                    ><i class="fas fa-chevron-down"></i></button>
+                </div>
                 <div class="remote-grid">
-                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'snapshot')"><i class="fas fa-camera"></i></button>
-                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'record')"><i class="fas fa-circle"></i></button>
-                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'ptz_home')"><i class="fas fa-home"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'snapshot')" title="Snapshot"><i class="fas fa-camera"></i></button>
+                    <button class="remote-btn" onclick="togglePiP('${device.id}')" title="Picture in Picture"><i class="fas fa-external-link-alt"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'record')" title="Opnemen"><i class="fas fa-circle"></i></button>
                 </div>
             `;
         }
@@ -583,7 +606,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${controlsHtml}
             `;
         }
-    }    window.toggleDevice = (id) => {
+    }    window.togglePiP = async (deviceId) => {
+        const container = document.getElementById(`camera-container-${deviceId}`);
+        if (!container) return;
+        const canvas = container.querySelector('canvas');
+        if (!canvas) {
+            alert('Stream nog niet geladen');
+            return;
+        }
+
+        // Check if we already have a pip video for this device
+        let pipVideo = document.getElementById(`pip-video-${deviceId}`);
+        if (!pipVideo) {
+            pipVideo = document.createElement('video');
+            pipVideo.id = `pip-video-${deviceId}`;
+            pipVideo.style.display = 'none'; // Hidden
+            pipVideo.muted = true; // Auto-play policy
+            pipVideo.autoplay = true;
+            document.body.appendChild(pipVideo);
+            
+            // Clean up when PiP closes
+            pipVideo.addEventListener('leavepictureinpicture', () => {
+                // Optional: stop stream if we want, but usually we keep it running
+                // pipVideo.remove(); 
+            });
+        }
+
+        if (document.pictureInPictureElement) {
+            document.exitPictureInPicture();
+        } else {
+            try {
+                // Always refresh stream capture to ensure it's active
+                const stream = canvas.captureStream(30);
+                pipVideo.srcObject = stream;
+                await pipVideo.play();
+                await pipVideo.requestPictureInPicture();
+            } catch (err) {
+                console.error('PiP failed:', err);
+                alert('Picture-in-Picture niet ondersteund of mislukt: ' + err.message);
+            }
+        }
+    };
+
+    window.toggleDevice = (id) => {
         fetch(`/api/devices/${id}/command`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

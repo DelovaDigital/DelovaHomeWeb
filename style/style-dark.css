@@ -8,23 +8,23 @@ body {
 }
 
 p {
-    color: #e0e0e0;
+    color: var(--text);
 }
 
 #usernameDisplay {
     margin-right: 10px;
-    color: #e0e0e0;
+    color: var(--text);
 }
 
 h1 {
-    color: #e0e0e0;
+    color: var(--text);
     font-family: Arial, sans-serif;
 }
 
 header {
-    background-color: #2d2d2d;
+    background-color: var(--card);
     padding: 10px 0;
-    border-bottom: 1px solid #404040;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
     border-radius: 10px;
 }
 
@@ -42,13 +42,13 @@ li {
 
 li a {
     text-decoration: none;
-    color: #5ba3ff;
+    color: var(--primary);
     font-weight: bold;
 }
 
 li a:hover {
     text-decoration: none;
-    color: #7db8ff;
+    color: var(--primary);
     font-weight: bold;
 }
 
@@ -56,16 +56,16 @@ form {
     max-width: 300px;
     margin: 50px auto;
     padding: 30px;
-    border: 1px solid #404040;
+    border: 1px solid rgba(255,255,255,0.06);
     border-radius: 10px;
-    background-color: #2d2d2d;
+    background-color: var(--card);
 }
 
 #btnLogin {
     width: 100%;
     padding: 10px;
-    background-color: #4a7ba7;
-    color: white;
+    background-color: var(--primary);
+    color: var(--card);
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -73,8 +73,8 @@ form {
 
 
 button {
-    background-color: #4a7ba7;
-    color: white;
+    background-color: var(--accent-color);
+    color: var(--card);
     padding: 10px 15px;
     border: none;
     border-radius: 5px;
@@ -82,7 +82,7 @@ button {
 }
 
 button:hover {
-    background-color: #5b8bb8;
+    filter: brightness(0.95);
 }
 
 input[type="text"],
@@ -90,11 +90,11 @@ input[type="password"] {
     width: 100%;
     padding: 10px;
     margin: 10px 0;
-    border: 1px solid #404040;
+    border: 1px solid rgba(255,255,255,0.06);
     border-radius: 5px;
     box-sizing: border-box;
-    background-color: #1f1f1f;
-    color: #e0e0e0;
+    background-color: var(--card);
+    color: var(--text);
 }
 
 label {
@@ -104,8 +104,8 @@ label {
 
 
 nav {
-    background-color: #2d2d2d;
-    color: white;
+    background-color: var(--card);
+    color: var(--text);
     padding: 10px 0;
     border-radius: 10px;
 }
@@ -158,7 +158,7 @@ nav a:hover {
 
 .nav-brand h1 {
     margin: 0;
-    color: #e0e0e0;
+    color: var(--text);
     font-size: 1.5rem;
 }
 
@@ -180,7 +180,7 @@ nav a:hover {
 }
 
 .main-nav a {
-    color: #b0b0b0;
+    color: var(--muted);
     padding: 0.4rem 0.8rem;
     border-radius: 8px;
     transition: all 0.3s ease;
@@ -196,8 +196,8 @@ nav a:hover {
 
 .main-nav a:hover,
 .main-nav a.active {
-    background-color: #4a7ba7;
-    color: white;
+    background-color: var(--accent-color);
+    color: var(--card);
     text-decoration: none;
 }
 
@@ -208,22 +208,22 @@ nav a:hover {
 
 .page-header {
     margin-bottom: 30px;
-    color: #e0e0e0;
-    background-color: #2d2d2d;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    color: var(--text);
+    background-color: var(--card);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     padding: 20px;
     border-radius: 10px;
 }
 
 .page-header h2 {
-    color: #e0e0e0;
+    color: var(--text);
     text-align: center;
     margin: 0;
     font-size: 2rem;
 }
 
 .page-header p {
-    color: #b0b0b0;
+    color: var(--muted);
     margin: 5px 0 0;
     opacity: 0.9;
     text-align: center;
@@ -238,9 +238,9 @@ nav a:hover {
 
 /* Cards */
 .card.settings-card {
-    background: #2d2d2d;
+    background: var(--card);
     backdrop-filter: blur(10px);
-    border: 1px solid #404040;
+    border: 1px solid rgba(0,0,0,0.12);
     border-radius: 16px;
     padding: 0;
     margin: 0;

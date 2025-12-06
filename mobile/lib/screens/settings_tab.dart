@@ -1,3 +1,4 @@
+import 'package:delovahome/main.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -124,8 +125,10 @@ class _SettingsTabState extends State<SettingsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = DelovaHome.of(context);
+    final currentTheme = appState?.themeModeValue ?? ThemeMode.system;
+
     return Scaffold(
-      backgroundColor: Colors.black,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -154,6 +157,33 @@ class _SettingsTabState extends State<SettingsTab> {
           const Text(
             'System Management',
             style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            tileColor: Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.brightness_6, color: Colors.amber),
+            title: const Text('Thema', style: TextStyle(color: Colors.white)),
+            subtitle: Text(currentTheme == ThemeMode.system ? 'Systeem' : (currentTheme == ThemeMode.dark ? 'Donker' : 'Licht'), style: const TextStyle(color: Colors.grey)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: () async {
+              final choice = await showDialog<ThemeMode>(
+                context: context,
+                builder: (context) => SimpleDialog(
+                  title: const Text('Kies thema'),
+                  children: [
+                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.system), child: const Text('Systeem')),
+                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.dark), child: const Text('Donker')),
+                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.light), child: const Text('Licht')),
+                  ],
+                ),
+              );
+
+              if (choice != null) {
+                await appState?.setThemeMode(choice);
+                if (mounted) setState(() {});
+              }
+            },
           ),
           const SizedBox(height: 10),
           ListTile(

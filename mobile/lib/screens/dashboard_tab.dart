@@ -28,6 +28,8 @@ import '../widgets/device_card.dart';
     bool _spotifyAvailable = false;
     String? _spotifyDeviceName;
     Timer? _spotifyTimer;
+    // Local theme override for this tab: null = system, true = dark, false = light
+    bool? _forceDark;
 
     @override
     void initState() {
@@ -46,6 +48,14 @@ import '../widgets/device_card.dart';
     void dispose() {
       _spotifyTimer?.cancel();
       super.dispose();
+    }
+
+    void _cycleTheme() {
+      setState(() {
+        if (_forceDark == null) _forceDark = true;
+        else if (_forceDark == true) _forceDark = false;
+        else _forceDark = null;
+      });
     }
 
     Future<void> _fetchSpotifyStatus() async {
@@ -339,9 +349,18 @@ import '../widgets/device_card.dart';
     @override
     Widget build(BuildContext context) {
       final now = DateTime.now();
-      final dateStr = DateFormat('EEEE, d MMMM').format(now);
+      final dateStr = DateFormat('EEEE d MMMM', 'nl').format(now);
 
-      return RefreshIndicator(
+      final theme = Theme.of(context);
+      final systemDark = theme.brightness == Brightness.dark;
+      final isDark = _forceDark ?? systemDark;
+      final bgColor = _forceDark == null ? theme.scaffoldBackgroundColor : (isDark ? Colors.grey[900] : Colors.white);
+      final cardColor = isDark ? Colors.grey[850] : Colors.grey[100];
+      final textColor = isDark ? Colors.white : Colors.black87;
+
+      return Container(
+        color: bgColor,
+        child: RefreshIndicator(
         onRefresh: () async {
           await _fetchStats();
           await _fetchWeather();
@@ -352,8 +371,39 @@ import '../widgets/device_card.dart';
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome Home', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-              Text(dateStr, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey)),
+              // Topbar / Navigation
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Welkom Thuis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
+                        const SizedBox(height: 4),
+                        Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor.withOpacity(0.8))),
+                      ]),
+                    ),
+                    IconButton(
+                      tooltip: 'Ververs',
+                      onPressed: () async { await _fetchStats(); await _fetchWeather(); },
+                      icon: Icon(Icons.refresh, color: textColor),
+                    ),
+                    PopupMenuButton<int>(
+                      color: cardColor,
+                      icon: Icon(Icons.more_vert, color: textColor),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(value: 1, child: Text(_forceDark == null ? (isDark ? 'Thema: Donker (systeem)' : 'Thema: Licht (systeem)') : (_forceDark! ? 'Thema: Donker (override)' : 'Thema: Licht (override)'), style: TextStyle(color: textColor))),
+                        const PopupMenuItem(value: 2, child: Text('Thema wisselen')),
+                      ],
+                      onSelected: (v) {
+                        if (v == 2) _cycleTheme();
+                      },
+                    )
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -377,24 +427,24 @@ import '../widgets/device_card.dart';
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Quick Actions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Snelkoppelingen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildQuickAction(Icons.lightbulb_outline, 'All Off', () => _activateScene('all_off')),
-                  _buildQuickAction(Icons.movie_creation_outlined, 'Movie', () => _activateScene('movie')),
-                  _buildQuickAction(Icons.bedtime_outlined, 'Night', () => _activateScene('night')),
-                  _buildQuickAction(Icons.exit_to_app, 'Away', () => _activateScene('away')),
+                      _buildQuickAction(Icons.lightbulb_outline, 'Alles Uit', () => _turnOffLightsOnly()),
+                    _buildQuickAction(Icons.movie_creation_outlined, 'Film', () => _activateScene('movie')),
+                    _buildQuickAction(Icons.bedtime_outlined, 'Nacht', () => _activateScene('night')),
+                    _buildQuickAction(Icons.exit_to_app, 'Afwezig', () => _activateScene('away')),
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Spotify', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Spotify', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 12),
-              _buildSpotifyCard(),
+              _buildSpotifyCard(cardColor, textColor, isDark),
               const SizedBox(height: 24),
               if (_favoriteDevices.isNotEmpty) ...[
-                const Text('Favorites', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('Favorieten', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
                 const SizedBox(height: 12),
                 ListView.builder(
                   shrinkWrap: true,
@@ -408,9 +458,37 @@ import '../widgets/device_card.dart';
             ],
           ),
         ),
+      ),
       );
     }
 
+    Future<void> _turnOffLightsOnly() async {
+      setState(() => _isLoading = true);
+      try {
+        final devices = await _apiService.getDevices();
+        final lights = devices.where((d) {
+          final t = d.type.toLowerCase();
+          return t.contains('light') || t.contains('yeelight') || t.contains('hue') || t.contains('lamp') || t.contains('zigbee');
+        }).toList();
+
+        for (final d in lights) {
+          try {
+            await _apiService.sendCommand(d.id, 'set_power', {'value': 'off'});
+          } catch (e) {
+            debugPrint('Failed to turn off ${d.name}: $e');
+          }
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lampen uitgeschakeld')));
+          _fetchStats();
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Fout bij uitschakelen lampen: $e')));
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
     Widget _buildStatusCard({required IconData icon, required String title, required String subtitle, required Color color}) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -433,7 +511,7 @@ import '../widgets/device_card.dart';
       return Icons.thunderstorm;
     }
 
-    Widget _buildSpotifyCard() {
+    Widget _buildSpotifyCard(Color? cardColor, Color textColor, bool isDark) {
       final isPlaying = _spotifyStatus?['is_playing'] == true;
       final item = _spotifyStatus != null && _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : 'Not playing';
       final albumImages = _spotifyStatus != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null ? _spotifyStatus!['item']['album']['images'] as List<dynamic>? : null;
@@ -442,62 +520,64 @@ import '../widgets/device_card.dart';
 
       return Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(12)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             const Icon(Icons.music_note, color: Color(0xFF1DB954), size: 36),
             const SizedBox(width: 12),
-            artwork != null ? Image.network(artwork, width: 64, height: 64, fit: BoxFit.cover) : SizedBox(width: 64, height: 64),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              child: artwork != null
+                  ? Image.network(artwork, key: ValueKey<String>(artwork), width: 64, height: 64, fit: BoxFit.cover)
+                  : SizedBox(key: const ValueKey('no_art'), width: 64, height: 64),
+            ),
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Spotify', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('Spotify', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(item, style: const TextStyle(color: Colors.grey)),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: Text(item, key: ValueKey<String>(item), style: TextStyle(color: textColor.withOpacity(0.8))),
+              ),
               const SizedBox(height: 8),
-              LinearProgressIndicator(value: progress.clamp(0.0, 1.0), backgroundColor: Colors.grey[800], valueColor: AlwaysStoppedAnimation<Color>(Colors.green)),
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
+                duration: const Duration(milliseconds: 300),
+                builder: (context, value, child) {
+                  return LinearProgressIndicator(value: value, backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300], valueColor: const AlwaysStoppedAnimation<Color>(Colors.green));
+                },
+              ),
               const SizedBox(height: 6),
-              if (_spotifyAvailable && _spotifyDeviceName != null) Text('Device: ${_spotifyDeviceName}', style: const TextStyle(color: Colors.grey, fontSize: 12))
+              if (_spotifyAvailable && _spotifyDeviceName != null) Text('Apparaat: ${_spotifyDeviceName}', style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12))
             ])),
             const SizedBox(width: 8),
             if (!_spotifyAvailable)
-              ElevatedButton(onPressed: _openSpotifyLogin, child: const Text('Connect'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green))
+              ElevatedButton(onPressed: _openSpotifyLogin, child: const Text('Verbinden'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green))
             else
-              TextButton(onPressed: () async { await _fetchSpotifyMe(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spotify available'))); }, child: const Text('Refresh'))
+              TextButton(onPressed: () async { await _fetchSpotifyMe(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Spotify beschikbaar'))); }, child: Text('Ververs', style: TextStyle(color: textColor)))
           ]),
           const SizedBox(height: 12),
           Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_previous), color: Colors.white),
-              IconButton(onPressed: _spotifyAvailable ? () async { if (isPlaying) await _apiService.spotifyControl('pause'); else await _apiService.spotifyControl('play'); await _fetchSpotifyStatus(); } : null, icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow), color: Colors.white),
-              IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('next'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_next), color: Colors.white),
+              IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_previous), color: textColor),
+              IconButton(
+                onPressed: _spotifyAvailable ? () async { if (isPlaying) await _apiService.spotifyControl('pause'); else await _apiService.spotifyControl('play'); await _fetchSpotifyStatus(); } : null,
+                icon: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                  child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, key: ValueKey<bool>(isPlaying), color: textColor),
+                ),
+              ),
+              IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('next'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_next), color: textColor),
             ]),
             const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              IconButton(onPressed: _spotifyAvailable ? () async {
-                try {
-                  final current = _spotifyStatus != null && _spotifyStatus!['device'] != null ? (_spotifyStatus!['device']['volume_percent'] as int? ?? 50) : 50;
-                  final target = (current - 5).clamp(0, 100);
-                  await _apiService.spotifyControl('set_volume', target);
-                  await _fetchSpotifyStatus();
-                } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Volume change failed: $e'))); }
-              } : null, icon: const Icon(Icons.volume_down), color: Colors.white),
-              const SizedBox(width: 12),
-              IconButton(onPressed: _spotifyAvailable ? () async {
-                try {
-                  final current = _spotifyStatus != null && _spotifyStatus!['device'] != null ? (_spotifyStatus!['device']['volume_percent'] as int? ?? 50) : 50;
-                  final target = (current + 5).clamp(0, 100);
-                  await _apiService.spotifyControl('set_volume', target);
-                  await _fetchSpotifyStatus();
-                } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Volume change failed: $e'))); }
-              } : null, icon: const Icon(Icons.volume_up), color: Colors.white),
-            ]),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              TextButton(onPressed: _spotifyAvailable ? _showSpotifyMusicPicker : null, child: const Text('Choose Music')),
+              TextButton(onPressed: _spotifyAvailable ? _showSpotifyMusicPicker : null, child: Text('Kies muziek', style: TextStyle(color: textColor))),
               const SizedBox(width: 8),
-              TextButton(onPressed: _spotifyAvailable ? () async { final q = await _showSpotifySearchDialog(); if (q != null && q.isNotEmpty) { final results = await _apiService.searchSpotify(q); if (!mounted) return; _showSpotifySearchResults(results); } } : null, child: const Text('Search')),
+              TextButton(onPressed: _spotifyAvailable ? () async { final q = await _showSpotifySearchDialog(); if (q != null && q.isNotEmpty) { final results = await _apiService.searchSpotify(q); if (!mounted) return; _showSpotifySearchResults(results); } } : null, child: Text('Zoeken', style: TextStyle(color: textColor))),
               const SizedBox(width: 8),
-              TextButton(onPressed: _spotifyAvailable ? _showSpotifyDevicesDialog : null, child: const Text('Choose Device')),
+              TextButton(onPressed: _spotifyAvailable ? _showSpotifyDevicesDialog : null, child: Text('Kies apparaat', style: TextStyle(color: textColor))),
             ])
           ])
         ]),

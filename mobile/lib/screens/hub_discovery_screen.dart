@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:delovahome/main.dart';
 import 'package:flutter/material.dart';
 import 'package:nsd/nsd.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -207,11 +208,18 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Select Your Hub'),
+        title: const Text('Selecteer uw Hub'),
         backgroundColor: Colors.transparent,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.brightness_6),
+            tooltip: 'Thema wisselen',
+            onPressed: () {
+              final appState = DelovaHome.of(context);
+              appState?.cycleTheme();
+            },
+          ),
           if (_isScanning)
             const Center(
               child: Padding(
@@ -219,7 +227,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
             )
@@ -233,7 +241,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: 'Manual Connect',
+            tooltip: 'Handmatig verbinden',
             onPressed: _showManualConnectDialog,
           ),
         ],
@@ -246,13 +254,13 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
                   Icon(Icons.router, size: 80, color: Colors.grey[800]),
                   const SizedBox(height: 20),
                   const Text(
-                    'Searching for DelovaHome Hubs...',
+                    'Zoeken naar DelovaHome Hubs...',
                     style: TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 40),
                   TextButton(
                     onPressed: _showManualConnectDialog,
-                    child: const Text('Enter IP Manually'),
+                    child: const Text('Voer IP handmatig in'),
                   ),
                 ],
               ),

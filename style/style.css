@@ -399,6 +399,62 @@ nav a:hover {
     height: 26px;
 }
 
+/* --- Animation & Micro-interaction helpers --- */
+
+/* Nav underline animation */
+.main-nav a {
+    position: relative;
+}
+.main-nav a::after {
+    content: '';
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    bottom: -6px;
+    height: 2px;
+    background: var(--accent-color, #4aa3ff);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 220ms ease;
+}
+.main-nav a.active::after,
+.main-nav a:hover::after {
+    transform: scaleX(1);
+}
+
+/* Widget entrance (fade + slight lift) - JS will stagger timing */
+.widget, #spotify-widget-container {
+    opacity: 1; /* default visible if JS disabled */
+    transform: translateY(0);
+    transition: opacity 300ms ease, transform 300ms ease;
+}
+
+/* Dropdown smooth show/hide (script toggles .show on the dropdown element) */
+.user-dropdown {
+    opacity: 0;
+    transform: translateY(-6px) scaleY(.98);
+    transform-origin: top right;
+    transition: opacity 180ms ease, transform 180ms ease;
+    pointer-events: none;
+}
+.user-dropdown.show {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    pointer-events: auto;
+}
+
+/* Spotify artwork: cross-fade and optional rotation when playing */
+.spotify-artwork { display:inline-block; transition: transform 400ms ease, opacity 300ms ease; }
+.spotify-artwork.playing { animation: rotate-slow 6s linear infinite; }
+@keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spotify-artwork img { display:block; width:64px; height:64px; border-radius:6px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .main-nav a::after { transition: none; }
+    .user-dropdown, .widget, #spotify-widget-container { transition: none; }
+    .spotify-artwork.playing { animation: none; transform: none; }
+}
+
 .switch input {
     opacity: 0;
     width: 50px;

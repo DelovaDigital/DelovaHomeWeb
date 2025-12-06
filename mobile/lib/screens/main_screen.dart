@@ -1,3 +1,4 @@
+import 'package:delovahome/main.dart';
 import 'package:flutter/material.dart';
 import 'dashboard_tab.dart';
 import 'devices_tab.dart';
@@ -29,30 +30,49 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Delova Home'),
-      ),
-      body: Center(
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Delova Home'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.brightness_6),
+          tooltip: 'Thema wisselen',
+          onPressed: () {
+            final appState = DelovaHome.of(context);
+            appState?.cycleTheme();
+          },
+        ),
+      ],
+    ), 
+    body: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (child, anim) {
+        final offsetAnim = Tween<Offset>(begin: const Offset(0.0, 0.05), end: Offset.zero).animate(anim);
+        return SlideTransition(position: offsetAnim, child: FadeTransition(opacity: anim, child: child));
+      },
+      child: SizedBox(
+        key: ValueKey<int>(_selectedIndex),
+        width: double.infinity,
         child: _widgetOptions.elementAt(_selectedIndex),
       ),
+    ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
+            icon: Icon(Icons.home_outlined),
+            label: 'Overzicht',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.devices),
-            label: 'Devices',
+            icon: Icon(Icons.devices_other),
+            label: 'Apparaten',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.meeting_room),
-            label: 'Rooms',
+            icon: Icon(Icons.room_preferences),
+            label: 'Ruimtes',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: Icon(Icons.tune),
+            label: 'Instellingen',
           ),
         ],
         currentIndex: _selectedIndex,

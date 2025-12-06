@@ -11,7 +11,7 @@ class SonosManagerModule {
         try {
             console.log('Initializing Sonos discovery...');
             // Initialize will start discovery and find all devices.
-            await this.manager.Initialize(); 
+            await this.manager.InitializeWithDiscovery(10); 
             this.isInitialized = true;
             console.log(`Sonos discovery complete. Found ${this.manager.Devices.length} devices.`);
             

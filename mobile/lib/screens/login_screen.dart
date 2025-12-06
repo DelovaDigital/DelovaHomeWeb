@@ -93,25 +93,28 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    // If the app is in dark mode, force the login screen to use the light theme
+    final forceLight = theme.brightness == Brightness.dark;
+    final effectiveTheme = forceLight ? ThemeData.light() : theme;
+    final effectiveColorScheme = effectiveTheme.colorScheme;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: effectiveTheme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Login to ${widget.hubName ?? "Hub"}', style: theme.textTheme.titleLarge),
+        title: Text('Login to ${widget.hubName ?? "Hub"}', style: effectiveTheme.textTheme.titleLarge),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: colorScheme.onSurface,
+        foregroundColor: effectiveColorScheme.onSurface,
       ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
-            child: Card(
+              child: Card(
               elevation: 6,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              color: theme.cardColor,
+              color: effectiveTheme.cardColor,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 28.0),
                 child: Form(
@@ -137,9 +140,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Delova Home', style: theme.textTheme.titleLarge),
+                              Text('Delova Home', style: effectiveTheme.textTheme.titleLarge),
                               if (widget.hubName != null)
-                                Text(widget.hubName!, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color)),
+                                Text(widget.hubName!, style: effectiveTheme.textTheme.bodyMedium?.copyWith(color: effectiveTheme.textTheme.bodySmall?.color)),
                             ],
                           ),
                         ],
@@ -150,29 +153,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: colorScheme.error.withAlpha(31),
+                    color: effectiveColorScheme.error.withAlpha(31),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: colorScheme.error),
+                    border: Border.all(color: effectiveColorScheme.error),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(color: colorScheme.error),
+                    style: TextStyle(color: effectiveColorScheme.error),
                     textAlign: TextAlign.center,
                   ),
                 ),
               TextFormField(
                 controller: _usernameController,
-                style: TextStyle(color: colorScheme.onSurface),
+                style: TextStyle(color: effectiveColorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Username',
-                  labelStyle: TextStyle(color: colorScheme.onSurface.withAlpha(153)),
+                  labelStyle: TextStyle(color: effectiveColorScheme.onSurface.withAlpha(153)),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: theme.dividerColor),
+                    borderSide: BorderSide(color: effectiveTheme.dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: colorScheme.primary),
+                    borderSide: BorderSide(color: effectiveColorScheme.primary),
                   ),
-                  prefixIcon: Icon(Icons.person, color: colorScheme.onSurface.withAlpha(153)),
+                  prefixIcon: Icon(Icons.person, color: effectiveColorScheme.onSurface.withAlpha(153)),
                 ),
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Please enter username' : null,
@@ -181,17 +184,17 @@ class _LoginScreenState extends State<LoginScreen> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
-                style: TextStyle(color: colorScheme.onSurface),
+                style: TextStyle(color: effectiveColorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Password',
-                  labelStyle: TextStyle(color: colorScheme.onSurface.withAlpha(153)),
+                  labelStyle: TextStyle(color: effectiveColorScheme.onSurface.withAlpha(153)),
                   enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: theme.dividerColor),
+                    borderSide: BorderSide(color: effectiveTheme.dividerColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: colorScheme.primary),
+                    borderSide: BorderSide(color: effectiveColorScheme.primary),
                   ),
-                  prefixIcon: Icon(Icons.lock, color: colorScheme.onSurface.withAlpha(153)),
+                  prefixIcon: Icon(Icons.lock, color: effectiveColorScheme.onSurface.withAlpha(153)),
                 ),
                 validator: (value) =>
                     value == null || value.isEmpty ? 'Please enter password' : null,
@@ -200,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
+                  backgroundColor: effectiveColorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -212,12 +215,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: colorScheme.onPrimary,
+                          color: effectiveColorScheme.onPrimary,
                         ),
                       )
                     : Text(
                         'Login',
-                        style: TextStyle(fontSize: 16, color: colorScheme.onPrimary),
+                        style: TextStyle(fontSize: 16, color: effectiveColorScheme.onPrimary),
                       ),
               ),
             ],

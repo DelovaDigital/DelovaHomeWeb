@@ -442,6 +442,23 @@ class _DashboardTabState extends State<DashboardTab> {
           ]),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            IconButton(onPressed: () async {
+              // Volume down fallback: compute current and request -5
+              final current = _spotifyStatus != null && _spotifyStatus!['device'] != null ? (_spotifyStatus!['device']['volume_percent'] as int? ?? 50) : 50;
+              final target = (current - 5).clamp(0, 100);
+              await _apiService.spotifyControl('set_volume', target);
+              await _fetchSpotifyStatus();
+            }, icon: const Icon(Icons.volume_down), color: Colors.white),
+            const SizedBox(width: 12),
+            IconButton(onPressed: () async {
+              final current = _spotifyStatus != null && _spotifyStatus!['device'] != null ? (_spotifyStatus!['device']['volume_percent'] as int? ?? 50) : 50;
+              final target = (current + 5).clamp(0, 100);
+              await _apiService.spotifyControl('set_volume', target);
+              await _fetchSpotifyStatus();
+            }, icon: const Icon(Icons.volume_up), color: Colors.white),
+          ]),
+          const SizedBox(height: 8),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             TextButton(onPressed: _showSpotifyMusicPicker, child: const Text('Choose Music')),
             const SizedBox(width: 8),
             TextButton(onPressed: () async { final q = await _showSpotifySearchDialog(); if (q != null && q.isNotEmpty) { final results = await _apiService.searchSpotify(q); if (!mounted) return; _showSpotifySearchResults(results); } }, child: const Text('Search')),

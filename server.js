@@ -441,15 +441,55 @@ app.get('/api/spotify/status', async (req, res) => {
 
 app.post('/api/spotify/control', async (req, res) => {
     const { command, value } = req.body;
-    if (command === 'play') await spotifyManager.play();
-    else if (command === 'pause') await spotifyManager.pause();
-    else if (command === 'next') await spotifyManager.next();
-    else if (command === 'previous') await spotifyManager.previous();
-    else if (command === 'set_volume') await spotifyManager.setVolume(value);
-    else if (command === 'transfer') await spotifyManager.transferPlayback(value);
-    else if (command === 'play_context') await spotifyManager.playContext(value);
-    else if (command === 'play_uris') await spotifyManager.playUris(value);
-    res.json({ ok: true });
+    try {
+        if (command === 'play') await spotifyManager.play();
+        else if (command === 'pause') await spotifyManager.pause();
+        else if (command === 'next') await spotifyManager.next();
+        else if (command === 'previous') await spotifyManager.previous();
+        else if (command === 'set_volume') {
+            // Try Spotify first
+            try {
+                await spotifyManager.setVolume(value);
+                return res.json({ ok: true, method: 'spotify' });
+            } catch (err) {
+                console.warn('Spotify setVolume failed, attempting local fallback:', err.message || err);
+                // Attempt to find local device that matches the active Spotify device
+                try {
+                    const state = await spotifyManager.getPlaybackState();
+                    const spotifyDeviceName = state && state.device && state.device.name ? state.device.name.toLowerCase() : null;
+                    if (spotifyDeviceName) {
+                        // Find best matching local device
+                        let matched = null;
+                        for (const d of deviceManager.getAllDevices()) {
+                            const nm = (d.name || '').toLowerCase();
+                            if (!nm) continue;
+                            if (nm.includes(spotifyDeviceName) || spotifyDeviceName.includes(nm)) {
+                                matched = d;
+                                break;
+                            }
+                        }
+                        if (matched) {
+                            await deviceManager.controlDevice(matched.id, 'set_volume', value);
+                            return res.json({ ok: true, method: 'local', deviceId: matched.id });
+                        }
+                    }
+                } catch (e2) {
+                    console.error('Local fallback attempt failed:', e2);
+                }
+
+                // If no local match or fallback failed, return error
+                return res.status(500).json({ ok: false, message: 'Failed to set volume via Spotify and local fallback' });
+            }
+        }
+        else if (command === 'transfer') await spotifyManager.transferPlayback(value);
+        else if (command === 'play_context') await spotifyManager.playContext(value);
+        else if (command === 'play_uris') await spotifyManager.playUris(value);
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Error handling spotify control command:', err);
+        res.status(500).json({ ok: false, message: err.message || 'Spotify control error' });
+    }
 });
 
 app.get('/api/spotify/devices', async (req, res) => {

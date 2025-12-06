@@ -111,10 +111,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof JSMpeg !== 'undefined') {
                         const player = new JSMpeg.Player(url, { 
                             canvas: canvas,
-                            pauseWhenHidden: false, // Keep playing when tab is backgrounded/minimized
-                            disableGl: false // Try WebGL first
+                            pauseWhenHidden: false, 
+                            disableGl: false,
+                            audio: false,
+                            videoBufferSize: 256 * 1024 // 256kb buffer (approx 1-2 sec)
                         });
                         activeStreams.set(deviceId, player);
+                        
+                        // Hack: Start silent audio context to prevent browser throttling in background
+                        if (!window.keepAliveAudio) {
+                            try {
+                                window.keepAliveAudio = new (window.AudioContext || window.webkitAudioContext)();
+                                // Create a silent oscillator
+                                const osc = window.keepAliveAudio.createOscillator();
+                                const gain = window.keepAliveAudio.createGain();
+                                gain.gain.value = 0.001; // Almost silent but active
+                                osc.connect(gain);
+                                gain.connect(window.keepAliveAudio.destination);
+                                osc.start();
+                                console.log('Keep-alive audio started');
+                            } catch(e) { console.error('AudioContext failed', e); }
+                        }
+                        if (window.keepAliveAudio && window.keepAliveAudio.state === 'suspended') {
+                            window.keepAliveAudio.resume();
+                        }
+
                     } else {
                         console.error('JSMpeg library not loaded');
                         container.innerHTML = '<p style="color:red">JSMpeg library missing</p>';
@@ -698,4 +719,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial fetch
     fetchDevices();
     setInterval(fetchDevices, 3000);
+
+    // Keyboard Control for Camera (Arrow Keys)
+    document.addEventListener('keydown', (e) => {
+        const modal = document.getElementById('deviceModal');
+        // Only if modal is open
+        if (!modal || modal.style.display !== 'block') return;
+        
+        const deviceId = modal.dataset.deviceId;
+        if (!deviceId) return;
+        
+        // Find device to check if it is a camera
+        const device = allDevices.find(d => d.id === deviceId);
+        if (!device || device.type !== 'camera') return;
+
+        // Map keys to commands
+        let cmd = null;
+        if (e.key === 'ArrowUp') cmd = 'nudge_up';
+        else if (e.key === 'ArrowDown') cmd = 'nudge_down';
+        else if (e.key === 'ArrowLeft') cmd = 'nudge_left';
+        else if (e.key === 'ArrowRight') cmd = 'nudge_right';
+        else if (e.key === 'Home') cmd = 'ptz_home';
+
+        if (cmd) {
+            e.preventDefault(); // Prevent scrolling
+            controlDevice(deviceId, cmd);
+        }
+    });
 });

@@ -15,31 +15,42 @@ class CameraStream extends EventEmitter {
 
         const args = [
     '-loglevel', 'error',
-    '-rtsp_transport', 'tcp',
-    '-fflags', 'discardcorrupt',
-    '-probesize', '500k',
-    '-analyzeduration', '500k',
 
+    '-rtsp_transport', 'tcp',
+    '-timeout', '2000000',     // 2 sec i.p.v. freeze
+
+    '-fflags', '+genpts',      // genereer timestamps → geen stops
+    '-flags', 'low_delay',
+
+    '-probesize', '256k',
+    '-analyzeduration', '256k',
+
+    // bron
     '-i', this.url,
 
-    // --- OUTPUT ---
+    // output
     '-f', 'mpegts',
     '-codec:v', 'mpeg1video',
 
     '-r', '25',
-    '-g', '25',               // keyframe = 1s → vloeiender en stabieler
-    '-q:v', '2',              // betere kwaliteit, minder stutter dan bitrate mode
+    '-g', '25',
 
-    '-vf', 'scale=1280:-1',   // HD resolutie
+    '-q:v', '4',               // iets hoger → encoder minder druk → stabieler
+
+    '-vf', 'scale=1280:-1',
+
     '-an',
     '-tune', 'zerolatency',
 
-    // Bufferinstellingen
+    // voorkom freezes
     '-max_delay', '0',
-    '-preset', 'veryfast',
+    '-reorder_queue_size', '0',
+
+    '-preset', 'ultrafast',
 
     '-'
 ];
+
 
 
         console.log(`[CameraStream] Spawning ffmpeg for ${this.url}`);

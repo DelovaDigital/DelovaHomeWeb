@@ -36,7 +36,7 @@ startFFmpeg() {
         "-rtsp_transport", "tcp",
         "-i", this.url,
         "-an",
-        "-c:v", "libx264",
+        "-c:v", "copy", 
         "-preset", "ultrafast",
         "-tune", "zerolatency",
         "-profile:v", "baseline",

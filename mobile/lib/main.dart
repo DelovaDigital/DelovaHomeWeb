@@ -43,9 +43,14 @@ class _DelovaHomeState extends State<DelovaHome> {
       final prefs = await SharedPreferences.getInstance();
       final t = prefs.getString('theme_mode') ?? 'system';
       setState(() {
-        if (t == 'dark') _themeMode = ThemeMode.dark;
-        else if (t == 'light') _themeMode = ThemeMode.light;
-        else _themeMode = ThemeMode.system;
+        if (t == 'dark') {
+          _themeMode = ThemeMode.dark;
+        } else if (t == 'light'){ 
+          _themeMode = ThemeMode.light;
+        }
+        else{
+          _themeMode = ThemeMode.system;
+        }  
       });
     } catch (e) {
       // ignore
@@ -63,9 +68,14 @@ class _DelovaHomeState extends State<DelovaHome> {
 
   void cycleTheme() {
     setState(() {
-      if (_themeMode == ThemeMode.system) _themeMode = ThemeMode.dark;
-      else if (_themeMode == ThemeMode.dark) _themeMode = ThemeMode.light;
-      else _themeMode = ThemeMode.system;
+      if (_themeMode == ThemeMode.system) {
+        _themeMode = ThemeMode.dark;
+      } else if (_themeMode == ThemeMode.dark){ 
+        _themeMode = ThemeMode.light;
+      }  
+      else {
+        _themeMode = ThemeMode.system;
+      }  
     });
   }
 

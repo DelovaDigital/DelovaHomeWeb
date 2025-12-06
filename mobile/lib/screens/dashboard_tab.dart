@@ -52,9 +52,14 @@ import '../widgets/device_card.dart';
 
     void _cycleTheme() {
       setState(() {
-        if (_forceDark == null) _forceDark = true;
-        else if (_forceDark == true) _forceDark = false;
-        else _forceDark = null;
+        if (_forceDark == null) {
+          _forceDark = true;
+        } else if (_forceDark == true){ 
+          _forceDark = false;
+        }  
+        else{ 
+          _forceDark = null;
+        }  
       });
     }
 
@@ -71,10 +76,12 @@ import '../widgets/device_card.dart';
     Future<void> _fetchSpotifyMe() async {
       try {
         final me = await _apiService.getSpotifyMe();
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _spotifyAvailable = me['available'] == true;
           _spotifyDeviceName = me['device'] != null ? me['device']['name'] : null;
         });
+        }
       } catch (e) {
         debugPrint('Spotify me error: $e');
         if (mounted) setState(() { _spotifyAvailable = false; _spotifyDeviceName = null; });
@@ -381,7 +388,7 @@ import '../widgets/device_card.dart';
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Welkom Thuis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
                         const SizedBox(height: 4),
-                        Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor.withOpacity(0.8))),
+                        Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor.withValues(alpha: 0.8))),
                       ]),
                     ),
                     IconButton(
@@ -537,7 +544,7 @@ import '../widgets/device_card.dart';
               const SizedBox(height: 4),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
-                child: Text(item, key: ValueKey<String>(item), style: TextStyle(color: textColor.withOpacity(0.8))),
+                child: Text(item, key: ValueKey<String>(item), style: TextStyle(color: textColor.withValues(alpha: 0.8))),
               ),
               const SizedBox(height: 8),
               TweenAnimationBuilder<double>(
@@ -548,11 +555,11 @@ import '../widgets/device_card.dart';
                 },
               ),
               const SizedBox(height: 6),
-              if (_spotifyAvailable && _spotifyDeviceName != null) Text('Apparaat: ${_spotifyDeviceName}', style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12))
+              if (_spotifyAvailable && _spotifyDeviceName != null) Text('Apparaat: $_spotifyDeviceName', style: TextStyle(color: textColor.withValues(alpha: 0.8), fontSize: 12))
             ])),
             const SizedBox(width: 8),
             if (!_spotifyAvailable)
-              ElevatedButton(onPressed: _openSpotifyLogin, child: const Text('Verbinden'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green))
+              ElevatedButton(onPressed: _openSpotifyLogin, style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text('Verbinden'))
             else
               TextButton(onPressed: () async { await _fetchSpotifyMe(); if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Spotify beschikbaar'))); }, child: Text('Ververs', style: TextStyle(color: textColor)))
           ]),
@@ -561,7 +568,11 @@ import '../widgets/device_card.dart';
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_previous), color: textColor),
               IconButton(
-                onPressed: _spotifyAvailable ? () async { if (isPlaying) await _apiService.spotifyControl('pause'); else await _apiService.spotifyControl('play'); await _fetchSpotifyStatus(); } : null,
+                onPressed: _spotifyAvailable ? () async { if (isPlaying) {
+                  await _apiService.spotifyControl('pause');
+                } else {
+                  await _apiService.spotifyControl('play');
+                } await _fetchSpotifyStatus(); } : null,
                 icon: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),

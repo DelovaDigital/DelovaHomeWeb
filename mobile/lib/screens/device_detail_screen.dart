@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'dart:io';
 import '../models/device.dart';
 import '../services/api_service.dart';
 
@@ -111,13 +109,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final encodedPass = Uri.encodeComponent(pass);
     final rtspUrl = 'rtsp://$encodedUser:$encodedPass@${widget.device.ip}:554/stream1';
 
-    String wsUrl;
     if (uri.scheme == 'https') {
        // Use the HTTP port (port + 1) for WS to avoid SSL issues in WebView
-       final httpPort = int.parse(uri.port.toString()) + 1;
-       wsUrl = 'ws://${uri.host}:$httpPort/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
     } else {
-       wsUrl = 'ws://${uri.host}:${uri.port}/api/camera/stream/ws?deviceId=${widget.device.id}&rtspUrl=${Uri.encodeComponent(rtspUrl)}';
     }
     
     // Trigger the stream start on the backend (pre-warm)

@@ -1,6 +1,9 @@
 const { spawn } = require('child_process');
 const EventEmitter = require('events');
 
+/**
+ * CameraStream: één RTSP → MPEG1 → WebSocket pipeline
+ */
 class CameraStream extends EventEmitter {
     constructor(url) {
         super();
@@ -14,61 +17,56 @@ class CameraStream extends EventEmitter {
         if (this.process) return;
 
         const args = [
-    '-loglevel', 'error',
+            '-loglevel', 'quiet',
 
-    // RTSP stabiliteit zoals VLC
-    '-rtsp_transport', 'tcp',
-    '-stimeout', '2000000',
-    '-rw_timeout', '2000000',
+            '-rtsp_transport', 'tcp',
+            '-i', this.url,
 
-    // VLC-style buffer (BELANGRIJK!)
-    '-fflags', '+genpts+discardcorrupt',
-    '-max_delay', '500000',      // 500ms jitterbuffer
-    '-fflags', 'flush_packets',
-    '-flags', 'low_delay',
-    
-    // iets grotere analyze voor smooth stream
-    '-probesize', '1M',
-    '-analyzeduration', '1M',
+            // Stabiliteit
+            '-fflags', 'discardcorrupt',
+            '-flags', 'low_delay',
+            '-thread_queue_size', '512',
 
-    '-i', this.url,
+            // Output voor JSMpeg
+            '-f', 'mpegts',
+            '-codec:v', 'mpeg1video',
+            '-q:v', '6',
+            '-r', '25',
+            '-g', '25',
 
-    // OUTPUT
-    '-f', 'mpegts',
-    '-codec:v', 'mpeg1video',
+            '-vf', 'scale=1280:-1',
 
-    '-r', '25',
-    '-g', '25',
+            '-an',
+            '-preset', 'ultrafast',
+            '-tune', 'zerolatency',
 
-    '-q:v', '3',                // betere smoothness
+            '-' // Output naar stdout
+        ];
 
-    '-vf', 'scale=1280:-1',
+        console.log(`[CameraStream] Starting ffmpeg for ${this.url}`);
+        this.process = spawn('ffmpeg', args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
-    '-an',
-    '-preset', 'veryfast',
-    '-tune', 'zerolatency',
+        // MPEG-TS packets alignen op 188 bytes (essentieel voor smooth stream)
+        const PACKET_SIZE = 188;
 
-    '-'
-];
+        this.process.stdout.on('data', (chunk) => {
+            let offset = 0;
 
-
-
-
-        console.log(`[CameraStream] Spawning ffmpeg for ${this.url}`);
-        this.process = spawn('ffmpeg', args);
-
-        this.process.stdout.on('data', (data) => {
-            this.broadcast(data);
+            while (offset + PACKET_SIZE <= chunk.length) {
+                const packet = chunk.slice(offset, offset + PACKET_SIZE);
+                this.broadcast(packet);
+                offset += PACKET_SIZE;
+            }
         });
 
         this.process.stderr.on('data', (data) => {
-            console.log(`[ffmpeg] ${data}`); // Optional: verbose logging
+            console.log(`[ffmpeg] ${data}`);
         });
 
         this.process.on('close', (code) => {
             console.log(`[CameraStream] ffmpeg exited with code ${code}`);
             this.process = null;
-            // Auto-restart if we still have clients
+
             if (this.clients.size > 0) {
                 setTimeout(() => this.start(), 2000);
             }
@@ -77,7 +75,8 @@ class CameraStream extends EventEmitter {
 
     stop() {
         if (this.process) {
-            this.process.kill();
+            console.log(`[CameraStream] Stopping ffmpeg for ${this.url}`);
+            this.process.kill('SIGKILL');
             this.process = null;
         }
     }
@@ -85,42 +84,46 @@ class CameraStream extends EventEmitter {
     addClient(ws) {
         this.clients.add(ws);
         console.log(`[CameraStream] Client connected. Total: ${this.clients.size}`);
-        
-        // Send magic bytes for JSMpeg
-        const STREAM_MAGIC_BYTES = "jsmp";
+
+        // JSMpeg magic bytes
         if (ws.readyState === 1) {
-             ws.send(Buffer.from(STREAM_MAGIC_BYTES), { binary: true });
+            ws.send(Buffer.from("jsmp"), { binary: true });
         }
 
         ws.on('close', () => {
             this.clients.delete(ws);
             console.log(`[CameraStream] Client disconnected. Total: ${this.clients.size}`);
+
             if (this.clients.size === 0) {
                 this.stop();
             }
         });
     }
 
-    broadcast(data) {
+    broadcast(packet) {
         for (const client of this.clients) {
             if (client.readyState === 1) {
                 try {
-                    client.send(data, { binary: true });
-                } catch (e) {
-                    console.error('[CameraStream] Error sending to client:', e);
+                    client.send(packet, { binary: true });
+                } catch (err) {
+                    console.error(`[CameraStream] Error sending packet:`, err);
                 }
             }
         }
     }
 }
 
+/**
+ * CameraStreamManager: beheert meerdere streams
+ */
 class CameraStreamManager {
     constructor() {
-        this.streams = new Map(); // deviceId -> CameraStream
+        this.streams = new Map();
     }
 
     getStream(deviceId, rtspUrl) {
         if (!this.streams.has(deviceId)) {
+            console.log(`[CameraStreamManager] Creating new stream for ${deviceId}`);
             this.streams.set(deviceId, new CameraStream(rtspUrl));
         }
         return this.streams.get(deviceId);
@@ -128,6 +131,7 @@ class CameraStreamManager {
 
     stopStream(deviceId) {
         if (this.streams.has(deviceId)) {
+            console.log(`[CameraStreamManager] Stopping stream ${deviceId}`);
             this.streams.get(deviceId).stop();
             this.streams.delete(deviceId);
         }

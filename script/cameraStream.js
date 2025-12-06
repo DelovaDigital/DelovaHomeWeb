@@ -25,14 +25,14 @@ class CameraStream extends EventEmitter {
             '-codec:v', 'mpeg1video',
             '-an',
             '-stats',
-            '-r', '25', // Standard FPS for MPEG1
-            '-g', '50', // Keyframe every 2 seconds (better compression)
-            '-vf', 'scale=854:-1', // 480p
-            '-b:v', '800k', // Lower bitrate to reduce network load
-            '-bufsize', '1600k', // Larger buffer for bitrate bursts
-            '-maxrate', '1200k', // Cap max bitrate
-            '-muxdelay', '0.1', // Small delay to smooth out packets
-            '-flush_packets', '0', // Let ffmpeg buffer slightly
+            '-r', '25',
+            '-g', '25', // Keyframe every 1 second
+            '-vf', 'scale=1280:-1', // 720p (Higher resolution)
+            '-b:v', '2500k', // Higher bitrate for quality
+            '-bufsize', '5000k', // Larger buffer for ffmpeg
+            '-maxrate', '3500k',
+            '-muxdelay', '0', // Back to 0 for low latency
+            '-flush_packets', '1', // Flush immediately
             '-tune', 'zerolatency',
             '-'
         ];

@@ -7,17 +7,17 @@ body {
     transition: background-color 240ms ease, color 240ms ease;
 }
 
-     color: var(--muted);
+p {
     color: var(--text, black);
 }
 
-     color: var(--text);
+#usernameDisplay {
     margin-right: 10px;
     color: #666;
 }
 
 h1 {
-     background-color: var(--card);
+    color: black;
     text-align: center;
     font-family: Arial, sans-serif;
 }
@@ -25,13 +25,13 @@ h1 {
 header {
     background-color: white;
     padding: 10px 0;
-     color: var(--primary);
+    border-bottom: 1px solid #ddd;
     border-radius: 10px;
 }
 
 ul {
     list-style-type: none;
-     color: var(--primary);
+    margin: 0;
     padding: 0;
     overflow: hidden;
 }
@@ -41,13 +41,13 @@ li {
     margin-right: 20px;
 }
 
-     background-color: var(--card);
+li a {
     text-decoration: none;
     color: #007BFF;
     font-weight: bold;
 }
 
-     background-color: var(--primary);
+li a:hover {
     text-decoration: none;
     color: #0056b3;
     font-weight: bold;
@@ -58,7 +58,7 @@ form {
     margin: 50px auto;
     padding: 30px;
     border: 1px solid #ddd;
-     background-color: var(--primary);
+    border-radius: 10px;
     background-color: #f9f9f9;
 }
 
@@ -66,7 +66,7 @@ form {
     width: 100%;
     padding: 10px;
     background-color: #007BFF;
-     background-color: var(--accent-color);
+    color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -75,7 +75,7 @@ form {
 #btnCreateAccount {
     width: 100%;
     padding: 10px;
-     background-color: var(--primary);
+    margin-top: 10px;
     background-color: #007BFF;
     color: white;
     border: none;
@@ -85,7 +85,7 @@ form {
 
 
 button {
-     filter: brightness(0.95);
+    background-color: rgb(174, 198, 255);
     color: white;
     padding: 10px 15px;
     border: none;
@@ -93,13 +93,13 @@ button {
     cursor: pointer;
 }
 
-     border: 1px solid var(--muted);
+.buttonLogin {
     background-color: rgb(18, 170, 255);
     color: white;
     padding: 10px 15px;
     border: none;
     border-radius: 5px;
-     background-color: var(--card);
+    cursor: pointer;
     margin-left: 62px;
 }
 
@@ -108,24 +108,24 @@ button:hover {
 }
 
 input[type="text"],
-     color: var(--card);
+input[type="password"]{
     width: 100%;
     padding: 10px;
     margin: 10px 0;
     border: 1px solid #ccc;
     border-radius: 5px;
-     background-color: var(--accent-color);
+    box-sizing: border-box;
 }
 
 #username {
     width: 100%;
     padding: 10px;
-     color: var(--text);
+    margin: 10px 0;
     border: 1px solid #ccc;
     border-radius: 5px;
     box-sizing: border-box;
 }
-     color: var(--muted);
+
 
 label {
     font-weight: bold;
@@ -137,34 +137,34 @@ nav {
     color: white;
     padding: 10px 0;
     border-radius: 10px;
-     background-color: var(--accent-color);
-     color: var(--card);
+}
+
 nav a {
     color: white;
     margin: 0 15px;
     text-decoration: none;
 }
-     color: var(--text);
-     background-color: var(--card);
+
+nav a:hover {
     text-decoration: underline;
 }
 
 /* Modern Settings Page Styles */
-     color: var(--text);
+
 .app-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 20px;
     display: flex;
     flex-direction: column;
-     color: var(--muted);
+    gap: 20px;
         background-color: var(--app-bg, rgb(191, 227, 215));
 }
 
 /* Theme variables (light theme defaults) */
 :root {
     --bg: #bfe3d7;
-     background: var(--card);
+    --app-bg: #bfe3d7;
     --text: #111;
     --card: #ffffff;
     --muted: #666;
@@ -177,7 +177,7 @@ nav a {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     padding: 1rem 2rem;
-     background: var(--card);
+    border-radius: 16px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     display: flex;
     justify-content: space-between;
@@ -186,43 +186,43 @@ nav a {
 
 #msg {
     display: flex;
-     color: var(--primary);
+    justify-content: flex-end;
     color: White;
     width: 12%;
     text-align: center;
     padding: 10px;
     margin: -350px 10px 10px auto;
-     color: var(--text);
+    border-radius: 10px;
     background-color: green;
     visibility: hidden;
 }
 
 .nav-brand h1 {
-     color: var(--muted);
+    margin: 0;
     color: #333;
     font-size: 1.5rem;
 }
 
 .main-nav ul {
     display: flex;
-     border: 2px solid rgba(0,0,0,0.06);
+    gap: 10px;
     margin: 0;
     padding: 0;
 }
 
 /* Ensure dropdowns inside the nav are not clipped by global `ul { overflow: hidden }` */
 .main-nav ul {
-     border-color: var(--primary);
+    overflow: visible;
 }
 
 .main-nav li {
     float: none;
-     background-color: var(--accent-color);
+    margin: 0;
 }
 
 .main-nav a {
     color: #666;
-     background-color: var(--muted);
+    padding: 0.4rem 0.8rem;
     border-radius: 8px;
     transition: all 0.3s ease;
     display: flex;
@@ -231,12 +231,12 @@ nav a {
     font-size: 0.95rem;
 }
 
-     border-bottom: 1px solid rgba(0,0,0,0.06);
+.main-nav a i {
     font-size: 0.9rem;
 }
 
 .main-nav a:hover,
-     color: var(--text);
+.main-nav a.active {
     background-color: rgb(	174, 198, 255);
     color: white;
     text-decoration: none;

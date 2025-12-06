@@ -34,7 +34,7 @@ startFFmpeg() {
     if (this.ffmpeg) return;
     const args = [
     '-rtsp_transport', 'tcp',
-    '-i', 'rtsp://Alessio@192.168.0.236:554/stream1',
+    '-i', 'rtsp://Alessio:ALEdpr11@192.168.0.236:554/stream1',
     '-an',
     '-c', 'h264_omx',
     '-b', '1500k',

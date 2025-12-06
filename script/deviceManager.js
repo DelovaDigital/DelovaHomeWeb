@@ -1899,13 +1899,40 @@ class DeviceManager extends EventEmitter {
         try {
             const client = new CastClient();
             const connect = () => new Promise((resolve, reject) => {
-                client.connect(device.ip, () => resolve());
-                client.on('error', (err) => reject(err));
+                let resolved = false;
+                client.on('error', (err) => {
+                    if (!resolved) {
+                        resolved = true;
+                        try { client.close(); } catch (e) {}
+                        reject(err);
+                    }
+                });
+
+                const done = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        resolve();
+                    }
+                };
+
+                // Prefer explicit port if available (mdns provides service.port)
+                try {
+                    if (device.port) {
+                        // Try signature with host + port
+                        client.connect(device.ip, device.port, done);
+                    } else {
+                        client.connect(device.ip, done);
+                    }
+                } catch (e) {
+                    // Fall back to host-only connect
+                    try { client.connect(device.ip, done); } catch (err) { reject(err); }
+                }
             });
 
             if (command === 'set_volume') {
                 await connect();
-                client.setVolume({ level: value / 100 }, () => client.close());
+                const lvl = Math.max(0, Math.min(100, parseInt(value) || 0));
+                client.setVolume({ level: lvl / 100 }, () => client.close());
             } 
             else if (command === 'turn_on' || (command === 'toggle' && device.state.on)) {
                 await connect();
@@ -1916,12 +1943,23 @@ class DeviceManager extends EventEmitter {
                 await connect();
                 // Stop apps and mute
                 client.getStatus((err, status) => {
-                    if (!err && status && status.applications) {
-                        status.applications.forEach(app => {
-                            if (app.displayName !== 'Backdrop') {
-                                client.stop(app, () => {});
-                            }
-                        });
+                    if (err) {
+                        console.error('[Cast] getStatus error:', err);
+                    }
+                    try {
+                        if (status && status.applications) {
+                            status.applications.forEach(app => {
+                                try {
+                                    if (app.displayName !== 'Backdrop') {
+                                        client.stop(app, () => {});
+                                    }
+                                } catch (e) {
+                                    // ignore per-app errors
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error('[Cast] Error while stopping apps:', e);
                     }
                     client.setVolume({ muted: true }, () => client.close());
                 });

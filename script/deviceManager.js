@@ -2064,11 +2064,23 @@ class DeviceManager extends EventEmitter {
                             // Fallback to sending media play/pause keycode (Android KEYCODE_MEDIA_PLAY_PAUSE = 85)
                             const payload = { type: 'KEYCODE', keyCode: 85 };
                             try {
-                                client.send('urn:x-cast:com.google.cast.receiver', payload, (err) => {
-                                    if (err) console.warn('[Cast] Fallback key send failed:', err);
+                                if (player && typeof player.send === 'function') {
+                                    player.send('urn:x-cast:com.google.cast.receiver', payload, (err) => {
+                                        if (err) console.warn('[Cast] Fallback player.send failed:', err);
+                                        try { client.close(); } catch (e) {}
+                                        done();
+                                    });
+                                } else if (typeof client.send === 'function') {
+                                    client.send('urn:x-cast:com.google.cast.receiver', payload, (err) => {
+                                        if (err) console.warn('[Cast] Fallback client.send failed:', err);
+                                        try { client.close(); } catch (e) {}
+                                        done();
+                                    });
+                                } else {
+                                    console.warn('[Cast] No send method available for fallback key event');
                                     try { client.close(); } catch (e) {}
                                     done();
-                                });
+                                }
                             } catch (e) {
                                 console.error('[Cast] Fallback key send exception:', e);
                                 try { client.close(); } catch (ee) {}

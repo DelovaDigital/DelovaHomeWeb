@@ -2,9 +2,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('spotify-widget-container');
     if (!container) return;
 
-    let isExpanded = false;
+    const getUserId = () => localStorage.getItem('userId');
 
     function renderWidget(state) {
+        // Handle case where Spotify is not linked
+        if (state && state.available === false) {
+            container.innerHTML = `
+                <div class="widget" style="text-align: center; padding: 20px;">
+                    <i class="fab fa-spotify" style="font-size: 2em; color: #1db954; margin-bottom: 10px;"></i>
+                    <p>Koppel je Spotify account</p>
+                    <button class="btn-action" onclick="linkSpotifyAccount()" style="margin-top: 10px;">
+                        <i class="fas fa-link"></i> Link Spotify Account
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
         if (!state || !state.item) {
             container.innerHTML = `
                 <div class="widget" style="text-align: center; padding: 20px;">
@@ -33,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span style="font-weight: bold;">Spotify</span>
                     </div>
                     <div style="font-size: 0.8em; opacity: 0.9; cursor: pointer;" onclick="toggleSpotifyDevices()">
-                        <i class="fas fa-speaker"></i> ${deviceName} <i class="fas fa-chevron-down"></i>
+                        <i class="fas fa-desktop"></i> ${deviceName} <i class="fas fa-chevron-down"></i>
                     </div>
                 </div>
                 
@@ -74,17 +88,41 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
+    window.linkSpotifyAccount = () => {
+        const userId = getUserId();
+        if (!userId) {
+            alert('Log in om je Spotify account te koppelen.');
+            return;
+        }
+        const popup = window.open(`/api/spotify/login?userId=${userId}`, 'SpotifyLogin', 'width=600,height=700');
+        
+        // Poll to check if the popup is closed
+        const interval = setInterval(() => {
+            if (popup.closed) {
+                clearInterval(interval);
+                console.log('Spotify login popup closed. Refreshing status...');
+                fetchStatus();
+            }
+        }, 500);
+    };
+
     window.controlSpotify = (command, value) => {
-        fetch('/api/spotify/control', {
+        const userId = getUserId();
+        if (!userId) return;
+
+        fetch(`/api/spotify/control?userId=${userId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command, value })
+            body: JSON.stringify({ command, value, userId }) // also include in body for middleware
         })
         .then(() => setTimeout(fetchStatus, 500));
     };
 
     window.toggleSpotifyDevices = async () => {
-        const res = await fetch('/api/spotify/devices');
+        const userId = getUserId();
+        if (!userId) return;
+
+        const res = await fetch(`/api/spotify/devices?userId=${userId}`);
         const devices = await res.json();
         
         const modalHtml = `
@@ -96,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="list-group">
                     ${devices.map(d => `
                         <div class="list-item ${d.is_active ? 'active' : ''}" onclick="controlSpotify('transfer', '${d.id}'); closeModal();">
-                            <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-speaker'}"></i>
+                            <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
                             <div style="flex: 1; margin-left: 10px;">
                                 <div style="font-weight: bold;">${d.name}</div>
                                 <div style="font-size: 0.8em; color: #666;">${d.type}</div>
@@ -111,10 +149,13 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.toggleSpotifyLibrary = async () => {
+        const userId = getUserId();
+        if (!userId) return;
+
         try {
             const [playlistsRes, albumsRes] = await Promise.all([
-                fetch('/api/spotify/playlists'),
-                fetch('/api/spotify/albums')
+                fetch(`/api/spotify/playlists?userId=${userId}`),
+                fetch(`/api/spotify/albums?userId=${userId}`)
             ]);
             
             const playlists = await playlistsRes.json();
@@ -163,8 +204,22 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function fetchStatus() {
-        fetch('/api/spotify/status')
+        const userId = getUserId();
+        if (!userId) {
+            container.innerHTML = `<div class="widget" style="text-align: center; padding: 20px;"><p>Log in om Spotify te gebruiken.</p></div>`;
+            return;
+        }
+
+        // Use /api/spotify/me to check for availability first
+        fetch(`/api/spotify/me?userId=${userId}`)
             .then(res => res.json())
+            .then(me => {
+                if(me.available) {
+                    return fetch(`/api/spotify/status?userId=${userId}`).then(res => res.json());
+                } else {
+                    return { available: false };
+                }
+            })
             .then(renderWidget)
             .catch(console.error);
     }

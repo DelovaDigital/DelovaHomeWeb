@@ -3,53 +3,41 @@ const { SonosManager } = require('@svrooij/sonos');
 class SonosManagerModule {
     constructor() {
         this.manager = new SonosManager();
-        this.devices = [];
+        this.isInitialized = false;
         this._initialize();
     }
 
     async _initialize() {
         try {
-            console.log('Starting Sonos discovery...');
-            
-            // Listen for device events
-            this.manager.on('DeviceAvailable', (device) => {
-                console.log(`Found Sonos device: ${device.Name} (${device.uuid})`);
-                const existing = this.devices.find(d => d.uuid === device.uuid);
-                if (!existing) {
-                    this.devices.push({
-                        uuid: device.uuid,
-                        name: device.Name,
-                        // Store the internal device object for direct control
-                        _device: device 
-                    });
-                }
-            });
-
-            // Initialize will start discovery
+            console.log('Initializing Sonos discovery...');
+            // Initialize will start discovery and find all devices.
             await this.manager.Initialize(); 
-            console.log('Sonos discovery initialized and running in the background.');
-
+            this.isInitialized = true;
+            console.log(`Sonos discovery complete. Found ${this.manager.Devices.length} devices.`);
+            
         } catch (err) {
             console.error('CRITICAL: Error during Sonos initialization:', err);
         }
     }
 
     getDiscoveredDevices() {
-        // Return a clean list of devices without the internal _device object
-        return this.devices.map(d => ({ uuid: d.uuid, name: d.name }));
+        if (!this.isInitialized) {
+            console.warn('Sonos manager not yet initialized. Device list may be empty.');
+            return [];
+        }
+        // Return a clean list of devices from the manager's internal list
+        return this.manager.Devices.map(d => ({ uuid: d.uuid, name: d.Name }));
     }
 
     async _getDevice(uuid) {
-        const deviceContainer = this.devices.find(d => d.uuid === uuid);
-        if (!deviceContainer) {
-            // Fallback: try to get from manager directly if it appeared after initial load
-            const device = this.manager.Devices.find(d => d.uuid === uuid);
-            if (!device) {
-                throw new Error(`Sonos device with UUID ${uuid} not found.`);
-            }
-            return device;
+        if (!this.isInitialized) {
+            throw new Error('Sonos manager not initialized.');
         }
-        return deviceContainer._device;
+        const device = this.manager.Devices.find(d => d.uuid === uuid);
+        if (!device) {
+            throw new Error(`Sonos device with UUID ${uuid} not found.`);
+        }
+        return device;
     }
 
     async play(uuid, uri, metadata) {
@@ -99,16 +87,17 @@ class SonosManagerModule {
             const positionInfo = await device.AVTransportService.GetPositionInfo({ InstanceID: 0 });
 
             // The metadata is often an XML string that needs parsing.
-            // For now, we'll return the raw metadata. A more robust solution would parse this.
+            // For now, we'll return what the library gives us.
+            const trackData = mediaInfo.CurrentURIMetaData || {};
+
             return {
                 status: transportState.CurrentTransportState, // e.g., 'PLAYING', 'PAUSED_PLAYBACK', 'STOPPED'
                 track: {
-                    title: mediaInfo.CurrentURIMetaData?.Title,
-                    artist: mediaInfo.CurrentURIMetaData?.Creator,
-                    album: mediaInfo.CurrentURIMetaData?.Album,
+                    title: trackData.Title,
+                    artist: trackData.Creator,
+                    album: trackData.Album,
                     duration: positionInfo.TrackDuration,
                     uri: mediaInfo.CurrentURI,
-                    metadata: mediaInfo.CurrentURIMetaData
                 },
                 position: positionInfo.RelTime,
             };

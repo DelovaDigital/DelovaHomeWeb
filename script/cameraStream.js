@@ -102,7 +102,7 @@ class WebRtcCameraStream extends EventEmitter {
                             { type: "ccm", parameter: "fir" },
                             { type: "goog-remb" },
                         ],
-                        // parameters: "packetization-mode=1;profile-level-id=42e01f;level-asymmetry-allowed=1",
+                        parameters: "packetization-mode=1;profile-level-id=42e029;level-asymmetry-allowed=1",
                     }),
                 ],
             },

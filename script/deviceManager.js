@@ -7,6 +7,7 @@ const WebSocket = require('ws');
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
 const lgtv = require('lgtv2');
+const onvif = require('onvif');
 const spotifyManager = require('./spotifyManager');
 
 class DeviceManager extends EventEmitter {
@@ -18,8 +19,10 @@ class DeviceManager extends EventEmitter {
         this.pairingProcess = null;
         this.appleTvCredentials = {};
         this.samsungCredentials = {};
+        this.cameraCredentials = {};
         this.loadAppleTvCredentials();
         this.loadSamsungCredentials();
+        this.loadCameraCredentials();
         this.startDiscovery();
         this.startPolling();
     }
@@ -73,6 +76,29 @@ class DeviceManager extends EventEmitter {
         } catch (e) {
             console.error('Failed to load Samsung credentials:', e.message);
             this.samsungCredentials = {};
+        }
+    }
+
+    loadCameraCredentials() {
+        try {
+            const credsPath = path.join(__dirname, '../camera-credentials.json');
+            if (fs.existsSync(credsPath)) {
+                this.cameraCredentials = JSON.parse(fs.readFileSync(credsPath));
+                console.log(`Loaded credentials for ${Object.keys(this.cameraCredentials).length} Camera(s)`);
+            }
+        } catch (e) {
+            console.error('Failed to load Camera credentials:', e.message);
+        }
+    }
+
+    saveCameraCredentials(ip, username, password) {
+        const credsPath = path.join(__dirname, '../camera-credentials.json');
+        this.cameraCredentials[ip] = { username, password };
+        try {
+            fs.writeFileSync(credsPath, JSON.stringify(this.cameraCredentials, null, 2));
+            console.log(`[Camera] Credentials saved for ${ip}`);
+        } catch (e) {
+            console.error('Failed to save camera credentials:', e);
         }
     }
 
@@ -1094,12 +1120,65 @@ class DeviceManager extends EventEmitter {
                 console.log(`[Camera] Stream start requested for ${device.name}`);
                 // Optionally trigger something in cameraStreamManager if needed, 
                 // but the WebSocket connection is the main trigger.
+            } else {
+                this.handleCameraCommand(device, command, value);
             }
         }
 
         // Emit update
         this.emit('device-updated', device);
         return device;
+    }
+
+    handleCameraCommand(device, command, value) {
+        const creds = this.cameraCredentials[device.ip];
+        if (!creds) {
+            console.error(`[Camera] No credentials found for ${device.ip}. Please add them to camera-credentials.json`);
+            return;
+        }
+
+        // console.log(`[Camera] Executing ${command} on ${device.ip}`);
+
+        new onvif.Cam({
+            hostname: device.ip,
+            username: creds.username,
+            password: creds.password,
+            port: 2020 // Default ONVIF port for Tapo/TP-Link
+        }, function(err) {
+            if (err) {
+                console.error(`[Camera] Connection error for ${device.ip}: ${err.message}`);
+                return;
+            }
+
+            // 'this' is the camera object
+            const speed = 0.5; // Default speed
+
+            try {
+                if (command === 'pan_left') {
+                    this.continuousMove({ x: -speed, y: 0, zoom: 0 });
+                } else if (command === 'pan_right') {
+                    this.continuousMove({ x: speed, y: 0, zoom: 0 });
+                } else if (command === 'tilt_up') {
+                    this.continuousMove({ x: 0, y: speed, zoom: 0 });
+                } else if (command === 'tilt_down') {
+                    this.continuousMove({ x: 0, y: -speed, zoom: 0 });
+                } else if (command === 'stop' || command === 'stop_move') {
+                    this.stopMove();
+                } else if (command === 'preset') {
+                    this.gotoPreset({ preset: value });
+                } else if (command === 'nudge_left') {
+                    this.relativeMove({ x: -0.1, y: 0, zoom: 0 });
+                } else if (command === 'nudge_right') {
+                    this.relativeMove({ x: 0.1, y: 0, zoom: 0 });
+                } else if (command === 'nudge_up') {
+                    this.relativeMove({ x: 0, y: 0.1, zoom: 0 });
+                } else if (command === 'nudge_down') {
+                    this.relativeMove({ x: 0, y: -0.1, zoom: 0 });
+                }
+            } catch (e) {
+                console.error(`[Camera] Error executing command: ${e.message}`);
+            }
+        });
     }
 
     async activateScene(sceneName) {

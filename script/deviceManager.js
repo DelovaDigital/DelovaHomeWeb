@@ -6,6 +6,7 @@ const path = require('path');
 const WebSocket = require('ws');
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
+const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
 // Load spotifyManager defensively to avoid crashing discovery if spotifyManager is broken
@@ -1929,17 +1930,170 @@ class DeviceManager extends EventEmitter {
                 }
             });
 
+            // Map generic media commands to DefaultMediaReceiver when possible
+            const launchAndRun = (cb) => new Promise(async (resolve, reject) => {
+                try {
+                    await connect();
+                    client.launch(DefaultMediaReceiver, (err, player) => {
+                        if (err) {
+                            try { client.close(); } catch (e) {}
+                            return reject(err);
+                        }
+                        try {
+                            cb(player, () => { try { client.close(); } catch (e) {} });
+                            resolve();
+                        } catch (e) {
+                            try { client.close(); } catch (ee) {}
+                            reject(e);
+                        }
+                    });
+                } catch (e) {
+                    reject(e);
+                }
+            });
+
             if (command === 'set_volume') {
                 await connect();
                 const lvl = Math.max(0, Math.min(100, parseInt(value) || 0));
                 client.setVolume({ level: lvl / 100 }, () => client.close());
-            } 
+            } else if (command === 'volume_up' || command === 'volume_down') {
+                // Adjust relative volume when no explicit value provided
+                await connect();
+                client.getStatus((err, status) => {
+                    let cur = 0.5;
+                    if (!err && status && status.volume && typeof status.volume.level === 'number') cur = status.volume.level;
+                    let newLevel = cur;
+                    if (command === 'volume_up') newLevel = Math.min(1, cur + 0.05);
+                    else newLevel = Math.max(0, cur - 0.05);
+                    client.setVolume({ level: newLevel }, () => client.close());
+                });
+            } else if (command === 'mute' || command === 'unmute') {
+                await connect();
+                client.setVolume({ muted: command === 'mute' }, () => client.close());
+            } else if (['left','right','up','down','arrow_left','arrow_right','arrow_up','arrow_down','enter','back','home'].includes(command)) {
+                // Try sending an actual remote key event first (best-effort), then fallback to seek/volume
+                const keyMap = {
+                    left: 21, arrow_left: 21,
+                    right: 22, arrow_right: 22,
+                    up: 19, arrow_up: 19,
+                    down: 20, arrow_down: 20,
+                    enter: 66,
+                    back: 4,
+                    home: 3
+                };
+
+                const keyKey = command.replace('arrow_', '');
+                const keyCode = keyMap[command] || keyMap[keyKey];
+
+                let sent = false;
+                if (keyCode) {
+                    try {
+                        await connect();
+                        const payload = { type: 'KEYCODE', keyCode };
+                        console.log(`[Cast] Attempting remote key ${command} (${keyCode}) on ${device.name}`);
+                        // Try direct send to receiver namespace
+                        client.send('urn:x-cast:com.google.cast.receiver', payload, (err) => {
+                            if (err) {
+                                console.warn('[Cast] direct key send failed, will fallback:', err && err.message ? err.message : err);
+                                // Try via DefaultMediaReceiver if direct send fails
+                                client.launch(DefaultMediaReceiver, (err2, player) => {
+                                    if (err2) {
+                                        console.error('[Cast] fallback launch failed:', err2);
+                                        try { client.close(); } catch (e) {}
+                                        return;
+                                    }
+                                    if (player && typeof player.send === 'function') {
+                                        try {
+                                            player.send('urn:x-cast:com.google.cast.receiver', payload, () => { try { client.close(); } catch (e) {} });
+                                            sent = true;
+                                        } catch (e) {
+                                            console.error('[Cast] player.send error:', e);
+                                        }
+                                    } else {
+                                        try { client.close(); } catch (e) {}
+                                    }
+                                });
+                            } else {
+                                sent = true;
+                                try { client.close(); } catch (e) {}
+                            }
+                        });
+                    } catch (e) {
+                        console.error('[Cast] Error while sending key event:', e);
+                    }
+                }
+
+                // Fallback behavior if we didn't manage to send a key event or if key not mapped
+                if (!sent) {
+                    const dir = command.replace('arrow_', '');
+                    if (dir === 'left' || dir === 'right') {
+                        // seek by 10 seconds
+                        try {
+                            await launchAndRun((player, done) => {
+                                player.getStatus((err, status) => {
+                                    let pos = 0;
+                                    if (!err && status && typeof status.currentTime === 'number') pos = status.currentTime;
+                                    const offset = (dir === 'left') ? -10 : 10;
+                                    const target = Math.max(0, pos + offset);
+                                    try {
+                                        player.seek(target, () => done());
+                                    } catch (e) {
+                                        done();
+                                    }
+                                });
+                            });
+                        } catch (e) {
+                            console.error('[Cast] Arrow seek failed (fallback):', e);
+                        }
+                    } else {
+                        // up/down -> volume up/down
+                        try {
+                            await connect();
+                            client.getStatus((err, status) => {
+                                let cur = 0.5;
+                                if (!err && status && status.volume && typeof status.volume.level === 'number') cur = status.volume.level;
+                                let newLevel = cur;
+                                if (dir === 'up') newLevel = Math.min(1, cur + 0.05);
+                                else newLevel = Math.max(0, cur - 0.05);
+                                client.setVolume({ level: newLevel }, () => client.close());
+                            });
+                        } catch (e) {
+                            console.error('[Cast] Arrow volume adjustment failed (fallback):', e);
+                        }
+                    }
+                }
+            } else if (['play','pause','next','previous','stop','toggle'].includes(command)) {
+                // Try to use the DefaultMediaReceiver player controls
+                try {
+                    await launchAndRun((player, done) => {
+                        if (command === 'play') player.play(() => done());
+                        else if (command === 'pause') player.pause(() => done());
+                        else if (command === 'stop') player.stop(() => done());
+                        else if (command === 'next' && typeof player.next === 'function') player.next(() => done());
+                        else if (command === 'previous' && typeof player.previous === 'function') player.previous(() => done());
+                        else if (command === 'toggle') {
+                            // Toggle based on device state if known
+                            if (device.state && device.state.playingState === 'playing') player.pause(() => done());
+                            else player.play(() => done());
+                        } else {
+                            // Fallback: just resolve
+                            done();
+                        }
+                    });
+                } catch (e) {
+                    // If launching DefaultMediaReceiver fails, fallback to simple connect actions
+                    console.error('[Cast] DefaultMediaReceiver control failed:', e);
+                    if (command === 'play' || command === 'pause' || command === 'stop') {
+                        await connect();
+                        client.getStatus((err, status) => { try { client.close(); } catch (er) {} });
+                    }
+                }
+            }
             else if (command === 'turn_on' || (command === 'toggle' && device.state.on)) {
                 await connect();
                 // Unmute and ensure connected
                 client.setVolume({ muted: false }, () => client.close());
-            }
-            else if (command === 'turn_off' || (command === 'toggle' && !device.state.on)) {
+            } else if (command === 'turn_off' || (command === 'toggle' && !device.state.on)) {
                 await connect();
                 // Stop apps and mute
                 client.getStatus((err, status) => {

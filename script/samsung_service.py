@@ -35,23 +35,34 @@ def main():
     tv = None
     is_legacy = False
 
-    # Check for legacy (Port 8002 closed)
+    # Check ports to determine generation
     try:
+        # Check Port 55000 (Legacy)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        if sock.connect_ex((ip, 8002)) != 0:
-            # Port 8002 closed, might be legacy
+        sock.settimeout(0.5)
+        if sock.connect_ex((ip, 55000)) == 0:
+            # Port 55000 is OPEN -> Likely Legacy
             is_legacy = True
         sock.close()
+        
+        if not is_legacy:
+            # Check Port 8002 (Tizen Secure)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
+            if sock.connect_ex((ip, 8002)) != 0:
+                # Port 8002 is CLOSED -> Might be Legacy or Off
+                # If 8002 is closed and 55000 is closed, it's probably just off.
+                # But if we are here, we assume it might be legacy if 8002 is closed.
+                # However, we already checked 55000.
+                pass
+            sock.close()
     except:
         pass
 
     if is_legacy:
         print(json.dumps({"error": "legacy_detected", "ip": ip}), flush=True)
-        # We keep running? No, if it's legacy, this service is useless.
-        # But maybe it's just off?
-        # If it's off, we can't control it via WS anyway.
-        # Let's wait for commands. If we get a command, we try to connect.
+        # Exit so deviceManager knows to use fallback
+        sys.exit(1)
 
     def connect():
         nonlocal tv

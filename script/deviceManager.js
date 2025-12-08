@@ -45,6 +45,7 @@ class DeviceManager extends EventEmitter {
         this.atvProcesses = new Map();
         this.androidTvProcesses = new Map();
         this.samsungProcesses = new Map();
+        this.legacySamsungDevices = new Set();
         this.cameraInstances = new Map(); // Cache for ONVIF camera connections
         this.pairingProcess = null;
         this.appleTvCredentials = {};
@@ -1733,8 +1734,8 @@ class DeviceManager extends EventEmitter {
                     if (msg.status === 'connected') {
                         console.log(`[Samsung Service] Connected to ${ip}`);
                     } else if (msg.error === 'legacy_detected') {
-                        console.log(`[Samsung Service] Legacy TV detected at ${ip}, service will be used for detection only.`);
-                        // We could emit an event here to update device metadata if we had it
+                        console.log(`[Samsung Service] Legacy TV detected at ${ip}, marking as legacy.`);
+                        this.legacySamsungDevices.add(ip);
                     }
                 } catch (e) {}
             });
@@ -1754,6 +1755,9 @@ class DeviceManager extends EventEmitter {
     }
 
     async sendSamsungKeyPython(device, key) {
+        if (this.legacySamsungDevices.has(device.ip)) {
+            throw new Error("Legacy Samsung TV detected, forcing fallback");
+        }
         const process = this.getSamsungProcess(device.ip);
         process.stdin.write(JSON.stringify({ command: 'key', value: key }) + '\n');
         // We assume success for speed, but if the service crashes or reports legacy, 

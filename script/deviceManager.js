@@ -47,12 +47,36 @@ class DeviceManager extends EventEmitter {
         this.startPolling();
     }
 
-    startPolling() {
-        setInterval(() => {
-            for (const id of this.devices.keys()) {
-                this.refreshDevice(id);
+    async startPolling() {
+        console.log('[Polling] Starting polling service...');
+        while (true) {
+            const deviceIds = Array.from(this.devices.keys());
+            // console.log(`[Polling] Starting new poll cycle for ${deviceIds.length} devices.`);
+            
+            for (const id of deviceIds) {
+                const device = this.devices.get(id);
+                if (!device) continue;
+
+                try {
+                    // Give each refresh a max of 4 seconds to complete
+                    await Promise.race([
+                        this.refreshDevice(id),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
+                    ]);
+                } catch (e) {
+                    // console.error(`[Polling] Error refreshing ${device.name} (${device.ip}): ${e.message}`);
+                    // If a device refresh fails (e.g., timeout or connection error),
+                    // it's a strong indicator that it's off or unreachable.
+                    if (device.state.on) {
+                        // console.log(`[Polling] Marking ${device.name} as off due to refresh failure.`);
+                        device.state.on = false;
+                        this.emit('device-updated', device);
+                    }
+                }
             }
-        }, 5000);
+            // Wait for 10 seconds before starting the next full poll cycle
+            await new Promise(resolve => setTimeout(resolve, 10000));
+        }
     }
 
     loadAppleTvCredentials() {
@@ -795,17 +819,17 @@ class DeviceManager extends EventEmitter {
                     if (!err && status) {
                         let updated = false;
                         
+                        // A successful status response means the device is on.
+                        if (!device.state.on) {
+                            device.state.on = true;
+                            updated = true;
+                        }
+
                         // Volume
                         if (status.volume) {
                             const vol = Math.round((status.volume.level || 0) * 100);
                             if (device.state.volume !== vol) {
                                 device.state.volume = vol;
-                                updated = true;
-                            }
-                            // Muted = Off? Or just muted. Let's say muted is off for toggle purposes
-                            const isOn = !status.volume.muted;
-                            if (device.state.on !== isOn) {
-                                device.state.on = isOn;
                                 updated = true;
                             }
                         }
@@ -880,41 +904,62 @@ class DeviceManager extends EventEmitter {
 
             socket.on('data', (data) => {
                 buffer += data.toString();
-                const lines = buffer.split('\r');
-                let updated = false;
                 
-                lines.forEach(line => {
-                    if (line.startsWith('PW')) {
-                        const isOn = line === 'PWON';
-                        if (device.state.on !== isOn) {
-                            device.state.on = isOn;
-                            updated = true;
-                        }
-                    } else if (line.startsWith('MV')) {
-                        if (line.length > 2 && !isNaN(line.substring(2))) {
-                            let volStr = line.substring(2);
-                            if (volStr.length === 3) volStr = volStr.substring(0, 2);
-                            const vol = parseInt(volStr);
-                            if (device.state.volume !== vol) {
-                                device.state.volume = vol;
+                // Denon responses are \r separated. Process when we have a full buffer.
+                if (buffer.includes('PW') && buffer.includes('MV') && buffer.includes('SI')) {
+                    const lines = buffer.split('\r');
+                    let updated = false;
+                    
+                    lines.forEach(line => {
+                        if (line.startsWith('PW')) {
+                            const isOn = line === 'PWON';
+                            if (device.state.on !== isOn) {
+                                device.state.on = isOn;
+                                updated = true;
+                            }
+                        } else if (line.startsWith('MV')) {
+                            if (line.length > 2 && !isNaN(line.substring(2))) {
+                                let volStr = line.substring(2);
+                                if (volStr.length === 3) volStr = volStr.substring(0, 2); // Handle 9.5 volumes etc.
+                                const vol = parseInt(volStr);
+                                if (device.state.volume !== vol) {
+                                    device.state.volume = vol;
+                                    updated = true;
+                                }
+                            }
+                        } else if (line.startsWith('SI')) {
+                            const source = line.substring(2).trim();
+                            if (device.state.mediaTitle !== source) {
+                                device.state.mediaTitle = source;
                                 updated = true;
                             }
                         }
-                    } else if (line.startsWith('SI')) {
-                        const source = line.substring(2);
-                        if (device.state.mediaTitle !== source) {
-                            device.state.mediaTitle = source;
-                            updated = true;
-                        }
-                    }
-                });
+                    });
 
-                if (updated) this.emit('device-updated', device);
+                    if (updated) {
+                        this.emit('device-updated', device);
+                    }
+                    socket.end(); // Gracefully close the connection
+                }
             });
 
-            socket.on('error', () => socket.destroy());
-            socket.on('timeout', () => socket.destroy());
-            setTimeout(() => socket.destroy(), 1000);
+            socket.on('error', (err) => {
+                if (device.state.on) {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
+                socket.destroy();
+            });
+            socket.on('timeout', () => {
+                 if (device.state.on) {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
+                socket.destroy();
+            });
+            socket.on('end', () => {
+                socket.destroy();
+            });
         } else if (device.type === 'printer') {
             this.refreshPrinter(device);
         }

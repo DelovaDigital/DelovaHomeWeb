@@ -1655,16 +1655,14 @@ class DeviceManager extends EventEmitter {
 
                 if (mode === 'string') {
                     const dataPayload = {
-                        message: commandData,
-                        clientIp: this.localIp || '0.0.0.0',
-                        clientPort: 0
+                        message: JSON.stringify(commandData)
                     };
                     const fallback = {
                         event: 'ms.channel.emit',
                         to: 'host',
                         data: JSON.stringify(dataPayload)
                     };
-                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope with stringified data)`);
+                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback: stringified data with stringified message, no clientIp)`);
                     ws.send(JSON.stringify(fallback));
                     return;
                 }

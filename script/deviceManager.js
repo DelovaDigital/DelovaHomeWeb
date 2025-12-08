@@ -1377,19 +1377,29 @@ class DeviceManager extends EventEmitter {
         if (this.androidTvProcesses.has(ip)) {
             return this.androidTvProcesses.get(ip);
         }
-
         console.log(`[DeviceManager] Spawning persistent Android TV service for ${ip}...`);
         const { spawn } = require('child_process');
-        
-        let pythonPath = path.join(__dirname, '../.venv/bin/python');
-        if (!fs.existsSync(pythonPath)) {
-            console.warn(`[DeviceManager] Virtual env python not found at ${pythonPath}, falling back to 'python3'`);
-            pythonPath = 'python3';
+
+        // Try several likely venv python locations, then fall back to system python3
+        const candidates = [
+            path.join(__dirname, '../.venv/bin/python'),      // <project>/script/../.venv/bin/python -> <project>/.venv/bin/python
+            path.join(__dirname, '../../.venv/bin/python'),   // in case script is nested differently
+            path.join(process.cwd(), '.venv/bin/python'),     // current working dir .venv
+            '/home/pi/DelovaHome/.venv/bin/python'            // common deployment path on Pi
+        ];
+
+        let pythonPath = 'python3';
+        for (const cand of candidates) {
+            try {
+                if (fs.existsSync(cand)) { pythonPath = cand; break; }
+            } catch (e) {}
         }
 
+        console.log(`[DeviceManager] Using python executable: ${pythonPath}`);
+
         const scriptPath = path.join(__dirname, 'androidtv_service.py');
-        
-        const process = spawn(pythonPath, [scriptPath, ip]);
+
+        const process = spawn(pythonPath, [scriptPath, ip], { cwd: path.join(__dirname, '..') });
         
         process.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');

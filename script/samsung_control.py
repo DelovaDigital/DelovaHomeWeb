@@ -36,6 +36,29 @@ def main():
     token = tokens.get(ip)
 
     try:
+        # Check if it's actually a Tizen TV by querying the API
+        # This prevents false positives where port 8002 is open but not for control
+        try:
+            import requests
+            # Try HTTP (8001) and HTTPS (8002)
+            is_tizen = False
+            try:
+                requests.get(f'http://{ip}:8001/api/v2/', timeout=2)
+                is_tizen = True
+            except:
+                try:
+                    requests.get(f'https://{ip}:8002/api/v2/', timeout=2, verify=False)
+                    is_tizen = True
+                except:
+                    pass
+            
+            if not is_tizen:
+                # If API is not accessible, it's likely a legacy TV (Orchestrator)
+                # Fail here so deviceManager falls back to samsung-remote
+                raise Exception("Not a Tizen TV (API unreachable)")
+        except ImportError:
+            pass # requests not installed? ignore check
+
         # Increase timeout for initial pairing
         tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=30)
         

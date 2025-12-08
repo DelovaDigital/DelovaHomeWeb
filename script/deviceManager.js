@@ -1678,6 +1678,8 @@ class DeviceManager extends EventEmitter {
         if (SamsungRemote) {
             try {
                 await new Promise((resolve, reject) => {
+                    // Legacy library defaults to 2000ms timeout which might be too short
+                    // We can't easily change it without modifying the library, but we can try-catch
                     const remote = new SamsungRemote({ ip: device.ip });
                     remote.send(key, (err) => {
                         if (err) {

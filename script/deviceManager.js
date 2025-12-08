@@ -1600,7 +1600,7 @@ class DeviceManager extends EventEmitter {
     async handleSamsungCommand(device, command, value) {
         console.log(`[Samsung] Handling command '${command}' via samsung-remote library for ${device.name}`);
 
-        const remote = new SamsungRemote({
+        const remote = SamsungRemote({
             ip: device.ip
         });
 

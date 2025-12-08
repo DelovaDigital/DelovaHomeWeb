@@ -3,7 +3,26 @@ import asyncio
 import json
 import sys
 import os
-from androidtvremote2 import AndroidTVRemote
+
+# Startup diagnostics to help debug environment issues when spawned by Node
+print(json.dumps({
+    'startup': True,
+    'executable': sys.executable,
+    'python_version': sys.version.split('\n')[0],
+    'argv': sys.argv
+}))
+
+try:
+    from androidtvremote2 import AndroidTVRemote
+    try:
+        # Print module path for clarity
+        import androidtvremote2 as _atr_mod
+        print(json.dumps({ 'androidtvremote2': getattr(_atr_mod, '__file__', 'built-in or package without __file__') }))
+    except Exception:
+        pass
+except ImportError as e:
+    print(json.dumps({ 'error': 'missing_dependency', 'module': 'androidtvremote2', 'message': str(e) }))
+    sys.exit(2)
 
 # The path to the configuration file
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), '../androidtv-credentials.json')

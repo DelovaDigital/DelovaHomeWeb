@@ -1639,34 +1639,55 @@ class DeviceManager extends EventEmitter {
             const mode = this.samsungErrorMode.get(device.ip);
             let commandToSend;
 
-            if (mode === 'emit_wrapper' || mode === 'emit_no_ms') {
-                // Use the ms.channel.emit wrapper for older TVs. Most firmwares prefer
-                // the plain 'remote.control' event when sent via ms.channel.emit.
-                const eventName = (mode === 'emit_no_ms') ? 'remote.control' : 'remote.control';
+            // Build several well-known fallback payload shapes for older Tizen firmwares.
+            // Modes supported:
+            //  - undefined/null: direct ms.remote.control (newer TVs)
+            //  - 'emit_wrapper': ms.channel.emit with data as OBJECT and session as ID (preferred)
+            //  - 'emit_string': ms.channel.emit with data as JSON string
+            //  - 'emit_no_session': ms.channel.emit but omit session entirely
+            //  - 'emit_no_ms': attempt channel.emit without ms namespace (best-effort)
+
+            if (!mode) {
+                // Default: try the direct remote API
+                commandToSend = { method: 'ms.remote.control', params: commandParams };
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct)`);
+            } else if (mode === 'emit_wrapper' || mode === 'emit_session_id' || mode === 'emit_no_session' || mode === 'emit_string' || mode === 'emit_no_ms') {
+                // Prefer sending via the channel emit wrapper for older TVs
+                const eventName = 'remote.control';
+
+                // Choose how to represent the data field
+                const dataField = (mode === 'emit_string') ? JSON.stringify(commandParams) : commandParams;
 
                 const params = {
                     to: 'host',
                     event: eventName,
-                    data: JSON.stringify(commandParams)
+                    data: dataField
                 };
 
                 if (this.localIp) params.clientIp = this.localIp;
-                // Include the session info object (id + clients) if available; some TVs expect it
-                // to be present and will fail otherwise.
-                if (device.samsungSession) params.session = device.samsungSession;
 
-                commandToSend = {
-                    method: 'ms.channel.emit',
-                    params: params
-                };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper, mode=${mode})` + (device.samsungSession ? ' (with session)' : ''));
+                // Session handling: some older firmwares expect a session *id* string, others reject session entirely
+                if (mode === 'emit_session_id' && device.samsungSession && device.samsungSession.id) {
+                    params.session = device.samsungSession.id;
+                } else if (mode === 'emit_wrapper' && device.samsungSession) {
+                    // try including the full object as a fallback (some firmwares accept it)
+                    params.session = device.samsungSession;
+                } else if (mode === 'emit_no_session') {
+                    // intentionally omit session
+                } else if (device.samsungSession && !params.session) {
+                    // If no explicit session mode was requested, try to include id by default
+                    if (device.samsungSession.id) params.session = device.samsungSession.id;
+                }
+
+                // If the TV explicitly rejects the 'ms.' namespace we can try a best-effort without it
+                const methodName = (mode === 'emit_no_ms') ? 'channel.emit' : 'ms.channel.emit';
+
+                commandToSend = { method: methodName, params };
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (mode=${mode || 'direct'}, method=${methodName})`, { payload: params });
             } else {
-                // Try direct command first for newer TVs
-                commandToSend = {
-                    method: 'ms.remote.control',
-                    params: commandParams
-                };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct)`);
+                // Fallback to direct if unknown mode
+                commandToSend = { method: 'ms.remote.control', params: commandParams };
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct-fallback)`);
             }
 
             try {
@@ -1783,14 +1804,34 @@ class DeviceManager extends EventEmitter {
                             console.log(`[Samsung] Enabling 'emit_wrapper' fallback for ${device.ip}. Retrying...`);
                             this.samsungErrorMode.set(device.ip, 'emit_wrapper');
                             executeCommand(ws); // Retry the command immediately with the new mode
+                            return;
                         }
 
                         // Some firmwares prohibit the 'ms.' namespace in custom events. Detect
-                        // that and prefer the plain 'remote.control' event when using emit.
-                        if (errMsg.toLowerCase().includes('usage of `ms.`')) {
+                        // that and prefer sending without the 'ms.' namespace.
+                        if (errMsg.toLowerCase().includes('usage of `ms.`') || errMsg.toLowerCase().includes('usage of ms.')) {
                             console.log(`[Samsung] TV rejects 'ms.' custom events; switching to plain emit event for ${device.ip}`);
                             this.samsungErrorMode.set(device.ip, 'emit_no_ms');
                             executeCommand(ws);
+                            return;
+                        }
+
+                        // Some older firmwares will complain about a missing/invalid session value
+                        // (e.g. "Cannot read property 'session' of null"). Try switching how we include
+                        // session information: prefer sending the session id string first, then omit it.
+                        if (errMsg.toLowerCase().includes('session') || errMsg.toLowerCase().includes("cannot read property 'session'") || errMsg.toLowerCase().includes('cannot read property')) {
+                            const current = this.samsungErrorMode.get(device.ip);
+                            if (current !== 'emit_session_id') {
+                                console.log(`[Samsung] Session-related error from TV; switching to 'emit_session_id' for ${device.ip}`);
+                                this.samsungErrorMode.set(device.ip, 'emit_session_id');
+                                executeCommand(ws);
+                                return;
+                            } else if (current === 'emit_session_id') {
+                                console.log(`[Samsung] emit_session_id failed; switching to 'emit_no_session' for ${device.ip}`);
+                                this.samsungErrorMode.set(device.ip, 'emit_no_session');
+                                executeCommand(ws);
+                                return;
+                            }
                         }
                     }
                 } catch (e) {

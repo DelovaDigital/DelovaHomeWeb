@@ -1654,16 +1654,17 @@ class DeviceManager extends EventEmitter {
                 }
 
                 if (mode === 'string') {
+                    const dataPayload = {
+                        message: commandData,
+                        clientIp: this.localIp || '0.0.0.0',
+                        clientPort: 0
+                    };
                     const fallback = {
                         event: 'ms.channel.emit',
                         to: 'host',
-                        data: {
-                            message: JSON.stringify(commandData),
-                            clientIp: this.localIp || '0.0.0.0',
-                            clientPort: 0
-                        }
+                        data: JSON.stringify(dataPayload)
                     };
-                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope with stringified message)`);
+                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope with stringified data)`);
                     ws.send(JSON.stringify(fallback));
                     return;
                 }

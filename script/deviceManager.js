@@ -10,7 +10,7 @@ const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
-const SamsungRemote = require('samsung-remote');
+const SamsungRemote = require('samsung-remote/lib/samsung-remote.js');
 // Load spotifyManager defensively to avoid crashing discovery if spotifyManager is broken
 let spotifyManager;
 try {

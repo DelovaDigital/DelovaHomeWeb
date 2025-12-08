@@ -35,12 +35,15 @@ class DeviceManager extends EventEmitter {
         this.devices = new Map();
         this.samsungConnections = new Map();
         this.atvProcesses = new Map();
+        this.androidTvProcesses = new Map();
         this.cameraInstances = new Map(); // Cache for ONVIF camera connections
         this.pairingProcess = null;
         this.appleTvCredentials = {};
+        this.androidTvCredentials = {};
         this.samsungCredentials = {};
         this.cameraCredentials = {};
         this.loadAppleTvCredentials();
+        this.loadAndroidTvCredentials();
         this.loadSamsungCredentials();
         this.loadCameraCredentials();
         this.startDiscovery();
@@ -107,6 +110,18 @@ class DeviceManager extends EventEmitter {
         }
     }
 
+    loadAndroidTvCredentials() {
+        try {
+            const credPath = path.join(__dirname, '../androidtv-credentials.json');
+            if (fs.existsSync(credPath)) {
+                this.androidTvCredentials = JSON.parse(fs.readFileSync(credPath));
+                console.log(`Loaded credentials for ${Object.keys(this.androidTvCredentials).length} Android TV(s)`);
+            }
+        } catch (e) {
+            console.error('Failed to load Android TV credentials:', e.message);
+        }
+    }
+
     loadSamsungCredentials() {
         try {
             const credsPath = path.join(__dirname, '../samsung-credentials.json');
@@ -120,18 +135,6 @@ class DeviceManager extends EventEmitter {
         } catch (e) {
             console.error('Failed to load Samsung credentials:', e.message);
             this.samsungCredentials = {};
-        }
-    }
-
-    loadCameraCredentials() {
-        try {
-            const credsPath = path.join(__dirname, '../camera-credentials.json');
-            if (fs.existsSync(credsPath)) {
-                this.cameraCredentials = JSON.parse(fs.readFileSync(credsPath));
-                console.log(`Loaded credentials for ${Object.keys(this.cameraCredentials).length} Camera(s)`);
-            }
-        } catch (e) {
-            console.error('Failed to load Camera credentials:', e.message);
         }
     }
 
@@ -1207,7 +1210,7 @@ class DeviceManager extends EventEmitter {
 
         // Handle Protocol Specific Actions
         if (device.protocol === 'mdns-googlecast') {
-            this.handleCastCommand(device, command, value);
+            this.handleAndroidTvCommand(device, command, value);
         } else if (device.name.toLowerCase().includes('ylbulb') || device.name.toLowerCase().includes('yeelight')) {
             this.handleYeelightCommand(device, command, value);
         } else if (device.protocol === 'lg-webos') {
@@ -1349,6 +1352,57 @@ class DeviceManager extends EventEmitter {
         });
         
         lgtvClient.on('error', (err) => console.error('LG TV Error:', err));
+    }
+
+    getAndroidTvProcess(ip) {
+        if (this.androidTvProcesses.has(ip)) {
+            return this.androidTvProcesses.get(ip);
+        }
+
+        console.log(`[DeviceManager] Spawning persistent Android TV service for ${ip}...`);
+        const { spawn } = require('child_process');
+        
+        let pythonPath = path.join(__dirname, '../.venv/bin/python');
+        if (!fs.existsSync(pythonPath)) {
+            console.warn(`[DeviceManager] Virtual env python not found at ${pythonPath}, falling back to 'python3'`);
+            pythonPath = 'python3';
+        }
+
+        const scriptPath = path.join(__dirname, 'androidtv_service.py');
+        
+        const process = spawn(pythonPath, [scriptPath, ip]);
+        
+        process.stdout.on('data', (data) => {
+            const lines = data.toString().split('\n');
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                try {
+                    const msg = JSON.parse(line);
+                    if (msg.status === 'pairing_required') {
+                        console.log(`[Android TV Service] Pairing required for ${ip}. Please follow the instructions.`);
+                        // Here you would need to inform the UI to ask for a PIN
+                    } else if (msg.status === 'connected' || msg.status === 'paired') {
+                        console.log(`[Android TV Service] Connected to ${ip}`);
+                    } else if (msg.error) {
+                        console.error(`[Android TV Service Error] ${ip}: ${msg.error}`);
+                    }
+                } catch (e) {
+                    // console.error('[Android TV Service] Parse error:', e);
+                }
+            });
+        });
+
+        process.stderr.on('data', (data) => {
+            console.error(`[Android TV Service Stderr] ${ip}: ${data.toString()}`);
+        });
+
+        process.on('close', (code) => {
+            console.log(`[Android TV Service] Process for ${ip} exited with code ${code}`);
+            this.androidTvProcesses.delete(ip);
+        });
+
+        this.androidTvProcesses.set(ip, process);
+        return process;
     }
 
     getAtvProcess(ip) {
@@ -1499,8 +1553,25 @@ class DeviceManager extends EventEmitter {
         process.stdin.write(JSON.stringify(payload) + '\n');
     }
 
+    async handleAndroidTvCommand(device, command, value) {
+        console.log(`[Android TV] Sending command '${command}' to ${device.name} via Persistent Service...`);
+
+        const process = this.getAndroidTvProcess(device.ip);
+        const payload = { command: command };
+        if (value !== undefined && value !== null) {
+            payload.value = value;
+        }
+        
+        try {
+            process.stdin.write(JSON.stringify(payload) + '\n');
+        } catch(e) {
+            console.error(`[Android TV] Failed to send command to ${device.ip}: ${e.message}`);
+        }
+    }
+
     async handleSamsungCommand(device, command, value) {
         console.log(`[Samsung] Handling command '${command}' for ${device.name} (${device.ip})`);
+
 
         // Handle Turn On via Wake-on-LAN
         if (command === 'turn_on' || (command === 'toggle' && !device.state.on)) {

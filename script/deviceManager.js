@@ -1620,7 +1620,7 @@ class DeviceManager extends EventEmitter {
         console.log(`[Samsung] Handling command '${command}' for ${device.name}`);
 
         const keyMap = {
-            'turn_off': 'KEY_POWER', 'toggle': 'KEY_POWEROFF', // Use specific KEY_POWEROFF for toggle/off
+            'turn_off': 'KEY_POWEROFF', 'toggle': 'KEY_POWER', // Use KEY_POWER for toggle to avoid accidental shutdown during pairing
             'turn_on': 'KEY_POWERON',
             'channel_up': 'KEY_CHUP', 'channel_down': 'KEY_CHDOWN',
             'volume_up': 'KEY_VOLUP', 'volume_down': 'KEY_VOLDOWN',
@@ -1724,7 +1724,14 @@ class DeviceManager extends EventEmitter {
                         reject(new Error(`Failed to parse python output: ${output}`));
                     }
                 } else {
-                    reject(new Error(`Samsung python script exited with code ${code}`));
+                    // Try to parse output even on error code, as script might print JSON error
+                    try {
+                        const res = JSON.parse(output.trim());
+                        if (res.error) reject(new Error(res.error));
+                        else reject(new Error(`Samsung python script exited with code ${code} but returned success? ${output}`));
+                    } catch (e) {
+                        reject(new Error(`Samsung python script exited with code ${code}. Output: ${output}`));
+                    }
                 }
             });
         });

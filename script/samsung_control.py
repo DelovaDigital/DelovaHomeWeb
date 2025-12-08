@@ -36,14 +36,10 @@ def main():
     token = tokens.get(ip)
 
     try:
-        tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome')
+        # Increase timeout for initial pairing
+        tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=30)
         
-        # This will trigger auth if token is invalid/missing
-        tv.shortcuts().power() # Dummy call to check connection/auth? No, just open.
-        
-        # Actually, we need to open the connection. The library does it lazily.
-        # But we want to capture the token if it changes.
-        
+        # Open connection explicitly
         tv.open()
         
         # Save token if we got a new one

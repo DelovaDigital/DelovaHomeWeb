@@ -8,7 +8,7 @@ import warnings
 # Suppress urllib3/ssl warnings
 warnings.filterwarnings("ignore", category=UserWarning, module='urllib3')
 
-from pyatv import connect
+from pyatv import connect, scan
 from pyatv.const import Protocol, PowerState, DeviceState
 
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '../appletv-credentials.json')
@@ -33,41 +33,42 @@ async def main():
             break
             
     if not device_conf:
-        # Fallback: check if any credential matches this IP even if not explicitly stored as such?
-        # Or just fail.
         print(json.dumps({"error": f"No credentials found for IP {args.ip}"}))
         sys.exit(1)
     
-    # Scan for device
-    from pyatv import scan
-    print(json.dumps({"status": "scanning", "message": f"Scanning for {args.ip}..."}), flush=True)
-    
-    atvs = await scan(loop=asyncio.get_event_loop(), hosts=[args.ip])
-    
-    if not atvs:
-        print(json.dumps({"error": f"Could not find Apple TV at {args.ip}"}), flush=True)
-        sys.exit(1)
-        
-    conf = atvs[0]
-    
-    # Inject credentials
-    protocol_str = device_conf.get('protocol')
-    if protocol_str == 'companion':
-        conf.set_credentials(Protocol.Companion, device_conf['credentials'])
-    elif protocol_str == 'mrp':
-        conf.set_credentials(Protocol.MRP, device_conf['credentials'])
-    elif protocol_str == 'airplay':
-        conf.set_credentials(Protocol.AirPlay, device_conf['credentials'])
-    
-    print(json.dumps({"status": "connecting", "message": "Connecting..."}), flush=True)
-    
     atv = None
-    try:
-        atv = await connect(conf, loop=asyncio.get_event_loop())
-        print(json.dumps({"status": "connected", "message": "Connected successfully"}), flush=True)
-    except Exception as e:
-        print(json.dumps({"error": f"Connection failed: {str(e)}"}), flush=True)
-        sys.exit(1)
+
+    async def connect_to_device():
+        nonlocal atv
+        if atv: return True
+        
+        print(json.dumps({"status": "scanning", "message": f"Scanning for {args.ip}..."}), flush=True)
+        try:
+            atvs = await scan(loop=asyncio.get_event_loop(), hosts=[args.ip])
+            if not atvs:
+                print(json.dumps({"error": f"Could not find Apple TV at {args.ip}"}), flush=True)
+                return False
+            
+            conf = atvs[0]
+            protocol_str = device_conf.get('protocol')
+            if protocol_str == 'companion':
+                conf.set_credentials(Protocol.Companion, device_conf['credentials'])
+            elif protocol_str == 'mrp':
+                conf.set_credentials(Protocol.MRP, device_conf['credentials'])
+            elif protocol_str == 'airplay':
+                conf.set_credentials(Protocol.AirPlay, device_conf['credentials'])
+            
+            print(json.dumps({"status": "connecting", "message": "Connecting..."}), flush=True)
+            atv = await connect(conf, loop=asyncio.get_event_loop())
+            print(json.dumps({"status": "connected", "message": "Connected successfully"}), flush=True)
+            return True
+        except Exception as e:
+            print(json.dumps({"error": f"Connection failed: {str(e)}"}), flush=True)
+            atv = None
+            return False
+
+    # Initial connection attempt (don't exit on failure)
+    await connect_to_device()
 
     # Main loop
     reader = asyncio.StreamReader()
@@ -93,6 +94,13 @@ async def main():
             cmd = req.get('command')
             val = req.get('value')
             
+            # Ensure connected before executing command
+            if not atv:
+                if not await connect_to_device():
+                    # If still not connected, report error and skip command
+                    print(json.dumps({"error": "Not connected"}), flush=True)
+                    continue
+
             # Execute command
             try:
                 if cmd == 'turn_on':
@@ -152,6 +160,9 @@ async def main():
                         playing = await atv.metadata.playing()
                     except Exception as e:
                         playing = None
+                        # If fetching metadata fails, we might be disconnected
+                        # But let's not kill the connection immediately unless we are sure
+                        pass
                         
                     vol = 0
                     try:
@@ -163,27 +174,20 @@ async def main():
                     is_on = True
                     try:
                         if hasattr(atv.power, 'power_state'):
-                            # Debug power state
-                            # print(f"DEBUG: PowerState is {atv.power.power_state}", file=sys.stderr)
                             is_on = atv.power.power_state == PowerState.On
                     except:
-                        # If power state fetch fails, assume ON if we are connected
                         is_on = True
 
                     # Handle Playing State
                     p_state_str = 'stopped'
                     if playing:
                         try:
-                            # device_state is an Enum
                             p_state_str = playing.device_state.name.lower()
-                            
-                            # If we are playing or paused, we are definitely ON
                             if playing.device_state in [DeviceState.Playing, DeviceState.Paused, DeviceState.Buffering]:
                                 is_on = True
                         except:
                             p_state_str = 'stopped'
 
-                    # Safely get app name
                     app_name = ''
                     if playing and hasattr(playing, 'app') and playing.app:
                         app_name = playing.app.name
@@ -198,7 +202,7 @@ async def main():
                         'app': app_name
                     }
                     print(json.dumps({"type": "status", "data": output}), flush=True)
-                    continue # Skip success message for status
+                    continue 
 
                 print(json.dumps({"status": "success", "command": cmd}), flush=True)
 
@@ -212,10 +216,14 @@ async def main():
                         print(json.dumps({"error": str(e2)}), flush=True)
                 else:
                     print(json.dumps({"error": str(e)}), flush=True)
+                    # If error message indicates connection loss, reset atv
+                    if "not connected" in str(e).lower() or "closed" in str(e).lower():
+                        atv = None
 
         except Exception as e:
             print(json.dumps({"error": f"Loop error: {str(e)}"}), flush=True)
-            break
+            # Don't break the loop, just continue
+            continue
 
     if atv:
         atv.close()

@@ -122,6 +122,21 @@ class DeviceManager extends EventEmitter {
         }
     }
 
+    loadCameraCredentials() {
+        try {
+            const credsPath = path.join(__dirname, '../camera-credentials.json');
+            if (fs.existsSync(credsPath)) {
+                this.cameraCredentials = JSON.parse(fs.readFileSync(credsPath));
+                console.log(`Loaded credentials for ${Object.keys(this.cameraCredentials).length} Camera(s)`);
+            } else {
+                this.cameraCredentials = {};
+            }
+        } catch (e) {
+            console.error('Failed to load Camera credentials:', e.message);
+            this.cameraCredentials = {};
+        }
+    }
+
     loadSamsungCredentials() {
         try {
             const credsPath = path.join(__dirname, '../samsung-credentials.json');

@@ -27,5 +27,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
+  },
+  "overrides": {
+    "@peculiar/x509": "1.12.3"
   }
 }

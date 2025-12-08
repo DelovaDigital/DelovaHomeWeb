@@ -47,6 +47,7 @@ class AndroidTVManager:
 
     async def connect(self):
         """Connect to the Android TV."""
+        print(json.dumps({"status": "debug", "message": f"Connecting to {self.ip}..."}), flush=True)
         self.remote = AndroidTVRemote(self.ip)
         
         # Check if we have credentials for this IP

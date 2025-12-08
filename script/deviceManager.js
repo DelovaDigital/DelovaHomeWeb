@@ -46,8 +46,6 @@ class DeviceManager extends EventEmitter {
         this.androidTvProcesses = new Map();
         this.samsungProcesses = new Map();
         this.legacySamsungDevices = new Set();
-        // Hardcode known legacy devices
-        this.legacySamsungDevices.add('192.168.0.148'); 
         this.cameraInstances = new Map(); // Cache for ONVIF camera connections
         this.pairingProcess = null;
         this.appleTvCredentials = {};

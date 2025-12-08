@@ -65,18 +65,28 @@ def main():
         nonlocal tv
         tokens = load_tokens()
         token = tokens.get(ip)
+        
+        # Try Port 8002 (Secure Tizen)
         try:
-            # timeout=5 for faster failure
             tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=5)
             tv.open()
             if tv.token and tv.token != token:
                 save_token(ip, tv.token)
-            print(json.dumps({"status": "connected", "ip": ip}), flush=True)
+            print(json.dumps({"status": "connected", "ip": ip, "port": 8002}), flush=True)
             return True
-        except Exception as e:
-            print(json.dumps({"error": str(e), "type": "connection_error"}), flush=True)
-            tv = None
-            return False
+        except Exception as e_8002:
+            # Try Port 8001 (Legacy Tizen / J-Series)
+            try:
+                tv = SamsungTVWS(host=ip, port=8001, token=token, name='DelovaHome', timeout=5)
+                tv.open()
+                if tv.token and tv.token != token:
+                    save_token(ip, tv.token)
+                print(json.dumps({"status": "connected", "ip": ip, "port": 8001}), flush=True)
+                return True
+            except Exception as e_8001:
+                print(json.dumps({"error": f"8002: {e_8002}, 8001: {e_8001}", "type": "connection_error"}), flush=True)
+                tv = None
+                return False
 
     # Initial connection attempt
     if not is_legacy:

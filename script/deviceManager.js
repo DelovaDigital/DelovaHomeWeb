@@ -1639,23 +1639,27 @@ class DeviceManager extends EventEmitter {
             const mode = this.samsungErrorMode.get(device.ip);
             let commandToSend;
 
-            if (mode === 'emit_wrapper') {
-                // Use the ms.channel.emit wrapper for older TVs. Include clientIp and session when available
+            if (mode === 'emit_wrapper' || mode === 'emit_no_ms') {
+                // Use the ms.channel.emit wrapper for older TVs. Most firmwares prefer
+                // the plain 'remote.control' event when sent via ms.channel.emit.
+                const eventName = (mode === 'emit_no_ms') ? 'remote.control' : 'remote.control';
+
                 const params = {
                     to: 'host',
-                    // Some firmwares expect the event to be 'ms.remote.control'
-                    // rather than 'remote.control'. Try the ms-prefixed event.
-                    event: 'ms.remote.control',
+                    event: eventName,
                     data: JSON.stringify(commandParams)
                 };
+
                 if (this.localIp) params.clientIp = this.localIp;
+                // Include the session info object (id + clients) if available; some TVs expect it
+                // to be present and will fail otherwise.
                 if (device.samsungSession) params.session = device.samsungSession;
 
                 commandToSend = {
                     method: 'ms.channel.emit',
                     params: params
                 };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper)` + (device.samsungSession ? ' (with session)' : ''));
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper, mode=${mode})` + (device.samsungSession ? ' (with session)' : ''));
             } else {
                 // Try direct command first for newer TVs
                 commandToSend = {
@@ -1758,9 +1762,14 @@ class DeviceManager extends EventEmitter {
                                 device.token = response.data.token;
                                 this.saveSamsungToken(device.ip, device.token);
                             }
-                            if (response.data.session) {
-                                device.samsungSession = response.data.session;
-                                console.log(`[Samsung] Saved session for ${device.ip}: ${JSON.stringify(device.samsungSession)}`);
+                            // Some TVs return an 'id' and 'clients' array on connect. Preserve those
+                            // as the session info so we can include it in emit wrappers later.
+                            if (response.data.id || response.data.clients) {
+                                device.samsungSession = {
+                                    id: response.data.id || null,
+                                    clients: response.data.clients || null
+                                };
+                                console.log(`[Samsung] Saved session info for ${device.ip}: ${JSON.stringify(device.samsungSession)}`);
                             }
                         }
                         // Now that we're connected and possibly have a token/session, execute the command
@@ -1774,6 +1783,14 @@ class DeviceManager extends EventEmitter {
                             console.log(`[Samsung] Enabling 'emit_wrapper' fallback for ${device.ip}. Retrying...`);
                             this.samsungErrorMode.set(device.ip, 'emit_wrapper');
                             executeCommand(ws); // Retry the command immediately with the new mode
+                        }
+
+                        // Some firmwares prohibit the 'ms.' namespace in custom events. Detect
+                        // that and prefer the plain 'remote.control' event when using emit.
+                        if (errMsg.toLowerCase().includes('usage of `ms.`')) {
+                            console.log(`[Samsung] TV rejects 'ms.' custom events; switching to plain emit event for ${device.ip}`);
+                            this.samsungErrorMode.set(device.ip, 'emit_no_ms');
+                            executeCommand(ws);
                         }
                     }
                 } catch (e) {

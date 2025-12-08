@@ -1635,10 +1635,10 @@ class DeviceManager extends EventEmitter {
                     params: {
                         to: 'host',
                         event: 'remote.control',
-                        data: commandParams
+                        data: JSON.stringify(commandParams)
                     }
                 };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper, data as object)`);
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper)`);
             } else {
                 // Try direct command first for newer TVs
                 commandToSend = {

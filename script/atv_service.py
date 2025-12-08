@@ -4,9 +4,22 @@ import json
 import os
 import argparse
 import warnings
+import logging
+from contextlib import contextmanager
 
 # Suppress urllib3/ssl warnings
 warnings.filterwarnings("ignore", category=UserWarning, module='urllib3')
+logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+
+@contextmanager
+def suppress_stderr():
+    with open(os.devnull, "w") as devnull:
+        old_stderr = sys.stderr
+        sys.stderr = devnull
+        try:
+            yield
+        finally:
+            sys.stderr = old_stderr
 
 from pyatv import connect, scan
 from pyatv.const import Protocol, PowerState, DeviceState
@@ -44,7 +57,8 @@ async def main():
         
         print(json.dumps({"status": "scanning", "message": f"Scanning for {args.ip}..."}), flush=True)
         try:
-            atvs = await scan(loop=asyncio.get_event_loop(), hosts=[args.ip])
+            with suppress_stderr():
+                atvs = await scan(loop=asyncio.get_event_loop(), hosts=[args.ip])
             if not atvs:
                 print(json.dumps({"error": f"Could not find Apple TV at {args.ip}"}), flush=True)
                 return False
@@ -59,7 +73,8 @@ async def main():
                 conf.set_credentials(Protocol.AirPlay, device_conf['credentials'])
             
             print(json.dumps({"status": "connecting", "message": "Connecting..."}), flush=True)
-            atv = await connect(conf, loop=asyncio.get_event_loop())
+            with suppress_stderr():
+                atv = await connect(conf, loop=asyncio.get_event_loop())
             print(json.dumps({"status": "connected", "message": "Connected successfully"}), flush=True)
             return True
         except Exception as e:

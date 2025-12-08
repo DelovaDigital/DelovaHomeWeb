@@ -1515,7 +1515,15 @@ class DeviceManager extends EventEmitter {
         });
 
         process.stderr.on('data', (data) => {
-            console.error(`[ATV Service Stderr] ${ip}: ${data.toString()}`);
+            const str = data.toString();
+            // Filter out known asyncio noise from pyatv
+            if (str.includes('Task exception was never retrieved') || 
+                str.includes('Connect call failed') ||
+                str.includes('OSError: [Errno 113]') ||
+                str.includes('future: <Task finished name=')) {
+                return; 
+            }
+            console.error(`[ATV Service Stderr] ${ip}: ${str}`);
         });
 
         process.on('close', (code) => {

@@ -34,6 +34,7 @@ class DeviceManager extends EventEmitter {
         super();
         this.devices = new Map();
         this.samsungConnections = new Map();
+        this.samsungErrorMode = new Set();
         this.atvProcesses = new Map();
         this.androidTvProcesses = new Map();
         this.cameraInstances = new Map(); // Cache for ONVIF camera connections
@@ -1619,11 +1620,30 @@ class DeviceManager extends EventEmitter {
                     TypeOfRemote: 'SendRemoteKey'
                 }
             };
-            if (ws.readyState === WebSocket.OPEN) {
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip}`);
-                ws.send(JSON.stringify(commandData));
-            } else {
+            if (ws.readyState !== WebSocket.OPEN) {
                 console.error(`[Samsung] WebSocket not open (State: ${ws.readyState}), cannot send key: ${key}`);
+                return;
+            }
+
+            // If this TV previously returned an "unrecognized method" error,
+            // use an alternative channel-based envelope which some firmwares require.
+            const useFallback = this.samsungErrorMode.has(device.ip);
+
+            try {
+                if (!useFallback) {
+                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct)`);
+                    ws.send(JSON.stringify(commandData));
+                } else {
+                    const fallback = {
+                        event: 'ms.channel.emit',
+                        to: 'host',
+                        data: commandData
+                    };
+                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope)`);
+                    ws.send(JSON.stringify(fallback));
+                }
+            } catch (e) {
+                console.error(`[Samsung] Failed to send key ${key} to ${device.ip}:`, e && e.message ? e.message : e);
             }
         };
 
@@ -1745,7 +1765,16 @@ class DeviceManager extends EventEmitter {
                         // Now that we're connected and possibly have a token, execute the command
                         executeCommand(ws);
                     } else if (response.event === 'ms.error') {
-                        console.error(`[Samsung] TV returned error: ${response.message}`);
+                        // Some TVs return an ms.error with a data.message field describing
+                        // why the emitted method was rejected. Detect the known
+                        // "unrecognized method value : ms.remote.control" and enable
+                        // the fallback envelope for subsequent sends.
+                        const errMsg = (response.data && response.data.message) || response.message || JSON.stringify(response);
+                        console.error(`[Samsung] TV returned error: ${errMsg}`);
+                        if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('unrecognized method') && errMsg.toLowerCase().includes('ms.remote.control')) {
+                            console.log(`[Samsung] Enabling fallback envelope mode for ${device.ip} due to TV error.`);
+                            this.samsungErrorMode.add(device.ip);
+                        }
                     }
                 } catch (e) {
                     console.error('[Samsung] Error parsing message:', e);

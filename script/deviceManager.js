@@ -10,6 +10,7 @@ const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
+const SamsungRemote = require('samsung-remote');
 // Load spotifyManager defensively to avoid crashing discovery if spotifyManager is broken
 let spotifyManager;
 try {
@@ -34,9 +35,6 @@ class DeviceManager extends EventEmitter {
     constructor() {
         super();
         this.devices = new Map();
-        this.samsungConnections = new Map();
-        // Maps device.ip -> mode string: undefined|"envelope"|"string"
-        this.samsungErrorMode = new Map();
         this.localIp = this._determineLocalIp();
         this.atvProcesses = new Map();
         this.androidTvProcesses = new Map();
@@ -1600,263 +1598,61 @@ class DeviceManager extends EventEmitter {
     }
 
     async handleSamsungCommand(device, command, value) {
-        console.log(`[Samsung] Handling command '${command}' for ${device.name} (${device.ip})`);
+        console.log(`[Samsung] Handling command '${command}' via samsung-remote library for ${device.name}`);
 
-        // Handle Turn On via Wake-on-LAN
-        if (command === 'turn_on' || (command === 'toggle' && !device.state.on)) {
+        const remote = new SamsungRemote({
+            ip: device.ip
+        });
+
+        const keyMap = {
+            'turn_off': 'KEY_POWER', 'toggle': 'KEY_POWEROFF', // Use specific KEY_POWEROFF for toggle/off
+            'turn_on': 'KEY_POWERON',
+            'channel_up': 'KEY_CHUP', 'channel_down': 'KEY_CHDOWN',
+            'volume_up': 'KEY_VOLUP', 'volume_down': 'KEY_VOLDOWN',
+            'play': 'KEY_PLAY', 'pause': 'KEY_PAUSE', 'stop': 'KEY_STOP',
+            'next': 'KEY_FF', 'previous': 'KEY_REWIND',
+            'up': 'KEY_UP', 'down': 'KEY_DOWN', 'left': 'KEY_LEFT', 'right': 'KEY_RIGHT',
+            'select': 'KEY_ENTER', 'enter': 'KEY_ENTER',
+            'back': 'KEY_RETURN', 'home': 'KEY_HOME', 'menu': 'KEY_MENU'
+        };
+        let key = keyMap[command];
+
+        if (command === 'set_input') {
+            const inputMap = { 'tv': 'KEY_TV', 'hdmi1': 'KEY_HDMI1', 'hdmi2': 'KEY_HDMI2', 'hdmi3': 'KEY_HDMI3', 'hdmi4': 'KEY_HDMI4' };
+            key = inputMap[value.toLowerCase()] || `KEY_${value.toUpperCase()}`;
+        }
+        
+        // This library doesn't have a reliable power on method, so we still use WoL
+        if (command === 'turn_on') {
             const mac = await this.getMacAddress(device.ip);
             if (mac) {
                 console.log(`[Samsung] Sending WoL to ${mac}`);
                 this.sendWol(mac);
-                // Optimistically set state
                 device.state.on = true;
                 this.emit('device-updated', device);
-                return;
             } else {
                 console.log(`[Samsung] Could not resolve MAC for WoL for ${device.ip}`);
             }
-        }
-
-        // All other commands require a WebSocket connection
-        if (!device.state.on && command !== 'turn_on') {
-            console.log(`[Samsung] Skipping command '${command}' because device is off.`);
             return;
         }
 
-        const sendKey = (ws, key) => {
-            const commandParams = {
-                Cmd: 'Click',
-                DataOfCmd: key,
-                Option: 'false',
-                TypeOfRemote: 'SendRemoteKey'
-            };
-
-            if (ws.readyState !== WebSocket.OPEN) {
-                console.error(`[Samsung] WebSocket not open (State: ${ws.readyState}), cannot send key: ${key}`);
-                return;
-            }
-            
-            const mode = this.samsungErrorMode.get(device.ip);
-            let commandToSend;
-
-            // Build several well-known fallback payload shapes for older Tizen firmwares.
-            // Modes supported:
-            //  - undefined/null: direct ms.remote.control (newer TVs)
-            //  - 'emit_wrapper': ms.channel.emit with data as OBJECT and session as ID (preferred)
-            //  - 'emit_string': ms.channel.emit with data as JSON string
-            //  - 'emit_no_session': ms.channel.emit but omit session entirely
-            //  - 'emit_no_ms': attempt channel.emit without ms namespace (best-effort)
-
-            if (!mode) {
-                // Default: try the direct remote API
-                commandToSend = { method: 'ms.remote.control', params: commandParams };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct)`);
-            } else if (mode === 'emit_wrapper' || mode === 'emit_session_id' || mode === 'emit_no_session' || mode === 'emit_string' || mode === 'emit_no_ms') {
-                // Prefer sending via the channel emit wrapper for older TVs
-                const eventName = 'remote.control';
-
-                // Choose how to represent the data field
-                const dataField = (mode === 'emit_string') ? JSON.stringify(commandParams) : commandParams;
-
-                const params = {
-                    to: 'host',
-                    event: eventName,
-                    data: dataField
-                };
-
-                if (this.localIp) params.clientIp = this.localIp;
-
-                // Session handling: some older firmwares expect a session *id* string, others reject session entirely
-                if (mode === 'emit_session_id' && device.samsungSession && device.samsungSession.id) {
-                    params.session = device.samsungSession.id;
-                } else if (mode === 'emit_wrapper' && device.samsungSession) {
-                    // try including the full object as a fallback (some firmwares accept it)
-                    params.session = device.samsungSession;
-                } else if (mode === 'emit_no_session') {
-                    // intentionally omit session
-                } else if (device.samsungSession && !params.session) {
-                    // If no explicit session mode was requested, try to include id by default
-                    if (device.samsungSession.id) params.session = device.samsungSession.id;
-                }
-
-                // If the TV explicitly rejects the 'ms.' namespace we can try a best-effort without it
-                const methodName = (mode === 'emit_no_ms') ? 'channel.emit' : 'ms.channel.emit';
-
-                commandToSend = { method: methodName, params };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (mode=${mode || 'direct'}, method=${methodName})`, { payload: params });
-            } else {
-                // Fallback to direct if unknown mode
-                commandToSend = { method: 'ms.remote.control', params: commandParams };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct-fallback)`);
-            }
-
-            try {
-                ws.send(JSON.stringify(commandToSend));
-            } catch (e) {
-                console.error(`[Samsung] Failed to send key ${key} to ${device.ip}:`, e);
-            }
-        };
-
-        const executeCommand = (ws) => {
-            console.log(`[Samsung] Executing command '${command}' on existing connection (State: ${ws.readyState})`);
-            const keyMap = {
-                'turn_off': 'KEY_POWER', 'toggle': 'KEY_POWER', 'channel_up': 'KEY_CHUP',
-                'channel_down': 'KEY_CHDOWN', 'volume_up': 'KEY_VOLUP', 'volume_down': 'KEY_VOLDOWN',
-                'play': 'KEY_PLAY', 'pause': 'KEY_PAUSE', 'stop': 'KEY_STOP', 'next': 'KEY_FF',
-                'previous': 'KEY_REWIND', 'up': 'KEY_UP', 'down': 'KEY_DOWN', 'left': 'KEY_LEFT',
-                'right': 'KEY_RIGHT', 'select': 'KEY_ENTER', 'enter': 'KEY_ENTER',
-                'back': 'KEY_RETURN', 'home': 'KEY_HOME', 'menu': 'KEY_MENU'
-            };
-            let key = keyMap[command];
-
-            if (command === 'set_input') {
-                const inputMap = { 'tv': 'KEY_TV', 'hdmi1': 'KEY_HDMI1', 'hdmi2': 'KEY_HDMI2', 'hdmi3': 'KEY_HDMI3', 'hdmi4': 'KEY_HDMI4' };
-                key = inputMap[value.toLowerCase()] || `KEY_${value.toUpperCase()}`;
-            }
-
-            if (key) {
-                sendKey(ws, key);
-            }
-        };
-
-        // Check for existing connection
-        if (this.samsungConnections.has(device.ip)) {
-            const conn = this.samsungConnections.get(device.ip);
-            
-            // Reset inactivity timeout
-            clearTimeout(conn.timeout);
-            conn.timeout = setTimeout(() => {
-                console.log(`[Samsung] Closing idle connection for ${device.ip}`);
-                conn.ws.close();
-            }, 15000); // Keep alive for 15 seconds
-
-            if (conn.ws.readyState === WebSocket.OPEN) {
-                console.log(`[Samsung] Reusing existing connection for ${device.ip}`);
-                executeCommand(conn.ws);
-                return;
-            } else {
-                console.log(`[Samsung] Connection for ${device.ip} is dead (State: ${conn.ws.readyState}), reconnecting...`);
-                this.samsungConnections.delete(device.ip);
-            }
+        if (!key) {
+            console.log(`[Samsung] Command '${command}' not supported by this library.`);
+            return;
         }
 
-        const connectToTv = (port) => {
-            const appName = Buffer.from('DelovaHome').toString('base64');
-            const protocol = port === 8002 ? 'wss' : 'ws';
-            let url = `${protocol}://${device.ip}:${port}/api/v2/channels/samsung.remote.control?name=${appName}`;
-            
-            const currentToken = device.token || this.samsungCredentials[device.ip];
-            if (currentToken) {
-                url += `&token=${currentToken}`;
+        remote.send(key, (err) => {
+            if (err) {
+                console.error(`[Samsung] Error sending command '${key}' to ${device.name}:`, err);
+            } else {
+                console.log(`[Samsung] Successfully sent command '${key}' to ${device.name}`);
+                // Optimistically update state for on/off toggles
+                if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
             }
-
-            console.log(`[Samsung] Creating new connection to ${url}`);
-
-            const ws = new WebSocket(url, {
-                rejectUnauthorized: false,
-                timeout: 5000
-            });
-
-            ws.on('error', (e) => {
-                console.error(`[Samsung] Connection Error to ${url}: ${e.message}`);
-                this.samsungConnections.delete(device.ip);
-                if (port === 8002) {
-                    console.log('[Samsung] Retrying on insecure port 8001...');
-                    connectToTv(8001);
-                }
-            });
-
-            ws.on('close', (code, reason) => {
-                console.log(`[Samsung] Connection closed for ${device.ip}. Code: ${code}, Reason: ${reason}`);
-                this.samsungConnections.delete(device.ip);
-            });
-
-            ws.on('message', (data) => {
-                try {
-                    const response = JSON.parse(data.toString());
-                     console.log('[Samsung] Message received:', JSON.stringify(response, null, 2));
-
-                    if (response.event === 'ms.channel.connect') {
-                        if (response.data) {
-                            if (response.data.token) {
-                                console.log(`[Samsung] New token received for ${device.ip}: ${response.data.token}`);
-                                device.token = response.data.token;
-                                this.saveSamsungToken(device.ip, device.token);
-                            }
-                            // Some TVs return an 'id' and 'clients' array on connect. Preserve those
-                            // as the session info so we can include it in emit wrappers later.
-                            if (response.data.id || response.data.clients) {
-                                device.samsungSession = {
-                                    id: response.data.id || null,
-                                    clients: response.data.clients || null
-                                };
-                                console.log(`[Samsung] Saved session info for ${device.ip}: ${JSON.stringify(device.samsungSession)}`);
-                            }
-                        }
-                        // Now that we're connected and possibly have a token/session, execute the command
-                        executeCommand(ws);
-                    } else if (response.event === 'ms.error') {
-                        const errMsg = (response.data && response.data.message) || '';
-                        console.error(`[Samsung] TV returned error: ${errMsg}`);
-
-                        // If the TV doesn't recognize the direct method, switch to the emit wrapper
-                        if (errMsg.toLowerCase().includes('unrecognized method')) {
-                            console.log(`[Samsung] Enabling 'emit_wrapper' fallback for ${device.ip}. Retrying...`);
-                            this.samsungErrorMode.set(device.ip, 'emit_wrapper');
-                            executeCommand(ws); // Retry the command immediately with the new mode
-                            return;
-                        }
-
-                        // Some firmwares prohibit the 'ms.' namespace in custom events. Detect
-                        // that and prefer sending without the 'ms.' namespace.
-                        if (errMsg.toLowerCase().includes('usage of `ms.`') || errMsg.toLowerCase().includes('usage of ms.')) {
-                            console.log(`[Samsung] TV rejects 'ms.' custom events; switching to plain emit event for ${device.ip}`);
-                            this.samsungErrorMode.set(device.ip, 'emit_no_ms');
-                            executeCommand(ws);
-                            return;
-                        }
-
-                        // Some older firmwares will complain about a missing/invalid session value
-                        // (e.g. "Cannot read property 'session' of null"). Try switching how we include
-                        // session information: prefer sending the session id string first, then omit it.
-                        if (errMsg.toLowerCase().includes('session') || errMsg.toLowerCase().includes("cannot read property 'session'") || errMsg.toLowerCase().includes('cannot read property')) {
-                            const current = this.samsungErrorMode.get(device.ip);
-                            if (current !== 'emit_session_id') {
-                                console.log(`[Samsung] Session-related error from TV; switching to 'emit_session_id' for ${device.ip}`);
-                                this.samsungErrorMode.set(device.ip, 'emit_session_id');
-                                executeCommand(ws);
-                                return;
-                            } else if (current === 'emit_session_id') {
-                                console.log(`[Samsung] emit_session_id failed; switching to 'emit_no_session' for ${device.ip}`);
-                                this.samsungErrorMode.set(device.ip, 'emit_no_session');
-                                executeCommand(ws);
-                                return;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error('[Samsung] Error parsing message:', e);
-                }
-            });
-
-            ws.on('open', () => {
-                console.log(`[Samsung] Connection opened to ${device.ip} on port ${port}. Waiting for channel connect event.`);
-
-                const timeout = setTimeout(() => {
-                    console.log(`[Samsung] Closing idle connection for ${device.ip} (post-open)`);
-                    ws.close();
-                }, currentToken ? 15000 : 60000); // 15s normally, 60s if waiting for pairing approval
-
-                this.samsungConnections.set(device.ip, { ws, timeout });
-
-                // The command is now executed upon receiving 'ms.channel.connect'
-                if (!currentToken) {
-                    console.log('[Samsung] No token found. Please approve the connection on your TV.');
-                }
-            });
-        };
-
-        connectToTv(8002);
+        });
     }
 
     getMacAddress(ip) {

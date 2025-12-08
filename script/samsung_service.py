@@ -39,7 +39,7 @@ def main():
     try:
         # Check Port 55000 (Legacy)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.5)
+        sock.settimeout(2)
         if sock.connect_ex((ip, 55000)) == 0:
             # Port 55000 is OPEN -> Likely Legacy
             is_legacy = True
@@ -48,12 +48,9 @@ def main():
         if not is_legacy:
             # Check Port 8002 (Tizen Secure)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(0.5)
+            sock.settimeout(2)
             if sock.connect_ex((ip, 8002)) != 0:
-                # Port 8002 is CLOSED -> Might be Legacy or Off
-                # If 8002 is closed and 55000 is closed, it's probably just off.
-                # But if we are here, we assume it might be legacy if 8002 is closed.
-                # However, we already checked 55000.
+                # Port 8002 is CLOSED.
                 pass
             sock.close()
     except:

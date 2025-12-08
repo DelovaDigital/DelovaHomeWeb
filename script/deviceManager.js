@@ -347,6 +347,9 @@ class DeviceManager extends EventEmitter {
             } else if (server.toLowerCase().includes('pioneer') || usn.toLowerCase().includes('pioneer')) {
                 type = 'receiver';
                 name = 'Pioneer AVR';
+            } else if (server.toLowerCase().includes('synology') || server.toLowerCase().includes('qnap') || server.toLowerCase().includes('nas')) {
+                type = 'nas';
+                name = server.split('/')[0] || 'NAS Device';
             } else if (server.toLowerCase().includes('samsung') || server.toLowerCase().includes('tizen') || st.includes('samsung')) {
                 type = 'tv';
                 name = 'Samsung Smart TV';
@@ -370,6 +373,11 @@ class DeviceManager extends EventEmitter {
             // Sanitize ID to be safe for HTML attributes
             const safeId = (usn || `ssdp-${rinfo.address}`).replace(/[^a-zA-Z0-9-_:]/g, '_');
 
+            let initialState = { on: false };
+            if (type === 'nas' || type === 'printer') {
+                initialState = { on: true };
+            }
+
             this.addDevice({
                 id: safeId,
                 name: name,
@@ -377,7 +385,7 @@ class DeviceManager extends EventEmitter {
                 ip: rinfo.address,
                 protocol: (type === 'tv' && name.includes('Samsung')) ? 'samsung-tizen' : (name.includes('Denon') ? 'denon-avr' : 'ssdp'),
                 location: location,
-                state: { on: false }
+                state: initialState
             });
         });
 
@@ -577,6 +585,8 @@ class DeviceManager extends EventEmitter {
             type = 'receiver';
         } else if (lowerName.includes('pioneer') || model.toLowerCase().includes('pioneer')) {
             type = 'receiver';
+        } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation') || service.type === 'smb' || service.type === 'afpovertcp') {
+            type = 'nas';
         } else if (lowerName.includes('sensor') || lowerName.includes('homepod') || model.includes('AudioAccessory')) {
             type = 'sensor';
             if (model.includes('AudioAccessory5')) name = 'HomePod Mini';
@@ -597,6 +607,10 @@ class DeviceManager extends EventEmitter {
             if (type === 'sensor') {
                 // Default sensor state (mock values since we can't read HAP without pairing)
                 initialState = { temperature: 21.5, humidity: 45 };
+            } else if (type === 'printer') {
+                initialState = { on: true };
+            } else if (type === 'nas') {
+                initialState = { on: true };
             }
             let protocol = `mdns-${sourceType}`;
             // If we identify a Samsung TV via mDNS, use the Tizen protocol for control

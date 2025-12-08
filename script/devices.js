@@ -217,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (type === 'cover' || type === 'blind') icon = 'fa-warehouse'; // or fa-blinds if available
             else if (type === 'vacuum') icon = 'fa-robot';
             else if (type === 'sensor') icon = 'fa-wifi';
+            else if (type === 'nas') icon = 'fa-server';
 
             const isOn = device.state.on;
             const statusClass = isOn ? 'on' : 'off';
@@ -494,6 +495,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
                     </div>
+                </div>
+            `;
+        } else if (type === 'nas') {
+            controlsHtml += `
+                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
+                    <p>Beheer je NAS verbindingen en bestanden.</p>
+                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="window.location.href='settings.html'">
+                        <i class="fas fa-cog"></i> Verbinden / Instellen
+                    </button>
+                    <button class="btn btn-secondary" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px;" onclick="window.location.href='files.html'">
+                        <i class="fas fa-folder-open"></i> Bestanden Bladeren
+                    </button>
                 </div>
             `;
         } else if (type === 'printer') {

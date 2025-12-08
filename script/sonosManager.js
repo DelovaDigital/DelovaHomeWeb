@@ -11,12 +11,22 @@ class SonosManagerModule {
         try {
             console.log('Initializing Sonos discovery...');
             // Initialize will start discovery and find all devices.
-            await this.manager.InitializeWithDiscovery(10); 
-            this.isInitialized = true;
-            console.log(`Sonos discovery complete. Found ${this.manager.Devices.length} devices.`);
+            // Catch errors specifically from discovery to avoid crashing
+            try {
+                await this.manager.InitializeWithDiscovery(10); 
+                this.isInitialized = true;
+                console.log(`Sonos discovery complete. Found ${this.manager.Devices.length} devices.`);
+            } catch (discoveryErr) {
+                if (discoveryErr.message && discoveryErr.message.includes('No players found')) {
+                    console.log('Sonos discovery: No players found (this is normal if no Sonos devices are on the network).');
+                    this.isInitialized = true; // Mark as initialized even if empty, so we don't block usage
+                } else {
+                    throw discoveryErr;
+                }
+            }
             
         } catch (err) {
-            console.error('CRITICAL: Error during Sonos initialization:', err);
+            console.error('Error during Sonos initialization:', err.message);
         }
     }
 

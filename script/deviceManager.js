@@ -1658,6 +1658,23 @@ class DeviceManager extends EventEmitter {
 
         // Prefer the optional native library if available, otherwise fall back to WebSocket
         let legacySuccess = false;
+        // NOTE: samsung-remote is unreliable for newer TVs and often fails silently or returns success without action.
+        // We will prioritize the Python method (samsungtvws) which is more robust for Tizen.
+        // Only use legacy if explicitly requested or if python fails? 
+        // Actually, let's just try Python FIRST for Tizen devices.
+        
+        try {
+            await this.sendSamsungKeyPython(device, key);
+            console.log(`[Samsung] Python method: sent '${key}' to ${device.name}`);
+            if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
+                device.state.on = false;
+                this.emit('device-updated', device);
+            }
+            return;
+        } catch (e) {
+            console.warn(`[Samsung] Python method failed for '${key}', trying legacy fallback:`, e.message);
+        }
+
         if (SamsungRemote) {
             try {
                 await new Promise((resolve, reject) => {
@@ -1671,32 +1688,16 @@ class DeviceManager extends EventEmitter {
                     });
                 });
                 
-                console.log(`[Samsung] Successfully sent command '${key}' to ${device.name}`);
-                // Optimistically update state for on/off toggles
+                console.log(`[Samsung] Legacy method: Successfully sent command '${key}' to ${device.name}`);
                 if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
                     device.state.on = false;
                     this.emit('device-updated', device);
                 }
                 legacySuccess = true;
-                return; // done
+                return; 
             } catch (e) {
-                console.warn('[Samsung] samsung-remote failed, falling back to WS method:', e && e.message ? e.message : e);
-                // continue to the WS fallback below
+                console.warn('[Samsung] samsung-remote failed:', e && e.message ? e.message : e);
             }
-        }
-
-        if (legacySuccess) return;
-
-        // If we reach here, either the native library was unavailable or failed. Use Python script fallback.
-        try {
-            await this.sendSamsungKeyPython(device, key);
-            console.log(`[Samsung] Python fallback: sent '${key}' to ${device.name}`);
-            if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
-                device.state.on = false;
-                this.emit('device-updated', device);
-            }
-        } catch (e) {
-            console.error(`[Samsung] Python fallback failed for '${key}' to ${device.name}:`, e && e.message ? e.message : e);
         }
     }
 

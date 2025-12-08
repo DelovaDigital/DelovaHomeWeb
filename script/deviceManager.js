@@ -1400,6 +1400,7 @@ class DeviceManager extends EventEmitter {
         const scriptPath = path.join(__dirname, 'androidtv_service.py');
 
         const childProc = spawn(pythonPath, [scriptPath, ip], { cwd: path.join(__dirname, '..') });
+        console.log(`[Android TV] Spawned helper pid=${childProc.pid} for ${ip}`);
 
         childProc.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');

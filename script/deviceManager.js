@@ -1633,7 +1633,7 @@ class DeviceManager extends EventEmitter {
                 commandToSend = {
                     method: 'ms.channel.emit',
                     params: {
-                        event: 'ms.remote.control',
+                        event: 'remote.control',
                         data: JSON.stringify(commandParams)
                     }
                 };

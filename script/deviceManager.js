@@ -1591,7 +1591,6 @@ class DeviceManager extends EventEmitter {
     async handleSamsungCommand(device, command, value) {
         console.log(`[Samsung] Handling command '${command}' for ${device.name} (${device.ip})`);
 
-
         // Handle Turn On via Wake-on-LAN
         if (command === 'turn_on' || (command === 'toggle' && !device.state.on)) {
             const mac = await this.getMacAddress(device.ip);
@@ -1614,112 +1613,66 @@ class DeviceManager extends EventEmitter {
         }
 
         const sendKey = (ws, key) => {
-            const commandData = {
-                method: 'ms.remote.control',
-                params: {
-                    Cmd: 'Click',
-                    DataOfCmd: key,
-                    Option: 'false',
-                    TypeOfRemote: 'SendRemoteKey'
-                }
+            const commandParams = {
+                Cmd: 'Click',
+                DataOfCmd: key,
+                Option: 'false',
+                TypeOfRemote: 'SendRemoteKey'
             };
+
             if (ws.readyState !== WebSocket.OPEN) {
                 console.error(`[Samsung] WebSocket not open (State: ${ws.readyState}), cannot send key: ${key}`);
                 return;
             }
-
-            // If this TV previously returned an error, choose a fallback mode.
+            
             const mode = this.samsungErrorMode.get(device.ip);
+            let commandToSend;
+
+            if (mode === 'emit_wrapper') {
+                // Use the ms.channel.emit wrapper for older TVs
+                commandToSend = {
+                    method: 'ms.channel.emit',
+                    params: {
+                        event: 'ms.remote.control',
+                        data: JSON.stringify(commandParams)
+                    }
+                };
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper)`);
+            } else {
+                // Try direct command first for newer TVs
+                commandToSend = {
+                    method: 'ms.remote.control',
+                    params: commandParams
+                };
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct)`);
+            }
 
             try {
-                if (!mode) {
-                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct)`);
-                    ws.send(JSON.stringify(commandData));
-                    return;
-                }
-
-                if (mode === 'envelope') {
-                    const fallback = {
-                        event: 'ms.channel.emit',
-                        to: 'host',
-                        data: {
-                            message: commandData,
-                            clientIp: this.localIp || '0.0.0.0',
-                            clientPort: 0
-                        }
-                    };
-                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope with clientIp)`);
-                    ws.send(JSON.stringify(fallback));
-                    return;
-                }
-
-                if (mode === 'string') {
-                    const dataPayload = {
-                        message: JSON.stringify(commandData)
-                    };
-                    const fallback = {
-                        event: 'ms.channel.emit',
-                        to: 'host',
-                        data: JSON.stringify(dataPayload)
-                    };
-                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback: stringified data with stringified message, no clientIp)`);
-                    ws.send(JSON.stringify(fallback));
-                    return;
-                }
+                ws.send(JSON.stringify(commandToSend));
             } catch (e) {
-                console.error(`[Samsung] Failed to send key ${key} to ${device.ip}:`, e && e.message ? e.message : e);
+                console.error(`[Samsung] Failed to send key ${key} to ${device.ip}:`, e);
             }
         };
 
         const executeCommand = (ws) => {
             console.log(`[Samsung] Executing command '${command}' on existing connection (State: ${ws.readyState})`);
-            if (command === 'turn_off' || (command === 'toggle' && device.state.on)) {
-                sendKey(ws, 'KEY_POWER');
-            } else if (command === 'channel_up') {
-                sendKey(ws, 'KEY_CHUP');
-            } else if (command === 'channel_down') {
-                sendKey(ws, 'KEY_CHDOWN');
-            } else if (command === 'volume_up') {
-                sendKey(ws, 'KEY_VOLUP');
-            } else if (command === 'volume_down') {
-                sendKey(ws, 'KEY_VOLDOWN');
-            } else if (command === 'play') {
-                sendKey(ws, 'KEY_PLAY');
-            } else if (command === 'pause') {
-                sendKey(ws, 'KEY_PAUSE');
-            } else if (command === 'stop') {
-                sendKey(ws, 'KEY_STOP');
-            } else if (command === 'next') {
-                sendKey(ws, 'KEY_FF');
-            } else if (command === 'previous') {
-                sendKey(ws, 'KEY_REWIND');
-            } else if (command === 'up') {
-                sendKey(ws, 'KEY_UP');
-            } else if (command === 'down') {
-                sendKey(ws, 'KEY_DOWN');
-            } else if (command === 'left') {
-                sendKey(ws, 'KEY_LEFT');
-            } else if (command === 'right') {
-                sendKey(ws, 'KEY_RIGHT');
-            } else if (command === 'select' || command === 'enter') {
-                sendKey(ws, 'KEY_ENTER');
-            } else if (command === 'back') {
-                sendKey(ws, 'KEY_RETURN');
-            } else if (command === 'home') {
-                sendKey(ws, 'KEY_HOME');
-            } else if (command === 'menu') {
-                sendKey(ws, 'KEY_MENU');
-            } else if (command === 'set_input') {
-                const keyMap = {
-                    'tv': 'KEY_TV',
-                    'hdmi1': 'KEY_HDMI1',
-                    'hdmi2': 'KEY_HDMI2',
-                    'hdmi3': 'KEY_HDMI3',
-                    'hdmi4': 'KEY_HDMI4'
-                };
-                const key = keyMap[value.toLowerCase()];
-                if (key) sendKey(ws, key);
-                else sendKey(ws, `KEY_${value.toUpperCase()}`);
+            const keyMap = {
+                'turn_off': 'KEY_POWER', 'toggle': 'KEY_POWER', 'channel_up': 'KEY_CHUP',
+                'channel_down': 'KEY_CHDOWN', 'volume_up': 'KEY_VOLUP', 'volume_down': 'KEY_VOLDOWN',
+                'play': 'KEY_PLAY', 'pause': 'KEY_PAUSE', 'stop': 'KEY_STOP', 'next': 'KEY_FF',
+                'previous': 'KEY_REWIND', 'up': 'KEY_UP', 'down': 'KEY_DOWN', 'left': 'KEY_LEFT',
+                'right': 'KEY_RIGHT', 'select': 'KEY_ENTER', 'enter': 'KEY_ENTER',
+                'back': 'KEY_RETURN', 'home': 'KEY_HOME', 'menu': 'KEY_MENU'
+            };
+            let key = keyMap[command];
+
+            if (command === 'set_input') {
+                const inputMap = { 'tv': 'KEY_TV', 'hdmi1': 'KEY_HDMI1', 'hdmi2': 'KEY_HDMI2', 'hdmi3': 'KEY_HDMI3', 'hdmi4': 'KEY_HDMI4' };
+                key = inputMap[value.toLowerCase()] || `KEY_${value.toUpperCase()}`;
+            }
+
+            if (key) {
+                sendKey(ws, key);
             }
         };
 
@@ -1789,21 +1742,14 @@ class DeviceManager extends EventEmitter {
                         // Now that we're connected and possibly have a token, execute the command
                         executeCommand(ws);
                     } else if (response.event === 'ms.error') {
-                        // Some TVs return an ms.error with a data.message field describing
-                        // why the emitted method was rejected. Detect the known
-                        // "unrecognized method value : ms.remote.control" and enable
-                        // the fallback envelope for subsequent sends.
-                        const errMsg = (response.data && response.data.message) || response.message || JSON.stringify(response);
+                        const errMsg = (response.data && response.data.message) || '';
                         console.error(`[Samsung] TV returned error: ${errMsg}`);
-                        if (typeof errMsg === 'string') {
-                            const l = errMsg.toLowerCase();
-                            if (l.includes('unrecognized method') && l.includes('ms.remote.control')) {
-                                console.log(`[Samsung] Enabling fallback envelope mode for ${device.ip} due to TV error.`);
-                                this.samsungErrorMode.set(device.ip, 'envelope');
-                            } else if (l.includes('clientip') || (l.includes('cannot set property') && l.includes('clientip'))) {
-                                console.log(`[Samsung] Enabling stringified-message fallback mode for ${device.ip} due to TV error referencing clientIp.`);
-                                this.samsungErrorMode.set(device.ip, 'string');
-                            }
+
+                        // If the TV doesn't recognize the direct method, switch to the emit wrapper
+                        if (errMsg.toLowerCase().includes('unrecognized method')) {
+                            console.log(`[Samsung] Enabling 'emit_wrapper' fallback for ${device.ip}. Retrying...`);
+                            this.samsungErrorMode.set(device.ip, 'emit_wrapper');
+                            executeCommand(ws); // Retry the command immediately with the new mode
                         }
                     }
                 } catch (e) {

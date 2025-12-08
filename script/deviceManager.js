@@ -10,7 +10,13 @@ const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
-const SamsungRemote = require('samsung-remote');
+let SamsungRemote = null;
+try {
+    SamsungRemote = require('samsung-remote');
+} catch (e) {
+    console.warn('[Samsung] Optional module "samsung-remote" failed to load:', e && e.message ? e.message : e);
+    SamsungRemote = null;
+}
 // Load spotifyManager defensively to avoid crashing discovery if spotifyManager is broken
 let spotifyManager;
 try {
@@ -1598,11 +1604,7 @@ class DeviceManager extends EventEmitter {
     }
 
     async handleSamsungCommand(device, command, value) {
-        console.log(`[Samsung] Handling command '${command}' via samsung-remote library for ${device.name}`);
-
-        const remote = new SamsungRemote({
-            ip: device.ip
-        });
+        console.log(`[Samsung] Handling command '${command}' for ${device.name}`);
 
         const keyMap = {
             'turn_off': 'KEY_POWER', 'toggle': 'KEY_POWEROFF', // Use specific KEY_POWEROFF for toggle/off
@@ -1641,17 +1643,127 @@ class DeviceManager extends EventEmitter {
             return;
         }
 
-        remote.send(key, (err) => {
-            if (err) {
-                console.error(`[Samsung] Error sending command '${key}' to ${device.name}:`, err);
-            } else {
-                console.log(`[Samsung] Successfully sent command '${key}' to ${device.name}`);
-                // Optimistically update state for on/off toggles
-                if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
-                    device.state.on = false;
-                    this.emit('device-updated', device);
-                }
+        // Prefer the optional native library if available, otherwise fall back to WebSocket
+        if (SamsungRemote) {
+            try {
+                const remote = new SamsungRemote({ ip: device.ip });
+                remote.send(key, (err) => {
+                    if (err) {
+                        console.error(`[Samsung] Error sending command '${key}' to ${device.name}:`, err);
+                    } else {
+                        console.log(`[Samsung] Successfully sent command '${key}' to ${device.name}`);
+                        // Optimistically update state for on/off toggles
+                        if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
+                            device.state.on = false;
+                            this.emit('device-updated', device);
+                        }
+                    }
+                });
+                return; // done
+            } catch (e) {
+                console.warn('[Samsung] samsung-remote invocation failed at runtime, falling back to WS method:', e && e.message ? e.message : e);
+                // continue to the WS fallback below
             }
+        }
+
+        // If we reach here, either the native library was unavailable or failed. Use WebSocket fallback.
+        try {
+            await this.sendSamsungKeyWs(device, key);
+            console.log(`[Samsung] WS fallback: sent '${key}' to ${device.name}`);
+            if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
+                device.state.on = false;
+                this.emit('device-updated', device);
+            }
+        } catch (e) {
+            console.error(`[Samsung] WS fallback failed for '${key}' to ${device.name}:`, e && e.message ? e.message : e);
+        }
+    }
+
+    async sendSamsungKeyWs(device, key) {
+        return new Promise((resolve, reject) => {
+            const appName = Buffer.from('DelovaHome').toString('base64');
+            const url = `wss://${device.ip}:8002/api/v2/channels/samsung.remote.control?name=${appName}`;
+            const ws = new WebSocket(url, { rejectUnauthorized: false, timeout: 5000 });
+
+            const commandParams = {
+                Cmd: 'Click',
+                DataOfCmd: key,
+                Option: 'false',
+                TypeOfRemote: 'SendRemoteKey'
+            };
+
+            let attemptedModes = new Set();
+            const sendDirect = () => {
+                const payload = { method: 'ms.remote.control', params: commandParams };
+                try { ws.send(JSON.stringify(payload)); console.log('[Samsung][WS] Sent direct payload', payload); } catch (e) { console.error('[Samsung][WS] send error', e); }
+            };
+
+            const sendEmit = (mode) => {
+                // mode: 'emit_wrapper' = object session, 'emit_session_id' = id string, 'emit_no_session' = omit
+                const params = { to: 'host', event: 'remote.control', data: (mode === 'emit_string' ? JSON.stringify(commandParams) : commandParams) };
+                if (this.localIp) params.clientIp = this.localIp;
+                if (mode === 'emit_session_id' && device.samsungSession && device.samsungSession.id) params.session = device.samsungSession.id;
+                else if (mode === 'emit_wrapper' && device.samsungSession) params.session = device.samsungSession;
+                // else omit session for emit_no_session
+                const methodName = (mode === 'emit_no_ms') ? 'channel.emit' : 'ms.channel.emit';
+                const payload = { method: methodName, params };
+                try { ws.send(JSON.stringify(payload)); console.log('[Samsung][WS] Sent emit payload', payload); } catch (e) { console.error('[Samsung][WS] send error', e); }
+            };
+
+            const tryNext = (errMsg) => {
+                // Decide next mode given error message
+                if (!attemptedModes.has('direct')) { attemptedModes.add('direct'); sendDirect(); return; }
+                if (errMsg && errMsg.toLowerCase().includes('unrecognized method')) {
+                    if (!attemptedModes.has('emit_wrapper')) { attemptedModes.add('emit_wrapper'); sendEmit('emit_wrapper'); return; }
+                }
+                if (errMsg && (errMsg.toLowerCase().includes('session') || errMsg.toLowerCase().includes("cannot read property 'session'"))) {
+                    if (!attemptedModes.has('emit_session_id')) { attemptedModes.add('emit_session_id'); sendEmit('emit_session_id'); return; }
+                    if (!attemptedModes.has('emit_no_session')) { attemptedModes.add('emit_no_session'); sendEmit('emit_no_session'); return; }
+                }
+                if (!attemptedModes.has('emit_string')) { attemptedModes.add('emit_string'); sendEmit('emit_string'); return; }
+                if (!attemptedModes.has('emit_no_ms')) { attemptedModes.add('emit_no_ms'); sendEmit('emit_no_ms'); return; }
+                // Nothing left
+                reject(new Error('All WS fallback modes exhausted'));
+            };
+
+            ws.on('open', () => {
+                console.log(`[Samsung][WS] Connection opened to ${device.ip}. Waiting for channel connect...`);
+                // Start by trying direct
+                tryNext();
+            });
+
+            ws.on('message', (msg) => {
+                let obj = null;
+                try { obj = JSON.parse(msg.toString()); } catch (e) { return; }
+                // Save ms.channel.connect session info if present
+                if (obj && obj.event === 'ms.channel.connect' && obj.data) {
+                    device.samsungSession = { id: obj.data.id || null, clients: obj.data.clients || null };
+                    console.log(`[Samsung][WS] Saved session info for ${device.ip}: ${JSON.stringify(device.samsungSession)}`);
+                    return;
+                }
+
+                if (obj && obj.event === 'ms.error') {
+                    const errMsg = (obj.data && obj.data.message) || '';
+                    console.error(`[Samsung][WS] TV returned error: ${errMsg}`);
+                    tryNext(errMsg);
+                    return;
+                }
+
+                // Some TVs may echo success; treat any non-error message after sending as success
+                // Resolve to indicate we sent something.
+                resolve({ success: true, response: obj });
+            });
+
+            ws.on('error', (e) => {
+                console.error('[Samsung][WS] Connection error:', e && e.message ? e.message : e);
+                reject(e);
+            });
+
+            // Timeout to avoid hanging
+            setTimeout(() => {
+                try { ws.terminate(); } catch (e) {}
+                reject(new Error('Samsung WS fallback timed out'));
+            }, 15000);
         });
     }
 

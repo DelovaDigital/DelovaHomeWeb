@@ -1629,16 +1629,20 @@ class DeviceManager extends EventEmitter {
             let commandToSend;
 
             if (mode === 'emit_wrapper') {
-                // Use the ms.channel.emit wrapper for older TVs
+                // Use the ms.channel.emit wrapper for older TVs. Include clientIp and session when available
+                const params = {
+                    to: 'host',
+                    event: 'remote.control',
+                    data: JSON.stringify(commandParams)
+                };
+                if (this.localIp) params.clientIp = this.localIp;
+                if (device.samsungSession) params.session = device.samsungSession;
+
                 commandToSend = {
                     method: 'ms.channel.emit',
-                    params: {
-                        to: 'host',
-                        event: 'remote.control',
-                        data: JSON.stringify(commandParams)
-                    }
+                    params: params
                 };
-                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper)`);
+                console.log(`[Samsung] Sending key: ${key} to ${device.ip} (using emit wrapper)` + (device.samsungSession ? ' (with session)' : ''));
             } else {
                 // Try direct command first for newer TVs
                 commandToSend = {
@@ -1735,12 +1739,18 @@ class DeviceManager extends EventEmitter {
                      console.log('[Samsung] Message received:', JSON.stringify(response, null, 2));
 
                     if (response.event === 'ms.channel.connect') {
-                        if (response.data && response.data.token) {
-                            console.log(`[Samsung] New token received for ${device.ip}: ${response.data.token}`);
-                            device.token = response.data.token;
-                            this.saveSamsungToken(device.ip, device.token);
+                        if (response.data) {
+                            if (response.data.token) {
+                                console.log(`[Samsung] New token received for ${device.ip}: ${response.data.token}`);
+                                device.token = response.data.token;
+                                this.saveSamsungToken(device.ip, device.token);
+                            }
+                            if (response.data.session) {
+                                device.samsungSession = response.data.session;
+                                console.log(`[Samsung] Saved session for ${device.ip}: ${JSON.stringify(device.samsungSession)}`);
+                            }
                         }
-                        // Now that we're connected and possibly have a token, execute the command
+                        // Now that we're connected and possibly have a token/session, execute the command
                         executeCommand(ws);
                     } else if (response.event === 'ms.error') {
                         const errMsg = (response.data && response.data.message) || '';

@@ -10,7 +10,7 @@ const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
-const SamsungRemote = require('samsung-remote/lib/samsung-remote.js');
+const SamsungRemote = require('samsung-remote');
 // Load spotifyManager defensively to avoid crashing discovery if spotifyManager is broken
 let spotifyManager;
 try {
@@ -1600,7 +1600,7 @@ class DeviceManager extends EventEmitter {
     async handleSamsungCommand(device, command, value) {
         console.log(`[Samsung] Handling command '${command}' via samsung-remote library for ${device.name}`);
 
-        const remote = SamsungRemote({
+        const remote = new SamsungRemote({
             ip: device.ip
         });
 

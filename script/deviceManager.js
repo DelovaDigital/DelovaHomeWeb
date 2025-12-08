@@ -1673,7 +1673,12 @@ class DeviceManager extends EventEmitter {
             } else {
                 console.log(`[Samsung] Could not resolve MAC for WoL for ${device.ip}`);
             }
-            return;
+            // Even if we sent WoL, try sending KEY_POWERON via legacy if it's legacy
+            if (this.legacySamsungDevices.has(device.ip)) {
+                 key = 'KEY_POWERON';
+            } else {
+                return;
+            }
         }
 
         if (!key) {
@@ -1716,11 +1721,18 @@ class DeviceManager extends EventEmitter {
         if (SamsungRemote) {
             try {
                 await new Promise((resolve, reject) => {
-                    // Legacy library defaults to 2000ms timeout which might be too short
-                    // We can't easily change it without modifying the library, but we can try-catch
-                    const remote = new SamsungRemote({ ip: device.ip });
+                    // Increase timeout to 5000ms (default is usually 2000ms)
+                    const remote = new SamsungRemote({ ip: device.ip, timeout: 5000 });
+                    
+                    // Check if device is alive first? No, library does that.
+                    // If the user says it's ON but library says OFF, it might be a port issue or network.
+                    // Try to force it anyway?
+                    
                     remote.send(key, (err) => {
                         if (err) {
+                            // If error is "Device is off or unreachable", but we know it's on,
+                            // it might be that the TV is rejecting the connection.
+                            // Some older Samsungs require you to "Allow" the remote on the TV screen.
                             reject(err);
                         } else {
                             resolve();

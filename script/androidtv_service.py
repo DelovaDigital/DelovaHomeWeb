@@ -136,12 +136,16 @@ async def main():
 
     # Listen for commands from stdin
     loop = asyncio.get_running_loop()
+    print(json.dumps({"status": "debug", "message": "Entering stdin loop"}), flush=True)
     while True:
         try:
             line = await loop.run_in_executor(None, sys.stdin.readline)
             if not line:
+                print(json.dumps({"status": "debug", "message": "Stdin closed"}), flush=True)
                 break
             
+            print(json.dumps({"status": "debug", "message": f"Received line: {line.strip()}"}), flush=True)
+
             # Check if this is a PIN for pairing
             try:
                 data = json.loads(line)

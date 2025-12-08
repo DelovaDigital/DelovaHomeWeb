@@ -4,6 +4,7 @@ const dgram = require('dgram');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
+const os = require('os');
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
@@ -34,7 +35,9 @@ class DeviceManager extends EventEmitter {
         super();
         this.devices = new Map();
         this.samsungConnections = new Map();
-        this.samsungErrorMode = new Set();
+        // Maps device.ip -> mode string: undefined|"envelope"|"string"
+        this.samsungErrorMode = new Map();
+        this.localIp = this._determineLocalIp();
         this.atvProcesses = new Map();
         this.androidTvProcesses = new Map();
         this.cameraInstances = new Map(); // Cache for ONVIF camera connections
@@ -1625,22 +1628,44 @@ class DeviceManager extends EventEmitter {
                 return;
             }
 
-            // If this TV previously returned an "unrecognized method" error,
-            // use an alternative channel-based envelope which some firmwares require.
-            const useFallback = this.samsungErrorMode.has(device.ip);
+            // If this TV previously returned an error, choose a fallback mode.
+            const mode = this.samsungErrorMode.get(device.ip);
 
             try {
-                if (!useFallback) {
+                if (!mode) {
                     console.log(`[Samsung] Sending key: ${key} to ${device.ip} (direct)`);
                     ws.send(JSON.stringify(commandData));
-                } else {
+                    return;
+                }
+
+                if (mode === 'envelope') {
                     const fallback = {
                         event: 'ms.channel.emit',
                         to: 'host',
-                        data: commandData
+                        data: {
+                            message: commandData,
+                            clientIp: this.localIp || '0.0.0.0',
+                            clientPort: 0
+                        }
                     };
-                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope)`);
+                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope with clientIp)`);
                     ws.send(JSON.stringify(fallback));
+                    return;
+                }
+
+                if (mode === 'string') {
+                    const fallback = {
+                        event: 'ms.channel.emit',
+                        to: 'host',
+                        data: {
+                            message: JSON.stringify(commandData),
+                            clientIp: this.localIp || '0.0.0.0',
+                            clientPort: 0
+                        }
+                    };
+                    console.log(`[Samsung] Sending key: ${key} to ${device.ip} (fallback envelope with stringified message)`);
+                    ws.send(JSON.stringify(fallback));
+                    return;
                 }
             } catch (e) {
                 console.error(`[Samsung] Failed to send key ${key} to ${device.ip}:`, e && e.message ? e.message : e);
@@ -1771,9 +1796,15 @@ class DeviceManager extends EventEmitter {
                         // the fallback envelope for subsequent sends.
                         const errMsg = (response.data && response.data.message) || response.message || JSON.stringify(response);
                         console.error(`[Samsung] TV returned error: ${errMsg}`);
-                        if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('unrecognized method') && errMsg.toLowerCase().includes('ms.remote.control')) {
-                            console.log(`[Samsung] Enabling fallback envelope mode for ${device.ip} due to TV error.`);
-                            this.samsungErrorMode.add(device.ip);
+                        if (typeof errMsg === 'string') {
+                            const l = errMsg.toLowerCase();
+                            if (l.includes('unrecognized method') && l.includes('ms.remote.control')) {
+                                console.log(`[Samsung] Enabling fallback envelope mode for ${device.ip} due to TV error.`);
+                                this.samsungErrorMode.set(device.ip, 'envelope');
+                            } else if (l.includes('clientip') || (l.includes('cannot set property') && l.includes('clientip'))) {
+                                console.log(`[Samsung] Enabling stringified-message fallback mode for ${device.ip} due to TV error referencing clientIp.`);
+                                this.samsungErrorMode.set(device.ip, 'string');
+                            }
                         }
                     }
                 } catch (e) {
@@ -1814,6 +1845,22 @@ class DeviceManager extends EventEmitter {
                 resolve(match ? match[0] : null);
             });
         });
+    }
+
+    _determineLocalIp() {
+        try {
+            const ifaces = os.networkInterfaces();
+            for (const name of Object.keys(ifaces)) {
+                for (const iface of ifaces[name]) {
+                    if (iface.family === 'IPv4' && !iface.internal) {
+                        return iface.address;
+                    }
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+        return null;
     }
 
     sendWol(mac) {

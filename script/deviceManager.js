@@ -1652,27 +1652,35 @@ class DeviceManager extends EventEmitter {
         }
 
         // Prefer the optional native library if available, otherwise fall back to WebSocket
+        let legacySuccess = false;
         if (SamsungRemote) {
             try {
-                const remote = new SamsungRemote({ ip: device.ip });
-                remote.send(key, (err) => {
-                    if (err) {
-                        console.error(`[Samsung] Error sending command '${key}' to ${device.name}:`, err);
-                    } else {
-                        console.log(`[Samsung] Successfully sent command '${key}' to ${device.name}`);
-                        // Optimistically update state for on/off toggles
-                        if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
-                            device.state.on = false;
-                            this.emit('device-updated', device);
+                await new Promise((resolve, reject) => {
+                    const remote = new SamsungRemote({ ip: device.ip });
+                    remote.send(key, (err) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve();
                         }
-                    }
+                    });
                 });
+                
+                console.log(`[Samsung] Successfully sent command '${key}' to ${device.name}`);
+                // Optimistically update state for on/off toggles
+                if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
+                legacySuccess = true;
                 return; // done
             } catch (e) {
-                console.warn('[Samsung] samsung-remote invocation failed at runtime, falling back to WS method:', e && e.message ? e.message : e);
+                console.warn('[Samsung] samsung-remote failed, falling back to WS method:', e && e.message ? e.message : e);
                 // continue to the WS fallback below
             }
         }
+
+        if (legacySuccess) return;
 
         // If we reach here, either the native library was unavailable or failed. Use WebSocket fallback.
         try {

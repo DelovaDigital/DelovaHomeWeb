@@ -1399,9 +1399,9 @@ class DeviceManager extends EventEmitter {
 
         const scriptPath = path.join(__dirname, 'androidtv_service.py');
 
-        const process = spawn(pythonPath, [scriptPath, ip], { cwd: path.join(__dirname, '..') });
-        
-        process.stdout.on('data', (data) => {
+        const childProc = spawn(pythonPath, [scriptPath, ip], { cwd: path.join(__dirname, '..') });
+
+        childProc.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');
             lines.forEach(line => {
                 if (!line.trim()) return;
@@ -1421,17 +1421,17 @@ class DeviceManager extends EventEmitter {
             });
         });
 
-        process.stderr.on('data', (data) => {
+        childProc.stderr.on('data', (data) => {
             console.error(`[Android TV Service Stderr] ${ip}: ${data.toString()}`);
         });
 
-        process.on('close', (code) => {
+        childProc.on('close', (code) => {
             console.log(`[Android TV Service] Process for ${ip} exited with code ${code}`);
             this.androidTvProcesses.delete(ip);
         });
 
-        this.androidTvProcesses.set(ip, process);
-        return process;
+        this.androidTvProcesses.set(ip, childProc);
+        return childProc;
     }
 
     getAtvProcess(ip) {

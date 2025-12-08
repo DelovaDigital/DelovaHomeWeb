@@ -46,6 +46,8 @@ class DeviceManager extends EventEmitter {
         this.androidTvProcesses = new Map();
         this.samsungProcesses = new Map();
         this.legacySamsungDevices = new Set();
+        // Hardcode known legacy devices
+        this.legacySamsungDevices.add('192.168.0.148'); 
         this.cameraInstances = new Map(); // Cache for ONVIF camera connections
         this.pairingProcess = null;
         this.appleTvCredentials = {};
@@ -1428,16 +1430,23 @@ class DeviceManager extends EventEmitter {
                 if (!line.trim()) return;
                 try {
                     const msg = JSON.parse(line);
-                    if (msg.status === 'pairing_required') {
-                        console.log(`[Android TV Service] Pairing required for ${ip}. Please follow the instructions.`);
-                        // Here you would need to inform the UI to ask for a PIN
+                    // Log everything for debug
+                    // console.log(`[Android TV Debug] ${JSON.stringify(msg)}`);
+                    
+                    if (msg.startup) {
+                        console.log(`[Android TV Service] Started. Python: ${msg.python_version}`);
+                    } else if (msg.status === 'pairing_required') {
+                        console.log(`[Android TV Service] Pairing required for ${ip}. Please check TV for code.`);
+                        // TODO: Emit event to UI to ask for PIN
                     } else if (msg.status === 'connected' || msg.status === 'paired') {
                         console.log(`[Android TV Service] Connected to ${ip}`);
+                    } else if (msg.status === 'failed') {
+                        console.error(`[Android TV Service] Connection failed for ${ip}: ${msg.error}`);
                     } else if (msg.error) {
                         console.error(`[Android TV Service Error] ${ip}: ${msg.error}`);
                     }
                 } catch (e) {
-                    // console.error('[Android TV Service] Parse error:', e);
+                    console.log(`[Android TV Service Raw] ${line}`);
                 }
             });
         });
@@ -1675,27 +1684,33 @@ class DeviceManager extends EventEmitter {
         // Prefer the optional native library if available, otherwise fall back to WebSocket
         let legacySuccess = false;
         
-        // Try Python method first (Persistent Service)
-        try {
-            // We use a timeout race to detect if the persistent service is unresponsive or dead
-            // But since sendSamsungKeyPython is now fire-and-forget, it returns immediately.
-            // We need to check if the process is actually running and healthy.
-            
-            const process = this.getSamsungProcess(device.ip);
-            if (process.exitCode !== null) {
-                 throw new Error("Samsung service process is dead");
+        // Check for forced legacy override
+        if (this.legacySamsungDevices.has(device.ip)) {
+             console.log(`[Samsung] Device ${device.ip} is marked as legacy. Skipping Python method.`);
+             // Fall through to legacy block
+        } else {
+            // Try Python method first (Persistent Service)
+            try {
+                // We use a timeout race to detect if the persistent service is unresponsive or dead
+                // But since sendSamsungKeyPython is now fire-and-forget, it returns immediately.
+                // We need to check if the process is actually running and healthy.
+                
+                const process = this.getSamsungProcess(device.ip);
+                if (process.exitCode !== null) {
+                     throw new Error("Samsung service process is dead");
+                }
+                
+                await this.sendSamsungKeyPython(device, key);
+                console.log(`[Samsung] Python method: sent '${key}' to ${device.name}`);
+                
+                if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
+                return;
+            } catch (e) {
+                console.warn(`[Samsung] Python method failed for '${key}', trying legacy fallback:`, e.message);
             }
-            
-            await this.sendSamsungKeyPython(device, key);
-            console.log(`[Samsung] Python method: sent '${key}' to ${device.name}`);
-            
-            if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
-                device.state.on = false;
-                this.emit('device-updated', device);
-            }
-            return;
-        } catch (e) {
-            console.warn(`[Samsung] Python method failed for '${key}', trying legacy fallback:`, e.message);
         }
 
         if (SamsungRemote) {

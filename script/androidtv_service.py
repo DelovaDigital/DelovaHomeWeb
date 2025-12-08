@@ -53,16 +53,22 @@ class AndroidTVManager:
         if self.ip in self.config:
             self.remote.set_remote_config(self.config[self.ip])
 
-        is_connected = await self.remote.async_connect()
-        if is_connected:
-            if not self.remote.is_paired():
-                # Not paired, start the pairing process
-                print(json.dumps({"status": "pairing_required"}), flush=True)
-                await self.pair()
+        try:
+            # Add timeout to connection attempt
+            is_connected = await asyncio.wait_for(self.remote.async_connect(), timeout=10.0)
+            if is_connected:
+                if not self.remote.is_paired():
+                    # Not paired, start the pairing process
+                    print(json.dumps({"status": "pairing_required"}), flush=True)
+                    await self.pair()
+                else:
+                     print(json.dumps({"status": "connected"}), flush=True)
             else:
-                 print(json.dumps({"status": "connected"}), flush=True)
-        else:
-            print(json.dumps({"status": "failed", "error": "Failed to connect"}), flush=True)
+                print(json.dumps({"status": "failed", "error": "Failed to connect (returned false)"}), flush=True)
+        except asyncio.TimeoutError:
+            print(json.dumps({"status": "failed", "error": "Connection timed out"}), flush=True)
+        except Exception as e:
+            print(json.dumps({"status": "failed", "error": str(e)}), flush=True)
 
 
     async def pair(self):
@@ -131,23 +137,32 @@ async def main():
     # Listen for commands from stdin
     loop = asyncio.get_running_loop()
     while True:
-        line = await loop.run_in_executor(None, sys.stdin.readline)
-        if not line:
-            break
-        
-        # Check if this is a PIN for pairing
         try:
-            data = json.loads(line)
-            if data.get('type') == 'pin':
-                await manager.handle_pin_input(data.get('pin'))
-                continue
-        except (json.JSONDecodeError, AttributeError):
-            # Not a pin command, treat as regular command
+            line = await loop.run_in_executor(None, sys.stdin.readline)
+            if not line:
+                break
+            
+            # Check if this is a PIN for pairing
+            try:
+                data = json.loads(line)
+                if data.get('type') == 'pin':
+                    await manager.handle_pin_input(data.get('pin'))
+                    continue
+            except (json.JSONDecodeError, AttributeError):
+                # Not a pin command, treat as regular command
+                pass
+
+            await manager.handle_command(line)
+        except Exception as e:
+            print(json.dumps({"status": "error", "message": f"Loop error: {e}"}), flush=True)
+
+    # Wait for connection task if it's still running (unlikely if we break loop)
+    if not connect_task.done():
+        connect_task.cancel()
+        try:
+            await connect_task
+        except asyncio.CancelledError:
             pass
-
-        await manager.handle_command(line)
-
-    await connect_task
 
 
 if __name__ == "__main__":

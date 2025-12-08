@@ -1643,7 +1643,9 @@ class DeviceManager extends EventEmitter {
                 // Use the ms.channel.emit wrapper for older TVs. Include clientIp and session when available
                 const params = {
                     to: 'host',
-                    event: 'remote.control',
+                    // Some firmwares expect the event to be 'ms.remote.control'
+                    // rather than 'remote.control'. Try the ms-prefixed event.
+                    event: 'ms.remote.control',
                     data: JSON.stringify(commandParams)
                 };
                 if (this.localIp) params.clientIp = this.localIp;

@@ -1469,7 +1469,12 @@ class DeviceManager extends EventEmitter {
                         // Immediately fetch status to sync UI
                         process.stdin.write(JSON.stringify({ command: 'status' }) + '\n');
                     } else if (msg.error) {
-                        console.error(`[ATV Service Error] ${ip}: ${msg.error}`);
+                        // Suppress common connection errors to avoid log spam
+                        if (!msg.error.includes('Could not find Apple TV') && 
+                            !msg.error.includes('Not connected') &&
+                            !msg.error.includes('Connection failed')) {
+                            console.error(`[ATV Service Error] ${ip}: ${msg.error}`);
+                        }
                     } else if (msg.type === 'status') {
                         // Update device state
                         const device = Array.from(this.devices.values()).find(d => d.ip === ip);
@@ -1682,19 +1687,49 @@ class DeviceManager extends EventEmitter {
 
         if (legacySuccess) return;
 
-        // If we reach here, either the native library was unavailable or failed. Use WebSocket fallback.
+        // If we reach here, either the native library was unavailable or failed. Use Python script fallback.
         try {
-            await this.sendSamsungKeyWs(device, key);
-            console.log(`[Samsung] WS fallback: sent '${key}' to ${device.name}`);
+            await this.sendSamsungKeyPython(device, key);
+            console.log(`[Samsung] Python fallback: sent '${key}' to ${device.name}`);
             if (key === 'KEY_POWEROFF' || key === 'KEY_POWER') {
                 device.state.on = false;
                 this.emit('device-updated', device);
             }
         } catch (e) {
-            console.error(`[Samsung] WS fallback failed for '${key}' to ${device.name}:`, e && e.message ? e.message : e);
+            console.error(`[Samsung] Python fallback failed for '${key}' to ${device.name}:`, e && e.message ? e.message : e);
         }
     }
 
+    async sendSamsungKeyPython(device, key) {
+        return new Promise((resolve, reject) => {
+            const { spawn } = require('child_process');
+            let pythonPath = path.join(__dirname, '../.venv/bin/python');
+            if (!fs.existsSync(pythonPath)) pythonPath = 'python3';
+            
+            const scriptPath = path.join(__dirname, 'samsung_control.py');
+            const process = spawn(pythonPath, [scriptPath, device.ip, key]);
+            
+            let output = '';
+            process.stdout.on('data', (data) => { output += data.toString(); });
+            process.stderr.on('data', (data) => { console.error(`[Samsung Python Stderr] ${data}`); });
+            
+            process.on('close', (code) => {
+                if (code === 0) {
+                    try {
+                        const res = JSON.parse(output.trim());
+                        if (res.error) reject(new Error(res.error));
+                        else resolve(res);
+                    } catch (e) {
+                        reject(new Error(`Failed to parse python output: ${output}`));
+                    }
+                } else {
+                    reject(new Error(`Samsung python script exited with code ${code}`));
+                }
+            });
+        });
+    }
+
+    // Deprecated: kept for reference but unused
     async sendSamsungKeyWs(device, key) {
         return new Promise((resolve, reject) => {
             const appName = Buffer.from('DelovaHome').toString('base64');

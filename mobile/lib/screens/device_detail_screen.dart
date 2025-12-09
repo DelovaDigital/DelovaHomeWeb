@@ -286,7 +286,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final isLight = widget.device.type.toLowerCase() == 'light' || widget.device.type.toLowerCase().contains('bulb');
-    final isTv = widget.device.type.toLowerCase() == 'tv';
+    final isTv = widget.device.type.toLowerCase() == 'tv' || widget.device.type.toLowerCase() == 'receiver';
     // isPc is calculated in _buildBody, removing unused variable here
     final isSpeaker = widget.device.type.toLowerCase() == 'speaker' || isTv;
     final isThermostat = widget.device.type.toLowerCase() == 'thermostat' || widget.device.type.toLowerCase() == 'ac' || widget.device.type.toLowerCase() == 'climate';

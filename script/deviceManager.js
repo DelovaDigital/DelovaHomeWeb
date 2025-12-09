@@ -327,6 +327,17 @@ class DeviceManager extends EventEmitter {
             this.processMdnsService(service, 'camera');
         });
 
+        // PC/Workstation Discovery
+        this.bonjour.find({ type: 'workstation' }, (service) => {
+            this.processMdnsService(service, 'pc');
+        });
+        this.bonjour.find({ type: 'smb' }, (service) => {
+            this.processMdnsService(service, 'pc');
+        });
+        this.bonjour.find({ type: 'rdp' }, (service) => {
+            this.processMdnsService(service, 'pc');
+        });
+
         // LG WebOS TV Discovery
         this.bonjour.find({ type: 'webos-second-screen' }, (service) => {
              const ip = service.addresses && service.addresses.length > 0 ? service.addresses[0] : null;
@@ -394,6 +405,9 @@ class DeviceManager extends EventEmitter {
             // if (server.toLowerCase().includes('samsung') || st.toLowerCase().includes('samsung')) {
             //    console.log(`[SSDP] Potential Samsung Device from ${rinfo.address}:`, { server, st, usn });
             // }
+            
+            // Debug: Log ALL SSDP traffic to help find PC/PS5
+            // console.log(`[SSDP DEBUG] ${rinfo.address} | Server: ${server} | ST: ${st} | USN: ${usn}`);
 
             let type = 'unknown';
             let name = 'Unknown Device';
@@ -665,6 +679,8 @@ class DeviceManager extends EventEmitter {
             type = 'receiver';
         } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation') || service.type === 'smb' || service.type === 'afpovertcp') {
             type = 'nas';
+        } else if (sourceType === 'pc' || lowerName.includes('windows') || lowerName.includes('pc') || lowerName.includes('desktop') || lowerName.includes('laptop') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
+            type = 'pc';
         } else if (lowerName.includes('sensor') || lowerName.includes('homepod') || model.includes('AudioAccessory')) {
             type = 'sensor';
             if (model.includes('AudioAccessory5')) name = 'HomePod Mini';
@@ -1028,41 +1044,52 @@ class DeviceManager extends EventEmitter {
             socket.on('data', (data) => {
                 buffer += data.toString();
                 
-                // Denon responses are \r separated. Process when we have a full buffer.
-                if (buffer.includes('PW') && buffer.includes('MV') && buffer.includes('SI')) {
-                    const lines = buffer.split('\r');
-                    let updated = false;
-                    
-                    lines.forEach(line => {
-                        if (line.startsWith('PW')) {
-                            const isOn = line === 'PWON';
-                            if (device.state.on !== isOn) {
-                                device.state.on = isOn;
-                                updated = true;
-                            }
-                        } else if (line.startsWith('MV')) {
-                            if (line.length > 2 && !isNaN(line.substring(2))) {
-                                let volStr = line.substring(2);
-                                if (volStr.length === 3) volStr = volStr.substring(0, 2); // Handle 9.5 volumes etc.
-                                const vol = parseInt(volStr);
-                                if (device.state.volume !== vol) {
-                                    device.state.volume = vol;
-                                    updated = true;
-                                }
-                            }
-                        } else if (line.startsWith('SI')) {
-                            const source = line.substring(2).trim();
-                            if (device.state.mediaTitle !== source) {
-                                device.state.mediaTitle = source;
+                const lines = buffer.split('\r');
+                let updated = false;
+                
+                lines.forEach(line => {
+                    if (line.startsWith('PW')) {
+                        const isOn = line === 'PWON';
+                        if (device.state.on !== isOn) {
+                            device.state.on = isOn;
+                            updated = true;
+                        }
+                    } else if (line.startsWith('MV')) {
+                        if (line.length > 2 && !isNaN(line.substring(2))) {
+                            let volStr = line.substring(2);
+                            // Denon volume is often 0-98 (0-98dB) or 00-99. 
+                            // Sometimes 3 digits like 505 = 50.5dB.
+                            if (volStr.length === 3) volStr = volStr.substring(0, 2); 
+                            const vol = parseInt(volStr);
+                            if (device.state.volume !== vol) {
+                                device.state.volume = vol;
                                 updated = true;
                             }
                         }
-                    });
-
-                    if (updated) {
-                        this.emit('device-updated', device);
+                    } else if (line.startsWith('SI')) {
+                        const source = line.substring(2).trim();
+                        if (device.state.input !== source) {
+                            device.state.input = source;
+                            updated = true;
+                        }
+                        // Also map to mediaTitle for display
+                        if (device.state.mediaTitle !== source) {
+                            device.state.mediaTitle = source;
+                            updated = true;
+                        }
                     }
-                    socket.end(); // Gracefully close the connection
+                });
+
+                if (updated) {
+                    this.emit('device-updated', device);
+                }
+                
+                // If we got at least a power status, we can probably close, 
+                // but let's wait a bit or check if we have everything.
+                // Actually, for simplicity, let's just let the timeout close it 
+                // or close if we have everything.
+                if (buffer.includes('PW') && buffer.includes('MV') && buffer.includes('SI')) {
+                    socket.end();
                 }
             });
 

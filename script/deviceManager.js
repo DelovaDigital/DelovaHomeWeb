@@ -1409,9 +1409,17 @@ class DeviceManager extends EventEmitter {
         
         if (isWin) {
             candidates = [
+                // Standard venv
                 path.join(__dirname, '../.venv/Scripts/python.exe'),
                 path.join(__dirname, '../../.venv/Scripts/python.exe'),
-                path.join(process.cwd(), '.venv/Scripts/python.exe')
+                path.join(process.cwd(), '.venv/Scripts/python.exe'),
+                // "Root map" / Custom locations (e.g. portable python in root)
+                path.join(process.cwd(), 'python.exe'),
+                path.join(__dirname, '../python.exe'),
+                path.join(__dirname, '../../python.exe'),
+                // Non-standard venv (no Scripts folder)
+                path.join(__dirname, '../.venv/python.exe'),
+                path.join(process.cwd(), '.venv/python.exe')
             ];
         } else {
             candidates = [
@@ -1505,7 +1513,12 @@ class DeviceManager extends EventEmitter {
             candidates = [
                 path.join(__dirname, '../.venv/Scripts/python.exe'),
                 path.join(__dirname, '../../.venv/Scripts/python.exe'),
-                path.join(process.cwd(), '.venv/Scripts/python.exe')
+                path.join(process.cwd(), '.venv/Scripts/python.exe'),
+                path.join(process.cwd(), 'python.exe'),
+                path.join(__dirname, '../python.exe'),
+                path.join(__dirname, '../../python.exe'),
+                path.join(__dirname, '../.venv/python.exe'),
+                path.join(process.cwd(), '.venv/python.exe')
             ];
         } else {
             candidates = [
@@ -1829,7 +1842,12 @@ class DeviceManager extends EventEmitter {
             candidates = [
                 path.join(__dirname, '../.venv/Scripts/python.exe'),
                 path.join(__dirname, '../../.venv/Scripts/python.exe'),
-                path.join(process.cwd(), '.venv/Scripts/python.exe')
+                path.join(process.cwd(), '.venv/Scripts/python.exe'),
+                path.join(process.cwd(), 'python.exe'),
+                path.join(__dirname, '../python.exe'),
+                path.join(__dirname, '../../python.exe'),
+                path.join(__dirname, '../.venv/python.exe'),
+                path.join(process.cwd(), '.venv/python.exe')
             ];
         } else {
             candidates = [
@@ -2079,7 +2097,12 @@ class DeviceManager extends EventEmitter {
                 candidates = [
                     path.join(__dirname, '../.venv/Scripts/python.exe'),
                     path.join(__dirname, '../../.venv/Scripts/python.exe'),
-                    path.join(process.cwd(), '.venv/Scripts/python.exe')
+                    path.join(process.cwd(), '.venv/Scripts/python.exe'),
+                    path.join(process.cwd(), 'python.exe'),
+                    path.join(__dirname, '../python.exe'),
+                    path.join(__dirname, '../../python.exe'),
+                    path.join(__dirname, '../.venv/python.exe'),
+                    path.join(process.cwd(), '.venv/python.exe')
                 ];
             } else {
                 candidates = [

@@ -723,6 +723,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.startPairing = (ip, name) => {
         showPairingModal(ip, name);
+        
+        // Also trigger the pairing request on the backend
+        const device = allDevices.find(d => d.ip === ip);
+        if (device) {
+            fetch(`/api/devices/${device.id}/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: 'start_pairing' })
+            }).catch(e => console.error('Failed to start pairing:', e));
+        }
     };
 
     window.togglePiP = async (deviceId) => {

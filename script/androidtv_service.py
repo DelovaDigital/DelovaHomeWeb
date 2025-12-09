@@ -111,6 +111,11 @@ class AndroidTVManager:
             value = data.get('value') # for future use
 
             if command:
+                if command == 'start_pairing':
+                    print(json.dumps({"status": "debug", "message": "Manual pairing requested"}), flush=True)
+                    await self.pair()
+                    return
+
                 # Map common commands to Android TV key codes
                 # See: https://developer.android.com/reference/android/view/KeyEvent
                 key_map = {

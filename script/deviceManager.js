@@ -222,6 +222,19 @@ class DeviceManager extends EventEmitter {
         }
     }
 
+    loadSamsungCredentials() {
+        try {
+            const credPath = path.join(__dirname, '../samsung-credentials.json');
+            if (fs.existsSync(credPath)) {
+                this.samsungCredentials = JSON.parse(fs.readFileSync(credPath));
+                console.log(`Loaded credentials for ${Object.keys(this.samsungCredentials).length} Samsung TV(s)`);
+            }
+        } catch (e) {
+            console.error('Failed to load Samsung credentials:', e.message);
+            this.samsungCredentials = {};
+        }
+    }
+
     saveCameraCredentials(ip, username, password) {
         const credsPath = path.join(__dirname, '../camera-credentials.json');
         this.cameraCredentials[ip] = { username, password };

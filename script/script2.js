@@ -8,16 +8,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Functie om hub informatie te laden
     async function loadHubInfo() {
         try {
-            const res = await fetch('/api/hub/info');
+            const res = await fetch('/api/system/info');
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
             const info = await res.json();
 
             if (hubNameEl) hubNameEl.textContent = info.name;
-            if (hubIdEl) hubIdEl.textContent = info.id;
+            if (hubIdEl) hubIdEl.textContent = info.hubId;
             if (hubVersionEl) hubVersionEl.textContent = info.version;
-            if (hubUptimeEl) hubUptimeEl.textContent = info.uptime;
+            if (hubUptimeEl) hubUptimeEl.textContent = Math.floor(info.uptime / 60) + ' min'; // Format uptime
 
         } catch (error) {
             console.error("Fout bij het ophalen van hub info:", error);

@@ -44,16 +44,19 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // --- Hub Identity & Discovery ---
 const HUB_CONFIG_PATH = path.join(__dirname, 'hub_config.json');
-let hubConfig = {
+const DEFAULT_HUB_CONFIG = {
     hubId: null,
     name: 'DelovaHome Hub',
     version: '1.0.0'
 };
+let hubConfig = { ...DEFAULT_HUB_CONFIG };
 
 // Load or Generate Hub ID
 if (fs.existsSync(HUB_CONFIG_PATH)) {
     try {
-        hubConfig = JSON.parse(fs.readFileSync(HUB_CONFIG_PATH, 'utf8'));
+        const loadedConfig = JSON.parse(fs.readFileSync(HUB_CONFIG_PATH, 'utf8'));
+        // Merge loaded config with defaults to ensure all fields exist
+        hubConfig = { ...DEFAULT_HUB_CONFIG, ...loadedConfig };
     } catch (e) { console.error('Error reading hub config:', e); }
 }
 
@@ -63,6 +66,11 @@ if (!hubConfig.hubId) {
         fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
         console.log('Generated new Hub ID:', hubConfig.hubId);
     } catch (e) { console.error('Error saving hub config:', e); }
+} else {
+    // Ensure file is up to date with any missing default fields
+    try {
+        fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
+    } catch (e) { console.error('Error updating hub config:', e); }
 }
 
 // Sync with Database (SystemConfig table)

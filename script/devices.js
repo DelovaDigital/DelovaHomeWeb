@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!card) {
                 card = document.createElement('div');
-                card.className = 'device-card';
+                card.className = `device-card ${isOn ? 'active' : ''}`;
                 card.id = `device-card-${device.id}`;
                 // Add click handler to open modal
                 card.onclick = (e) => {
@@ -226,6 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     openDeviceDetail(device.id);
                 };
                 grid.appendChild(card);
+            } else {
+                // Update active class on existing card
+                if (isOn) card.classList.add('active');
+                else card.classList.remove('active');
             }
 
             // Simple Card Content (Summary)

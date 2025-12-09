@@ -34,9 +34,9 @@ class JSMpegStream extends EventEmitter {
             "-i", this.url,
             "-f", "mpegts",
             "-codec:v", "mpeg1video",
-            "-s", "1280x720", // Revert to 720p for compatibility
-            "-b:v", "1000k",  // Moderate bitrate
-            "-r", "15",       // Low framerate to save CPU
+            "-s", "1280x720",
+            "-b:v", "1000k",
+            "-r", "25",
             "-bf", "0",
             "-codec:a", "mp2",
             "-ar", "44100",

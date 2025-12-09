@@ -1536,7 +1536,7 @@ class DeviceManager extends EventEmitter {
         return childProc;
     }
 
-    submitPairingPin(ip, pin) {
+    submitAndroidTvPairingPin(ip, pin) {
         console.log(`[DeviceManager] Submitting PIN for ${ip}`);
         const process = this.androidTvProcesses.get(ip);
         if (process) {
@@ -2249,7 +2249,7 @@ class DeviceManager extends EventEmitter {
         });
     }
 
-    submitPairingPin(pin) {
+    submitAppleTvPairingPin(pin) {
         return new Promise((resolve, reject) => {
             if (!this.pairingProcess) {
                 reject(new Error('No pairing in progress'));

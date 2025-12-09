@@ -1008,7 +1008,7 @@ app.post('/api/pair/pin', async (req, res) => {
     if (!pin) return res.status(400).json({ ok: false, message: 'PIN required' });
 
     try {
-        const result = await deviceManager.submitPairingPin(pin);
+        const result = await deviceManager.submitAppleTvPairingPin(pin);
         res.json({ ok: true, ...result });
     } catch (err) {
         res.status(500).json({ ok: false, message: err.message });
@@ -1177,7 +1177,7 @@ app.post('/api/device/pair', (req, res) => {
     const { ip, pin } = req.body;
     if (!ip || !pin) return res.status(400).json({ error: 'IP and PIN required' });
     
-    const success = deviceManager.submitPairingPin(ip, pin);
+    const success = deviceManager.submitAndroidTvPairingPin(ip, pin);
     if (success) {
         res.json({ success: true });
     } else {

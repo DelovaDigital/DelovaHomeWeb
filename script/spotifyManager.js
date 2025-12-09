@@ -213,7 +213,13 @@ class SpotifyManager {
         if (!headers) throw new Error('No valid Spotify token for user');
         const url = `https://api.spotify.com/v1/me/player/volume?volume_percent=${parseInt(volume, 10)}`;
         const resp = await fetch(url, { method: 'PUT', headers });
-        if (!resp.ok) throw new Error(`Spotify setVolume failed: ${resp.status}`);
+        if (!resp.ok) {
+            if (resp.status === 403) {
+                console.warn(`[Spotify] setVolume 403 Forbidden (User not premium or device restriction)`);
+                return;
+            }
+            throw new Error(`Spotify setVolume failed: ${resp.status}`);
+        }
     }
 
     async getDevices(userId) {

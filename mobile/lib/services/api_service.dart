@@ -275,4 +275,80 @@ class ApiService {
     }
     return false;
   }
+
+  Future<Map<String, dynamic>> startPairing(String ip) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/pair/start'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'ip': ip}),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to start pairing');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitPairingPin(String pin) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/pair/pin'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'pin': pin}),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to submit PIN');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> pairDevice(String ip, String pin) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/device/pair'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'ip': ip, 'pin': pin}),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        try {
+            return json.decode(response.body);
+        } catch (_) {
+            throw Exception('Failed to pair device');
+        }
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> addNas(Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/nas'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to add NAS');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
 }

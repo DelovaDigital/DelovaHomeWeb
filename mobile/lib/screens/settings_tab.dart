@@ -123,6 +123,229 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
+  void _showAddNasDialog() {
+    final nameController = TextEditingController();
+    final ipController = TextEditingController();
+    final userController = TextEditingController();
+    final passController = TextEditingController();
+    String type = 'smb';
+    bool isLoading = false;
+    String status = '';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Add NAS'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
+                  const SizedBox(height: 10),
+                  TextField(controller: ipController, decoration: const InputDecoration(labelText: 'IP Address')),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: type,
+                    items: const [
+                      DropdownMenuItem(value: 'smb', child: Text('SMB (Windows/Mac)')),
+                      DropdownMenuItem(value: 'nfs', child: Text('NFS (Linux)')),
+                    ],
+                    onChanged: (v) => setState(() => type = v!),
+                    decoration: const InputDecoration(labelText: 'Type'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(controller: userController, decoration: const InputDecoration(labelText: 'Username')),
+                  const SizedBox(height: 10),
+                  TextField(controller: passController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
+                  const SizedBox(height: 10),
+                  if (isLoading) const CircularProgressIndicator()
+                  else ElevatedButton(
+                    onPressed: () async {
+                      if (nameController.text.isEmpty || ipController.text.isEmpty) return;
+                      setState(() { isLoading = true; status = 'Adding...'; });
+                      try {
+                        final data = {
+                          'name': nameController.text,
+                          'ip': ipController.text,
+                          'type': type,
+                          'username': userController.text,
+                          'password': passController.text,
+                        };
+                        final res = await _apiService.addNas(data);
+                        if (res['ok'] == true) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('NAS Added!')));
+                        } else {
+                          setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
+                        }
+                      } catch (e) {
+                        setState(() { status = 'Error: $e'; isLoading = false; });
+                      }
+                    },
+                    child: const Text('Add NAS'),
+                  ),
+                  if (status.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(status, style: TextStyle(color: status.startsWith('Error') ? Colors.red : Colors.blue)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAndroidTvPairingDialog() {
+    final ipController = TextEditingController();
+    final pinController = TextEditingController();
+    String status = '';
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Android TV Pairing'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Enter the IP of the Android TV and the PIN displayed on the screen.'),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: ipController,
+                  decoration: const InputDecoration(labelText: 'Android TV IP Address', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: pinController,
+                  decoration: const InputDecoration(labelText: 'PIN Code', border: OutlineInputBorder()),
+                  keyboardType: TextInputType.text,
+                ),
+                const SizedBox(height: 10),
+                if (isLoading) const CircularProgressIndicator()
+                else ElevatedButton(
+                  onPressed: () async {
+                    if (ipController.text.isEmpty || pinController.text.isEmpty) return;
+                    setState(() { isLoading = true; status = 'Submitting...'; });
+                    try {
+                      final res = await _apiService.pairDevice(ipController.text, pinController.text);
+                      if (res['success'] == true) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pairing Submitted!')));
+                      } else {
+                        setState(() { status = 'Error: ${res['error'] ?? 'Unknown error'}'; isLoading = false; });
+                      }
+                    } catch (e) {
+                      setState(() { status = 'Error: $e'; isLoading = false; });
+                    }
+                  },
+                  child: const Text('Pair Device'),
+                ),
+                if (status.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(status, style: TextStyle(color: status.startsWith('Error') ? Colors.red : Colors.blue)),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAppleTvPairingDialog() {
+    final ipController = TextEditingController();
+    final pinController = TextEditingController();
+    String status = '';
+    bool isStep2 = false;
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Apple TV Pairing'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isStep2) ...[
+                  TextField(
+                    controller: ipController,
+                    decoration: const InputDecoration(labelText: 'Apple TV IP Address', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 10),
+                  if (isLoading) const CircularProgressIndicator()
+                  else ElevatedButton(
+                    onPressed: () async {
+                      if (ipController.text.isEmpty) return;
+                      setState(() { isLoading = true; status = 'Connecting...'; });
+                      try {
+                        final res = await _apiService.startPairing(ipController.text);
+                        if (res['ok'] == true && res['status'] == 'waiting_for_pin') {
+                          setState(() { isStep2 = true; status = 'Enter PIN shown on TV'; isLoading = false; });
+                        } else {
+                          setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
+                        }
+                      } catch (e) {
+                        setState(() { status = 'Error: $e'; isLoading = false; });
+                      }
+                    },
+                    child: const Text('Start Pairing'),
+                  ),
+                ] else ...[
+                  TextField(
+                    controller: pinController,
+                    decoration: const InputDecoration(labelText: 'PIN Code', border: OutlineInputBorder()),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  if (isLoading) const CircularProgressIndicator()
+                  else ElevatedButton(
+                    onPressed: () async {
+                      if (pinController.text.isEmpty) return;
+                      setState(() { isLoading = true; status = 'Verifying PIN...'; });
+                      try {
+                        final res = await _apiService.submitPairingPin(pinController.text);
+                        if (res['ok'] == true) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pairing Successful!')));
+                        } else {
+                          setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
+                        }
+                      } catch (e) {
+                        setState(() { status = 'Error: $e'; isLoading = false; });
+                      }
+                    },
+                    child: const Text('Submit PIN'),
+                  ),
+                ],
+                if (status.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(status, style: TextStyle(color: status.startsWith('Error') ? Colors.red : Colors.blue)),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = DelovaHome.of(context);
@@ -208,6 +431,33 @@ class _SettingsTabState extends State<SettingsTab> {
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
             onTap: _isCheckingUpdate ? null : _checkForUpdates,
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            tileColor: Colors.grey[900],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.tv, color: Colors.grey),
+            title: const Text('Pair Apple TV', style: TextStyle(color: Colors.white)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: _showAppleTvPairingDialog,
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            tileColor: Colors.grey[900],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.tv, color: Colors.green),
+            title: const Text('Pair Android TV', style: TextStyle(color: Colors.white)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: _showAndroidTvPairingDialog,
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            tileColor: Colors.grey[900],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            leading: const Icon(Icons.storage, color: Colors.orange),
+            title: const Text('Add NAS', style: TextStyle(color: Colors.white)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: _showAddNasDialog,
           ),
         ],
       ),

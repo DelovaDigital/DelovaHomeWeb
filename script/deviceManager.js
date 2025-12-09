@@ -1404,14 +1404,21 @@ class DeviceManager extends EventEmitter {
         const { spawn } = require('child_process');
 
         // Try several likely venv python locations, then fall back to system python3
+        const isWin = process.platform === 'win32';
         const candidates = [
-            path.join(__dirname, '../.venv/bin/python'),      // <project>/script/../.venv/bin/python -> <project>/.venv/bin/python
-            path.join(__dirname, '../../.venv/bin/python'),   // in case script is nested differently
-            path.join(process.cwd(), '.venv/bin/python'),     // current working dir .venv
-            '/home/pi/DelovaHome/.venv/bin/python'            // common deployment path on Pi
+            // Windows specific paths
+            path.join(__dirname, '../.venv/Scripts/python.exe'),
+            path.join(__dirname, '../../.venv/Scripts/python.exe'),
+            path.join(process.cwd(), '.venv/Scripts/python.exe'),
+            
+            // Unix/Linux/macOS paths
+            path.join(__dirname, '../.venv/bin/python'),
+            path.join(__dirname, '../../.venv/bin/python'),
+            path.join(process.cwd(), '.venv/bin/python'),
+            '/home/pi/DelovaHome/.venv/bin/python'
         ];
 
-        let pythonPath = 'python3';
+        let pythonPath = isWin ? 'python' : 'python3';
         for (const cand of candidates) {
             try {
                 if (fs.existsSync(cand)) { pythonPath = cand; break; }

@@ -1433,7 +1433,24 @@ class DeviceManager extends EventEmitter {
         let pythonPath = isWin ? 'python' : 'python3';
         for (const cand of candidates) {
             try {
-                if (fs.existsSync(cand)) { pythonPath = cand; break; }
+                if (fs.existsSync(cand)) { 
+                    // On Windows, verify this isn't a Mac/Linux venv by checking pyvenv.cfg
+                    if (isWin) {
+                        // Check parent dir (for .venv/python.exe) or grandparent (for .venv/Scripts/python.exe)
+                        const p1 = path.join(path.dirname(cand), 'pyvenv.cfg');
+                        const p2 = path.join(path.dirname(path.dirname(cand)), 'pyvenv.cfg');
+                        let cfgContent = '';
+                        if (fs.existsSync(p1)) cfgContent = fs.readFileSync(p1, 'utf8');
+                        else if (fs.existsSync(p2)) cfgContent = fs.readFileSync(p2, 'utf8');
+                        
+                        if (cfgContent && (cfgContent.includes('/Applications/') || cfgContent.includes('/usr/bin'))) {
+                            console.warn(`[DeviceManager] Ignoring candidate ${cand} because it appears to be a Mac/Linux venv.`);
+                            continue;
+                        }
+                    }
+                    pythonPath = cand; 
+                    break; 
+                }
             } catch (e) {}
         }
 
@@ -1532,7 +1549,21 @@ class DeviceManager extends EventEmitter {
         let pythonPath = isWin ? 'python' : 'python3';
         for (const cand of candidates) {
             try {
-                if (fs.existsSync(cand)) { pythonPath = cand; break; }
+                if (fs.existsSync(cand)) { 
+                    if (isWin) {
+                        const p1 = path.join(path.dirname(cand), 'pyvenv.cfg');
+                        const p2 = path.join(path.dirname(path.dirname(cand)), 'pyvenv.cfg');
+                        let cfgContent = '';
+                        if (fs.existsSync(p1)) cfgContent = fs.readFileSync(p1, 'utf8');
+                        else if (fs.existsSync(p2)) cfgContent = fs.readFileSync(p2, 'utf8');
+                        
+                        if (cfgContent && (cfgContent.includes('/Applications/') || cfgContent.includes('/usr/bin'))) {
+                            continue;
+                        }
+                    }
+                    pythonPath = cand; 
+                    break; 
+                }
             } catch (e) {}
         }
 
@@ -1861,7 +1892,21 @@ class DeviceManager extends EventEmitter {
         let pythonPath = isWin ? 'python' : 'python3';
         for (const cand of candidates) {
             try {
-                if (fs.existsSync(cand)) { pythonPath = cand; break; }
+                if (fs.existsSync(cand)) { 
+                    if (isWin) {
+                        const p1 = path.join(path.dirname(cand), 'pyvenv.cfg');
+                        const p2 = path.join(path.dirname(path.dirname(cand)), 'pyvenv.cfg');
+                        let cfgContent = '';
+                        if (fs.existsSync(p1)) cfgContent = fs.readFileSync(p1, 'utf8');
+                        else if (fs.existsSync(p2)) cfgContent = fs.readFileSync(p2, 'utf8');
+                        
+                        if (cfgContent && (cfgContent.includes('/Applications/') || cfgContent.includes('/usr/bin'))) {
+                            continue;
+                        }
+                    }
+                    pythonPath = cand; 
+                    break; 
+                }
             } catch (e) {}
         }
 
@@ -2116,7 +2161,21 @@ class DeviceManager extends EventEmitter {
             let pythonPath = isWin ? 'python' : 'python3';
             for (const cand of candidates) {
                 try {
-                    if (fs.existsSync(cand)) { pythonPath = cand; break; }
+                    if (fs.existsSync(cand)) { 
+                        if (isWin) {
+                            const p1 = path.join(path.dirname(cand), 'pyvenv.cfg');
+                            const p2 = path.join(path.dirname(path.dirname(cand)), 'pyvenv.cfg');
+                            let cfgContent = '';
+                            if (fs.existsSync(p1)) cfgContent = fs.readFileSync(p1, 'utf8');
+                            else if (fs.existsSync(p2)) cfgContent = fs.readFileSync(p2, 'utf8');
+                            
+                            if (cfgContent && (cfgContent.includes('/Applications/') || cfgContent.includes('/usr/bin'))) {
+                                continue;
+                            }
+                        }
+                        pythonPath = cand; 
+                        break; 
+                    }
                 } catch (e) {}
             }
 

@@ -1123,3 +1123,22 @@ input:checked+.slider:before {
     height: 100%;
     object-fit: contain;
 }
+
+/* Settings Theme (Light) */
+.settings-sidebar {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+}
+
+.settings-nav-item {
+    color: #333;
+}
+
+.settings-nav-item:hover {
+    background-color: #e9ecef;
+}
+
+.settings-nav-item.active {
+    background-color: #007BFF;
+    color: white;
+}

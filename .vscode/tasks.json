@@ -17,6 +17,33 @@
 			"args": [],
 			"isBackground": false,
 			"group": "none"
+		},
+		{
+			"label": "append_base_css",
+			"type": "shell",
+			"command": "cat >> /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/base.css <<EOF\n\n/* Settings Layout */\n.settings-container {\n    display: flex;\n    gap: 20px;\n    min-height: 600px;\n}\n\n.settings-sidebar {\n    width: 250px;\n    border-radius: 15px;\n    padding: 20px;\n    display: flex;\n    flex-direction: column;\n    gap: 10px;\n    flex-shrink: 0;\n}\n\n.settings-nav-item {\n    padding: 12px 15px;\n    border-radius: 10px;\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    transition: background 0.2s;\n    font-weight: 500;\n}\n\n.settings-content {\n    flex: 1;\n}\n\n.settings-section {\n    display: none;\n    animation: fadeIn 0.3s ease;\n}\n\n.settings-section.active {\n    display: block;\n}\n\n@keyframes fadeIn {\n    from { opacity: 0; transform: translateY(10px); }\n    to { opacity: 1; transform: translateY(0); }\n}\n\n/* Responsive Settings */\n@media (max-width: 768px) {\n    .settings-container {\n        flex-direction: column;\n    }\n    .settings-sidebar {\n        width: 100%;\n        flex-direction: row;\n        overflow-x: auto;\n        padding: 10px;\n    }\n    .settings-nav-item {\n        white-space: nowrap;\n    }\n}\nEOF\n",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "append_style_css",
+			"type": "shell",
+			"command": "cat >> /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/style.css <<EOF\n\n/* Settings Theme (Light) */\n.settings-sidebar {\n    background-color: #f9f9f9;\n    border: 1px solid #ddd;\n}\n\n.settings-nav-item {\n    color: #333;\n}\n\n.settings-nav-item:hover {\n    background-color: #e9ecef;\n}\n\n.settings-nav-item.active {\n    background-color: #007BFF;\n    color: white;\n}\nEOF\n",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "append_style_dark_css",
+			"type": "shell",
+			"command": "cat >> /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/style-dark.css <<EOF\n\n/* Settings Theme (Dark) */\n.settings-sidebar {\n    background-color: var(--card);\n    border: 1px solid var(--border);\n}\n\n.settings-nav-item {\n    color: var(--text);\n}\n\n.settings-nav-item:hover {\n    background-color: rgba(255,255,255,0.05);\n}\n\n.settings-nav-item.active {\n    background-color: var(--primary);\n    color: white;\n}\nEOF\n",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
 		}
 	]
 }

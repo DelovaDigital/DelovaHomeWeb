@@ -898,3 +898,22 @@ input:checked+.slider:before {
 .room-add select:hover { border-color: rgba(255,255,255,0.04); }
 .room-add select:focus { border-color: var(--accent-color); box-shadow: 0 0 0 4px rgba(74,163,255,0.06); outline: none; }
 
+
+/* Settings Theme (Dark) */
+.settings-sidebar {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+}
+
+.settings-nav-item {
+    color: var(--text);
+}
+
+.settings-nav-item:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.settings-nav-item.active {
+    background-color: var(--primary);
+    color: white;
+}

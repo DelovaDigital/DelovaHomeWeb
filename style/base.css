@@ -143,3 +143,65 @@ nav, .main-nav {
 
 /* Keep layout-only rules here. Colors must be provided by theme files (style.css / style-dark.css).
    This ensures dark mode only changes color variables, not layout. */
+
+/* Settings Layout */
+.settings-container {
+    display: flex;
+    gap: 20px;
+    min-height: 600px;
+}
+
+.settings-sidebar {
+    width: 250px;
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.settings-nav-item {
+    padding: 12px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    font-weight: 500;
+}
+
+.settings-content {
+    flex: 1;
+}
+
+.settings-section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.settings-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Settings */
+@media (max-width: 768px) {
+    .settings-container {
+        flex-direction: column;
+    }
+    .settings-sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 10px;
+    }
+    .settings-nav-item {
+        white-space: nowrap;
+    }
+}

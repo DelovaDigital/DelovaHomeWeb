@@ -38,25 +38,25 @@
                 <p>Beheer je account en voorkeuren</p>
             </header>
 
-            <div class="settings-container" style="display: flex; gap: 20px; height: calc(100vh - 150px);">
+            <div class="settings-container">
                 <!-- Sidebar -->
-                <aside class="settings-sidebar" style="width: 250px; background: var(--card-bg); border-radius: 15px; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
-                    <div class="settings-nav-item active" data-target="general" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                <aside class="settings-sidebar">
+                    <div class="settings-nav-item active" data-target="general">
                         <i class="fas fa-sliders-h"></i> Algemeen
                     </div>
-                    <div class="settings-nav-item" data-target="integrations" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                    <div class="settings-nav-item" data-target="integrations">
                         <i class="fas fa-plug"></i> Integraties
                     </div>
-                    <div class="settings-nav-item" data-target="energy" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                    <div class="settings-nav-item" data-target="energy">
                         <i class="fas fa-bolt"></i> Energie
                     </div>
-                    <div class="settings-nav-item" data-target="knx" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                    <div class="settings-nav-item" data-target="knx">
                         <i class="fas fa-network-wired"></i> KNX
                     </div>
                 </aside>
 
                 <!-- Content -->
-                <div class="settings-content" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                <div class="settings-content">
                     
                     <!-- General Section -->
                     <div id="general" class="settings-section active">
@@ -121,7 +121,7 @@
                     </div>
 
                     <!-- Integrations Section -->
-                    <div id="integrations" class="settings-section" style="display: none;">
+                    <div id="integrations" class="settings-section">
                         <!-- Apple Device Pairing -->
                         <div class="card settings-card">
                             <div class="card-header">
@@ -187,7 +187,7 @@
                     </div>
 
                     <!-- Energy Section -->
-                    <div id="energy" class="settings-section" style="display: none;">
+                    <div id="energy" class="settings-section">
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-solar-panel"></i>
@@ -214,7 +214,7 @@
                     </div>
 
                     <!-- KNX Section -->
-                    <div id="knx" class="settings-section" style="display: none;">
+                    <div id="knx" class="settings-section">
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-network-wired"></i>

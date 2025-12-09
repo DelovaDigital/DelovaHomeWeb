@@ -76,17 +76,25 @@ def main():
 
         # Try Port 8002 (Secure Tizen)
         try:
-            tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=5)
+            tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=10)
             tv.open()
-            if tv.token and tv.token != token:
-                save_token(ip, tv.token)
+            
+            # Log token status
+            if tv.token:
+                print(json.dumps({"status": "debug", "message": f"Token obtained: {tv.token[:5]}..."}), flush=True)
+                if tv.token != token:
+                    save_token(ip, tv.token)
+                    print(json.dumps({"status": "debug", "message": "New token saved"}), flush=True)
+            else:
+                print(json.dumps({"status": "debug", "message": "No token returned by TV"}), flush=True)
+
             print(json.dumps({"status": "connected", "ip": ip, "port": 8002}), flush=True)
             return True
         except Exception as e_8002:
             print(json.dumps({"status": "debug", "message": f"Port 8002 failed: {e_8002}"}), flush=True)
             # Try Port 8001 (Legacy Tizen / J-Series)
             try:
-                tv = SamsungTVWS(host=ip, port=8001, token=token, name='DelovaHome', timeout=5)
+                tv = SamsungTVWS(host=ip, port=8001, token=token, name='DelovaHome', timeout=10)
                 tv.open()
                 if tv.token and tv.token != token:
                     save_token(ip, tv.token)

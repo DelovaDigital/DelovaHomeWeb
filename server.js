@@ -1158,11 +1158,45 @@ const http = require('http');
 // WebSocket Upgrade Handling
 const wss = new WebSocket.Server({ noServer: true });
 
+// Broadcast helper
+const broadcast = (data) => {
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data));
+        }
+    });
+};
+
+// Listen for pairing requests from DeviceManager
+deviceManager.on('pairing-required', (data) => {
+    console.log(`[Server] Broadcasting pairing request for ${data.ip}`);
+    broadcast({ type: 'pairing-required', ...data });
+});
+
+app.post('/api/device/pair', (req, res) => {
+    const { ip, pin } = req.body;
+    if (!ip || !pin) return res.status(400).json({ error: 'IP and PIN required' });
+    
+    const success = deviceManager.submitPairingPin(ip, pin);
+    if (success) {
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'Device process not found' });
+    }
+});
+
 const handleUpgrade = (request, socket, head) => {
     const parsedUrl = url.parse(request.url, true);
     const pathname = parsedUrl.pathname;
     
-    if (pathname === '/api/camera/stream/ws') {
+    if (pathname === '/ws') {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            console.log('[WebSocket] Client connected to /ws');
+            ws.on('message', (message) => {
+                // Handle incoming messages if needed
+            });
+        });
+    } else if (pathname === '/api/camera/stream/ws') {
         wss.handleUpgrade(request, socket, head, (ws) => {
             const query = parsedUrl.query;
             const deviceId = query.deviceId;

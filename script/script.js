@@ -99,6 +99,73 @@ document.addEventListener('DOMContentLoaded', () => {
         dropdown.classList.toggle('show');
     };
 
+    // --- WebSocket for Pairing ---
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'pairing-required') {
+                showPairingModal(msg.ip, msg.name);
+            }
+        } catch (e) {
+            console.error('WS Error:', e);
+        }
+    };
+
+    function showPairingModal(ip, name) {
+        const modal = document.getElementById('pairingModal');
+        const msg = document.getElementById('pairingMessage');
+        const ipInput = document.getElementById('pairingIp');
+        const pinInput = document.getElementById('pairingPin');
+        
+        if (modal && msg && ipInput) {
+            msg.textContent = `Voer de PIN code in die op ${name || ip} verschijnt:`;
+            ipInput.value = ip;
+            pinInput.value = '';
+            modal.style.display = 'block';
+            
+            // Focus input
+            setTimeout(() => pinInput.focus(), 100);
+        }
+    }
+
+    // Pairing Modal Logic
+    const pairingModal = document.getElementById('pairingModal');
+    if (pairingModal) {
+        const closeBtn = pairingModal.querySelector('.close-modal');
+        const submitBtn = document.getElementById('submitPairing');
+        const pinInput = document.getElementById('pairingPin');
+        const ipInput = document.getElementById('pairingIp');
+
+        closeBtn.onclick = () => pairingModal.style.display = 'none';
+        
+        submitBtn.onclick = async () => {
+            const pin = pinInput.value;
+            const ip = ipInput.value;
+            if (!pin) return;
+
+            try {
+                const res = await fetch('/api/device/pair', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip, pin })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Koppelen succesvol!');
+                    pairingModal.style.display = 'none';
+                } else {
+                    alert('Koppelen mislukt: ' + (data.error || 'Onbekende fout'));
+                }
+            } catch (e) {
+                alert('Netwerkfout bij koppelen');
+            }
+        };
+    }
+
     if (avatar) avatar.addEventListener('click', toggleDropdown);
     if (dropdown) dropdown.addEventListener('click', (e) => e.stopPropagation());
 

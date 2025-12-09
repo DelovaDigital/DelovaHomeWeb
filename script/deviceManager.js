@@ -1437,7 +1437,7 @@ class DeviceManager extends EventEmitter {
                         console.log(`[Android TV Service] Started. Python: ${msg.python_version}`);
                     } else if (msg.status === 'pairing_required') {
                         console.log(`[Android TV Service] Pairing required for ${ip}. Please check TV for code.`);
-                        // TODO: Emit event to UI to ask for PIN
+                        this.emit('pairing-required', { ip: ip, name: 'Android TV', type: 'android-tv' });
                     } else if (msg.status === 'connected' || msg.status === 'paired') {
                         console.log(`[Android TV Service] Connected to ${ip}`);
                     } else if (msg.status === 'failed') {
@@ -1462,6 +1462,17 @@ class DeviceManager extends EventEmitter {
 
         this.androidTvProcesses.set(ip, childProc);
         return childProc;
+    }
+
+    submitPairingPin(ip, pin) {
+        console.log(`[DeviceManager] Submitting PIN for ${ip}`);
+        const process = this.androidTvProcesses.get(ip);
+        if (process) {
+            process.stdin.write(JSON.stringify({ type: 'pin', pin: pin }) + '\n');
+            return true;
+        }
+        console.warn(`[DeviceManager] No process found for ${ip} to submit PIN`);
+        return false;
     }
 
     getAtvProcess(ip) {

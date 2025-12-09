@@ -47,7 +47,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeStreams = new Map(); // deviceId -> JSMpeg player
 
     function startCameraStream(deviceId, ip, containerId) {
-        if (activeStreams.has(deviceId)) return;
+        if (activeStreams.has(deviceId)) {
+            // Check if the container actually has the video element
+            const container = document.getElementById(containerId);
+            const hasVideo = container && container.querySelector('video');
+            
+            if (hasVideo) {
+                return; // Stream is active and video is present. All good.
+            } else {
+                // Stream is active in memory, but DOM is missing (e.g. re-render).
+                // We must destroy the old stream and let it recreate.
+                console.log('Stream active but DOM missing. Restarting stream...');
+                const player = activeStreams.get(deviceId);
+                if (player && typeof player.destroy === 'function') {
+                    try { player.destroy(); } catch(e) { console.error(e); }
+                }
+                activeStreams.delete(deviceId); // Ensure it's gone
+            }
+        }
 
         const storedCreds = localStorage.getItem(`camera_creds_${deviceId}`);
         

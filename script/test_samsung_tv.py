@@ -65,8 +65,8 @@ try:
         os.remove(token_path)
 
     print("Initializing SamsungTVWS...")
-    # Increase timeout for pairing
-    tv = SamsungTVWS(host=tv_ip, port=8002, token_file=token_path, timeout=10)
+    # Change name to force new pairing prompt
+    tv = SamsungTVWS(host=tv_ip, port=8002, token_file=token_path, timeout=15, name='OmniHome_Setup')
     
     print("Opening connection (Watch TV for popup!)...")
     tv.open()
@@ -90,3 +90,16 @@ try:
 
 except Exception as e:
     print(f"Port 8002 failed: {e}")
+
+# 3. Try WebSocket on 8001 (Insecure)
+print("\n--- Diagnostic: Testing Port 8001 (Insecure WebSocket) ---")
+try:
+    print("Attempting Port 8001...")
+    # Note: This might fail if the library enforces SSL, but worth a try
+    tv = SamsungTVWS(host=tv_ip, port=8001, token_file=token_path, timeout=10, name='OmniHome_Legacy')
+    tv.open()
+    print("Connected to 8001!")
+    tv.send_key('KEY_VOLUP')
+    tv.close()
+except Exception as e:
+    print(f"Port 8001 failed: {e}")

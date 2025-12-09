@@ -1494,10 +1494,29 @@ class DeviceManager extends EventEmitter {
         const { spawn } = require('child_process');
         
         // Try to find the correct python executable
-        let pythonPath = path.join(__dirname, '../.venv/bin/python');
-        if (!fs.existsSync(pythonPath)) {
-            console.warn(`[DeviceManager] Virtual env python not found at ${pythonPath}, falling back to 'python3'`);
-            pythonPath = 'python3';
+        const isWin = process.platform === 'win32';
+        const candidates = [
+            // Windows specific paths
+            path.join(__dirname, '../.venv/Scripts/python.exe'),
+            path.join(__dirname, '../../.venv/Scripts/python.exe'),
+            path.join(process.cwd(), '.venv/Scripts/python.exe'),
+            
+            // Unix/Linux/macOS paths
+            path.join(__dirname, '../.venv/bin/python'),
+            path.join(__dirname, '../../.venv/bin/python'),
+            path.join(process.cwd(), '.venv/bin/python'),
+            '/home/pi/DelovaHome/.venv/bin/python'
+        ];
+
+        let pythonPath = isWin ? 'python' : 'python3';
+        for (const cand of candidates) {
+            try {
+                if (fs.existsSync(cand)) { pythonPath = cand; break; }
+            } catch (e) {}
+        }
+
+        if (pythonPath === 'python3' || pythonPath === 'python') {
+             console.warn(`[DeviceManager] Virtual env python not found, falling back to '${pythonPath}'`);
         }
 
         const scriptPath = path.join(__dirname, 'atv_service.py');
@@ -1794,8 +1813,25 @@ class DeviceManager extends EventEmitter {
 
         console.log(`[DeviceManager] Spawning persistent Samsung service for ${ip}...`);
         const { spawn } = require('child_process');
-        let pythonPath = path.join(__dirname, '../.venv/bin/python');
-        if (!fs.existsSync(pythonPath)) pythonPath = 'python3';
+        
+        const isWin = process.platform === 'win32';
+        const candidates = [
+            path.join(__dirname, '../.venv/Scripts/python.exe'),
+            path.join(__dirname, '../../.venv/Scripts/python.exe'),
+            path.join(process.cwd(), '.venv/Scripts/python.exe'),
+            path.join(__dirname, '../.venv/bin/python'),
+            path.join(__dirname, '../../.venv/bin/python'),
+            path.join(process.cwd(), '.venv/bin/python'),
+            '/home/pi/DelovaHome/.venv/bin/python'
+        ];
+
+        let pythonPath = isWin ? 'python' : 'python3';
+        for (const cand of candidates) {
+            try {
+                if (fs.existsSync(cand)) { pythonPath = cand; break; }
+            } catch (e) {}
+        }
+
         const scriptPath = path.join(__dirname, 'samsung_service.py');
         
         const process = spawn(pythonPath, [scriptPath, ip]);
@@ -2021,10 +2057,22 @@ class DeviceManager extends EventEmitter {
             const { spawn } = require('child_process');
             
             // Try to find the correct python executable
-            let pythonPath = path.join(__dirname, '../.venv/bin/python');
-            if (!fs.existsSync(pythonPath)) {
-                // Fallback to system python
-                pythonPath = 'python3';
+            const isWin = process.platform === 'win32';
+            const candidates = [
+                path.join(__dirname, '../.venv/Scripts/python.exe'),
+                path.join(__dirname, '../../.venv/Scripts/python.exe'),
+                path.join(process.cwd(), '.venv/Scripts/python.exe'),
+                path.join(__dirname, '../.venv/bin/python'),
+                path.join(__dirname, '../../.venv/bin/python'),
+                path.join(process.cwd(), '.venv/bin/python'),
+                '/home/pi/DelovaHome/.venv/bin/python'
+            ];
+
+            let pythonPath = isWin ? 'python' : 'python3';
+            for (const cand of candidates) {
+                try {
+                    if (fs.existsSync(cand)) { pythonPath = cand; break; }
+                } catch (e) {}
             }
 
             const scriptPath = path.join(__dirname, 'pair_atv_interactive.py');

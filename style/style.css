@@ -134,7 +134,12 @@ a:hover {
     padding: 10px;
     display: none;
     flex-direction: column;
-    z-index: 100;
+    z-index: 1000; /* Increased z-index */
+    background: var(--glass-bg); /* Ensure background is applied */
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: var(--glass-shadow);
 }
 
 .user-dropdown.show {

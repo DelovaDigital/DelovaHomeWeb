@@ -102,7 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Construct WebSocket URL
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws?deviceId=${deviceId}&rtspUrl=${encodeURIComponent(rtspUrl)}`;
+        // Use /stream endpoint to avoid conflict with generic /ws
+        const wsUrl = `${protocol}//${window.location.host}/stream?deviceId=${deviceId}&rtspUrl=${encodeURIComponent(rtspUrl)}`;
 
         const container = document.getElementById(containerId);
         if (container) {

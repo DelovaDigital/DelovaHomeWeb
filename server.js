@@ -1190,13 +1190,23 @@ const handleUpgrade = (request, socket, head) => {
     const pathname = parsedUrl.pathname;
     
     if (pathname === '/ws') {
+        // Generic WebSocket (Dashboard Updates)
+        // Check if this is actually a camera request disguised as /ws (legacy check)
+        if (parsedUrl.query.deviceId && parsedUrl.query.rtspUrl) {
+             // Redirect to camera handler logic manually
+             wss.handleUpgrade(request, socket, head, (ws) => {
+                const stream = cameraStreamManager.getStream(parsedUrl.query.deviceId, parsedUrl.query.rtspUrl);
+                stream.addClient(ws);
+            });
+            return;
+        }
+
         wss.handleUpgrade(request, socket, head, (ws) => {
             console.log('[WebSocket] Client connected to /ws');
-            ws.on('message', (message) => {
-                // Handle incoming messages if needed
-            });
+            wss.emit('connection', ws, request); // Ensure the 'connection' event is emitted for the generic handler
         });
-    } else if (pathname === '/api/camera/stream/ws') {
+    } else if (pathname === '/stream') {
+        // Dedicated Camera Stream Path
         wss.handleUpgrade(request, socket, head, (ws) => {
             const query = parsedUrl.query;
             const deviceId = query.deviceId;

@@ -499,6 +499,27 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
+// Delete User Endpoint
+app.delete('/api/users/:id', async (req, res) => {
+    const userId = req.params.id;
+    try {
+        const pool = await db.getPool();
+        // Ensure we only delete users belonging to this hub
+        const result = await pool.request()
+            .input('id', db.sql.Int, userId)
+            .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+            .query("DELETE FROM Users WHERE Id = @id AND HubID = @hubId");
+            
+        if (result.rowsAffected[0] > 0) {
+            res.json({ ok: true });
+        } else {
+            res.status(404).json({ ok: false, message: 'User not found or not authorized' });
+        }
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
 const deviceManager = require('./script/deviceManager');
 const sonosManager = require('./script/sonosManager');
 
@@ -1189,6 +1210,12 @@ const broadcast = (data) => {
 deviceManager.on('pairing-required', (data) => {
     console.log(`[Server] Broadcasting pairing request for ${data.ip}`);
     broadcast({ type: 'pairing-required', ...data });
+});
+
+// Listen for device updates and broadcast them
+deviceManager.on('device-updated', (device) => {
+    // console.log(`[Server] Broadcasting update for ${device.name}`);
+    broadcast({ type: 'device-update', device });
 });
 
 app.post('/api/device/pair', (req, res) => {

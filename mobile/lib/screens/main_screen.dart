@@ -1,5 +1,6 @@
-import 'package:delovahome/main.dart';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../widgets/gradient_background.dart';
 import 'dashboard_tab.dart';
 import 'devices_tab.dart';
 import 'rooms_tab.dart';
@@ -30,56 +31,65 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: const Text('Delova Home'),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.brightness_6),
-          tooltip: 'Thema wisselen',
-          onPressed: () {
-            final appState = DelovaHome.of(context);
-            appState?.cycleTheme();
-          },
+    return Scaffold(
+      extendBody: true, // Important for glass effect on bottom nav
+      body: GradientBackground(
+        child: SafeArea(
+          bottom: false,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, anim) {
+              return FadeTransition(opacity: anim, child: child);
+            },
+            child: KeyedSubtree(
+              key: ValueKey<int>(_selectedIndex),
+              child: _widgetOptions.elementAt(_selectedIndex),
+            ),
+          ),
         ),
-      ],
-    ), 
-    body: AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, anim) {
-        final offsetAnim = Tween<Offset>(begin: const Offset(0.0, 0.05), end: Offset.zero).animate(anim);
-        return SlideTransition(position: offsetAnim, child: FadeTransition(opacity: anim, child: child));
-      },
-      child: SizedBox(
-        key: ValueKey<int>(_selectedIndex),
-        width: double.infinity,
-        child: _widgetOptions.elementAt(_selectedIndex),
       ),
-    ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Overzicht',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.2),
+          backgroundBlendMode: BlendMode.srcOver,
+        ),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+            child: BottomNavigationBar(
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              elevation: 0,
+              items: const <BottomNavigationBarItem>[
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.dashboard_outlined),
+                  activeIcon: Icon(Icons.dashboard),
+                  label: 'Dashboard',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.devices_outlined),
+                  activeIcon: Icon(Icons.devices),
+                  label: 'Devices',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.meeting_room_outlined),
+                  activeIcon: Icon(Icons.meeting_room),
+                  label: 'Rooms',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings_outlined),
+                  activeIcon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
+              currentIndex: _selectedIndex,
+              selectedItemColor: Colors.cyanAccent,
+              unselectedItemColor: Colors.white70,
+              onTap: _onItemTapped,
+              type: BottomNavigationBarType.fixed,
+              showUnselectedLabels: true,
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.devices_other),
-            label: 'Apparaten',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.room_preferences),
-            label: 'Ruimtes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.tune),
-            label: 'Instellingen',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
+        ),
       ),
     );
   }

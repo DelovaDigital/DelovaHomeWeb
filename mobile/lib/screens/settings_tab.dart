@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../services/api_service.dart';
+import '../widgets/glass_card.dart';
 import 'hub_discovery_screen.dart';
 import 'manage_users_screen.dart';
 import 'settings/knx_settings_screen.dart';
@@ -360,12 +361,13 @@ class _SettingsTabState extends State<SettingsTab> {
     final currentTheme = appState?.themeModeValue ?? ThemeMode.system;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
             'Account & Hub',
-            style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           _buildInfoCard('Connected Hub', _hubIp, Icons.router),
@@ -378,8 +380,9 @@ class _SettingsTabState extends State<SettingsTab> {
             icon: const Icon(Icons.logout),
             label: const Text('Disconnect / Switch Hub'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[900],
+              backgroundColor: Colors.red.withValues(alpha: 0.8),
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: _disconnect,
           ),
@@ -387,7 +390,7 @@ class _SettingsTabState extends State<SettingsTab> {
           const SizedBox(height: 30),
           const Text(
             'System Management',
-            style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           _buildSettingTile(
@@ -438,7 +441,7 @@ class _SettingsTabState extends State<SettingsTab> {
           const SizedBox(height: 30),
           const Text(
             'Integrations',
-            style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           _buildSettingTile(
@@ -496,31 +499,33 @@ class _SettingsTabState extends State<SettingsTab> {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
-    return ListTile(
-      tileColor: Theme.of(context).cardColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: GlassCard(
+        child: ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white)),
+          subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)) : null,
+          trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white54),
+          onTap: onTap,
         ),
-        child: Icon(icon, color: color),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)) : null,
-      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      onTap: onTap,
     );
   }
 
   Widget _buildInfoCard(String title, String value, IconData icon) {
-    return Card(
-      color: Colors.grey[900],
-      margin: const EdgeInsets.only(bottom: 8),
+    return GlassCard(
       child: ListTile(
-        leading: Icon(icon, color: Colors.amber),
-        title: Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        leading: Icon(icon, color: Colors.cyan),
+        title: Text(title, style: const TextStyle(color: Colors.white70, fontSize: 12)),
         subtitle: Text(value, style: const TextStyle(color: Colors.white, fontSize: 16)),
       ),
     );

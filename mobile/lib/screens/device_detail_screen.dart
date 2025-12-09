@@ -3,6 +3,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
+import '../widgets/gradient_background.dart';
+import '../widgets/glass_card.dart';
 
 class DeviceDetailScreen extends StatefulWidget {
   final Device device;
@@ -295,10 +297,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isVacuum = widget.device.type.toLowerCase() == 'vacuum' || widget.device.type.toLowerCase() == 'robot';
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.device.name),
+        title: Text(widget.device.name, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           if (widget.device.type.toLowerCase() == 'camera')
             IconButton(
@@ -312,7 +316,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           ),
         ],
       ),
-      body: _buildBody(isLight, isTv, isSpeaker, isThermostat, isLock, isCover, isVacuum),
+      body: GradientBackground(
+        child: SafeArea(
+          child: _buildBody(isLight, isTv, isSpeaker, isThermostat, isLock, isCover, isVacuum),
+        ),
+      ),
     );
   }
 
@@ -338,7 +346,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 child: Icon(
                   _getDeviceIcon(widget.device.type),
                   size: 120,
-                  color: isPoweredOn ? Colors.amber : Colors.grey[700],
+                  color: isPoweredOn ? Colors.cyanAccent : Colors.white24,
                 ),
               ),
               const SizedBox(height: 30),
@@ -361,7 +369,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               const SizedBox(height: 10),
               Text(
                 widget.device.type.toUpperCase(),
-                style: TextStyle(color: Colors.grey[500], letterSpacing: 1.5),
+                style: const TextStyle(color: Colors.white54, letterSpacing: 1.5),
               ),
               const SizedBox(height: 40),
 
@@ -375,21 +383,22 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isPoweredOn ? Colors.white : Colors.grey[800],
+                    color: isPoweredOn ? Colors.white : Colors.white.withValues(alpha: 0.1),
                     boxShadow: isPoweredOn
                         ? [
                             BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: Colors.cyanAccent.withValues(alpha: 0.5),
                               blurRadius: 20,
                               spreadRadius: 5,
                             )
                           ]
                         : [],
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                   ),
                   child: Icon(
                     Icons.power_settings_new,
                     size: 40,
-                    color: isPoweredOn ? Colors.black : Colors.white,
+                    color: isPoweredOn ? Colors.cyan : Colors.white,
                   ),
                 ),
               ),
@@ -429,14 +438,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   "${widget.device.status.targetTemperature ?? 21}°C",
                   style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
-                const Text("Target Temperature", style: TextStyle(color: Colors.grey)),
+                const Text("Target Temperature", style: TextStyle(color: Colors.white70)),
                 const SizedBox(height: 20),
                 Slider(
                   value: (widget.device.status.targetTemperature ?? 21).clamp(10, 30),
                   min: 10,
                   max: 30,
                   divisions: 40,
-                  activeColor: Colors.orange,
+                  activeColor: Colors.cyanAccent,
                   onChanged: (val) {
                     // Optimistic update could go here
                   },
@@ -446,22 +455,22 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _modeButton('Heat', Icons.local_fire_department, Colors.red),
-                    _modeButton('Cool', Icons.ac_unit, Colors.blue),
-                    _modeButton('Auto', Icons.hdr_auto, Colors.green),
-                    _modeButton('Off', Icons.power_off, Colors.grey),
+                    _modeButton('Heat', Icons.local_fire_department, Colors.redAccent),
+                    _modeButton('Cool', Icons.ac_unit, Colors.cyanAccent),
+                    _modeButton('Auto', Icons.hdr_auto, Colors.greenAccent),
+                    _modeButton('Off', Icons.power_off, Colors.white54),
                   ],
                 ),
               ],
 
               // --- Cover Controls ---
               if (isCover) ...[
-                const Text("Position", style: TextStyle(color: Colors.grey)),
+                const Text("Position", style: TextStyle(color: Colors.white70)),
                 Slider(
                   value: (widget.device.status.position ?? 0).toDouble().clamp(0, 100),
                   min: 0,
                   max: 100,
-                  activeColor: Colors.blue,
+                  activeColor: Colors.cyanAccent,
                   onChanged: (val) {},
                   onChangeEnd: (val) => _sendCommand('set_position', {'value': val.toInt()}),
                 ),
@@ -509,7 +518,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   decoration: BoxDecoration(
                     color: Colors.black,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[800]!),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
@@ -519,9 +528,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                CircularProgressIndicator(color: Colors.amber),
+                                CircularProgressIndicator(color: Colors.cyanAccent),
                                 SizedBox(height: 16),
-                                Text("Connecting to stream...", style: TextStyle(color: Colors.grey)),
+                                Text("Connecting to stream...", style: TextStyle(color: Colors.white70)),
                               ],
                             ),
                           ),
@@ -671,7 +680,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   value: _currentBrightness.clamp(0, 100),
                   min: 0,
                   max: 100,
-                  activeColor: Colors.amber,
+                  activeColor: Colors.cyanAccent,
                   onChanged: (val) {
                     setState(() => _currentBrightness = val);
                   },
@@ -690,76 +699,75 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               if (isSpeaker && isPoweredOn) ...[
                 // Media Info Panel
                 if (widget.device.status.title != null && widget.device.status.title!.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 30),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Column(
-                      children: [
-                        // Album Art Placeholder
-                        Container(
-                          width: 150,
-                          height: 150,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[800],
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2)],
-                          ),
-                          child: Icon(
-                            widget.device.status.app?.toLowerCase().contains('spotify') == true 
-                                ? Icons.music_note // In a real app, use Spotify logo asset
-                                : Icons.music_note, 
-                            size: 80, 
-                            color: widget.device.status.app?.toLowerCase().contains('spotify') == true 
-                                ? Colors.green 
-                                : Colors.grey[600]
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          widget.device.status.title!,
-                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (widget.device.status.artist != null)
-                          Text(
-                            widget.device.status.artist!,
-                            style: const TextStyle(color: Colors.grey, fontSize: 16),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        if (widget.device.status.album != null)
-                          Text(
-                            widget.device.status.album!,
-                            style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        if (widget.device.status.app != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 10),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.apps, size: 16, color: Colors.grey[500]),
-                                const SizedBox(width: 5),
-                                Text(
-                                  widget.device.status.app!,
-                                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                                ),
-                              ],
+                  GlassCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          // Album Art Placeholder
+                          Container(
+                            width: 150,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              color: Colors.black26,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2)],
+                            ),
+                            child: Icon(
+                              widget.device.status.app?.toLowerCase().contains('spotify') == true 
+                                  ? Icons.music_note // In a real app, use Spotify logo asset
+                                  : Icons.music_note, 
+                              size: 80, 
+                              color: widget.device.status.app?.toLowerCase().contains('spotify') == true 
+                                  ? Colors.greenAccent 
+                                  : Colors.white54
                             ),
                           ),
-                      ],
+                          const SizedBox(height: 20),
+                          Text(
+                            widget.device.status.title!,
+                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (widget.device.status.artist != null)
+                            Text(
+                              widget.device.status.artist!,
+                              style: const TextStyle(color: Colors.white70, fontSize: 16),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          if (widget.device.status.album != null)
+                            Text(
+                              widget.device.status.album!,
+                              style: const TextStyle(color: Colors.white54, fontSize: 14),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          if (widget.device.status.app != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.apps, size: 16, color: Colors.white30),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    widget.device.status.app!,
+                                    style: const TextStyle(color: Colors.white30, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
+                
+                const SizedBox(height: 20),
 
                 const Align(
                   alignment: Alignment.centerLeft,
@@ -769,7 +777,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   value: _currentVolume.clamp(0, 100),
                   min: 0,
                   max: 100,
-                  activeColor: Colors.blueAccent,
+                  activeColor: Colors.cyanAccent,
                   onChanged: (val) {
                     setState(() => _currentVolume = val);
                   },
@@ -849,8 +857,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.grey[800],
+            color: Colors.white.withValues(alpha: 0.1),
             shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: IconButton(
             icon: Icon(icon, color: Colors.white),
@@ -873,9 +882,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           width: 18,
           height: barHeight,
           decoration: BoxDecoration(
-            color: Colors.grey[900],
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.grey[800]!),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Align(
             alignment: Alignment.bottomCenter,
@@ -890,31 +899,31 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
       ],
     );
   }
 
   Widget _sensorTile(String label, String value, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[800],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.blueAccent, size: 32),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: GlassCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
             children: [
-              Text(label, style: const TextStyle(color: Colors.grey)),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              Icon(icon, color: Colors.cyanAccent, size: 32),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(color: Colors.white70)),
+                  Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -990,8 +999,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           width: 220,
           height: 220,
           decoration: BoxDecoration(
-            color: Colors.grey[800],
+            color: Colors.white.withValues(alpha: 0.1),
             shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Stack(
             children: [
@@ -1019,7 +1029,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: Colors.grey[700],
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -1059,13 +1069,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Widget _buildCameraControls() {
     return Column(
       children: [
-        const Text("Camera Control", style: TextStyle(color: Colors.grey)),
+        const Text("Camera Control", style: TextStyle(color: Colors.white70)),
         const SizedBox(height: 20),
         Container(
           width: 220,
           height: 220,
           decoration: BoxDecoration(
-            color: Colors.grey[800],
+            color: Colors.white.withValues(alpha: 0.1),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
@@ -1074,6 +1084,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 spreadRadius: 2,
               )
             ],
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: Stack(
             children: [
@@ -1101,7 +1112,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: Colors.grey[700],
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -1111,7 +1122,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                         )
                       ],
                     ),
-                    child: const Icon(Icons.stop, color: Colors.red, size: 40),
+                    child: const Icon(Icons.stop, color: Colors.redAccent, size: 40),
                   ),
                 ),
               ),

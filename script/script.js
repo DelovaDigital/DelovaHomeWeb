@@ -269,4 +269,48 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(err => console.log('Error checking NAS status:', err));
     }
+
+    // WebSocket Connection
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    let ws;
+
+    function connectWebSocket() {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'device-update') {
+                    // Dispatch event for other scripts
+                    const customEvent = new CustomEvent('device-update', { detail: msg.device });
+                    document.dispatchEvent(customEvent);
+                } else if (msg.type === 'energy-update') {
+                    const customEvent = new CustomEvent('energy-update', { detail: msg.data });
+                    document.dispatchEvent(customEvent);
+                }
+            } catch (e) {
+                console.error('Error parsing WebSocket message', e);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket disconnected. Reconnecting in 3s...');
+            setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = (err) => {
+            console.error('WebSocket error:', err);
+            ws.close();
+        };
+    }
+
+    // Start connection if we are logged in
+    if (localStorage.getItem('userId')) {
+        connectWebSocket();
+    }
 });

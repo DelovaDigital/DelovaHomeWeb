@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
+import '../widgets/glass_card.dart';
 import 'room_detail_screen.dart';
 
 class RoomsTab extends StatefulWidget {
@@ -72,7 +73,7 @@ class _RoomsTabState extends State<RoomsTab> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: Colors.cyan));
     }
 
     if (_error != null) {
@@ -80,10 +81,11 @@ class _RoomsTabState extends State<RoomsTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Error: $_error'),
+            Text('Error: $_error', style: const TextStyle(color: Colors.redAccent)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => _fetchDevices(),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
               child: const Text('Retry'),
             ),
           ],
@@ -93,11 +95,12 @@ class _RoomsTabState extends State<RoomsTab> {
 
     return RefreshIndicator(
       onRefresh: () => _fetchDevices(),
+      color: Colors.cyan,
       child: GridView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 1.2,
+          childAspectRatio: 1.1,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
         ),
@@ -119,27 +122,23 @@ class _RoomsTabState extends State<RoomsTab> {
                 ),
               );
             },
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  )
-                ],
-              ),
+            child: GlassCard(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    _getRoomIcon(roomName),
-                    size: 48,
-                    color: Colors.blueAccent,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.cyan.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _getRoomIcon(roomName),
+                      size: 32,
+                      color: Colors.white,
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Text(
                     roomName,
                     style: const TextStyle(
@@ -152,8 +151,8 @@ class _RoomsTabState extends State<RoomsTab> {
                   const SizedBox(height: 4),
                   Text(
                     '${devices.length} Devices',
-                    style: TextStyle(
-                      color: Colors.grey[400],
+                    style: const TextStyle(
+                      color: Colors.white70,
                       fontSize: 14,
                     ),
                   ),

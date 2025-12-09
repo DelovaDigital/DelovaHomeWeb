@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/gradient_background.dart';
+import '../widgets/glass_card.dart';
 import 'main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -92,145 +94,169 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // If the app is in dark mode, force the login screen to use the light theme
-    final forceLight = theme.brightness == Brightness.dark;
-    final effectiveTheme = forceLight ? ThemeData.light() : theme;
-    final effectiveColorScheme = effectiveTheme.colorScheme;
-
     return Scaffold(
-      backgroundColor: effectiveTheme.scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Login to ${widget.hubName ?? "Hub"}', style: effectiveTheme.textTheme.titleLarge),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: effectiveColorScheme.onSurface,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 540),
-              child: Card(
-              elevation: 6,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              color: effectiveTheme.cardColor,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 28.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Branded header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+      body: GradientBackground(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.cyan.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      )
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Welcome Back',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Login to ${widget.hubName ?? "Hub"}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+                const SizedBox(height: 40),
+
+                GlassCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.asset(
-                              'assets/DHLogo.jpeg',
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
+                          if (_errorMessage != null)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              margin: const EdgeInsets.only(bottom: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                              ),
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(color: Colors.white),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
+                          
+                          TextFormField(
+                            controller: _usernameController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Username',
+                              labelStyle: const TextStyle(color: Colors.white70),
+                              prefixIcon: const Icon(Icons.person_outline, color: Colors.white70),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.cyan),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.05),
+                            ),
+                            validator: (value) =>
+                                value == null || value.isEmpty ? 'Please enter username' : null,
                           ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Delova Home', style: effectiveTheme.textTheme.titleLarge),
-                              if (widget.hubName != null)
-                                Text(widget.hubName!, style: effectiveTheme.textTheme.bodyMedium?.copyWith(color: effectiveTheme.textTheme.bodySmall?.color)),
-                            ],
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              labelStyle: const TextStyle(color: Colors.white70),
+                              prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.cyan),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.05),
+                            ),
+                            validator: (value) =>
+                                value == null || value.isEmpty ? 'Please enter password' : null,
+                          ),
+                          const SizedBox(height: 32),
+                          
+                          SizedBox(
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _login,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.cyan,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'LOGIN',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: effectiveColorScheme.error.withAlpha(31),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: effectiveColorScheme.error),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(color: effectiveColorScheme.error),
-                    textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-              TextFormField(
-                controller: _usernameController,
-                style: TextStyle(color: effectiveColorScheme.onSurface),
-                decoration: InputDecoration(
-                  labelText: 'Username',
-                  labelStyle: TextStyle(color: effectiveColorScheme.onSurface.withAlpha(153)),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: effectiveTheme.dividerColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: effectiveColorScheme.primary),
-                  ),
-                  prefixIcon: Icon(Icons.person, color: effectiveColorScheme.onSurface.withAlpha(153)),
-                ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Please enter username' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                style: TextStyle(color: effectiveColorScheme.onSurface),
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: TextStyle(color: effectiveColorScheme.onSurface.withAlpha(153)),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: effectiveTheme.dividerColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: effectiveColorScheme.primary),
-                  ),
-                  prefixIcon: Icon(Icons.lock, color: effectiveColorScheme.onSurface.withAlpha(153)),
-                ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Please enter password' : null,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: effectiveColorScheme.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: _isLoading
-                    ? SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: effectiveColorScheme.onPrimary,
-                        ),
-                      )
-                    : Text(
-                        'Login',
-                        style: TextStyle(fontSize: 16, color: effectiveColorScheme.onPrimary),
-                      ),
-              ),
-            ],
-                    ), // Column
-                  ), // Form
-                ), // Padding
-              ), // Card
-            ), // ConstrainedBox
-          ), // SingleChildScrollView
-        ), // Center
-      ); // Scaffold
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -153,6 +153,27 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error('Error fetching devices:', err));
     }
 
+    // Listen for real-time updates
+    document.addEventListener('device-update', (e) => {
+        const updatedDevice = e.detail;
+        // Update allDevices array
+        const index = allDevices.findIndex(d => d.id === updatedDevice.id);
+        if (index !== -1) {
+            allDevices[index] = updatedDevice;
+        } else {
+            allDevices.push(updatedDevice);
+        }
+        
+        // Re-render
+        renderDevices(allDevices);
+
+        // If modal is open for this device, update it
+        const modal = document.getElementById('deviceModal');
+        if (modal.style.display === 'block' && modal.dataset.deviceId === updatedDevice.id) {
+            updateModalContent(updatedDevice);
+        }
+    });
+
     function renderDevices(devices) {
         if (devices.length === 0) {
             grid.innerHTML = '<div class="loading-devices"><i class="fas fa-spinner fa-spin"></i> Apparaten zoeken...</div>';

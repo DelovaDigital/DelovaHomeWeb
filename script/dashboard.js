@@ -377,4 +377,9 @@ document.addEventListener('DOMContentLoaded', () => {
       es.addEventListener('rooms-changed', (e)=>{ render(); });
     }catch(e){ /* ignore */ }
   }
+
+  // Listen for real-time device updates via WebSocket
+  document.addEventListener('device-update', (e) => {
+      render();
+  });
 });

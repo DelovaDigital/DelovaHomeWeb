@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'dart:convert';
-import 'package:delovahome/main.dart';
 import 'package:flutter/material.dart';
 import 'package:nsd/nsd.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
+
+import '../widgets/gradient_background.dart';
+import '../widgets/glass_card.dart';
 
 class HubDiscoveryScreen extends StatefulWidget {
   const HubDiscoveryScreen({super.key});
@@ -14,14 +16,23 @@ class HubDiscoveryScreen extends StatefulWidget {
   State<HubDiscoveryScreen> createState() => _HubDiscoveryScreenState();
 }
 
-class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
+class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTickerProviderStateMixin {
   final List<Service> _hubs = [];
   Discovery? _discovery;
   bool _isScanning = false;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
     _checkAutoLogin();
     _startDiscovery();
   }
@@ -65,6 +76,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
   @override
   void dispose() {
     _stopDiscovery();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -122,45 +134,58 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
 
   void _showManualConnectDialog() {
     final ipController = TextEditingController();
+    final portController = TextEditingController(text: '3000');
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
+        backgroundColor: const Color(0xFF1A237E),
         title: const Text('Manual Connect', style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: ipController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: 'Hub IP Address',
-            labelStyle: TextStyle(color: Colors.grey),
-            hintText: 'e.g. 192.168.0.216',
-            hintStyle: TextStyle(color: Colors.grey),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
-          ),
-          keyboardType: TextInputType.numberWithOptions(decimal: true),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ipController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'IP Address',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              ),
+            ),
+            TextField(
+              controller: portController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Port',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
             onPressed: () {
-              final ip = ipController.text.trim();
-              if (ip.isNotEmpty) {
+              if (ipController.text.isNotEmpty) {
                 Navigator.pop(context);
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => LoginScreen(
-                      hubIp: ip,
-                      hubPort: '3000',
-                      hubName: 'Manual Hub',
+                      hubIp: ipController.text,
+                      hubPort: portController.text,
                     ),
                   ),
                 );
               }
             },
-            child: const Text('Connect'),
+            child: const Text('Connect', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -208,83 +233,129 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Selecteer uw Hub'),
-        backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.brightness_6),
-            tooltip: 'Thema wisselen',
-            onPressed: () {
-              final appState = DelovaHome.of(context);
-              appState?.cycleTheme();
-            },
-          ),
-          if (_isScanning)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.only(right: 16.0),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+      body: GradientBackground(
+        child: Column(
+          children: [
+            const SizedBox(height: 60),
+            // Animated Logo / Icon
+            ScaleTransition(
+              scale: _pulseAnimation,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.cyan.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    )
+                  ],
+                ),
+                child: const Icon(
+                  Icons.home_rounded,
+                  size: 60,
+                  color: Colors.white,
                 ),
               ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
-                _hubs.clear();
-                _startDiscovery();
-              },
             ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Handmatig verbinden',
-            onPressed: _showManualConnectDialog,
-          ),
-        ],
-      ),
-      body: _hubs.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.router, size: 80, color: Colors.grey[800]),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Zoeken naar DelovaHome Hubs...',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 40),
-                  TextButton(
-                    onPressed: _showManualConnectDialog,
-                    child: const Text('Voer IP handmatig in'),
-                  ),
-                ],
+            const SizedBox(height: 20),
+            const Text(
+              'DelovaHome',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.5,
               ),
-            )
-          : ListView.builder(
-              itemCount: _hubs.length,
-              itemBuilder: (context, index) {
-                final hub = _hubs[index];
-                return Card(
-                  color: Colors.grey[900],
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.home_filled, color: Colors.amber, size: 32),
-                    title: Text(hub.name ?? 'Unknown Hub', style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(
-                      '${hub.host}:${hub.port}',
-                      style: TextStyle(color: Colors.grey[400]),
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey),
-                    onTap: () => _connectToHub(hub),
-                  ),
-                );
-              },
             ),
+            const SizedBox(height: 10),
+            Text(
+              _isScanning ? 'Searching for hubs...' : 'Scan complete',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 40),
+            
+            // Hub List
+            Expanded(
+              child: _hubs.isEmpty
+                  ? Center(
+                      child: _isScanning
+                          ? const CircularProgressIndicator(color: Colors.cyan)
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.wifi_off, color: Colors.white54, size: 48),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'No hubs found',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                                TextButton(
+                                  onPressed: _startDiscovery,
+                                  child: const Text('Retry Scan', style: TextStyle(color: Colors.cyan)),
+                                ),
+                              ],
+                            ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: _hubs.length,
+                      itemBuilder: (context, index) {
+                        final hub = _hubs[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: GlassCard(
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.all(16),
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.cyan.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.router, color: Colors.white),
+                              ),
+                              title: Text(
+                                hub.name ?? 'Unknown Hub',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${hub.host}:${hub.port}',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+                              onTap: () => _connectToHub(hub),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            
+            // Manual Connect Button
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: TextButton.icon(
+                onPressed: _showManualConnectDialog,
+                icon: const Icon(Icons.add_link, color: Colors.white70),
+                label: const Text(
+                  'Connect Manually',
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

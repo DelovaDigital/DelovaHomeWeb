@@ -142,23 +142,50 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     }
   }
 
-  Future<void> _toggleAccess(int userId, bool currentAccess) async {
+  Future<void> _deleteUser(int userId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete User'),
+        content: const Text('Are you sure you want to delete this user?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
     try {
       final baseUrl = await _apiService.getBaseUrl();
       final client = HttpClient();
       client.badCertificateCallback = (cert, host, port) => true;
-      final request = await client.postUrl(Uri.parse('$baseUrl/api/users/$userId/access'));
-      request.headers.set('Content-Type', 'application/json');
-      request.add(utf8.encode(jsonEncode({
-        'access': !currentAccess,
-      })));
+      final request = await client.deleteUrl(Uri.parse('$baseUrl/api/users/$userId'));
       
       final response = await request.close();
       if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('User deleted')),
+          );
+        }
         _loadUsers();
+      } else {
+         if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to delete user')),
+          );
+        }
       }
     } catch (e) {
-      debugPrint('Error toggling access: $e');
+      debugPrint('Error deleting user: $e');
     }
   }
 
@@ -174,21 +201,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               itemCount: _users.length,
               itemBuilder: (context, index) {
                 final user = _users[index];
-                final hasAccess = user['HubAccess'] == true || user['HubAccess'] == 1;
                 
                 return ListTile(
                   leading: CircleAvatar(child: Text(user['Username'][0].toUpperCase())),
                   title: Text(user['Username']),
                   subtitle: Text(user['Role'] ?? 'User'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Hub Access: '),
-                      Switch(
-                        value: hasAccess,
-                        onChanged: (val) => _toggleAccess(user['Id'], hasAccess),
-                      ),
-                    ],
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _deleteUser(user['Id']),
                   ),
                 );
               },

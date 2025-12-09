@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
+import '../widgets/glass_card.dart';
 import '../widgets/device_card.dart';
 
 class DevicesTab extends StatefulWidget {
@@ -83,38 +84,40 @@ class _DevicesTabState extends State<DevicesTab> {
       children: [
         // Search Bar
         Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Search devices...',
-              hintStyle: const TextStyle(color: Colors.grey),
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              filled: true,
-              fillColor: Colors.grey[900],
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: GlassCard(
+            child: TextField(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search devices...',
+                hintStyle: const TextStyle(color: Colors.white54),
+                prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                filled: true,
+                fillColor: Colors.transparent,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              onChanged: (value) {
+                _searchQuery = value;
+                _applyFilters();
+              },
             ),
-            onChanged: (value) {
-              _searchQuery = value;
-              _applyFilters();
-            },
           ),
         ),
 
         // Category Chips
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
             children: _categories.map((category) {
               final isSelected = _selectedCategory == category;
               return Padding(
                 padding: const EdgeInsets.only(right: 8.0),
-                child: FilterChip(
+                child: ChoiceChip(
                   label: Text(category),
                   selected: isSelected,
                   onSelected: (selected) {
@@ -123,14 +126,17 @@ class _DevicesTabState extends State<DevicesTab> {
                       _applyFilters();
                     });
                   },
-                  backgroundColor: Colors.grey[900],
-                  selectedColor: Colors.blue,
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
+                  selectedColor: Colors.cyan.withValues(alpha: 0.5),
                   labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey,
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
-                    side: BorderSide.none,
+                    side: BorderSide(
+                      color: isSelected ? Colors.cyan : Colors.white.withValues(alpha: 0.2),
+                    ),
                   ),
                   showCheckmark: false,
                 ),
@@ -144,16 +150,17 @@ class _DevicesTabState extends State<DevicesTab> {
         // Device List
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: CircularProgressIndicator(color: Colors.cyan))
               : _error != null
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+                          Text('Error: $_error', style: const TextStyle(color: Colors.redAccent)),
                           const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: () => _fetchDevices(),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -161,15 +168,21 @@ class _DevicesTabState extends State<DevicesTab> {
                     )
                   : RefreshIndicator(
                       onRefresh: () => _fetchDevices(),
+                      color: Colors.cyan,
                       child: _filteredDevices.isEmpty
-                          ? const Center(child: Text('No devices found', style: TextStyle(color: Colors.grey)))
+                          ? const Center(child: Text('No devices found', style: TextStyle(color: Colors.white54)))
                           : ListView.builder(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                               itemCount: _filteredDevices.length,
                               itemBuilder: (context, index) {
-                                return DeviceCard(
-                                  device: _filteredDevices[index],
-                                  onRefresh: () => _fetchDevices(silent: true),
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: GlassCard(
+                                    child: DeviceCard(
+                                      device: _filteredDevices[index],
+                                      onRefresh: () => _fetchDevices(silent: true),
+                                    ),
+                                  ),
                                 );
                               },
                             ),

@@ -42,44 +42,43 @@ def main():
 
     # Try Port 8002 (Secure)
     try:
-        print("Attempting connection on Port 8002 (Secure)...")
+        print("\n--- Testing Port 8002 (Secure Tizen) ---")
         tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=10)
-        
-        # This triggers the connection and pairing prompt if needed
         tv.open()
-        
-        print("Connection successful!")
+        print(f"Connected! Token received: {tv.token}")
         
         if tv.token and tv.token != token:
-            print("New token received!")
+            print("Saving new token...")
             save_token(ip, tv.token)
         
-        print("Sending KEY_VOLUP to test...")
+        print("Sending KEY_VOLUP...")
         tv.send_key('KEY_VOLUP')
-        print("Command sent.")
+        print("Command sent (8002). Did the volume change?")
         
-        time.sleep(1)
-        
-        print("Sending KEY_HOME to test...")
-        tv.send_key('KEY_HOME')
-        print("Command sent.")
+        tv.close()
 
     except Exception as e:
         print(f"Port 8002 failed: {e}")
-        print("Attempting connection on Port 8001 (Legacy)...")
+
+    # Try Port 8001 (Legacy Tizen / J-Series)
+    try:
+        print("\n--- Testing Port 8001 (Legacy Tizen / J-Series) ---")
+        tv = SamsungTVWS(host=ip, port=8001, token=token, name='DelovaHome', timeout=10)
+        tv.open()
+        print(f"Connected! Token received: {tv.token}")
         
-        try:
-            tv = SamsungTVWS(host=ip, port=8001, token=token, name='DelovaHome', timeout=10)
-            tv.open()
-            print("Connection successful on Port 8001!")
+        if tv.token and tv.token != token:
+            print("Saving new token...")
+            save_token(ip, tv.token)
             
-            print("Sending KEY_VOLUP to test...")
-            tv.send_key('KEY_VOLUP')
-            print("Command sent.")
+        print("Sending KEY_VOLUP...")
+        tv.send_key('KEY_VOLUP')
+        print("Command sent (8001). Did the volume change?")
+        
+        tv.close()
             
-        except Exception as e2:
-            print(f"Port 8001 failed: {e2}")
-            print("Could not connect to Samsung TV.")
+    except Exception as e2:
+        print(f"Port 8001 failed: {e2}")
 
 if __name__ == "__main__":
     main()

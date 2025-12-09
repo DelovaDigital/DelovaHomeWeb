@@ -92,6 +92,8 @@ class DeviceManager extends EventEmitter {
         }
     }
 
+        
+
     loadAppleTvCredentials() {
         try {
             const credPath = path.join(__dirname, '../appletv-credentials.json');
@@ -138,24 +140,83 @@ class DeviceManager extends EventEmitter {
             if (fs.existsSync(credsPath)) {
                 this.cameraCredentials = JSON.parse(fs.readFileSync(credsPath));
                 console.log(`Loaded credentials for ${Object.keys(this.cameraCredentials).length} Camera(s)`);
-            } else {
-                this.cameraCredentials = {};
             }
         } catch (e) {
             console.error('Failed to load Camera credentials:', e.message);
-            this.cameraCredentials = {};
         }
     }
 
-    loadSamsungCredentials() {
+    async loadDenonInputs(device) {
+        if (!device || !device.ip) return;
+        
         try {
-            const credsPath = path.join(__dirname, '../samsung-credentials.json');
-            if (fs.existsSync(credsPath)) {
-                const creds = JSON.parse(fs.readFileSync(credsPath));
-                this.samsungCredentials = creds;
-                console.log(`Loaded credentials for ${Object.keys(creds).length} Samsung TV(s)`);
-            } else {
-                this.samsungCredentials = {};
+            const fetchXml = async (path) => {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 2000);
+                try {
+                    const res = await fetch(`http://${device.ip}${path}`, { signal: controller.signal });
+                    return await res.text();
+                } finally {
+                    clearTimeout(timeout);
+                }
+            };
+
+            let inputs = null;
+            try {
+                // Try MainZone XML first (older/standard models)
+                const xml = await fetchXml('/goform/formMainZone_MainZoneXml.xml');
+
+                // Try to parse common renamed source tags or simple name listings
+                // Look for patterns like <RenameSource>Label</RenameSource> or <InputFuncList>...</InputFuncList>
+                const renameMatches = xml.match(/<RenameSource\d*>([^<]+)<\/RenameSource\d*>/gi);
+                if (renameMatches && renameMatches.length > 0) {
+                    inputs = renameMatches.map(m => {
+                        const name = m.replace(/<.*?>/g, '').trim();
+                        // Default to raw name, Denon code will be resolved by server if needed
+                        return { id: name.toUpperCase().replace(/\s+/g, ''), name };
+                    });
+                } else {
+                    // Fallback: try to extract things that look like input names
+                    const approx = [];
+                    const candidateMatches = xml.match(/>(TV|HDMI\d|HDMI\s?\d|BLUETOOTH|AUX|TUNER|NET|PHONO|CD|GAME|USB|ARC|BD|DVD)<\//gi);
+                    if (candidateMatches) {
+                        candidateMatches.forEach(m => {
+                            const name = m.replace(/[<>\/]*/g, '').trim();
+                            approx.push({ id: name.toUpperCase(), name });
+                        });
+                    }
+
+                    if (approx.length) inputs = approx;
+                }
+            } catch (e) {
+                // ignore fetch errors
+            }
+
+            // If we didn't discover inputs, set a sensible default mapping with Denon SI codes
+            if (!inputs) {
+                inputs = [
+                    { id: 'SITV', name: 'TV' },
+                    { id: 'SIHDMI1', name: 'HDMI1' },
+                    { id: 'SIHDMI2', name: 'HDMI2' },
+                    { id: 'SIHDMI3', name: 'HDMI3' },
+                    { id: 'SIHDMI4', name: 'HDMI4' },
+                    { id: 'SIBT', name: 'Bluetooth' },
+                    { id: 'SIAUX1', name: 'AUX' },
+                    { id: 'SITUNER', name: 'Tuner' },
+                    { id: 'SINET', name: 'NET' },
+                    { id: 'SIPHONO', name: 'Phono' },
+                    { id: 'SICD', name: 'CD' }
+                ];
+            }
+
+            // Save to the device object so frontend can show options
+            try {
+                device.inputs = inputs;
+                this.emit('device-updated', device);
+                console.log(`[Denon] Inputs updated for ${device.name}: ${inputs.map(i => i.name).join(', ')}`);
+            } catch (e) {
+                console.error('[Denon] Failed to set inputs on device object:', e);
+            }
             }
         } catch (e) {
             console.error('Failed to load Samsung credentials:', e.message);
@@ -1250,6 +1311,25 @@ class DeviceManager extends EventEmitter {
             device.state.input = value;
         }
 
+        // Generic Wake-on-LAN command: try to resolve MAC and send magic packet
+        if (command === 'wake' || command === 'wake_on_lan') {
+            try {
+                const mac = device.mac || device.macAddress || await this.getMacAddress(device.ip);
+                if (mac) {
+                    console.log(`[DeviceManager] Sending WOL to ${device.name} (${mac})`);
+                    this.sendWol(mac);
+                    device.state.on = true; // optimistic
+                    this.emit('device-updated', device);
+                } else {
+                    console.warn(`[DeviceManager] No MAC address known for ${device.name}, cannot send WOL`);
+                }
+            } catch (e) {
+                console.error('Error while attempting WOL:', e);
+            }
+
+            return device;
+        }
+
         // Handle Protocol Specific Actions
         if (device.protocol === 'mdns-googlecast') {
             this.handleAndroidTvCommand(device, command, value);
@@ -1379,6 +1459,27 @@ class DeviceManager extends EventEmitter {
         lgtvClient.on('connect', () => {
             if (command === 'set_volume') {
                 lgtvClient.request('ssap://audio/setVolume', { volume: parseInt(value) });
+            } else if (command === 'set_input') {
+                // Map common friendly names to webOS input identifiers
+                const inputMap = {
+                    'tv': 'TV',
+                    'hdmi1': 'HDMI_1',
+                    'hdmi2': 'HDMI_2',
+                    'hdmi3': 'HDMI_3',
+                    'hdmi4': 'HDMI_4',
+                    'game': 'GAME',
+                    'arc': 'ARC',
+                    'usb': 'USB'
+                };
+
+                const inputId = (value && inputMap[value.toLowerCase()]) ? inputMap[value.toLowerCase()] : value;
+                try {
+                    if (typeof inputId === 'string') {
+                        lgtvClient.request('ssap://com.webos.service.tvinput/setExternalInput', { inputId: inputId });
+                    }
+                } catch (e) {
+                    console.error('[LG TV] set_input failed:', e && e.message ? e.message : e);
+                }
             } else if (command === 'turn_off') {
                 lgtvClient.request('ssap://system/turnOff');
             } else if (command === 'toggle') {

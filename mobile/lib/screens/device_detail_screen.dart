@@ -35,6 +35,54 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     }
   }
 
+  Future<void> _showInputDialog() async {
+    // Prefer device-provided inputs (e.g., Denon) if available, else fallback to common inputs
+    final List<Map<String, String>> options = [];
+    final inputs = widget.device.inputs;
+    if (inputs != null) {
+      for (final inp in inputs) {
+        if (inp is Map) {
+          options.add({'label': (inp['name'] ?? inp['label'] ?? inp['id']).toString(), 'value': (inp['id'] ?? inp['value'] ?? inp['name']).toString()});
+        } else if (inp is String) {
+          options.add({'label': inp, 'value': inp.toLowerCase()});
+        }
+      }
+    }
+
+    if (options.isEmpty) {
+      options.addAll([
+        {'label': 'HDMI 1', 'value': 'hdmi1'},
+        {'label': 'HDMI 2', 'value': 'hdmi2'},
+        {'label': 'HDMI 3', 'value': 'hdmi3'},
+        {'label': 'HDMI 4', 'value': 'hdmi4'},
+        {'label': 'TV Tuner', 'value': 'tv'},
+        {'label': 'Game', 'value': 'game'},
+        {'label': 'ARC', 'value': 'arc'},
+        {'label': 'USB', 'value': 'usb'},
+      ]);
+    }
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Select Input'),
+        children: options.map((opt) => SimpleDialogOption(
+          onPressed: () => Navigator.pop(context, opt['value'] as String),
+          child: Text(opt['label'] as String),
+        )).toList(),
+      ),
+    );
+
+    if (choice != null && choice.isNotEmpty) {
+      try {
+        await _sendCommand('set_input', {'value': choice});
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Input change requested')));
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   Future<void> _checkAndInitCamera() async {
     final prefs = await SharedPreferences.getInstance();
     final user = prefs.getString('cam_user_${widget.device.id}');
@@ -239,6 +287,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Widget build(BuildContext context) {
     final isLight = widget.device.type.toLowerCase() == 'light' || widget.device.type.toLowerCase().contains('bulb');
     final isTv = widget.device.type.toLowerCase() == 'tv';
+    // isPc is calculated in _buildBody, removing unused variable here
     final isSpeaker = widget.device.type.toLowerCase() == 'speaker' || isTv;
     final isThermostat = widget.device.type.toLowerCase() == 'thermostat' || widget.device.type.toLowerCase() == 'ac' || widget.device.type.toLowerCase() == 'climate';
     final isLock = widget.device.type.toLowerCase() == 'lock' || widget.device.type.toLowerCase() == 'security';
@@ -271,6 +320,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isSensor = widget.device.type.toLowerCase() == 'sensor';
     final isCamera = widget.device.type.toLowerCase() == 'camera';
     final isPrinter = widget.device.type.toLowerCase() == 'printer';
+    // Determine if this device should be treated like a PC/game console for Wake actions
+    final isPc = widget.device.type.toLowerCase().contains('pc') || widget.device.name.toLowerCase().contains('ps5') || widget.device.type.toLowerCase().contains('game');
     
     final isPoweredOn = widget.device.status.isOn;
 
@@ -550,8 +601,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                     );
                                     if (confirm == true) {
                                       await _sendCommand('replace_cartridge', {'value': {'label': ink['label'] ?? ink['color']}});
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cartridge gemarkeerd als vervangen')));
-                                      widget.onRefresh();
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cartridge gemarkeerd als vervangen')));
+                                        widget.onRefresh();
+                                      }
                                     }
                                   },
                                   icon: const Icon(Icons.refresh),
@@ -748,6 +801,25 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 const Divider(color: Colors.grey),
                 const SizedBox(height: 20),
                 _buildRemoteControl(),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => _showInputDialog(),
+                      icon: const Icon(Icons.input),
+                      label: const Text('Switch Input'),
+                    ),
+                    if (isPc) ElevatedButton.icon(
+                      onPressed: () async {
+                        await _sendCommand('wake');
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Wake requested')));
+                      },
+                      icon: const Icon(Icons.power),
+                      label: const Text('Wake Device'),
+                    ),
+                  ],
+                ),
               ],
               
               const SizedBox(height: 50),

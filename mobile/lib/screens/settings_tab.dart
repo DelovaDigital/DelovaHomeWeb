@@ -165,6 +165,8 @@ class _SettingsTabState extends State<SettingsTab> {
                     onPressed: () async {
                       if (nameController.text.isEmpty || ipController.text.isEmpty) return;
                       setState(() { isLoading = true; status = 'Adding...'; });
+                      final navigator = Navigator.of(context);
+                      final messenger = ScaffoldMessenger.of(context);
                       try {
                         final data = {
                           'name': nameController.text,
@@ -175,8 +177,8 @@ class _SettingsTabState extends State<SettingsTab> {
                         };
                         final res = await _apiService.addNas(data);
                         if (res['ok'] == true) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('NAS Added!')));
+                          navigator.pop();
+                          messenger.showSnackBar(const SnackBar(content: Text('NAS Added!')));
                         } else {
                           setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
                         }
@@ -235,11 +237,13 @@ class _SettingsTabState extends State<SettingsTab> {
                   onPressed: () async {
                     if (ipController.text.isEmpty || pinController.text.isEmpty) return;
                     setState(() { isLoading = true; status = 'Submitting...'; });
+                    final navigator = Navigator.of(context);
+                    final messenger = ScaffoldMessenger.of(context);
                     try {
                       final res = await _apiService.pairDevice(ipController.text, pinController.text);
                       if (res['success'] == true) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pairing Submitted!')));
+                        navigator.pop();
+                        messenger.showSnackBar(const SnackBar(content: Text('Pairing Submitted!')));
                       } else {
                         setState(() { status = 'Error: ${res['error'] ?? 'Unknown error'}'; isLoading = false; });
                       }
@@ -316,11 +320,13 @@ class _SettingsTabState extends State<SettingsTab> {
                     onPressed: () async {
                       if (pinController.text.isEmpty) return;
                       setState(() { isLoading = true; status = 'Verifying PIN...'; });
+                      final navigator = Navigator.of(context);
+                      final messenger = ScaffoldMessenger.of(context);
                       try {
                         final res = await _apiService.submitPairingPin(pinController.text);
                         if (res['ok'] == true) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pairing Successful!')));
+                          navigator.pop();
+                          messenger.showSnackBar(const SnackBar(content: Text('Pairing Successful!')));
                         } else {
                           setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
                         }

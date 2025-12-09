@@ -227,6 +227,7 @@ import '../widgets/device_card.dart';
                         onPressed: () async {
                           // Play current Spotify track on a Sonos device
                           try {
+                            final messenger = ScaffoldMessenger.of(context);
                             var status = _spotifyStatus;
                             if (status == null) {
                               status = await _apiService.getSpotifyStatus();
@@ -239,16 +240,17 @@ import '../widgets/device_card.dart';
                             playUri ??= status['context'] != null ? status['context']['uri'] : null;
                           
                             if (playUri == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No current Spotify track to play on Sonos')));
+                              messenger.showSnackBar(const SnackBar(content: Text('No current Spotify track to play on Sonos')));
                               return;
                             }
 
                             final sonos = await _apiService.getSonosDevices();
                             if (sonos.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No Sonos devices found')));
+                              messenger.showSnackBar(const SnackBar(content: Text('No Sonos devices found')));
                               return;
                             }
 
+                            if (!mounted) return;
                             final chosen = await showDialog<Map<String, dynamic>?>(
                               context: context,
                               builder: (ctx) => AlertDialog(

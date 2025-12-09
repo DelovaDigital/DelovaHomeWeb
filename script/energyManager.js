@@ -3,6 +3,11 @@ const EventEmitter = require('events');
 class EnergyManager extends EventEmitter {
     constructor() {
         super();
+        this.config = {
+            solarCapacity: 4000, // Watts
+            gridLimit: 5000,     // Watts
+            costPerKwh: 0.25     // Currency
+        };
         this.data = {
             solar: {
                 currentPower: 0, // Watts
@@ -24,6 +29,16 @@ class EnergyManager extends EventEmitter {
         this.startSimulation();
     }
 
+    setConfig(newConfig) {
+        this.config = { ...this.config, ...newConfig };
+        console.log('[Energy] Config updated:', this.config);
+        // In a real scenario, this might trigger hardware reconfiguration
+    }
+
+    getConfig() {
+        return this.config;
+    }
+
     startSimulation() {
         setInterval(() => {
             // Simulate solar generation (bell curve-ish based on time of day)
@@ -33,7 +48,9 @@ class EnergyManager extends EventEmitter {
                 // Peak at 13:00
                 const peak = 13;
                 const dist = Math.abs(hour - peak);
-                solarGen = Math.max(0, 3000 - (dist * 500)) + (Math.random() * 200 - 100);
+                // Use configured capacity
+                const maxGen = this.config.solarCapacity || 3000;
+                solarGen = Math.max(0, maxGen - (dist * (maxGen / 6))) + (Math.random() * 200 - 100);
             }
             
             // Simulate home usage

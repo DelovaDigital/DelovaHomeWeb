@@ -1187,6 +1187,26 @@ app.post('/api/device/pair', (req, res) => {
     }
 });
 
+// --- Energy API ---
+app.get('/api/energy/config', (req, res) => {
+    res.json(energyManager.getConfig());
+});
+
+app.post('/api/energy/config', express.json(), (req, res) => {
+    energyManager.setConfig(req.body);
+    res.json({ success: true });
+});
+
+// --- KNX API ---
+app.get('/api/knx/config', (req, res) => {
+    res.json(knxManager.getConfig());
+});
+
+app.post('/api/knx/config', express.json(), (req, res) => {
+    knxManager.setConfig(req.body);
+    res.json({ success: true });
+});
+
 const handleUpgrade = (request, socket, head) => {
     const parsedUrl = url.parse(request.url, true);
     const pathname = parsedUrl.pathname;

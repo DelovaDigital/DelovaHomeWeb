@@ -14,12 +14,27 @@ class KnxManager extends EventEmitter {
         };
     }
 
+    setConfig(newConfig) {
+        this.config = { ...this.config, ...newConfig };
+        // If we are connected, maybe reconnect?
+        if (this.connected) {
+            console.log('[KNX] Config changed, reconnecting...');
+            this.connect(this.config);
+        }
+    }
+
+    getConfig() {
+        return this.config;
+    }
+
     connect(config) {
         if (this.connection) {
             this.disconnect();
         }
 
-        this.config = { ...this.config, ...config };
+        if (config) {
+            this.config = { ...this.config, ...config };
+        }
 
         console.log(`[KNX] Connecting to ${this.config.ipAddr}:${this.config.ipPort}...`);
 

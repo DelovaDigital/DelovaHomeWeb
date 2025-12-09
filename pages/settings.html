@@ -38,189 +38,215 @@
                 <p>Beheer je account en voorkeuren</p>
             </header>
 
-            <div class="settings-grid">
-                <!-- Hub Info Card -->
-                <div class="card settings-card">
-                    <div class="card-header">
-                        <i class="fas fa-server"></i>
-                        <h3>Hub Informatie</h3>
+            <div class="settings-container" style="display: flex; gap: 20px; height: calc(100vh - 150px);">
+                <!-- Sidebar -->
+                <aside class="settings-sidebar" style="width: 250px; background: var(--card-bg); border-radius: 15px; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+                    <div class="settings-nav-item active" data-target="general" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                        <i class="fas fa-sliders-h"></i> Algemeen
                     </div>
-                    <div class="card-body">
-                        <div class="info-row">
-                            <span class="label">Hub Naam:</span>
-                            <span class="value" id="hubName">Laden...</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Hub ID:</span>
-                            <span class="value" id="hubId">Laden...</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Versie:</span>
-                            <span class="value" id="hubVersion">Laden...</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="label">Status:</span>
-                            <span class="value status-online"><i class="fas fa-circle"></i> Online</span>
-                        </div>
+                    <div class="settings-nav-item" data-target="integrations" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                        <i class="fas fa-plug"></i> Integraties
                     </div>
-                </div>
+                    <div class="settings-nav-item" data-target="energy" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                        <i class="fas fa-bolt"></i> Energie
+                    </div>
+                    <div class="settings-nav-item" data-target="knx" style="padding: 12px 15px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: var(--text-color); transition: background 0.2s;">
+                        <i class="fas fa-network-wired"></i> KNX
+                    </div>
+                </aside>
 
-                <div class="card settings-card">
-                    <div class="card-header">
-                        <i class="fas fa-user-circle"></i>
-                        <h3>Account</h3>
-                    </div>
-                    <div class="card-body">
-                        <form>
-                            <div class="form-group">
-                                <label for="username">Wijzig gebruikersnaam</label>
-                                <input type="text" id="username" placeholder="Nieuwe gebruikersnaam">
+                <!-- Content -->
+                <div class="settings-content" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    
+                    <!-- General Section -->
+                    <div id="general" class="settings-section active">
+                        <!-- Hub Info Card -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-server"></i>
+                                <h3>Hub Informatie</h3>
                             </div>
-                            <button type="submit" class="btn btn-primary">Opslaan</button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Security Settings -->
-                <div class="card settings-card">
-                    <div class="card-header">
-                        <i class="fas fa-lock"></i>
-                        <h3>Beveiliging</h3>
-                    </div>
-                    <div class="card-body">
-                        <form onsubmit="event.preventDefault();">
-                            <div class="form-group">
-                                <label for="current-password">Huidig wachtwoord</label>
-                                <input type="password" id="current-password" placeholder="••••••••">
+                            <div class="card-body">
+                                <div class="info-row">
+                                    <span class="label">Hub Naam:</span>
+                                    <span class="value" id="hubName">Laden...</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Hub ID:</span>
+                                    <span class="value" id="hubId">Laden...</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Versie:</span>
+                                    <span class="value" id="hubVersion">Laden...</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Status:</span>
+                                    <span class="value status-online"><i class="fas fa-circle"></i> Online</span>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="new-password">Nieuw wachtwoord</label>
-                                <input type="password" id="new-password" placeholder="••••••••">
-                            </div>
-                            <button type="submit" class="btn btn-secondary">Wachtwoord wijzigen</button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card settings-card">
-                    <div class="card-header">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <h3>Info</h3>
-                    </div>
-                    <div class="card-body">
-                        <p>DelovaHub Versie 0.0.3+Beta</p>
-                        <button type="submit" class="btn btn-primary btnCheck">Check for updates</button>
-                        <p>© 2025 DelovaHub. Alle rechten voorbehouden.</p>
-                    </div>
-                </div>
-
-                <!-- Apple Device Pairing -->
-                <div class="card settings-card">
-                    <div class="card-header">
-                        <i class="fab fa-apple"></i>
-                        <h3>Apple Apparaat Koppelen</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted" style="margin-bottom: 15px; font-size: 0.9em;">
-                            Koppel een Apple TV of Mac (AirPlay Receiver) om deze te bedienen.
-                        </p>
-                        <div id="atv-pairing-step-1">
-                            <div class="form-group">
-                                <label for="atv-ip">IP Adres</label>
-                                <input type="text" id="atv-ip" placeholder="192.168.0.x">
-                            </div>
-                            <button id="btn-start-pairing" class="btn btn-primary">Start Koppelen</button>
                         </div>
-                        <div id="atv-pairing-step-2" style="display:none;">
-                            <p>Voer de PIN code in die op je TV verschijnt:</p>
-                            <div class="form-group">
-                                <label for="atv-pin">PIN Code</label>
-                                <input type="text" id="atv-pin" placeholder="1234" maxlength="4">
-                            </div>
-                            <button id="btn-submit-pin" class="btn btn-primary">Verstuur PIN</button>
-                        </div>
-                        <div id="atv-pairing-status" style="margin-top: 10px; font-weight: bold;"></div>
-                    </div>
-                </div>
 
-                <!-- NAS Pairing -->
-                <div class="card settings-card">
-                    <div class="card-header">
-                        <i class="fas fa-hdd"></i>
-                        <h3>NAS Koppelen</h3>
-                    </div>
-                    <div class="card-body">
-                        <form id="nas-form" onsubmit="event.preventDefault();">
-                            <div class="form-group">
-                                <label for="nas-host">Host / IP</label>
-                                <input type="text" id="nas-host" placeholder="192.168.0.x">
+                        <!-- Preferences -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-paint-brush"></i>
+                                <h3>Voorkeuren</h3>
                             </div>
-                            <div class="form-group">
-                                <label for="nas-share">Share Naam</label>
-                                <input type="text" id="nas-share" placeholder="public">
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Donkere modus</span>
+                                        <span class="setting-desc">Schakel donker thema in</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="darkModeToggle">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="nas-domain">Domein (Optioneel)</label>
-                                <input type="text" id="nas-domain" placeholder="WORKGROUP">
-                            </div>
-                            <div class="form-group">
-                                <label for="nas-user">Gebruikersnaam</label>
-                                <input type="text" id="nas-user" placeholder="admin">
-                            </div>
-                            <div class="form-group">
-                                <label for="nas-pass">Wachtwoord</label>
-                                <input type="password" id="nas-pass" placeholder="••••••">
-                            </div>
-                            <button id="btn-add-nas" class="btn btn-primary">Verbinden</button>
-                        </form>
-                        <div id="nas-status" style="margin-top: 10px; font-weight: bold;"></div>
-                    </div>
-                </div>
+                        </div>
 
-                <!-- Preferences -->
-                <div class="card settings-card">
-                    <div class="card-header">
-                        <i class="fas fa-sliders-h"></i>
-                        <h3>Voorkeuren</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-label">Donkere modus</span>
-                                <span class="setting-desc">Schakel donker thema in</span>
+                        <!-- Info / Updates -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <h3>Systeem Updates</h3>
                             </div>
-                            <label class="switch">
-                                <input type="checkbox" id="darkModeToggle">
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-label">Meldingen</span>
-                                <span class="setting-desc">Ontvang updates en alerts</span>
+                            <div class="card-body">
+                                <p>DelovaHub Versie 0.0.3+Beta</p>
+                                <button type="submit" class="btn btn-primary" id="btnCheckForUpdates">Check for updates</button>
+                                <p style="margin-top: 10px; font-size: 0.8em; color: #888;">© 2025 DelovaHub. Alle rechten voorbehouden.</p>
                             </div>
-                            <label class="switch">
-                                <input type="checkbox" checked>
-                                <span class="slider round"></span>
-                            </label>
-                        </div>
-                        <div class="setting-item">
-                            <div class="setting-info">
-                                <span class="setting-label">Automatische updates</span>
-                                <span class="setting-desc">Houd deze hub up-to-date</span>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" checked>
-                                <span class="slider round"></span>
-                            </label>
                         </div>
                     </div>
+
+                    <!-- Integrations Section -->
+                    <div id="integrations" class="settings-section" style="display: none;">
+                        <!-- Apple Device Pairing -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fab fa-apple"></i>
+                                <h3>Apple Apparaat Koppelen</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted" style="margin-bottom: 15px; font-size: 0.9em;">
+                                    Koppel een Apple TV of Mac (AirPlay Receiver) om deze te bedienen.
+                                </p>
+                                <div id="atv-pairing-step-1">
+                                    <div class="form-group">
+                                        <label for="atv-ip">IP Adres</label>
+                                        <input type="text" id="atv-ip" placeholder="192.168.0.x">
+                                    </div>
+                                    <button id="btn-start-pairing" class="btn btn-primary">Start Koppelen</button>
+                                </div>
+                                <div id="atv-pairing-step-2" style="display:none;">
+                                    <p>Voer de PIN code in die op je TV verschijnt:</p>
+                                    <div class="form-group">
+                                        <label for="atv-pin">PIN Code</label>
+                                        <input type="text" id="atv-pin" placeholder="1234" maxlength="4">
+                                    </div>
+                                    <button id="btn-submit-pin" class="btn btn-primary">Verstuur PIN</button>
+                                </div>
+                                <div id="atv-pairing-status" style="margin-top: 10px; font-weight: bold;"></div>
+                            </div>
+                        </div>
+
+                        <!-- NAS Pairing -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-hdd"></i>
+                                <h3>NAS Koppelen</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="nas-form" onsubmit="event.preventDefault();">
+                                    <div class="form-group">
+                                        <label for="nas-host">Host / IP</label>
+                                        <input type="text" id="nas-host" placeholder="192.168.0.x">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="nas-share">Share Naam</label>
+                                        <input type="text" id="nas-share" placeholder="public">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="nas-domain">Domein (Optioneel)</label>
+                                        <input type="text" id="nas-domain" placeholder="WORKGROUP">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="nas-user">Gebruikersnaam</label>
+                                        <input type="text" id="nas-user" placeholder="admin">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="nas-pass">Wachtwoord</label>
+                                        <input type="password" id="nas-pass" placeholder="••••••">
+                                    </div>
+                                    <button id="btn-add-nas" class="btn btn-primary">Verbinden</button>
+                                </form>
+                                <div id="nas-status" style="margin-top: 10px; font-weight: bold;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Energy Section -->
+                    <div id="energy" class="settings-section" style="display: none;">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-solar-panel"></i>
+                                <h3>Zonnepanelen & Energie</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="energy-form" onsubmit="event.preventDefault();">
+                                    <div class="form-group">
+                                        <label for="solar-capacity">Capaciteit Zonnepanelen (W)</label>
+                                        <input type="number" id="solar-capacity" placeholder="4000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="grid-limit">Netlimiet (W)</label>
+                                        <input type="number" id="grid-limit" placeholder="5000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="cost-kwh">Kosten per kWh (€)</label>
+                                        <input type="number" step="0.01" id="cost-kwh" placeholder="0.25">
+                                    </div>
+                                    <button id="btn-save-energy" class="btn btn-primary">Opslaan</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KNX Section -->
+                    <div id="knx" class="settings-section" style="display: none;">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-network-wired"></i>
+                                <h3>KNX Gateway</h3>
+                            </div>
+                            <div class="card-body">
+                                <form id="knx-form" onsubmit="event.preventDefault();">
+                                    <div class="form-group">
+                                        <label for="knx-ip">Gateway IP Adres</label>
+                                        <input type="text" id="knx-ip" placeholder="192.168.0.x">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="knx-port">Poort</label>
+                                        <input type="number" id="knx-port" placeholder="3671" value="3671">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="knx-phys">Fysiek Adres (Client)</label>
+                                        <input type="text" id="knx-phys" placeholder="1.1.128" value="1.1.128">
+                                    </div>
+                                    <button id="btn-save-knx" class="btn btn-primary">Verbinden & Opslaan</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </main>
     </div>
     <script src="../script/script.js"></script>
     <script src="../script/script2.js"></script>
+    <script src="../script/settings.js"></script>
     <script src="../script/animations.js"></script>
 </body>
 </html>

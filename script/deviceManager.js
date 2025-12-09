@@ -1396,6 +1396,30 @@ class DeviceManager extends EventEmitter {
         lgtvClient.on('error', (err) => console.error('LG TV Error:', err));
     }
 
+    installPythonDependency(pythonPath, moduleName, ip, callback) {
+        const { spawn } = require('child_process');
+        console.log(`[DeviceManager] Installing missing dependency '${moduleName}' for ${ip} using ${pythonPath}...`);
+        
+        // Map module names to pip package names if they differ
+        let packages = [moduleName];
+        if (moduleName === 'androidtvremote2') packages = ['androidtvremote2', 'cryptography'];
+        
+        const installProc = spawn(pythonPath, ['-m', 'pip', 'install', ...packages]);
+        
+        installProc.stdout.on('data', (d) => console.log(`[pip] ${d.toString().trim()}`));
+        installProc.stderr.on('data', (d) => console.error(`[pip error] ${d.toString().trim()}`));
+        
+        installProc.on('close', (code) => {
+            if (code === 0) {
+                console.log(`[DeviceManager] Successfully installed ${moduleName}.`);
+                if (callback) callback(true);
+            } else {
+                console.error(`[DeviceManager] Failed to install ${moduleName}. Exit code: ${code}`);
+                if (callback) callback(false);
+            }
+        });
+    }
+
     getAndroidTvProcess(ip) {
         if (this.androidTvProcesses.has(ip)) {
             return this.androidTvProcesses.get(ip);
@@ -1474,6 +1498,15 @@ class DeviceManager extends EventEmitter {
                     
                     if (msg.startup) {
                         console.log(`[Android TV Service] Started. Python: ${msg.python_version}`);
+                    } else if (msg.error === 'missing_dependency') {
+                        console.warn(`[Android TV] Missing dependency: ${msg.module}. Attempting auto-install...`);
+                        this.installPythonDependency(pythonPath, msg.module, ip, (success) => {
+                            if (success) {
+                                console.log(`[Android TV] Restarting service for ${ip}...`);
+                                this.androidTvProcesses.delete(ip);
+                                setTimeout(() => this.getAndroidTvProcess(ip), 1000);
+                            }
+                        });
                     } else if (msg.status === 'pairing_required') {
                         console.log(`[Android TV Service] Pairing required for ${ip}. Please check TV for code.`);
                         this.emit('pairing-required', { ip: ip, name: 'Android TV', type: 'android-tv' });
@@ -1573,9 +1606,9 @@ class DeviceManager extends EventEmitter {
 
         const scriptPath = path.join(__dirname, 'atv_service.py');
         
-        const process = spawn(pythonPath, [scriptPath, ip]);
+        const childProc = spawn(pythonPath, [scriptPath, ip]);
         
-        process.stdout.on('data', (data) => {
+        childProc.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');
             lines.forEach(line => {
                 if (!line.trim()) return;
@@ -1584,7 +1617,7 @@ class DeviceManager extends EventEmitter {
                     if (msg.status === 'connected') {
                         console.log(`[ATV Service] Connected to ${ip}`);
                         // Immediately fetch status to sync UI
-                        process.stdin.write(JSON.stringify({ command: 'status' }) + '\n');
+                        childProc.stdin.write(JSON.stringify({ command: 'status' }) + '\n');
                     } else if (msg.error) {
                         // Suppress common connection errors to avoid log spam
                         if (!msg.error.includes('Could not find Apple TV') && 
@@ -1636,7 +1669,7 @@ class DeviceManager extends EventEmitter {
             });
         });
 
-        process.stderr.on('data', (data) => {
+        childProc.stderr.on('data', (data) => {
             const str = data.toString();
             // Filter out known asyncio noise from pyatv
             if (str.includes('Task exception was never retrieved') || 
@@ -1648,13 +1681,13 @@ class DeviceManager extends EventEmitter {
             console.error(`[ATV Service Stderr] ${ip}: ${str}`);
         });
 
-        process.on('close', (code) => {
+        childProc.on('close', (code) => {
             console.log(`[ATV Service] Process for ${ip} exited with code ${code}`);
             this.atvProcesses.delete(ip);
         });
 
-        this.atvProcesses.set(ip, process);
-        return process;
+        this.atvProcesses.set(ip, childProc);
+        return childProc;
     }
 
     async handleAirPlayCommand(device, command, value) {
@@ -1912,9 +1945,9 @@ class DeviceManager extends EventEmitter {
 
         const scriptPath = path.join(__dirname, 'samsung_service.py');
         
-        const process = spawn(pythonPath, [scriptPath, ip]);
+        const childProc = spawn(pythonPath, [scriptPath, ip]);
         
-        process.stdout.on('data', (data) => {
+        childProc.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');
             lines.forEach(line => {
                 if (!line.trim()) return;
@@ -1937,17 +1970,17 @@ class DeviceManager extends EventEmitter {
             });
         });
 
-        process.stderr.on('data', (data) => {
+        childProc.stderr.on('data', (data) => {
             // console.error(`[Samsung Service Stderr] ${ip}: ${data}`);
         });
 
-        process.on('close', (code) => {
+        childProc.on('close', (code) => {
             console.log(`[Samsung Service] Process for ${ip} exited with code ${code}`);
             this.samsungProcesses.delete(ip);
         });
 
-        this.samsungProcesses.set(ip, process);
-        return process;
+        this.samsungProcesses.set(ip, childProc);
+        return childProc;
     }
 
     async sendSamsungKeyPython(device, key) {

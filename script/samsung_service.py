@@ -36,23 +36,29 @@ def main():
     is_legacy = False
 
     # Check ports to determine generation
+    # Priority: 8002 (Modern Secure) > 8001 (Modern) > 55000 (Legacy)
     try:
-        # Check Port 55000 (Legacy)
+        # Check Port 8002 (Tizen Secure)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        if sock.connect_ex((ip, 55000)) == 0:
-            # Port 55000 is OPEN -> Likely Legacy
-            is_legacy = True
-        sock.close()
-        
-        if not is_legacy:
-            # Check Port 8002 (Tizen Secure)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(2)
-            if sock.connect_ex((ip, 8002)) != 0:
-                # Port 8002 is CLOSED.
-                pass
+        sock.settimeout(1)
+        if sock.connect_ex((ip, 8002)) == 0:
+            is_legacy = False
+        else:
             sock.close()
+            # Check Port 8001 (Tizen/J-Series)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            if sock.connect_ex((ip, 8001)) == 0:
+                is_legacy = False
+            else:
+                sock.close()
+                # Check Port 55000 (Legacy)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(1)
+                if sock.connect_ex((ip, 55000)) == 0:
+                    is_legacy = True
+                sock.close()
+        sock.close()
     except:
         pass
 

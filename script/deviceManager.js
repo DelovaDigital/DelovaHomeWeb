@@ -1773,8 +1773,9 @@ class DeviceManager extends EventEmitter {
                     if (msg.status === 'connected') {
                         console.log(`[Samsung Service] Connected to ${ip}`);
                     } else if (msg.error === 'legacy_detected') {
-                        console.log(`[Samsung Service] Legacy TV detected at ${ip}, marking as legacy.`);
-                        this.legacySamsungDevices.add(ip);
+                        console.log(`[Samsung Service] Legacy TV detected at ${ip}.`);
+                        // We do NOT permanently add to legacySamsungDevices here anymore to allow retries
+                        // this.legacySamsungDevices.add(ip);
                     }
                 } catch (e) {}
             });

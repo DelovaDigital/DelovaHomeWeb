@@ -1640,6 +1640,19 @@ class DeviceManager extends EventEmitter {
         console.log(`[Android TV] Sending command '${command}' to ${device.name} via Persistent Service...`);
 
         const process = this.getAndroidTvProcess(device.ip);
+        
+        // Special handling for pairing
+        if (command === 'pair') {
+            const payload = { type: 'pin', pin: value };
+            try {
+                process.stdin.write(JSON.stringify(payload) + '\n');
+                console.log(`[Android TV] Sent pairing PIN to ${device.ip}`);
+            } catch(e) {
+                console.error(`[Android TV] Failed to send PIN to ${device.ip}: ${e.message}`);
+            }
+            return;
+        }
+
         const payload = { command: command };
         if (value !== undefined && value !== null) {
             payload.value = value;

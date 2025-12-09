@@ -811,4 +811,70 @@ document.addEventListener('DOMContentLoaded', () => {
             controlDevice(deviceId, cmd);
         }
     });
+
+    // --- WebSocket for Real-time Events (Pairing) ---
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+    ws.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'pairing-required') {
+                showPairingModal(msg.ip, msg.name);
+            }
+        } catch (e) {
+            console.error('WebSocket error:', e);
+        }
+    };
+
+    // --- Pairing Modal Logic ---
+    const pairingModal = document.getElementById('pairingModal');
+    const pairingPinInput = document.getElementById('pairingPin');
+    const pairingIpInput = document.getElementById('pairingIp');
+    const submitPairingBtn = document.getElementById('submitPairing');
+    const closePairingModal = pairingModal ? pairingModal.querySelector('.close-modal') : null;
+
+    function showPairingModal(ip, name) {
+        if (!pairingModal) return;
+        pairingIpInput.value = ip;
+        document.getElementById('pairingMessage').textContent = `Voer de PIN code in die op ${name || 'je TV'} verschijnt:`;
+        pairingModal.style.display = 'block';
+        pairingPinInput.focus();
+    }
+
+    if (closePairingModal) {
+        closePairingModal.onclick = () => {
+            pairingModal.style.display = 'none';
+        };
+    }
+
+    if (submitPairingBtn) {
+        submitPairingBtn.onclick = () => {
+            const pin = pairingPinInput.value;
+            const ip = pairingIpInput.value;
+            
+            // Find device ID by IP
+            const device = allDevices.find(d => d.ip === ip);
+            if (!device) {
+                alert('Apparaat niet gevonden. Wacht tot het in de lijst verschijnt.');
+                return;
+            }
+
+            fetch(`/api/devices/${device.id}/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: 'pair', value: pin })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    pairingModal.style.display = 'none';
+                    pairingPinInput.value = '';
+                    alert('Koppelen gestart...');
+                } else {
+                    alert('Fout bij koppelen: ' + data.error);
+                }
+            });
+        };
+    }
 });

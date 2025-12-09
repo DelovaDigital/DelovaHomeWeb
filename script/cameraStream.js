@@ -66,6 +66,7 @@ class WebRtcCameraStream extends EventEmitter {
             "-pix_fmt", "yuv420p",
             "-g", "30", // Keyframe every 2s (15fps * 2)
             "-bsf:v", "h264_mp4toannexb", // Ensure Annex B format for RTP
+            "-x264-params", "keyint=30:min-keyint=30:scenecut=0", // Force strict keyframes
             
             "-f", "rtp",
             "-payload_type", "96",

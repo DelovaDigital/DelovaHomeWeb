@@ -133,6 +133,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         video.play().catch(e => console.error('Auto-play failed:', e));
                     };
 
+                    // Add connection state logging
+                    pc.onconnectionstatechange = () => {
+                        console.log('WebRTC Connection State:', pc.connectionState);
+                        if (pc.connectionState === 'failed') {
+                            pc.close();
+                        }
+                    };
+
                     pc.createOffer().then(offer => {
                         return pc.setLocalDescription(offer);
                     }).then(() => {

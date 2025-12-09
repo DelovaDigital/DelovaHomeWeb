@@ -88,6 +88,11 @@ class AndroidTVManager:
             await self.remote.async_finish_pairing(pin)
             print(json.dumps({"status": "paired"}), flush=True)
             
+            # Re-connect after pairing to establish control session
+            print(json.dumps({"status": "debug", "message": "Re-connecting after pairing..."}), flush=True)
+            await self.remote.async_connect()
+            print(json.dumps({"status": "connected"}), flush=True)
+            
         except Exception as e:
             print(json.dumps({"status": "pairing_failed", "error": str(e)}), flush=True)
 
@@ -138,7 +143,11 @@ class AndroidTVManager:
                 
                 key_to_send = key_map.get(command.lower(), command.upper())
                 
-                self.remote.send_key_command(key_to_send)
+                if hasattr(self.remote, 'async_send_key_command'):
+                    await self.remote.async_send_key_command(key_to_send)
+                else:
+                    self.remote.send_key_command(key_to_send)
+                    
                 print(json.dumps({"status": "ok", "command": command, "sent": key_to_send}), flush=True)
 
         except json.JSONDecodeError:

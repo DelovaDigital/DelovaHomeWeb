@@ -1405,18 +1405,22 @@ class DeviceManager extends EventEmitter {
 
         // Try several likely venv python locations, then fall back to system python3
         const isWin = process.platform === 'win32';
-        const candidates = [
-            // Windows specific paths
-            path.join(__dirname, '../.venv/Scripts/python.exe'),
-            path.join(__dirname, '../../.venv/Scripts/python.exe'),
-            path.join(process.cwd(), '.venv/Scripts/python.exe'),
-            
-            // Unix/Linux/macOS paths
-            path.join(__dirname, '../.venv/bin/python'),
-            path.join(__dirname, '../../.venv/bin/python'),
-            path.join(process.cwd(), '.venv/bin/python'),
-            '/home/pi/DelovaHome/.venv/bin/python'
-        ];
+        let candidates = [];
+        
+        if (isWin) {
+            candidates = [
+                path.join(__dirname, '../.venv/Scripts/python.exe'),
+                path.join(__dirname, '../../.venv/Scripts/python.exe'),
+                path.join(process.cwd(), '.venv/Scripts/python.exe')
+            ];
+        } else {
+            candidates = [
+                path.join(__dirname, '../.venv/bin/python'),
+                path.join(__dirname, '../../.venv/bin/python'),
+                path.join(process.cwd(), '.venv/bin/python'),
+                '/home/pi/DelovaHome/.venv/bin/python'
+            ];
+        }
 
         let pythonPath = isWin ? 'python' : 'python3';
         for (const cand of candidates) {
@@ -1495,18 +1499,22 @@ class DeviceManager extends EventEmitter {
         
         // Try to find the correct python executable
         const isWin = process.platform === 'win32';
-        const candidates = [
-            // Windows specific paths
-            path.join(__dirname, '../.venv/Scripts/python.exe'),
-            path.join(__dirname, '../../.venv/Scripts/python.exe'),
-            path.join(process.cwd(), '.venv/Scripts/python.exe'),
-            
-            // Unix/Linux/macOS paths
-            path.join(__dirname, '../.venv/bin/python'),
-            path.join(__dirname, '../../.venv/bin/python'),
-            path.join(process.cwd(), '.venv/bin/python'),
-            '/home/pi/DelovaHome/.venv/bin/python'
-        ];
+        let candidates = [];
+        
+        if (isWin) {
+            candidates = [
+                path.join(__dirname, '../.venv/Scripts/python.exe'),
+                path.join(__dirname, '../../.venv/Scripts/python.exe'),
+                path.join(process.cwd(), '.venv/Scripts/python.exe')
+            ];
+        } else {
+            candidates = [
+                path.join(__dirname, '../.venv/bin/python'),
+                path.join(__dirname, '../../.venv/bin/python'),
+                path.join(process.cwd(), '.venv/bin/python'),
+                '/home/pi/DelovaHome/.venv/bin/python'
+            ];
+        }
 
         let pythonPath = isWin ? 'python' : 'python3';
         for (const cand of candidates) {
@@ -1815,15 +1823,22 @@ class DeviceManager extends EventEmitter {
         const { spawn } = require('child_process');
         
         const isWin = process.platform === 'win32';
-        const candidates = [
-            path.join(__dirname, '../.venv/Scripts/python.exe'),
-            path.join(__dirname, '../../.venv/Scripts/python.exe'),
-            path.join(process.cwd(), '.venv/Scripts/python.exe'),
-            path.join(__dirname, '../.venv/bin/python'),
-            path.join(__dirname, '../../.venv/bin/python'),
-            path.join(process.cwd(), '.venv/bin/python'),
-            '/home/pi/DelovaHome/.venv/bin/python'
-        ];
+        let candidates = [];
+        
+        if (isWin) {
+            candidates = [
+                path.join(__dirname, '../.venv/Scripts/python.exe'),
+                path.join(__dirname, '../../.venv/Scripts/python.exe'),
+                path.join(process.cwd(), '.venv/Scripts/python.exe')
+            ];
+        } else {
+            candidates = [
+                path.join(__dirname, '../.venv/bin/python'),
+                path.join(__dirname, '../../.venv/bin/python'),
+                path.join(process.cwd(), '.venv/bin/python'),
+                '/home/pi/DelovaHome/.venv/bin/python'
+            ];
+        }
 
         let pythonPath = isWin ? 'python' : 'python3';
         for (const cand of candidates) {
@@ -2058,15 +2073,22 @@ class DeviceManager extends EventEmitter {
             
             // Try to find the correct python executable
             const isWin = process.platform === 'win32';
-            const candidates = [
-                path.join(__dirname, '../.venv/Scripts/python.exe'),
-                path.join(__dirname, '../../.venv/Scripts/python.exe'),
-                path.join(process.cwd(), '.venv/Scripts/python.exe'),
-                path.join(__dirname, '../.venv/bin/python'),
-                path.join(__dirname, '../../.venv/bin/python'),
-                path.join(process.cwd(), '.venv/bin/python'),
-                '/home/pi/DelovaHome/.venv/bin/python'
-            ];
+            let candidates = [];
+            
+            if (isWin) {
+                candidates = [
+                    path.join(__dirname, '../.venv/Scripts/python.exe'),
+                    path.join(__dirname, '../../.venv/Scripts/python.exe'),
+                    path.join(process.cwd(), '.venv/Scripts/python.exe')
+                ];
+            } else {
+                candidates = [
+                    path.join(__dirname, '../.venv/bin/python'),
+                    path.join(__dirname, '../../.venv/bin/python'),
+                    path.join(process.cwd(), '.venv/bin/python'),
+                    '/home/pi/DelovaHome/.venv/bin/python'
+                ];
+            }
 
             let pythonPath = isWin ? 'python' : 'python3';
             for (const cand of candidates) {

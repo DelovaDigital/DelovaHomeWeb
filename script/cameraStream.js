@@ -30,6 +30,7 @@ class JSMpegStream extends EventEmitter {
         if (this.ffmpeg) return;
 
         const args = [
+            "-fflags", "nobuffer",
             "-rtsp_transport", "tcp",
             "-i", this.url,
             "-f", "mpegts",
@@ -38,10 +39,7 @@ class JSMpegStream extends EventEmitter {
             "-b:v", "1000k",
             "-r", "25",
             "-bf", "0",
-            "-codec:a", "mp2",
-            "-ar", "44100",
-            "-ac", "1",
-            "-b:a", "128k",
+            "-an", // Disable audio for stability
             "-"
         ];
 

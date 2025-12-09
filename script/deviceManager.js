@@ -431,6 +431,12 @@ class DeviceManager extends EventEmitter {
             } else if (st.includes('MediaRenderer') || usn.includes('MediaRenderer')) {
                 type = 'speaker';
                 name = 'UPnP Media Renderer';
+            } else if (server.includes('Windows') || server.includes('Microsoft') || st.includes('Basic:1.0')) {
+                type = 'pc';
+                name = 'Windows PC';
+            } else if (server.includes('PlayStation') || server.includes('PS5') || server.includes('PS4')) {
+                type = 'console';
+                name = 'PlayStation';
             } else if (server.includes('UPnP/1.0') && location) {
                 name = `UPnP Device (${rinfo.address})`;
             } else {
@@ -801,7 +807,7 @@ class DeviceManager extends EventEmitter {
 
             // If Denon, try to fetch inputs
             if (device.protocol === 'denon-avr') {
-                this.fetchDenonInputs(device);
+                this.loadDenonInputs(device);
             }
         }
     }
@@ -1354,6 +1360,18 @@ class DeviceManager extends EventEmitter {
             this.handleAirPlayCommand(device, command, value);
         } else if (device.protocol === 'denon-avr') {
             this.handleDenonCommand(device, command, value);
+        } else if (device.type === 'pc' || device.type === 'console') {
+            if (command === 'turn_on') {
+                try {
+                    const mac = device.mac || device.macAddress || await this.getMacAddress(device.ip);
+                    if (mac) {
+                        console.log(`[DeviceManager] Sending WOL to ${device.name} (${mac})`);
+                        this.sendWol(mac);
+                    }
+                } catch (e) {
+                    console.error('Error sending WOL:', e);
+                }
+            }
         } else if (device.type === 'camera') {
             // Camera commands are handled by cameraStreamManager via WebSocket usually,
             // but we can handle PTZ or other commands here if needed.

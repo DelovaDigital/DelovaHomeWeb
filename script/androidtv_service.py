@@ -111,10 +111,37 @@ class AndroidTVManager:
             value = data.get('value') # for future use
 
             if command:
-                key_to_send = command.upper()
-                # You can add more complex command mapping here if needed
+                # Map common commands to Android TV key codes
+                # See: https://developer.android.com/reference/android/view/KeyEvent
+                key_map = {
+                    'up': 'DPAD_UP',
+                    'down': 'DPAD_DOWN',
+                    'left': 'DPAD_LEFT',
+                    'right': 'DPAD_RIGHT',
+                    'select': 'DPAD_CENTER',
+                    'enter': 'DPAD_CENTER',
+                    'back': 'BACK',
+                    'home': 'HOME',
+                    'menu': 'MENU',
+                    'volume_up': 'VOLUME_UP',
+                    'volume_down': 'VOLUME_DOWN',
+                    'mute': 'MUTE_VOLUME',
+                    'play': 'MEDIA_PLAY',
+                    'pause': 'MEDIA_PAUSE',
+                    'stop': 'MEDIA_STOP',
+                    'next': 'MEDIA_NEXT',
+                    'previous': 'MEDIA_PREVIOUS',
+                    'rewind': 'MEDIA_REWIND',
+                    'fast_forward': 'MEDIA_FAST_FORWARD',
+                    'turn_off': 'POWER',
+                    'turn_on': 'POWER', # Or WAKEUP
+                    'toggle': 'POWER'
+                }
+                
+                key_to_send = key_map.get(command.lower(), command.upper())
+                
                 self.remote.send_key_command(key_to_send)
-                print(json.dumps({"status": "ok", "command": command}), flush=True)
+                print(json.dumps({"status": "ok", "command": command, "sent": key_to_send}), flush=True)
 
         except json.JSONDecodeError:
             print(json.dumps({"status": "error", "message": "Invalid JSON"}), flush=True)

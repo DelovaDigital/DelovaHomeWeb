@@ -14,6 +14,7 @@ print(json.dumps({
 
 try:
     from androidtvremote2 import AndroidTVRemote
+    from androidtvremote2.certificate_generator import generate_selfsigned_cert
     try:
         # Print module path for clarity
         import androidtvremote2 as _atr_mod
@@ -25,79 +26,76 @@ except ImportError as e:
     sys.exit(2)
 
 # The path to the configuration file
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), '../androidtv-credentials.json')
+CERT_FILE = os.path.join(os.path.dirname(__file__), '../androidtv-cert.pem')
+KEY_FILE = os.path.join(os.path.dirname(__file__), '../androidtv-key.pem')
+
+def ensure_certificates():
+    if not os.path.exists(CERT_FILE) or not os.path.exists(KEY_FILE):
+        # print(json.dumps({"status": "debug", "message": "Generating new certificates..."}), flush=True)
+        cert_pem, key_pem = generate_selfsigned_cert("DelovaHome")
+        with open(CERT_FILE, 'wb') as f:
+            f.write(cert_pem)
+        with open(KEY_FILE, 'wb') as f:
+            f.write(key_pem)
+    return CERT_FILE, KEY_FILE
 
 class AndroidTVManager:
     def __init__(self, ip):
         self.ip = ip
         self.remote = None
-        self.config = self.load_config()
-
-    def load_config(self):
-        """Load the configuration from a file."""
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, 'r') as f:
-                return json.load(f)
-        return {}
-
-    def save_config(self):
-        """Save the configuration to a file."""
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(self.config, f, indent=4)
+        self.cert_path, self.key_path = ensure_certificates()
 
     async def connect(self):
         """Connect to the Android TV."""
         print(json.dumps({"status": "debug", "message": f"Connecting to {self.ip}..."}), flush=True)
-        self.remote = AndroidTVRemote(self.ip)
         
-        # Check if we have credentials for this IP
-        if self.ip in self.config:
-            self.remote.set_remote_config(self.config[self.ip])
-
+        self.remote = AndroidTVRemote(
+            client_name="DelovaHome",
+            certfile=self.cert_path,
+            keyfile=self.key_path,
+            host=self.ip
+        )
+        
         try:
             # Add timeout to connection attempt
-            is_connected = await asyncio.wait_for(self.remote.async_connect(), timeout=10.0)
-            if is_connected:
-                if not self.remote.is_paired():
-                    # Not paired, start the pairing process
-                    print(json.dumps({"status": "pairing_required"}), flush=True)
-                    await self.pair()
-                else:
-                     print(json.dumps({"status": "connected"}), flush=True)
-            else:
-                print(json.dumps({"status": "failed", "error": "Failed to connect (returned false)"}), flush=True)
+            await asyncio.wait_for(self.remote.async_connect(), timeout=10.0)
+            print(json.dumps({"status": "connected"}), flush=True)
         except asyncio.TimeoutError:
             print(json.dumps({"status": "failed", "error": "Connection timed out"}), flush=True)
         except Exception as e:
-            print(json.dumps({"status": "failed", "error": str(e)}), flush=True)
+            error_msg = str(e)
+            if "Need to pair" in error_msg or "InvalidAuth" in error_msg or "SSLError" in error_msg:
+                print(json.dumps({"status": "pairing_required"}), flush=True)
+                await self.pair()
+            else:
+                print(json.dumps({"status": "failed", "error": str(e)}), flush=True)
 
 
     async def pair(self):
         """Pair with the Android TV."""
-        handler = self.remote.get_pairing_handler()
-
-        @handler.on_secret
-        def on_secret():
+        try:
+            await self.remote.async_start_pairing()
             print(json.dumps({"status": "waiting_for_pin"}), flush=True)
-
-        @handler.on_pin
-        async def on_pin(pin):
-            # This is called when the PIN is shown on the TV
-            # The python-prompt-toolkit would be used in a CLI, but here we expect it from stdin
-            pass
-
-        @handler.on_paired
-        async def on_paired():
-            # Save the new config
-            self.config[self.ip] = self.remote.get_remote_config()
-            self.save_config()
-            print(json.dumps({"status": "paired"}), flush=True)
-
-        @handler.on_error
-        async def on_error(error):
-            print(json.dumps({"status": "pairing_failed", "error": str(error)}), flush=True)
             
-        await handler.async_pair()
+            # We need to wait for the PIN from stdin
+            # The main loop will call handle_pin_input when it receives a PIN
+            # But we need to pause here until we get it.
+            # We can use an asyncio.Future for this.
+            self.pin_future = asyncio.get_running_loop().create_future()
+            
+            pin = await self.pin_future
+            
+            await self.remote.async_finish_pairing(pin)
+            print(json.dumps({"status": "paired"}), flush=True)
+            
+        except Exception as e:
+            print(json.dumps({"status": "pairing_failed", "error": str(e)}), flush=True)
+
+    async def handle_pin_input(self, pin):
+        """Handle PIN input from stdin."""
+        if hasattr(self, 'pin_future') and not self.pin_future.done():
+            self.pin_future.set_result(pin)
+
 
     async def handle_pin_input(self, pin):
         """Handle PIN input from stdin."""

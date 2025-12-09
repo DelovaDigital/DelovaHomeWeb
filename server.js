@@ -22,6 +22,8 @@ const { exec } = require('child_process');
 const db = require('./script/db');
 const nasManager = require('./script/nasManager');
 const cameraStreamManager = require('./script/cameraStream');
+const knxManager = require('./script/knxManager');
+const energyManager = require('./script/energyManager');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -1254,6 +1256,21 @@ server.on('upgrade', handleUpgrade);
   try {
     await db.testConnection();
     console.log('Database connection: OK');
+    
+    // Initialize Managers
+    initHubConfigFromDB();
+    
+    // Start Energy Simulation
+    energyManager.on('update', (data) => {
+        // Broadcast energy data to all connected clients
+        const msg = JSON.stringify({ type: 'energy-update', data });
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(msg);
+            }
+        });
+    });
+
   } catch (err) {
     console.error('Database connection: FAILED');
     console.error(err.message || err);

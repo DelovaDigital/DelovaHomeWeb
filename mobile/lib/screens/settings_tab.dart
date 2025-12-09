@@ -5,6 +5,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../services/api_service.dart';
 import 'hub_discovery_screen.dart';
 import 'manage_users_screen.dart';
+import 'settings/knx_settings_screen.dart';
+import 'settings/energy_settings_screen.dart';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({super.key});
@@ -388,22 +390,21 @@ class _SettingsTabState extends State<SettingsTab> {
             style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
-          ListTile(
-            tileColor: Theme.of(context).cardColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            leading: const Icon(Icons.brightness_6, color: Colors.amber),
-            title: const Text('Thema', style: TextStyle(color: Colors.white)),
-            subtitle: Text(currentTheme == ThemeMode.system ? 'Systeem' : (currentTheme == ThemeMode.dark ? 'Donker' : 'Licht'), style: const TextStyle(color: Colors.grey)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          _buildSettingTile(
+            context,
+            icon: Icons.brightness_6,
+            color: Colors.amber,
+            title: 'Theme',
+            subtitle: currentTheme == ThemeMode.system ? 'System' : (currentTheme == ThemeMode.dark ? 'Dark' : 'Light'),
             onTap: () async {
               final choice = await showDialog<ThemeMode>(
                 context: context,
                 builder: (context) => SimpleDialog(
-                  title: const Text('Kies thema'),
+                  title: const Text('Choose Theme'),
                   children: [
-                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.system), child: const Text('Systeem')),
-                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.dark), child: const Text('Donker')),
-                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.light), child: const Text('Licht')),
+                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.system), child: const Text('System')),
+                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.dark), child: const Text('Dark')),
+                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.light), child: const Text('Light')),
                   ],
                 ),
               );
@@ -415,58 +416,101 @@ class _SettingsTabState extends State<SettingsTab> {
             },
           ),
           const SizedBox(height: 10),
-          ListTile(
-            tileColor: Colors.grey[900],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            leading: const Icon(Icons.people, color: Colors.green),
-            title: const Text('Manage Users', style: TextStyle(color: Colors.white)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ManageUsersScreen()),
-              );
-            },
+          _buildSettingTile(
+            context,
+            icon: Icons.people,
+            color: Colors.green,
+            title: 'Manage Users',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageUsersScreen())),
           ),
           const SizedBox(height: 10),
-          ListTile(
-            tileColor: Colors.grey[900],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            leading: const Icon(Icons.system_update, color: Colors.blue),
-            title: const Text('Check for Updates', style: TextStyle(color: Colors.white)),
+          _buildSettingTile(
+            context,
+            icon: Icons.system_update,
+            color: Colors.blue,
+            title: 'Check for Updates',
             trailing: _isCheckingUpdate 
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              : null,
             onTap: _isCheckingUpdate ? null : _checkForUpdates,
           ),
+
+          const SizedBox(height: 30),
+          const Text(
+            'Integrations',
+            style: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 10),
-          ListTile(
-            tileColor: Colors.grey[900],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            leading: const Icon(Icons.tv, color: Colors.grey),
-            title: const Text('Pair Apple TV', style: TextStyle(color: Colors.white)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          _buildSettingTile(
+            context,
+            icon: Icons.solar_power,
+            color: Colors.orange,
+            title: 'Energy & Solar',
+            subtitle: 'Configure solar panels and energy monitoring',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const EnergySettingsScreen())),
+          ),
+          const SizedBox(height: 10),
+          _buildSettingTile(
+            context,
+            icon: Icons.settings_input_component,
+            color: Colors.purple,
+            title: 'KNX Automation',
+            subtitle: 'Configure KNX IP Interface',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const KnxSettingsScreen())),
+          ),
+          const SizedBox(height: 10),
+          _buildSettingTile(
+            context,
+            icon: Icons.tv,
+            color: Colors.grey,
+            title: 'Pair Apple TV',
             onTap: _showAppleTvPairingDialog,
           ),
           const SizedBox(height: 10),
-          ListTile(
-            tileColor: Colors.grey[900],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            leading: const Icon(Icons.tv, color: Colors.green),
-            title: const Text('Pair Android TV', style: TextStyle(color: Colors.white)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          _buildSettingTile(
+            context,
+            icon: Icons.tv,
+            color: Colors.green,
+            title: 'Pair Android TV',
             onTap: _showAndroidTvPairingDialog,
           ),
           const SizedBox(height: 10),
-          ListTile(
-            tileColor: Colors.grey[900],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            leading: const Icon(Icons.storage, color: Colors.orange),
-            title: const Text('Add NAS', style: TextStyle(color: Colors.white)),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          _buildSettingTile(
+            context,
+            icon: Icons.storage,
+            color: Colors.blueGrey,
+            title: 'Add NAS',
             onTap: _showAddNasDialog,
           ),
+          const SizedBox(height: 50),
         ],
       ),
+    );
+  }
+
+  Widget _buildSettingTile(BuildContext context, {
+    required IconData icon,
+    required Color color,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      tileColor: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: color),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)) : null,
+      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+      onTap: onTap,
     );
   }
 

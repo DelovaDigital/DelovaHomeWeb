@@ -24,9 +24,11 @@ import '../widgets/device_card.dart';
     List<Device> _favoriteDevices = [];
     Map<String, dynamic>? _weatherData;
     Map<String, dynamic>? _spotifyStatus;
+    Map<String, dynamic>? _energyData;
     bool _spotifyAvailable = false;
     String? _spotifyDeviceName;
     Timer? _spotifyTimer;
+    Timer? _energyTimer;
     // Local theme override for this tab: null = system, true = dark, false = light
     bool? _forceDark;
 
@@ -37,16 +39,26 @@ import '../widgets/device_card.dart';
       _fetchWeather();
       _fetchSpotifyStatus();
       _fetchSpotifyMe();
+      _fetchEnergyData();
       _spotifyTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         _fetchSpotifyStatus();
         _fetchSpotifyMe();
       });
+      _energyTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchEnergyData());
     }
 
     @override
     void dispose() {
       _spotifyTimer?.cancel();
+      _energyTimer?.cancel();
       super.dispose();
+    }
+
+    Future<void> _fetchEnergyData() async {
+      // TODO: Implement API endpoint for energy data
+      // For now, we'll simulate it or wait for WebSocket implementation
+      // final data = await _apiService.getEnergyData();
+      // if (mounted) setState(() => _energyData = data);
     }
 
     void _cycleTheme() {
@@ -425,6 +437,17 @@ import '../widgets/device_card.dart';
       }
     }
 
+    Widget _buildEnergyStat(String label, String value, IconData icon) {
+      return Column(
+        children: [
+          Icon(icon, color: Colors.white70, size: 24),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        ],
+      );
+    }
+
     @override
     Widget build(BuildContext context) {
       final now = DateTime.now();
@@ -485,6 +508,43 @@ import '../widgets/device_card.dart';
                 ),
               ),
               const SizedBox(height: 16),
+              
+              // Energy Card (Placeholder for now)
+              if (_energyData != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.orange[900]!, Colors.orange[700]!],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.solar_power, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text('Energy Monitor', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildEnergyStat('Solar', '${_energyData?['solar']?['currentPower'] ?? 0} W', Icons.wb_sunny),
+                          _buildEnergyStat('Grid', '${_energyData?['grid']?['currentPower'] ?? 0} W', Icons.electrical_services),
+                          _buildEnergyStat('Home', '${_energyData?['home']?['currentUsage'] ?? 0} W', Icons.home),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
               const SizedBox(height: 20),
               Row(
                 children: [

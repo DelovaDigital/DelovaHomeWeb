@@ -118,6 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     video.autoplay = true;
                     video.muted = true;
                     video.playsInline = true;
+                    // Force z-index to ensure it's on top
+                    video.style.position = 'relative';
+                    video.style.zIndex = '10';
                     container.appendChild(video);
 
                     const pc = new RTCPeerConnection({
@@ -452,6 +455,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isMedia || isCamera) {
             modalContent.classList.add('wide');
             body.classList.add('split-view');
+            // Ensure camera container has a high z-index context
+            if (isCamera) {
+                body.style.position = 'relative';
+                body.style.zIndex = '5';
+            }
         } else {
             modalContent.classList.remove('wide');
             body.classList.remove('split-view');

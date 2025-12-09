@@ -1104,3 +1104,22 @@ input:checked+.slider:before {
     box-shadow: 0 0 0 2px #bfdbfe;
     outline: none;
 }
+
+/* Camera Fixes */
+.camera-view {
+    position: relative;
+    z-index: 10;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    min-height: 300px;
+}
+
+.camera-view video {
+    position: relative;
+    z-index: 20;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}

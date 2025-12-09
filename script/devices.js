@@ -629,6 +629,17 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
+        // Add Pairing Button for Android TV / Google TV
+        if (device.protocol === 'mdns-googlecast' || (device.type === 'tv' && device.name.toLowerCase().includes('android'))) {
+             controlsHtml += `
+                <div class="control-group" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
+                    <button class="btn-secondary" style="width: 100%; padding: 12px;" onclick="startPairing('${device.ip}', '${device.name}')">
+                        <i class="fas fa-link"></i> Handmatig Koppelen
+                    </button>
+                </div>
+             `;
+        }
+
         if (isMedia) {
             const title = device.state.mediaTitle || 'Geen media';
             const artist = device.state.mediaArtist || '';
@@ -697,7 +708,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${controlsHtml}
             `;
         }
-    }    window.togglePiP = async (deviceId) => {
+    }
+
+    window.startPairing = (ip, name) => {
+        showPairingModal(ip, name);
+    };
+
+    window.togglePiP = async (deviceId) => {
         const container = document.getElementById(`camera-container-${deviceId}`);
         if (!container) return;
         const canvas = container.querySelector('canvas');

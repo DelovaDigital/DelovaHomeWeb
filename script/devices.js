@@ -248,6 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openDeviceDetail = (id) => {
         const device = allDevices.find(d => d.id === id);
         if (!device) return;
+        
+        console.log('Opening device detail:', device); // Debug
 
         const modal = document.getElementById('deviceModal');
         modal.dataset.deviceId = id;
@@ -630,7 +632,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Add Pairing Button for Android TV / Google TV
-        if (device.protocol === 'mdns-googlecast' || (device.type === 'tv' && device.name.toLowerCase().includes('android'))) {
+        // Show for explicit protocol OR generic TVs that aren't other known brands
+        const isOtherTv = device.type === 'tv' && 
+                          !device.protocol.includes('samsung') && 
+                          !device.protocol.includes('webos') && 
+                          !device.protocol.includes('airplay') &&
+                          !device.name.toLowerCase().includes('samsung') &&
+                          !device.name.toLowerCase().includes('lg') &&
+                          !device.name.toLowerCase().includes('apple');
+
+        if (device.protocol === 'mdns-googlecast' || isOtherTv) {
              controlsHtml += `
                 <div class="control-group" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
                     <button class="btn-secondary" style="width: 100%; padding: 12px;" onclick="startPairing('${device.ip}', '${device.name}')">

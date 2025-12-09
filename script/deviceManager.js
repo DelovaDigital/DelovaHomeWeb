@@ -1429,7 +1429,9 @@ class DeviceManager extends EventEmitter {
                 try {
                     const msg = JSON.parse(line);
                     // Log everything for debug
-                    // console.log(`[Android TV Debug] ${JSON.stringify(msg)}`);
+                    if (msg.status === 'debug') {
+                        console.log(`[Android TV Debug] ${msg.message}`);
+                    }
                     
                     if (msg.startup) {
                         console.log(`[Android TV Service] Started. Python: ${msg.python_version}`);
@@ -1771,11 +1773,17 @@ class DeviceManager extends EventEmitter {
                 try {
                     const msg = JSON.parse(line);
                     if (msg.status === 'connected') {
-                        console.log(`[Samsung Service] Connected to ${ip}`);
+                        console.log(`[Samsung Service] Connected to ${ip} (Port: ${msg.port || 'unknown'})`);
+                    } else if (msg.status === 'sent') {
+                        console.log(`[Samsung Service] Successfully sent '${msg.key}' to ${ip}`);
+                    } else if (msg.status === 'debug') {
+                        console.log(`[Samsung Debug] ${msg.message}`);
                     } else if (msg.error === 'legacy_detected') {
                         console.log(`[Samsung Service] Legacy TV detected at ${ip}.`);
                         // We do NOT permanently add to legacySamsungDevices here anymore to allow retries
                         // this.legacySamsungDevices.add(ip);
+                    } else if (msg.error) {
+                        console.error(`[Samsung Service Error] ${ip}: ${msg.error}`);
                     }
                 } catch (e) {}
             });

@@ -72,6 +72,8 @@ def main():
         tokens = load_tokens()
         token = tokens.get(ip)
         
+        print(json.dumps({"status": "debug", "message": f"Attempting connection to {ip}..."}), flush=True)
+
         # Try Port 8002 (Secure Tizen)
         try:
             tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=5)
@@ -81,6 +83,7 @@ def main():
             print(json.dumps({"status": "connected", "ip": ip, "port": 8002}), flush=True)
             return True
         except Exception as e_8002:
+            print(json.dumps({"status": "debug", "message": f"Port 8002 failed: {e_8002}"}), flush=True)
             # Try Port 8001 (Legacy Tizen / J-Series)
             try:
                 tv = SamsungTVWS(host=ip, port=8001, token=token, name='DelovaHome', timeout=5)
@@ -90,6 +93,7 @@ def main():
                 print(json.dumps({"status": "connected", "ip": ip, "port": 8001}), flush=True)
                 return True
             except Exception as e_8001:
+                print(json.dumps({"status": "debug", "message": f"Port 8001 failed: {e_8001}"}), flush=True)
                 print(json.dumps({"error": f"8002: {e_8002}, 8001: {e_8001}", "type": "connection_error"}), flush=True)
                 tv = None
                 return False

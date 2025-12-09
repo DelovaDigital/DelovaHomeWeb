@@ -130,6 +130,7 @@ async def main():
         sys.exit(1)
 
     ip = sys.argv[1]
+    print(json.dumps({"status": "debug", "message": f"Starting Android TV Service for {ip}"}), flush=True)
     manager = AndroidTVManager(ip)
     
     # Run the connection logic in a separate task

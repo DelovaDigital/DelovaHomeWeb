@@ -106,7 +106,7 @@ class AndroidTVManager:
             if command:
                 if command == 'start_pairing':
                     print(json.dumps({"status": "debug", "message": "Manual pairing requested"}), flush=True)
-                    await self.pair()
+                    asyncio.create_task(self.pair())
                     return
 
                 # Map common commands to Android TV key codes

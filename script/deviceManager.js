@@ -616,6 +616,9 @@ class DeviceManager extends EventEmitter {
             // If we identify a Samsung TV via mDNS, use the Tizen protocol for control
             if (type === 'tv' && (name.toLowerCase().includes('samsung') || model.toLowerCase().includes('samsung'))) {
                 protocol = 'samsung-tizen';
+            } else if (type === 'tv' && (name.toLowerCase().includes('android') || name.toLowerCase().includes('shield') || name.toLowerCase().includes('google') || name.toLowerCase().includes('sony') || name.toLowerCase().includes('philips'))) {
+                // Force Google Cast / Android TV protocol for known Android TV devices
+                protocol = 'mdns-googlecast';
             } else if (type === 'receiver' || name.toLowerCase().includes('denon') || model.toLowerCase().includes('denon') || name.toLowerCase().includes('marantz')) {
                 protocol = 'denon-avr'; // Use Denon protocol for Marantz too as they are often compatible
             }

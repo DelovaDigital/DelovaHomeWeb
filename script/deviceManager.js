@@ -217,10 +217,8 @@ class DeviceManager extends EventEmitter {
             } catch (e) {
                 console.error('[Denon] Failed to set inputs on device object:', e);
             }
-            }
         } catch (e) {
-            console.error('Failed to load Samsung credentials:', e.message);
-            this.samsungCredentials = {};
+            console.error('Failed to load Denon inputs:', e.message);
         }
     }
 

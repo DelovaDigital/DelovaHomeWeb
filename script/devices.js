@@ -100,97 +100,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const { user, pass } = JSON.parse(storedCreds);
         const rtspUrl = `rtsp://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${ip}:554/stream1`; 
 
-        fetch('/api/camera/stream', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ deviceId, rtspUrl })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.ok) {
-                const container = document.getElementById(containerId);
-                if (container) {
-                    container.innerHTML = ''; // Clear placeholder
-                    const video = document.createElement('video');
-                    video.style.width = '100%';
-                    video.style.height = '100%';
-                    video.style.borderRadius = '10px';
-                    video.autoplay = true;
-                    video.muted = true;
-                    video.playsInline = true;
-                    // Force z-index to ensure it's on top
-                    video.style.position = 'relative';
-                    video.style.zIndex = '10';
-                    container.appendChild(video);
+        // Construct WebSocket URL
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws?deviceId=${deviceId}&rtspUrl=${encodeURIComponent(rtspUrl)}`;
 
-                    const pc = new RTCPeerConnection({
-                        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                    });
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = ''; // Clear placeholder
+            
+            // Create Canvas for JSMpeg
+            const canvas = document.createElement('canvas');
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            canvas.style.borderRadius = '10px';
+            canvas.style.position = 'relative';
+            canvas.style.zIndex = '10';
+            container.appendChild(canvas);
 
-                    pc.addTransceiver('video', { direction: 'recvonly' });
+            const player = new JSMpeg.Player(wsUrl, {
+                canvas: canvas,
+                autoplay: true,
+                audio: false,
+                disableGl: false
+            });
 
-                    pc.ontrack = (event) => {
-                        console.log('WebRTC Track received:', event.streams[0]);
-                        video.srcObject = event.streams[0];
-                        // Force play just in case
-                        video.play().catch(e => console.error('Auto-play failed:', e));
-                    };
-
-                    // Add connection state logging
-                    pc.onconnectionstatechange = () => {
-                        console.log('WebRTC Connection State:', pc.connectionState);
-                        if (pc.connectionState === 'failed') {
-                            pc.close();
-                        }
-                    };
-
-                    pc.createOffer().then(offer => {
-                        return pc.setLocalDescription(offer);
-                    }).then(() => {
-                        return fetch('/api/camera/webrtc/offer', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                deviceId: deviceId,
-                                rtspUrl: rtspUrl,
-                                sdp: pc.localDescription.sdp
-                            })
-                        });
-                    }).then(res => res.json())
-                    .then(data => {
-                        return pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
-                    })
-                    .catch(e => console.error('WebRTC Error:', e));
-
-                    activeStreams.set(deviceId, { 
-                        destroy: () => { 
-                            pc.close(); 
-                            video.srcObject = null; 
-                            activeStreams.delete(deviceId);
-                        } 
-                    });
-                }
-            } else {
-                 console.error('Stream start failed', data);
-                 const container = document.getElementById(containerId);
-                 if (container) {
-                     container.innerHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #333;">
-                            <p style="color: #dc3545; margin-bottom: 10px;">Verbinding mislukt</p>
-                            <button id="btn-retry-${deviceId}" style="padding: 5px 15px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">Opnieuw inloggen</button>
-                        </div>
-                     `;
-                     const retryBtn = document.getElementById(`btn-retry-${deviceId}`);
-                     if(retryBtn) {
-                        retryBtn.onclick = () => {
-                            localStorage.removeItem(`camera_creds_${deviceId}`);
-                            startCameraStream(deviceId, ip, containerId);
-                        };
-                     }
-                 }
-            }
-        })
-        .catch(err => console.error('Error starting stream:', err));
+            activeStreams.set(deviceId, { 
+                destroy: () => { 
+                    player.destroy(); 
+                    activeStreams.delete(deviceId);
+                } 
+            });
+        }
     }
 
     function fetchDevices() {

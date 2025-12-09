@@ -1,88 +1,67 @@
-const { RTCPeerConnection, RTCRtpCodecParameters, MediaStreamTrack } = require("werift");
 const { spawn } = require("child_process");
-const dgram = require("dgram");
 const EventEmitter = require("events");
 
-class WebRtcCameraStream extends EventEmitter {
+class JSMpegStream extends EventEmitter {
     constructor(rtspUrl) {
         super();
         this.url = rtspUrl;
-        this.udpSocket = null;
-        this.udpPort = 0;
         this.ffmpeg = null;
-        this.connections = new Set();
-        this.tracks = []; // Array of { track, ssrc, pt }
+        this.clients = new Set();
     }
 
-    async startUDP() {
-        if (this.udpSocket) return;
-        this.udpSocket = dgram.createSocket("udp4");
-        await new Promise(resolve => {
-            this.udpSocket.bind(0, "127.0.0.1", () => {
-                this.udpPort = this.udpSocket.address().port;
-                console.log(`[WebRTC] UDP socket bound to port ${this.udpPort}`);
-                resolve();
-            });
-        });
+    addClient(ws) {
+        this.clients.add(ws);
+        console.log(`[JSMpeg] Client connected. Total: ${this.clients.size}`);
+        
+        if (this.clients.size === 1) {
+            this.startFFmpeg();
+        }
 
-        this.udpSocket.on("message", msg => {
-            // Broadcast RTP to all tracks, patching SSRC and Payload Type
-            this.tracks.forEach(context => {
-                if (context.ssrc && context.pt) {
-                    // Clone buffer to avoid race conditions/corruption
-                    const packet = Buffer.from(msg);
-                    
-                    // Patch Payload Type (Byte 1)
-                    // Keep the Marker bit (0x80) and inject new PT (0x7F)
-                    packet[1] = (packet[1] & 0x80) | (context.pt & 0x7F);
-
-                    // Patch SSRC (Bytes 8-11)
-                    packet.writeUInt32BE(context.ssrc, 8);
-                    
-                    context.track.writeRtp(packet);
-                } else {
-                    // Fallback
-                    context.track.writeRtp(msg);
-                }
-            });
+        ws.on('close', () => {
+            this.clients.delete(ws);
+            console.log(`[JSMpeg] Client disconnected. Total: ${this.clients.size}`);
+            if (this.clients.size === 0) {
+                this.stop();
+            }
         });
     }
 
     startFFmpeg() {
         if (this.ffmpeg) return;
-        
+
         const args = [
             "-rtsp_transport", "tcp",
             "-i", this.url,
-            "-an", // No audio for now
-            
-            // Force Transcode to H.264 Baseline (Browser Compatible)
-            "-c:v", "libx264",
-            "-vf", "scale=1280:720", // 720p
-            "-r", "15", // Match input framerate
-            "-preset", "ultrafast",
-            "-tune", "zerolatency",
-            "-profile:v", "baseline",
-            "-pix_fmt", "yuv420p",
-            "-g", "30", // Keyframe every 2s (15fps * 2)
-            "-bsf:v", "h264_mp4toannexb", // Ensure Annex B format for RTP
-            "-x264-params", "keyint=30:min-keyint=30:scenecut=0", // Force strict keyframes
-            
-            "-f", "rtp",
-            "-payload_type", "96",
-            "-ssrc", "12345678", // Fixed SSRC (we overwrite it in Node.js)
-            `rtp://127.0.0.1:${this.udpPort}?pkt_size=1200`
+            "-f", "mpegts",
+            "-codec:v", "mpeg1video",
+            "-s", "1280x720",
+            "-b:v", "1500k",
+            "-r", "25",
+            "-bf", "0",
+            "-codec:a", "mp2",
+            "-ar", "44100",
+            "-ac", "1",
+            "-b:a", "128k",
+            "-"
         ];
 
-        console.log(`[WebRTC] Starting ffmpeg: ffmpeg ${args.join(" ")}`);
+        console.log(`[JSMpeg] Starting ffmpeg: ffmpeg ${args.join(" ")}`);
         this.ffmpeg = spawn("ffmpeg", args);
 
-        this.ffmpeg.stderr.on("data", d => {
-            console.log(`[ffmpeg] ${d}`);
+        this.ffmpeg.stdout.on('data', (data) => {
+            this.clients.forEach((ws) => {
+                if (ws.readyState === 1) { // WebSocket.OPEN
+                    ws.send(data);
+                }
+            });
         });
 
-        this.ffmpeg.on("close", code => {
-            console.log(`[WebRTC] ffmpeg exited with code ${code}`);
+        this.ffmpeg.stderr.on('data', (data) => {
+            // console.log(`[ffmpeg] ${data}`); // Optional: too verbose
+        });
+
+        this.ffmpeg.on('close', (code) => {
+            console.log(`[JSMpeg] ffmpeg exited with code ${code}`);
             this.ffmpeg = null;
         });
     }
@@ -92,73 +71,8 @@ class WebRtcCameraStream extends EventEmitter {
             this.ffmpeg.kill();
             this.ffmpeg = null;
         }
-        if (this.udpSocket) {
-            this.udpSocket.close();
-            this.udpSocket = null;
-        }
-        this.connections.forEach(pc => pc.close());
-        this.connections.clear();
-        this.tracks = [];
-    }
-
-    async handleOffer(offerSdp) {
-        await this.startUDP();
-
-        const pc = new RTCPeerConnection({
-            codecs: {
-                video: [
-                    new RTCRtpCodecParameters({
-                        mimeType: "video/H264",
-                        clockRate: 90000,
-                        payloadType: 96,
-                        rtcpFeedback: [
-                            { type: "nack" },
-                            { type: "nack", parameter: "pli" },
-                            { type: "ccm", parameter: "fir" },
-                            { type: "goog-remb" },
-                        ],
-                        parameters: "packetization-mode=1;profile-level-id=42e01f;level-asymmetry-allowed=1",
-                    }),
-                ],
-            },
-        });
-
-        this.connections.add(pc);
-
-        const track = new MediaStreamTrack({ kind: "video" });
-        pc.addTrack(track);
-
-        await pc.setRemoteDescription({ type: "offer", sdp: offerSdp });
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        // 1. Extract SSRC from the generated answer SDP
-        const ssrcMatch = answer.sdp.match(/a=ssrc:(\d+)/);
-        const ssrc = ssrcMatch ? parseInt(ssrcMatch[1], 10) : 0;
-
-        // 2. Extract Negotiated Payload Type (PT) for H264
-        // Look for a=rtpmap:<pt> H264/90000
-        const ptMatch = answer.sdp.match(/a=rtpmap:(\d+) H264\/90000/i);
-        const pt = ptMatch ? parseInt(ptMatch[1], 10) : 96;
-
-        console.log(`[WebRTC] Client connected. SSRC: ${ssrc}, PT: ${pt}`);
-
-        const trackContext = { track, ssrc, pt };
-        this.tracks.push(trackContext);
-
-        pc.connectionStateChange.subscribe(state => {
-            console.log(`[WebRTC] Connection state: ${state}`);
-            if (state === "closed" || state === "failed") {
-                this.connections.delete(pc);
-                const idx = this.tracks.indexOf(trackContext);
-                if (idx > -1) this.tracks.splice(idx, 1);
-            }
-        });
-
-        // Start FFmpeg now that we have a client
-        this.startFFmpeg();
-
-        return answer.sdp;
+        this.clients.forEach(ws => ws.close());
+        this.clients.clear();
     }
 }
 
@@ -169,7 +83,7 @@ class CameraStreamManager {
 
     getStream(deviceId, rtspUrl) {
         if (!this.streams.has(deviceId)) {
-            this.streams.set(deviceId, new WebRtcCameraStream(rtspUrl));
+            this.streams.set(deviceId, new JSMpegStream(rtspUrl));
         }
         return this.streams.get(deviceId);
     }

@@ -1203,10 +1203,8 @@ const handleUpgrade = (request, socket, head) => {
             const rtspUrl = query.rtspUrl;
             
             if (deviceId && rtspUrl) {
-                // const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
-                // stream.addClient(ws);
-                console.log("Legacy WebSocket connection attempt ignored (WebRTC active)");
-                ws.close();
+                const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
+                stream.addClient(ws);
             } else {
                 ws.close();
             }

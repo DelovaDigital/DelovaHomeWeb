@@ -96,13 +96,6 @@ class AndroidTVManager:
         if hasattr(self, 'pin_future') and not self.pin_future.done():
             self.pin_future.set_result(pin)
 
-
-    async def handle_pin_input(self, pin):
-        """Handle PIN input from stdin."""
-        handler = self.remote.get_pairing_handler()
-        if handler:
-            handler.send_pin(pin)
-
     async def handle_command(self, line):
         """Handle a command from stdin."""
         try:

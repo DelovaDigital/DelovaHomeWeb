@@ -251,15 +251,19 @@
 }
 
 .d-pad-up { top: 10px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 10px; }
+.d-pad-up:hover { transform: translateX(-50%) scale(1.1); }
 .d-pad-up:active { transform: translateX(-50%) scale(0.95); }
 
 .d-pad-down { bottom: 10px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 10px; }
+.d-pad-down:hover { transform: translateX(-50%) scale(1.1); }
 .d-pad-down:active { transform: translateX(-50%) scale(0.95); }
 
 .d-pad-left { left: 10px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; border-radius: 10px; }
+.d-pad-left:hover { transform: translateY(-50%) scale(1.1); }
 .d-pad-left:active { transform: translateY(-50%) scale(0.95); }
 
 .d-pad-right { right: 10px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; border-radius: 10px; }
+.d-pad-right:hover { transform: translateY(-50%) scale(1.1); }
 .d-pad-right:active { transform: translateY(-50%) scale(0.95); }
 
 .d-pad-center { 
@@ -270,6 +274,7 @@
     background: #222;
     box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
+.d-pad-center:hover { transform: translate(-50%, -50%) scale(1.1); }
 .d-pad-center:active { transform: translate(-50%, -50%) scale(0.95); }
 
 .remote-grid {

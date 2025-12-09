@@ -99,6 +99,12 @@ document.addEventListener('DOMContentLoaded', () => {
         dropdown.classList.toggle('show');
     };
 
+    if (avatar) {
+        avatar.addEventListener('click', toggleDropdown);
+    }
+    
+    document.addEventListener('click', closeDropdown);
+
     // --- WebSocket for Pairing ---
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;

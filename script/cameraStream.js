@@ -64,7 +64,7 @@ class WebRtcCameraStream extends EventEmitter {
             "-tune", "zerolatency",
             "-profile:v", "baseline",
             "-pix_fmt", "yuv420p",
-            "-g", "15", // Keyframe every 1s for faster startup
+            "-g", "30", // Keyframe every 2s (15fps * 2)
             "-bsf:v", "h264_mp4toannexb", // Ensure Annex B format for RTP
             
             "-f", "rtp",

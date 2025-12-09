@@ -127,7 +127,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     pc.addTransceiver('video', { direction: 'recvonly' });
 
                     pc.ontrack = (event) => {
+                        console.log('WebRTC Track received:', event.streams[0]);
                         video.srcObject = event.streams[0];
+                        // Force play just in case
+                        video.play().catch(e => console.error('Auto-play failed:', e));
                     };
 
                     pc.createOffer().then(offer => {

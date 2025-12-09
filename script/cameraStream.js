@@ -34,14 +34,14 @@ class JSMpegStream extends EventEmitter {
             "-i", this.url,
             "-f", "mpegts",
             "-codec:v", "mpeg1video",
-            "-s", "1280x720",
-            "-b:v", "1500k",
-            "-r", "25",
+            "-s", "640x360", // Lower resolution for smoother decoding
+            "-b:v", "800k",  // Lower bitrate
+            "-r", "15",      // Lower framerate
             "-bf", "0",
             "-codec:a", "mp2",
             "-ar", "44100",
             "-ac", "1",
-            "-b:a", "128k",
+            "-b:a", "64k",
             "-"
         ];
 

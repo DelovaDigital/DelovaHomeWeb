@@ -98,7 +98,9 @@ async function initHubConfigFromDB() {
             console.log('Step 3b: SystemConfig table exists.');
         }
 
-        // Sync HubId
+        // Sync HubId - DISABLED for Multi-Hub Isolation
+        // We want each Hub to maintain its own identity (hub_config.json) and not sync with a global DB value.
+        /*
         console.log('Step 4: Syncing HubId...');
         let dbHubId = null;
         const idRes = await pool.request().query("SELECT KeyValue FROM SystemConfig WHERE KeyName = 'HubId'");
@@ -120,8 +122,11 @@ async function initHubConfigFromDB() {
             await pool.request().query(q);
             console.log('Saved Hub ID to SQL Server');
         }
+        */
+       console.log(`Multi-Hub Isolation: Using Local Hub ID: ${hubConfig.hubId}`);
 
-        // Sync HubName
+        // Sync HubName - DISABLED for Multi-Hub Isolation
+        /*
         console.log('Step 5: Syncing HubName...');
         let dbHubName = null;
         const nameRes = await pool.request().query("SELECT KeyValue FROM SystemConfig WHERE KeyName = 'HubName'");
@@ -138,6 +143,7 @@ async function initHubConfigFromDB() {
              const q = `INSERT INTO SystemConfig (KeyName, KeyValue) VALUES ('HubName', '${hubConfig.name}')`;
              await pool.request().query(q);
         }
+        */
         
         console.log('DB Sync completed successfully.');
         return { success: true };
@@ -362,7 +368,8 @@ app.post('/api/login', async (req, res) => {
 
     if (!user) {
       // To prevent user enumeration, we give a generic error.
-      // We can also check if the user exists on another hub and give a hint.
+      // Multi-Hub Isolation: Do NOT check other hubs.
+      /*
       const otherHubsRes = await pool.request()
         .input('username', db.sql.NVarChar(255), username)
         .query("SELECT COUNT(1) as cnt FROM Users WHERE Username = @username");
@@ -370,6 +377,7 @@ app.post('/api/login', async (req, res) => {
       if (otherHubsRes.recordset[0].cnt > 0) {
           return res.status(401).json({ ok: false, message: 'Invalid credentials. This user may exist on another hub.' });
       }
+      */
         
       return res.status(401).json({ ok: false, message: 'Invalid credentials' });
     }

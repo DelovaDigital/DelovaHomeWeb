@@ -241,6 +241,10 @@ class NasManager {
             return this.listNativeFiles(config, dirPath);
         }
 
+        if (config.mode === 'legacy') {
+            return this.listWithSmbClient(config, dirPath);
+        }
+
         // Normalize path: ensure backslashes for SMB
         const smbPath = dirPath.replace(/\//g, '\\');
 
@@ -255,13 +259,24 @@ class NasManager {
 
                 client.readdir(smbPath, (err, files) => {
                     if (err) {
-                        console.error('[NAS] SMB2 readdir error:', err);
+                        // Suppress error log if we are going to fallback
+                        const isLogonFailure = err.code === 'STATUS_LOGON_FAILURE' || (err.message && err.message.includes('LOGON_FAILURE'));
+                        
+                        if (!isLogonFailure) {
+                            console.error('[NAS] SMB2 readdir error:', err);
+                        }
                         
                         // Fallback to smbclient on Linux if authentication fails
-                        if (process.platform === 'linux' && (err.code === 'STATUS_LOGON_FAILURE' || err.message.includes('LOGON_FAILURE'))) {
-                            console.log('[NAS] SMB2 library failed. Trying smbclient fallback...');
+                        if (process.platform === 'linux' && isLogonFailure) {
+                            console.log('[NAS] SMB2 library failed (Logon Failure). Trying smbclient fallback...');
                             this.listWithSmbClient(config, dirPath)
-                                .then(resolve)
+                                .then(files => {
+                                    // If fallback works, update config to use legacy mode permanently
+                                    console.log('[NAS] Fallback successful. Updating config to use legacy mode.');
+                                    config.mode = 'legacy';
+                                    this.saveConfig();
+                                    resolve(files);
+                                })
                                 .catch(fallbackErr => {
                                     console.error('[NAS] smbclient fallback failed:', fallbackErr);
                                     reject(err); // Return original error if fallback fails
@@ -269,6 +284,9 @@ class NasManager {
                             return;
                         }
                         
+                        if (isLogonFailure) {
+                             console.error('[NAS] SMB2 readdir error:', err);
+                        }
                         reject(err);
                     } else {
                         const fileList = files.map(f => ({
@@ -427,6 +445,10 @@ class NasManager {
              if (localPath) return fs.createReadStream(localPath);
         }
 
+        if (config.mode === 'legacy') {
+            return this.getSmbClientStream(config, filePath);
+        }
+
         // Try SMB2 lib first
         try {
              const client = new SMB2({
@@ -439,11 +461,24 @@ class NasManager {
             // Check if createReadStream is available and works
             return await client.createReadStream(smbPath);
         } catch (err) {
-            console.error('[NAS] SMB2 stream error:', err);
+            const isLogonFailure = err.code === 'STATUS_LOGON_FAILURE' || (err.message && err.message.includes('LOGON_FAILURE'));
+
+            if (!isLogonFailure) {
+                console.error('[NAS] SMB2 stream error:', err);
+            }
+
             // Fallback to smbclient on Linux
              if (process.platform === 'linux') {
-                 console.log('[NAS] Falling back to smbclient stream');
+                 if (isLogonFailure) {
+                     console.log('[NAS] SMB2 stream failed (Logon Failure). Falling back to smbclient stream');
+                 } else {
+                     console.log('[NAS] Falling back to smbclient stream');
+                 }
                  return this.getSmbClientStream(config, filePath);
+             }
+             
+             if (isLogonFailure) {
+                 console.error('[NAS] SMB2 stream error:', err);
              }
              throw err;
         }

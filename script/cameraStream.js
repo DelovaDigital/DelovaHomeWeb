@@ -34,14 +34,14 @@ class JSMpegStream extends EventEmitter {
             "-i", this.url,
             "-f", "mpegts",
             "-codec:v", "mpeg1video",
-            "-s", "640x360", // Lower resolution for smoother decoding
-            "-b:v", "800k",  // Lower bitrate
-            "-r", "15",      // Lower framerate
+            "-s", "1280x720", // Revert to 720p for compatibility
+            "-b:v", "1000k",  // Moderate bitrate
+            "-r", "15",       // Low framerate to save CPU
             "-bf", "0",
             "-codec:a", "mp2",
             "-ar", "44100",
             "-ac", "1",
-            "-b:a", "64k",
+            "-b:a", "128k",
             "-"
         ];
 
@@ -57,7 +57,7 @@ class JSMpegStream extends EventEmitter {
         });
 
         this.ffmpeg.stderr.on('data', (data) => {
-            // console.log(`[ffmpeg] ${data}`); // Optional: too verbose
+            console.log(`[ffmpeg] ${data}`); // Enabled for debugging
         });
 
         this.ffmpeg.on('close', (code) => {

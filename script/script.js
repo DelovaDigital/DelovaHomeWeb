@@ -105,22 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.addEventListener('click', closeDropdown);
 
-    // --- WebSocket for Pairing ---
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (event) => {
-        try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'pairing-required') {
-                showPairingModal(msg.ip, msg.name);
-            }
-        } catch (e) {
-            console.error('WS Error:', e);
-        }
-    };
-
     function showPairingModal(ip, name) {
         const modal = document.getElementById('pairingModal');
         const msg = document.getElementById('pairingMessage');
@@ -298,6 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (msg.type === 'energy-update') {
                     const customEvent = new CustomEvent('energy-update', { detail: msg.data });
                     document.dispatchEvent(customEvent);
+                } else if (msg.type === 'pairing-required') {
+                    showPairingModal(msg.ip, msg.name);
                 }
             } catch (e) {
                 console.error('Error parsing WebSocket message', e);

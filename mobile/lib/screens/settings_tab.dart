@@ -150,7 +150,7 @@ class _SettingsTabState extends State<SettingsTab> {
                   TextField(controller: ipController, decoration: const InputDecoration(labelText: 'IP Address')),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    value: type,
+                    initialValue: type,
                     items: const [
                       DropdownMenuItem(value: 'smb', child: Text('SMB (Windows/Mac)')),
                       DropdownMenuItem(value: 'nfs', child: Text('NFS (Linux)')),

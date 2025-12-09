@@ -29,8 +29,6 @@ import '../widgets/device_card.dart';
     String? _spotifyDeviceName;
     Timer? _spotifyTimer;
     Timer? _energyTimer;
-    // Local theme override for this tab: null = system, true = dark, false = light
-    bool? _forceDark;
 
     @override
     void initState() {

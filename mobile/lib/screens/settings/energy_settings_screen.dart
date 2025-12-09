@@ -63,7 +63,7 @@ class _EnergySettingsScreenState extends State<EnergySettingsScreen> {
                       title: const Text('Solar Panels Installed', style: TextStyle(color: Colors.white)),
                       value: _hasSolar,
                       onChanged: (val) => setState(() => _hasSolar = val),
-                      activeColor: Colors.cyan,
+                      activeThumbColor: Colors.cyan,
                     ),
                     if (_hasSolar) ...[
                       const SizedBox(height: 16),

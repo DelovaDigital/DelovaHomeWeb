@@ -129,7 +129,7 @@ class _RoomsTabState extends State<RoomsTab> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.cyan.withOpacity(0.2),
+                      color: Colors.cyan.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(

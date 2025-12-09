@@ -67,7 +67,7 @@ async def main():
         
         # If we reach here, we are connected and likely paired (since async_connect raises InvalidAuth if not)
         print("Sending Volume Up command to test...")
-        await client.send_key("VOLUME_UP")
+        client.send_key_command("VOLUME_UP")
         print("Command sent successfully. Device is PAIRED.")
             
     except asyncio.TimeoutError:

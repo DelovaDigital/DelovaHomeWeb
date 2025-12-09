@@ -113,7 +113,7 @@ class AndroidTVManager:
             if command:
                 key_to_send = command.upper()
                 # You can add more complex command mapping here if needed
-                await self.remote.send_key(key_to_send)
+                self.remote.send_key_command(key_to_send)
                 print(json.dumps({"status": "ok", "command": command}), flush=True)
 
         except json.JSONDecodeError:

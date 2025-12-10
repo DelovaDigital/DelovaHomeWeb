@@ -259,12 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (ink.color === 'K') { colorCode = '#000000'; label = 'Zwart'; }
                         
                     inkHtml += `
-                      <div class="ink-cartridge">
-                        <div class="ink-bar-wrapper">
-                          <div class="ink-bar" style="height: ${ink.level}%; background-color: ${colorCode};"></div>
+                      <div class="ink-row">
+                        <div class="ink-info">
+                            <span class="ink-label">${label}</span>
+                            <span class="ink-percent">${ink.level}%</span>
                         </div>
-                        <div class="ink-label">${label}</div>
-                        <div style="font-size: 0.7em;">${ink.level}%</div>
+                        <div class="ink-track">
+                          <div class="ink-fill" style="width: ${ink.level}%; background-color: ${colorCode};"></div>
+                        </div>
                       </div>
                     `;
                   }

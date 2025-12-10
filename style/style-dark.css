@@ -225,15 +225,15 @@ button:hover, .btn:hover {
 
 /* Active Device State - Clear Visual Indicator */
 .device-card.active {
-    background: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255, 255, 255, 0.15) !important;
     border: 2px solid var(--success) !important;
-    box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+    box-shadow: 0 0 20px rgba(105, 240, 174, 0.2);
 }
 
 .device-card.active .device-icon {
     background: var(--success) !important;
-    color: white !important;
-    box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+    color: #000 !important; /* Dark icon on bright success color */
+    box-shadow: 0 0 15px rgba(105, 240, 174, 0.4);
 }
 
 .device-header {
@@ -249,7 +249,7 @@ button:hover, .btn:hover {
     width: 60px; /* Slightly larger */
     height: 60px;
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;

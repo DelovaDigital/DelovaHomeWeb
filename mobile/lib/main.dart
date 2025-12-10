@@ -82,14 +82,32 @@ class DelovaHomeState extends State<DelovaHome> {
     return MaterialApp(
       title: 'Delova Home',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
         useMaterial3: true,
         brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF007BFF),
+          brightness: Brightness.light,
+        ),
+        scaffoldBackgroundColor: Colors.transparent,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Color(0xFF1A1A1A)),
+          bodyMedium: TextStyle(color: Color(0xFF1A1A1A)),
+          titleLarge: TextStyle(color: Color(0xFF1A1A1A)),
+        ),
       ),
       darkTheme: ThemeData(
-        primarySwatch: Colors.blue,
         useMaterial3: true,
         brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF00E5FF),
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: Colors.transparent,
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.white70),
+          titleLarge: TextStyle(color: Colors.white),
+        ),
       ),
       themeMode: _themeMode,
       locale: const Locale('nl'),

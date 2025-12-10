@@ -15,6 +15,12 @@ class DeviceCard extends StatelessWidget {
     final isPoweredOn = device.status.isOn;
     final isLight = device.type.toLowerCase() == 'light' || device.type.toLowerCase().contains('bulb');
     final isMedia = !isLight;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    final textColor = Theme.of(context).textTheme.titleLarge?.color ?? Colors.black;
+    final subTextColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black54;
+    final iconColorOff = isDark ? Colors.white54 : Colors.black45;
+    final accentColor = isDark ? Colors.cyanAccent : Colors.blueAccent;
 
     return GestureDetector(
       onTap: () {
@@ -44,7 +50,7 @@ class DeviceCard extends StatelessWidget {
                         child: Icon(
                           _getDeviceIcon(device.type),
                           size: 40,
-                          color: isPoweredOn ? Colors.cyanAccent : Colors.white54,
+                          color: isPoweredOn ? accentColor : iconColorOff,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -59,7 +65,6 @@ class DeviceCard extends StatelessWidget {
                                 child: Text(
                                   device.name,
                                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -68,7 +73,7 @@ class DeviceCard extends StatelessWidget {
                             ),
                             Text(
                               device.type,
-                              style: const TextStyle(color: Colors.white70),
+                              style: TextStyle(color: subTextColor),
                             ),
                           ],
                         ),
@@ -80,7 +85,7 @@ class DeviceCard extends StatelessWidget {
                 IconButton(
                   icon: Icon(
                     Icons.power_settings_new,
-                    color: isPoweredOn ? Colors.cyanAccent : Colors.white24,
+                    color: isPoweredOn ? accentColor : iconColorOff.withValues(alpha: 0.3),
                     size: 32,
                   ),
                   onPressed: () async {
@@ -94,7 +99,7 @@ class DeviceCard extends StatelessWidget {
             // Quick Status Info (if on)
             if (isPoweredOn) ...[
               const SizedBox(height: 12),
-              Divider(color: Colors.white.withValues(alpha: 0.1)),
+              Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1)),
               if (isMedia && device.status.title != null && device.status.title!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),

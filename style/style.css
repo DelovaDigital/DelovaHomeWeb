@@ -41,6 +41,10 @@ body {
 
 html {
     min-height: 100%;
+    background: var(--bg-gradient);
+    background-attachment: fixed;
+    background-size: cover;
+    background-repeat: no-repeat;
 }
 
 /* Typography */
@@ -641,6 +645,11 @@ input[type="range"]::-webkit-slider-thumb {
 .btn-create-header:hover {
     background: var(--accent-hover);
     transform: rotate(90deg);
+}
+
+/* Settings Page */
+.settings-card {
+    margin-bottom: 24px;
 }
 
 /* Settings Page */

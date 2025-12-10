@@ -94,6 +94,7 @@ a:hover {
     margin: 0;
     background: linear-gradient(45deg, #007BFF, #00E5FF);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -320,6 +321,7 @@ input[type="range"] {
     border-radius: 3px;
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -403,6 +405,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 .spotify-widget .device-slider {
     -webkit-appearance: none;
+    appearance: none;
     width: 100%;
     height: 4px;
     background: rgba(0, 0, 0, 0.1);
@@ -500,6 +503,7 @@ input[type="range"]::-webkit-slider-thumb {
     margin-bottom: 30px;
     background: linear-gradient(45deg, #007BFF, #00E5FF);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
     font-size: 2.5rem;
 }

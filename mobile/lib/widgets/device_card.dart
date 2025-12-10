@@ -17,7 +17,6 @@ class DeviceCard extends StatelessWidget {
     final isMedia = !isLight;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    final textColor = Theme.of(context).textTheme.titleLarge?.color ?? Colors.black;
     final subTextColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black54;
     final iconColorOff = isDark ? Colors.white54 : Colors.black45;
     final accentColor = isDark ? Colors.cyanAccent : Colors.blueAccent;

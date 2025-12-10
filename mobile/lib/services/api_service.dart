@@ -351,4 +351,37 @@ class ApiService {
       throw Exception('Connection error: $e');
     }
   }
+
+  Future<List<dynamic>> getNasDevices() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/nas'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) return data;
+        if (data is Map && data['nas'] is List) return data['nas'];
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Error fetching NAS devices: $e');
+    }
+    return [];
+  }
+
+  Future<List<dynamic>> getNasFiles(String nasId, [String path = '/']) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final encodedPath = Uri.encodeComponent(path);
+      final response = await http.get(Uri.parse('$baseUrl/api/nas/$nasId/files?path=$encodedPath'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) return data;
+        if (data is Map && data['files'] is List) return data['files'];
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Error fetching NAS files: $e');
+    }
+    return [];
+  }
 }

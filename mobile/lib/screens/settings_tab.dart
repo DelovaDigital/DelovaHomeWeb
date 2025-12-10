@@ -8,6 +8,7 @@ import 'hub_discovery_screen.dart';
 import 'manage_users_screen.dart';
 import 'settings/knx_settings_screen.dart';
 import 'settings/energy_settings_screen.dart';
+import 'nas_browser_screen.dart';
 
 class SettingsTab extends StatefulWidget {
   const SettingsTab({super.key});
@@ -24,6 +25,7 @@ class _SettingsTabState extends State<SettingsTab> {
   String _hubId = 'Unknown';
   String _hubVersion = 'Unknown';
   String _appVersion = 'Unknown';
+  List<dynamic> _nasDevices = [];
 
   @override
   void initState() {
@@ -52,6 +54,18 @@ class _SettingsTabState extends State<SettingsTab> {
       }
     } catch (e) {
       debugPrint('Error fetching hub info: $e');
+    }
+
+    // Fetch NAS Devices
+    try {
+      final nas = await _apiService.getNasDevices();
+      if (mounted) {
+        setState(() {
+          _nasDevices = nas;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching NAS devices: $e');
     }
   }
 
@@ -359,21 +373,23 @@ class _SettingsTabState extends State<SettingsTab> {
   Widget build(BuildContext context) {
     final appState = DelovaHome.of(context);
     final currentTheme = appState?.themeModeValue ?? ThemeMode.system;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final headerColor = isDark ? Colors.white70 : Colors.black54;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
+          Text(
             'Account & Hub',
-            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
-          _buildInfoCard('Connected Hub', _hubIp, Icons.router),
-          _buildInfoCard('Hub ID', _hubId, Icons.fingerprint),
-          _buildInfoCard('Hub Version', _hubVersion, Icons.info_outline),
-          _buildInfoCard('App Version', _appVersion, Icons.mobile_friendly),
+          _buildInfoCard(context, 'Connected Hub', _hubIp, Icons.router),
+          _buildInfoCard(context, 'Hub ID', _hubId, Icons.fingerprint),
+          _buildInfoCard(context, 'Hub Version', _hubVersion, Icons.info_outline),
+          _buildInfoCard(context, 'App Version', _appVersion, Icons.mobile_friendly),
           
           const SizedBox(height: 20),
           ElevatedButton.icon(
@@ -388,9 +404,9 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
 
           const SizedBox(height: 30),
-          const Text(
+          Text(
             'System Management',
-            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           _buildSettingTile(
@@ -439,9 +455,9 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
 
           const SizedBox(height: 30),
-          const Text(
+          Text(
             'Integrations',
-            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           _buildSettingTile(
@@ -485,6 +501,32 @@ class _SettingsTabState extends State<SettingsTab> {
             title: 'Add NAS',
             onTap: _showAddNasDialog,
           ),
+          
+          if (_nasDevices.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text(
+              'Connected Storage',
+              style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            ..._nasDevices.map((nas) {
+              final name = nas['name'] ?? 'Unknown NAS';
+              final id = nas['id']?.toString() ?? '';
+              return _buildSettingTile(
+                context,
+                icon: Icons.folder_shared,
+                color: Colors.indigo,
+                title: name,
+                subtitle: nas['ip'] ?? '',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => NasBrowserScreen(nasId: id, nasName: name),
+                  ),
+                ),
+              );
+            }),
+          ],
+
           const SizedBox(height: 50),
         ],
       ),
@@ -499,8 +541,13 @@ class _SettingsTabState extends State<SettingsTab> {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final iconColor = isDark ? Colors.white54 : Colors.black45;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 12.0),
       child: GlassCard(
         child: ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -512,21 +559,28 @@ class _SettingsTabState extends State<SettingsTab> {
             ),
             child: Icon(icon, color: color),
           ),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white)),
-          subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)) : null,
-          trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white54),
+          title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: textColor)),
+          subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: subTextColor, fontSize: 12)) : null,
+          trailing: trailing ?? Icon(Icons.arrow_forward_ios, size: 16, color: iconColor),
           onTap: onTap,
         ),
       ),
     );
   }
 
-  Widget _buildInfoCard(String title, String value, IconData icon) {
-    return GlassCard(
-      child: ListTile(
-        leading: Icon(icon, color: Colors.cyan),
-        title: Text(title, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        subtitle: Text(value, style: const TextStyle(color: Colors.white, fontSize: 16)),
+  Widget _buildInfoCard(BuildContext context, String title, String value, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: GlassCard(
+        child: ListTile(
+          leading: Icon(icon, color: Colors.cyan),
+          title: Text(title, style: TextStyle(color: subTextColor, fontSize: 12)),
+          subtitle: Text(value, style: TextStyle(color: textColor, fontSize: 16)),
+        ),
       ),
     );
   }

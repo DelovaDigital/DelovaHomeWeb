@@ -8,21 +8,30 @@
     <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'style/style-dark.css':'style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
 </head>
 <body>
-    <header>
-    <h1>DelovaHome</h1>
-    </header>
+    <div class="auth-container">
+        <div class="glass-card auth-card">
+            <header>
+                <h1>DelovaHome</h1>
+            </header>
 
-    <form action="index.html" method="post">
-        <label for="username">Gebruikersnaam:</label>
-        <input type="text" id="username" name="username" required><br><br>
-        <label for="password">Wachtwoord:</label>
-        <input type="password" id="password" name="password" required><br><br>
-        <button type="submit" id="btnLogin">Inloggen</button>
-        <button id="btnCreateAccount">Maak account aan</button>
-    </form>
+            <form action="index.html" method="post" class="auth-form">
+                <div>
+                    <label for="username">Gebruikersnaam</label>
+                    <input type="text" id="username" name="username" required placeholder="Gebruikersnaam">
+                </div>
+                <div>
+                    <label for="password">Wachtwoord</label>
+                    <input type="password" id="password" name="password" required placeholder="Wachtwoord">
+                </div>
+                
+                <div class="auth-actions">
+                    <button type="submit" id="btnLogin">Inloggen</button>
+                    <button type="button" id="btnCreateAccount" class="buttonLogin">Maak account aan</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-
+    <script src="script/script.js"></script>
 </body>
-
-<script src="script/script.js"></script>
 </html>

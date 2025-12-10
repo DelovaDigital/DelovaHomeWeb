@@ -469,7 +469,64 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .settings-section.active {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Auth Pages (Login/Register) */
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; /* Account for padding */
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    text-align: center;
+}
+
+.auth-card h1 {
+    margin-bottom: 30px;
+    background: linear-gradient(45deg, #007BFF, #00E5FF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 2.5rem;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    text-align: left;
+}
+
+.auth-form label {
+    font-weight: 500;
+    margin-bottom: 5px;
     display: block;
+    color: var(--text-main);
+}
+
+.auth-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.buttonLogin {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+
+.buttonLogin:hover {
+    background: rgba(0, 123, 255, 0.1);
+    color: var(--accent-hover);
 }
 
 .info-row {

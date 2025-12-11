@@ -17,10 +17,14 @@ class SpotifyManager {
         ];
     }
 
-    getAuthUrl(userId) {
+    getAuthUrl(userId, localBaseUrl) {
         if (!this.clientId) return null;
-        // Use the 'state' parameter to pass the userId back to the callback for security
-        const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
+        // Use the 'state' parameter to pass the userId and localBaseUrl back to the callback
+        const stateObj = { userId };
+        if (localBaseUrl) {
+            stateObj.localBaseUrl = localBaseUrl;
+        }
+        const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
         const params = new URLSearchParams({
             response_type: 'code',
             client_id: this.clientId,

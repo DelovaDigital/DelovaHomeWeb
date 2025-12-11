@@ -560,7 +560,8 @@ app.get('/api/spotify/login', (req, res) => {
     if (!userId) {
         return res.status(400).send('User ID is required to link Spotify account.');
     }
-    const url = spotifyManager.getAuthUrl(userId);
+    const localBaseUrl = `${req.protocol}://${req.get('host')}`;
+    const url = spotifyManager.getAuthUrl(userId, localBaseUrl);
     if (url) {
         res.redirect(url);
     } else {

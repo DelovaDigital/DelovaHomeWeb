@@ -13,3 +13,4 @@ node_modules/
 npm-debug.log
 dist/
 ../data/rooms.json
+../hub_config.json

@@ -6,3 +6,4 @@ dist/
 data/rooms.json
 selfsigned.crt
 selfsigned.key
+hub_config.json

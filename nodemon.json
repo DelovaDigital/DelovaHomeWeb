@@ -1,0 +1,12 @@
+{
+  "watch": ["server.js", "script", "lib", "pages"],
+  "ignore": [
+    "hub_config.json",
+    "build/**",
+    "mobile/**",
+    "web/**/generated/**",
+    "node_modules/**"
+  ],
+  "ext": "js,json",
+  "delay": "250"
+}

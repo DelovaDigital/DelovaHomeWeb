@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "node --openssl-legacy-provider server.js",
-    "dev": "NODE_OPTIONS='--openssl-legacy-provider' nodemon server.js"
+    "dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider nodemon server.js"
   },
   "dependencies": {
     "@marsaud/smb2": "^0.18.0",
@@ -27,6 +27,7 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.11"
   },
   "overrides": {

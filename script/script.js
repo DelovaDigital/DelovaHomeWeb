@@ -305,4 +305,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('userId')) {
         connectWebSocket();
     }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            console.log('Tab became visible, checking connection...');
+            if (localStorage.getItem('userId')) {
+                 if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+                    console.log('WebSocket closed, reconnecting...');
+                    connectWebSocket();
+                }
+            }
+        }
+    });
 });

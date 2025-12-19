@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+const fetch = require('node-fetch');
 const net = require('net');
 const dgram = require('dgram');
 const fs = require('fs');
@@ -643,6 +644,11 @@ class DeviceManager extends EventEmitter {
             // Clean up Spotify names if they start with hex ID (MAC address)
             if (/^[0-9a-fA-F]{12}/.test(name)) {
                  name = name.substring(12);
+            }
+        } else if (sourceType === 'http' && lowerName.includes('shelly')) {
+            type = 'switch';
+            if (lowerName.includes('dimmer') || lowerName.includes('bulb') || lowerName.includes('rgbw')) {
+                type = 'light';
             }
         } else if (sourceType === 'printer') {
             type = 'printer';
@@ -1377,6 +1383,10 @@ class DeviceManager extends EventEmitter {
         // Handle Protocol Specific Actions
         if (device.protocol === 'mdns-googlecast') {
             this.handleAndroidTvCommand(device, command, value);
+        } else if (device.name.toLowerCase().includes('shelly')) {
+            this.handleShellyCommand(device, command, value);
+        } else if (device.name.toLowerCase().includes('dali') || device.name.toLowerCase().includes('deli')) {
+            this.handleDaliCommand(device, command, value);
         } else if (device.name.toLowerCase().includes('ylbulb') || device.name.toLowerCase().includes('yeelight')) {
             this.handleYeelightCommand(device, command, value);
         } else if (device.protocol === 'lg-webos') {
@@ -3051,6 +3061,46 @@ class DeviceManager extends EventEmitter {
                 }
             });
         });
+    }
+    async handleShellyCommand(device, command, value) {
+        console.log(`[Shelly] Sending command ${command} to ${device.name} (${device.ip})`);
+        try {
+            // Try Gen 1 API first (relay/0)
+            let url = '';
+            if (command === 'turn_on') url = `http://${device.ip}/relay/0?turn=on`;
+            else if (command === 'turn_off') url = `http://${device.ip}/relay/0?turn=off`;
+            else if (command === 'toggle') url = `http://${device.ip}/relay/0?turn=toggle`;
+            
+            if (url) {
+                try {
+                    await fetch(url);
+                } catch (e) {
+                    // If Gen 1 fails, try Gen 2 (RPC)
+                    console.log('[Shelly] Gen 1 API failed, trying Gen 2 RPC...');
+                    let rpcMethod = 'Switch.Set';
+                    let params = { id: 0, on: command === 'turn_on' };
+                    if (command === 'toggle') {
+                        rpcMethod = 'Switch.Toggle';
+                        params = { id: 0 };
+                    }
+                    
+                    const rpcUrl = `http://${device.ip}/rpc/${rpcMethod}`;
+                    await fetch(rpcUrl, {
+                        method: 'POST',
+                        body: JSON.stringify(params)
+                    });
+                }
+            }
+        } catch (e) {
+            console.error(`[Shelly] Error controlling device: ${e.message}`);
+        }
+    }
+
+    async handleDaliCommand(device, command, value) {
+        console.log(`[DALI] Command ${command} received for ${device.name}. Integration requires specific gateway details.`);
+        // Placeholder for DALI integration
+        // If using a KNX-DALI gateway, commands should go through knxManager.
+        // If using a direct DALI gateway (e.g. Modbus/TCP), implement here.
     }
 }
 

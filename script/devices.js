@@ -848,6 +848,13 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchDevices();
     setInterval(fetchDevices, 3000);
 
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            console.log('Tab became visible, refreshing devices...');
+            fetchDevices();
+        }
+    });
+
     // Keyboard Control for Camera (Arrow Keys)
     document.addEventListener('keydown', (e) => {
         const modal = document.getElementById('deviceModal');

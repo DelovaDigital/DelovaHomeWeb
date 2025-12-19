@@ -1111,8 +1111,32 @@ app.get('/api/nas/:id/stream', async (req, res) => {
         // Try to get a stream directly (supports SMB2/Linux fallback)
         const stream = await nasManager.getFileStream(id, filePath);
         if (stream) {
-            // Set headers for video streaming
-            res.setHeader('Content-Type', 'video/mp4'); // Default to mp4, browser will handle others usually
+            // Determine Content-Type based on extension
+            const ext = path.extname(filePath).toLowerCase();
+            let contentType = 'application/octet-stream';
+            
+            const mimeTypes = {
+                '.pdf': 'application/pdf',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.mp4': 'video/mp4',
+                '.mkv': 'video/x-matroska',
+                '.avi': 'video/x-msvideo',
+                '.mov': 'video/quicktime',
+                '.mp3': 'audio/mpeg',
+                '.wav': 'audio/wav',
+                '.flac': 'audio/flac',
+                '.txt': 'text/plain'
+            };
+
+            if (mimeTypes[ext]) {
+                contentType = mimeTypes[ext];
+            }
+
+            res.setHeader('Content-Type', contentType);
+            
             // Note: smbclient stream doesn't support range requests easily, so seeking might be limited.
             
             // Pipe the stream to the response

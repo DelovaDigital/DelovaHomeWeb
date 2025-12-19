@@ -24,9 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="widget" style="text-align: center; padding: 20px;">
                     <i class="fab fa-spotify" style="font-size: 2em; color: #1db954; margin-bottom: 10px;"></i>
                     <p>Geen muziek aan het afspelen</p>
-                    <button class="btn-action" onclick="toggleSpotifyLibrary()" style="margin-top: 10px;">
-                        <i class="fas fa-music"></i> Bibliotheek openen
-                    </button>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                        <button class="btn-action" onclick="toggleSpotifyLibrary()">
+                            <i class="fas fa-music"></i> Bibliotheek openen
+                        </button>
+                        <button class="btn-action" onclick="toggleSpotifyDevices()" style="background-color: #333;">
+                            <i class="fas fa-desktop"></i> Kies apparaat
+                        </button>
+                    </div>
                 </div>
             `;
             return;
@@ -118,42 +123,66 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ command, value, userId }) // also include in body for middleware
         })
-        .then(() => setTimeout(fetchStatus, 500));
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok) {
+                if (data.message && data.message.includes('No active Spotify device')) {
+                    alert('Geen actief Spotify-apparaat. Kies een apparaat om af te spelen.');
+                    toggleSpotifyDevices();
+                } else {
+                    console.error('Spotify control error:', data.message);
+                }
+            } else {
+                setTimeout(fetchStatus, 500);
+            }
+        })
+        .catch(err => console.error('Fetch error:', err));
     };
 
     window.toggleSpotifyDevices = async () => {
         const userId = getUserId();
         if (!userId) return;
 
-        const res = await fetch(`/api/spotify/devices?userId=${userId}`);
-        const devices = await res.json();
-        
-        const modalHtml = `
-            <div class="modal-header">
-                <h3>Kies apparaat</h3>
-                <button class="close-modal" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="list-group">
-                                        ${devices.map(d => `
-                                                <div class="list-item ${d.is_active ? 'active' : ''}" style="display:flex; align-items:center;">
-                                                        <div style="flex:1; cursor:pointer;" onclick="controlSpotify('transfer', '${d.id}'); closeModal();">
-                                                            <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
-                                                            <div style="display:inline-block; margin-left: 10px; vertical-align: middle;">
-                                                                <div style="font-weight: bold;">${d.name}</div>
-                                                                <div style="font-size: 0.8em; color: #666;">${d.type}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div style="display:flex; gap:8px; align-items:center;">
-                                                            ${d.is_active ? '<i class="fas fa-check" style="color: #1db954;"></i>' : ''}
-                                                            <button class="btn-mini" onclick="event.stopPropagation(); openSonosPickerForUri(); closeModal();" title="Play on Sonos"><i class="fas fa-play-circle"></i></button>
-                                                        </div>
-                                                </div>
-                                        `).join('')}
+        try {
+            const res = await fetch(`/api/spotify/devices?userId=${userId}`);
+            const devices = await res.json();
+            
+            if (!Array.isArray(devices)) {
+                console.error('Invalid devices response:', devices);
+                alert('Kon apparaten niet ophalen.');
+                return;
+            }
+
+            const modalHtml = `
+                <div class="modal-header">
+                    <h3>Kies apparaat</h3>
+                    <button class="close-modal" onclick="closeModal()">&times;</button>
                 </div>
-            </div>
-        `;
-        showModal(modalHtml);
+                <div class="modal-body">
+                    <div class="list-group">
+                        ${devices.length > 0 ? devices.map(d => `
+                            <div class="list-item ${d.is_active ? 'active' : ''}" style="display:flex; align-items:center;">
+                                <div style="flex:1; cursor:pointer;" onclick="controlSpotify('transfer', '${d.id}'); closeModal();">
+                                    <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
+                                    <div style="display:inline-block; margin-left: 10px; vertical-align: middle;">
+                                        <div style="font-weight: bold;">${d.name}</div>
+                                        <div style="font-size: 0.8em; color: #666;">${d.type}</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    ${d.is_active ? '<i class="fas fa-check" style="color: #1db954;"></i>' : ''}
+                                    <button class="btn-mini" onclick="event.stopPropagation(); openSonosPickerForUri(); closeModal();" title="Play on Sonos"><i class="fas fa-play-circle"></i></button>
+                                </div>
+                            </div>
+                        `).join('') : '<div style="padding:10px; text-align:center; color:#666;">Geen actieve Spotify Connect apparaten gevonden.<br>Open Spotify op een apparaat om het hier te zien.</div>'}
+                    </div>
+                </div>
+            `;
+            showModal(modalHtml);
+        } catch (e) {
+            console.error('Error fetching devices:', e);
+            alert('Fout bij ophalen apparaten');
+        }
     };
 
     window.openSonosPickerForUri = async (spotifyUri) => {

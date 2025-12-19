@@ -620,6 +620,16 @@ app.get('/api/spotify/me', requireSpotifyUser, async (req, res) => {
     }
 });
 
+app.get('/api/spotify/devices', requireSpotifyUser, async (req, res) => {
+    try {
+        const devices = await spotifyManager.getDevices(req.userId);
+        res.json(devices);
+    } catch (e) {
+        console.error('Error fetching Spotify devices:', e);
+        res.status(500).json({ error: 'Failed to fetch devices' });
+    }
+});
+
 app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
     const { command, value } = req.body;
     try {

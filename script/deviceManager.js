@@ -11,6 +11,7 @@ const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
+const mqttManager = require('./mqttManager');
 let SamsungRemote = null;
 try {
     SamsungRemote = require('samsung-remote');
@@ -3097,10 +3098,27 @@ class DeviceManager extends EventEmitter {
     }
 
     async handleDaliCommand(device, command, value) {
-        console.log(`[DALI] Command ${command} received for ${device.name}. Integration requires specific gateway details.`);
-        // Placeholder for DALI integration
-        // If using a KNX-DALI gateway, commands should go through knxManager.
-        // If using a direct DALI gateway (e.g. Modbus/TCP), implement here.
+        console.log(`[DALI] Command ${command} received for ${device.name}. Using MQTT.`);
+        
+        // Assuming a topic structure like: dali/{device_name}/set
+        // Payload: { "state": "ON", "brightness": 255 }
+        
+        const topic = `dali/${device.name.replace(/\s+/g, '_').toLowerCase()}/set`;
+        let payload = {};
+
+        if (command === 'turn_on') {
+            payload = { state: 'ON' };
+        } else if (command === 'turn_off') {
+            payload = { state: 'OFF' };
+        } else if (command === 'toggle') {
+            payload = { state: 'TOGGLE' };
+        } else if (command === 'set_brightness') {
+            payload = { state: 'ON', brightness: value };
+        }
+
+        if (Object.keys(payload).length > 0) {
+            mqttManager.publish(topic, JSON.stringify(payload));
+        }
     }
 }
 

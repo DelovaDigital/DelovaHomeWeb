@@ -1,4 +1,5 @@
 const EventEmitter = require('events');
+const mqttManager = require('./mqttManager');
 
 class EnergyManager extends EventEmitter {
     constructor() {
@@ -6,7 +7,12 @@ class EnergyManager extends EventEmitter {
         this.config = {
             solarCapacity: 4000, // Watts
             gridLimit: 5000,     // Watts
-            costPerKwh: 0.25     // Currency
+            costPerKwh: 0.25,    // Currency
+            mqttTopics: {
+                solar: 'energy/solar/power',
+                grid: 'energy/grid/power',
+                usage: 'energy/home/usage'
+            }
         };
         this.data = {
             solar: {
@@ -25,14 +31,61 @@ class EnergyManager extends EventEmitter {
             }
         };
         
-        // Mock simulation for now (since we don't have real hardware connected yet)
+        this.usingRealData = false;
+        this.setupMqtt();
+        
+        // Start simulation as fallback
         this.startSimulation();
+    }
+
+    setupMqtt() {
+        mqttManager.on('connected', () => {
+            console.log('[Energy] MQTT Connected, subscribing to energy topics...');
+            if (this.config.mqttTopics.solar) mqttManager.subscribe(this.config.mqttTopics.solar);
+            if (this.config.mqttTopics.grid) mqttManager.subscribe(this.config.mqttTopics.grid);
+            if (this.config.mqttTopics.usage) mqttManager.subscribe(this.config.mqttTopics.usage);
+        });
+
+        mqttManager.on('message', (topic, message) => {
+            // If we receive any message on energy topics, switch to real data mode
+            if (Object.values(this.config.mqttTopics).includes(topic)) {
+                this.usingRealData = true;
+            }
+
+            let value = parseFloat(message);
+            if (isNaN(value)) {
+                // Try parsing JSON if payload is object
+                try {
+                    const json = JSON.parse(message);
+                    if (json.power !== undefined) value = parseFloat(json.power);
+                    else if (json.value !== undefined) value = parseFloat(json.value);
+                } catch(e) {}
+            }
+
+            if (isNaN(value)) return;
+
+            if (topic === this.config.mqttTopics.solar) {
+                this.updateData({ solar: value });
+            } else if (topic === this.config.mqttTopics.grid) {
+                // Some meters give positive for import, negative for export.
+                // Others give separate topics. We assume net power here.
+                this.data.grid.currentPower = value;
+                this.emit('update', this.data);
+            } else if (topic === this.config.mqttTopics.usage) {
+                this.updateData({ usage: value });
+            }
+        });
     }
 
     setConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
         console.log('[Energy] Config updated:', this.config);
-        // In a real scenario, this might trigger hardware reconfiguration
+        // Re-subscribe if topics changed
+        if (mqttManager.connected) {
+             if (this.config.mqttTopics.solar) mqttManager.subscribe(this.config.mqttTopics.solar);
+             if (this.config.mqttTopics.grid) mqttManager.subscribe(this.config.mqttTopics.grid);
+             if (this.config.mqttTopics.usage) mqttManager.subscribe(this.config.mqttTopics.usage);
+        }
     }
 
     getConfig() {
@@ -41,6 +94,8 @@ class EnergyManager extends EventEmitter {
 
     startSimulation() {
         setInterval(() => {
+            if (this.usingRealData) return; // Stop simulation if we have real data
+
             // Simulate solar generation (bell curve-ish based on time of day)
             const hour = new Date().getHours();
             let solarGen = 0;

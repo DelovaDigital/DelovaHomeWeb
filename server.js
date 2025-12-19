@@ -23,6 +23,7 @@ const db = require('./script/db');
 const nasManager = require('./script/nasManager');
 const cameraStreamManager = require('./script/cameraStream');
 const knxManager = require('./script/knxManager');
+const mqttManager = require('./script/mqttManager');
 const energyManager = require('./script/energyManager');
 const WebSocket = require('ws');
 const url = require('url');
@@ -1251,6 +1252,16 @@ app.post('/api/knx/config', express.json(), (req, res) => {
     res.json({ success: true });
 });
 
+// --- MQTT API ---
+app.get('/api/mqtt/config', (req, res) => {
+    res.json(mqttManager.getConfig());
+});
+
+app.post('/api/mqtt/config', express.json(), (req, res) => {
+    mqttManager.setConfig(req.body);
+    res.json({ success: true });
+});
+
 const handleUpgrade = (request, socket, head) => {
     const parsedUrl = url.parse(request.url, true);
     const pathname = parsedUrl.pathname;
@@ -1314,7 +1325,10 @@ try {
     server = app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
 }
 
-server.on('upgrade', handleUpgrade);
+server.on('upMQTT
+    mqttManager.connect();
+
+    // Start grade', handleUpgrade);
 
 (async () => {
   try {

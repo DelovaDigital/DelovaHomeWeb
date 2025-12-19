@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_card.dart';
@@ -115,11 +114,6 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
     } catch (e) {
        if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e')),
-          );
-       }
-    }
-  }
             SnackBar(content: Text('Error: $e')),
           );
        }

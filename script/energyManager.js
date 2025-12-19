@@ -29,7 +29,8 @@ class EnergyManager extends EventEmitter {
             },
             home: {
                 currentUsage: 0 // Watts
-            }
+            },
+            devices: {} // Individual device usage
         };
         
         this.usingRealData = false;
@@ -50,9 +51,25 @@ class EnergyManager extends EventEmitter {
             if (this.config.mqttTopics.solar) mqttManager.subscribe(this.config.mqttTopics.solar);
             if (this.config.mqttTopics.grid) mqttManager.subscribe(this.config.mqttTopics.grid);
             if (this.config.mqttTopics.usage) mqttManager.subscribe(this.config.mqttTopics.usage);
+            
+            // Subscribe to device reports
+            mqttManager.subscribe('energy/devices/#');
         });
 
         mqttManager.on('message', (topic, message) => {
+            // Handle device reports
+            if (topic.startsWith('energy/devices/')) {
+                try {
+                    const payload = JSON.parse(message);
+                    const deviceName = payload.name || topic.split('/').pop();
+                    this.data.devices[deviceName] = payload;
+                    this.emit('update', this.data);
+                    return;
+                } catch (e) {
+                    console.error('[Energy] Failed to parse device report:', e);
+                }
+            }
+
             // If we receive any message on energy topics, switch to real data mode
             if (Object.values(this.config.mqttTopics).includes(topic)) {
                 this.usingRealData = true;
@@ -102,6 +119,8 @@ class EnergyManager extends EventEmitter {
         if (!this.config.isConfigured) return null;
         return this.data;
     }
+
+    getConfig() {
         return this.config;
     }
 
@@ -153,10 +172,6 @@ class EnergyManager extends EventEmitter {
         this.data.grid.currentPower = this.data.home.currentUsage - this.data.solar.currentPower;
 
         this.emit('update', this.data);
-    }
-
-    getData() {
-        return this.data;
     }
 }
 

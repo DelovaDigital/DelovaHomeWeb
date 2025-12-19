@@ -594,21 +594,27 @@ import '../widgets/device_card.dart';
     Future<void> _turnOffLightsOnly() async {
       try {
         final devices = await _apiService.getDevices();
+        // Expanded list of keywords to match more devices
         final lights = devices.where((d) {
           final t = d.type.toLowerCase();
-          return t.contains('light') || t.contains('yeelight') || t.contains('hue') || t.contains('lamp') || t.contains('zigbee');
+          final n = d.name.toLowerCase();
+          return t.contains('light') || t.contains('yeelight') || t.contains('hue') || t.contains('lamp') || t.contains('zigbee') ||
+                 n.contains('light') || n.contains('lamp') || n.contains('spot') || n.contains('led');
         }).toList();
 
+        int successCount = 0;
         for (final d in lights) {
           try {
+            // Try 'set_power' first, then 'turn_off' if applicable
             await _apiService.sendCommand(d.id, 'set_power', {'value': 'off'});
+            successCount++;
           } catch (e) {
             debugPrint('Failed to turn off ${d.name}: $e');
           }
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lampen uitgeschakeld')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$successCount lampen uitgeschakeld')));
           _fetchStats();
         }
       } catch (e) {

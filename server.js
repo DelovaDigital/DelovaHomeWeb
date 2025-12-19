@@ -26,6 +26,7 @@ const knxManager = require('./script/knxManager');
 const mqttManager = require('./script/mqttManager');
 const mqttBroker = require('./script/mqttBroker');
 const energyManager = require('./script/energyManager');
+const automationManager = require('./script/automationManager');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -1289,6 +1290,38 @@ app.get('/api/knx/config', (req, res) => {
 app.post('/api/knx/config', express.json(), (req, res) => {
     knxManager.setConfig(req.body);
     res.json({ success: true });
+});
+
+// --- Automations API ---
+app.get('/api/automations', (req, res) => {
+    res.json(automationManager.getAutomations());
+});
+
+app.post('/api/automations', express.json(), (req, res) => {
+    try {
+        const automation = automationManager.addAutomation(req.body);
+        res.json({ ok: true, automation });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+app.put('/api/automations/:id', express.json(), (req, res) => {
+    try {
+        const automation = automationManager.updateAutomation(req.params.id, req.body);
+        res.json({ ok: true, automation });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+app.delete('/api/automations/:id', (req, res) => {
+    try {
+        automationManager.deleteAutomation(req.params.id);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
 });
 
 // --- MQTT API ---

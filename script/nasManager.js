@@ -174,7 +174,17 @@ class NasManager {
              if (baseConfig.shareName) {
                  const systemAuthWorks = await this.checkWithSmbUtil(baseConfig);
                  if (systemAuthWorks) {
-                     console.log('[NAS] System auth works. Trying native mount fallback...');
+                     console.log('[NAS] System auth works. Trying native/legacy fallback...');
+                     
+                     if (process.platform === 'linux') {
+                         // For Linux, if system check (smbclient) works, we can use 'legacy' mode
+                         baseConfig.id = Date.now().toString();
+                         baseConfig.mode = 'legacy';
+                         this.config.push(baseConfig);
+                         this.saveConfig();
+                         return { ok: true, id: baseConfig.id };
+                     }
+
                      try {
                          await this.testNativeConnection(baseConfig);
                          // If native works, save with mode='native'
@@ -274,8 +284,42 @@ class NasManager {
     }
 
     async checkWithSmbUtil(config) {
-        if (process.platform !== 'darwin') return false;
         const { exec } = require('child_process');
+
+        if (process.platform === 'linux') {
+             // Linux logic using smbclient
+             // smbclient //host/share -U user%pass -c exit
+             // Note: config.share is \\host\share, convert to //host/share
+             const shareUrl = config.share.replace(/\\/g, '/');
+             
+             // We need to try to guess the domain if not provided, or just pass user%pass
+             // But config.domain might be empty.
+             // Let's construct auth string.
+             let userAuth = config.username;
+             if (config.domain) userAuth = `${config.domain}\\${config.username}`;
+             
+             const safePassword = config.password.replace(/'/g, "'\\''");
+             const auth = `${userAuth}%${safePassword}`;
+             const options = "--option='client min protocol=NT1'";
+             
+             const cmd = `smbclient '${shareUrl}' ${options} -U '${auth}' -c 'exit'`;
+             
+             return new Promise((resolve) => {
+                exec(cmd, (err, stdout, stderr) => {
+                    if (err) {
+                        console.log('[NAS] smbclient check failed:', stderr);
+                        resolve(false);
+                    } else {
+                        console.log('[NAS] smbclient check success');
+                        resolve(true);
+                    }
+                });
+             });
+        }
+
+        if (process.platform !== 'darwin') return false;
+        
+        // macOS logic
         // Construct URL: //user:pass@host
         // We need to encode components to be safe
         const user = encodeURIComponent(config.username);

@@ -1244,6 +1244,10 @@ app.post('/api/device/pair', (req, res) => {
 });
 
 // --- Energy API ---
+app.get('/api/energy/data', (req, res) => {
+    res.json(energyManager.getData());
+});
+
 app.get('/api/energy/config', (req, res) => {
     res.json(energyManager.getConfig());
 });

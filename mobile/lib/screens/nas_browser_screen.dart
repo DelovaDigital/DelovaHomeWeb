@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/gradient_background.dart';
@@ -71,6 +72,46 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openFile(String name) async {
+    try {
+      final baseUrl = await _apiService.getBaseUrl();
+      
+      String fullPath;
+      if (_currentPath == '/' || _currentPath.isEmpty) {
+        fullPath = name;
+      } else {
+        if (_currentPath.endsWith('/')) {
+           fullPath = '$_currentPath$name';
+        } else {
+           fullPath = '$_currentPath/$name';
+        }
+      }
+      
+      if (fullPath.startsWith('/')) {
+        fullPath = fullPath.substring(1);
+      }
+
+      final url = '$baseUrl/api/nas/${widget.nasId}/stream?path=${Uri.encodeComponent(fullPath)}';
+      final uri = Uri.parse(url);
+      
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open file: $name')),
+          );
+        }
+      }
+    } catch (e) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+       }
+    }
   }
 
   IconData _getFileIcon(String type, String name) {
@@ -150,7 +191,7 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
                                       ),
                                       title: Text(name, style: TextStyle(color: textColor)),
                                       trailing: isDir ? Icon(Icons.chevron_right, color: subTextColor) : null,
-                                      onTap: isDir ? () => _navigateTo(name) : null, // TODO: Handle file opening
+                                      onTap: isDir ? () => _navigateTo(name) : () => _openFile(name),
                                     ),
                                   ),
                                 );

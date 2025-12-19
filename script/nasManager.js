@@ -35,6 +35,74 @@ class NasManager {
         }));
     }
 
+    async listShares(config) {
+        const { exec } = require('child_process');
+        
+        // Construct user%password
+        let userAuth = config.username;
+        if (config.domain) {
+            userAuth = `${config.domain}\\${config.username}`;
+        }
+        const safePassword = config.password.replace(/'/g, "'\\''");
+        const auth = `${userAuth}%${safePassword}`;
+        const host = config.host;
+
+        // Linux: smbclient -L //host -U user%pass
+        // macOS: smbutil view //user:pass@host
+        
+        if (process.platform === 'darwin') {
+             const user = encodeURIComponent(config.username);
+             const pass = encodeURIComponent(config.password);
+             const url = `//${user}:${pass}@${host}`;
+             return new Promise((resolve, reject) => {
+                exec(`smbutil view "${url}"`, (err, stdout, stderr) => {
+                    if (err) return reject(new Error(stderr || err.message));
+                    
+                    const shares = [];
+                    const lines = stdout.split('\n');
+                    // Skip header lines
+                    for (const line of lines) {
+                        // Format: sharename    description...
+                        const parts = line.trim().split(/\s{2,}/);
+                        if (parts.length >= 1 && parts[0] !== 'Share' && parts[0] !== 'SERVER' && !parts[0].startsWith('---')) {
+                            shares.push({ name: parts[0], isDirectory: true });
+                        }
+                    }
+                    resolve(shares);
+                });
+             });
+        } else {
+            // Linux / smbclient
+            const options = "--option='client min protocol=NT1'";
+            const cmd = `smbclient -L //${host} ${options} -U '${auth}' -g`; // -g for grepable output
+            
+            return new Promise((resolve, reject) => {
+                exec(cmd, (err, stdout, stderr) => {
+                    if (err) {
+                        // If -g fails or not supported, try without
+                        if (stderr.includes('parameter')) {
+                             // retry without -g? No, -g is standard.
+                        }
+                        return reject(new Error(stderr || err.message));
+                    }
+                    
+                    const shares = [];
+                    const lines = stdout.split('\n');
+                    for (const line of lines) {
+                        // Format with -g: Disk|ShareName|Comment
+                        if (line.startsWith('Disk|')) {
+                            const parts = line.split('|');
+                            if (parts.length >= 2) {
+                                shares.push({ name: parts[1], isDirectory: true });
+                            }
+                        }
+                    }
+                    resolve(shares);
+                });
+            });
+        }
+    }
+
     async addNas(details) {
         let domain = details.domain || ''; 
         let username = details.username;
@@ -46,17 +114,12 @@ class NasManager {
             username = parts[1];
         }
 
-        // If domain is explicitly empty string, smb2 might behave weirdly if it expects something.
-        // But usually empty string is fine for "no domain".
-        // However, some servers require WORKGROUP if no domain is used.
-        // Let's try to be smart: if domain is empty, try connecting. If it fails with LOGON_FAILURE, try WORKGROUP.
-        
         const baseConfig = {
-            share: `\\\\${details.host}\\${details.share}`,
+            share: details.share ? `\\\\${details.host}\\${details.share}` : null,
             username: username,
             password: details.password,
             host: details.host, 
-            shareName: details.share, 
+            shareName: details.share || null, 
             name: details.name || details.host
         };
 
@@ -79,9 +142,15 @@ class NasManager {
         let lastError = null;
 
         for (const config of strategies) {
-            console.log(`[NAS] Testing connection to ${config.share} as ${config.domain}\\${config.username}`);
+            console.log(`[NAS] Testing connection to ${config.host} (Share: ${config.shareName || 'ROOT'}) as ${config.domain}\\${config.username}`);
             try {
-                await this.testConnection(config);
+                if (config.shareName) {
+                    await this.testConnection(config);
+                } else {
+                    // If no share, try to list shares to verify auth
+                    await this.listShares(config);
+                }
+                
                 // Success! Save this config
                 config.id = Date.now().toString();
                 this.config.push(config);
@@ -91,30 +160,32 @@ class NasManager {
                 console.error(`[NAS] Strategy failed (${config.domain}):`, err.code || err.message);
                 lastError = err;
                 // If error is NOT logon failure (e.g. network error), stop trying
-                if (err.code !== 'STATUS_LOGON_FAILURE') {
+                if (err.code !== 'STATUS_LOGON_FAILURE' && !err.message.includes('LOGON_FAILURE')) {
                     break;
                 }
             }
         }
 
         // If we get here, all strategies failed
-        if (lastError && lastError.code === 'STATUS_LOGON_FAILURE') {
+        if (lastError && (lastError.code === 'STATUS_LOGON_FAILURE' || lastError.message.includes('LOGON_FAILURE'))) {
              // Check if it works with system tools to verify credentials
              // Use the original base config for this check
-             const systemAuthWorks = await this.checkWithSmbUtil(baseConfig);
-             if (systemAuthWorks) {
-                 console.log('[NAS] System auth works. Trying native mount fallback...');
-                 try {
-                     await this.testNativeConnection(baseConfig);
-                     // If native works, save with mode='native'
-                     baseConfig.id = Date.now().toString();
-                     baseConfig.mode = 'native';
-                     this.config.push(baseConfig);
-                     this.saveConfig();
-                     return { ok: true, id: baseConfig.id };
-                 } catch (nativeErr) {
-                     console.error('[NAS] Native fallback failed:', nativeErr);
-                     throw new Error('Credentials zijn correct, maar zowel de applicatie als de systeem-mount faalden. Controleer permissies op de share.');
+             // Only if we have a share, otherwise system check is harder (smbutil view is what listShares does anyway)
+             if (baseConfig.shareName) {
+                 const systemAuthWorks = await this.checkWithSmbUtil(baseConfig);
+                 if (systemAuthWorks) {
+                     console.log('[NAS] System auth works. Trying native mount fallback...');
+                     try {
+                         await this.testNativeConnection(baseConfig);
+                         // If native works, save with mode='native'
+                         baseConfig.id = Date.now().toString();
+                         baseConfig.mode = 'native';
+                         this.config.push(baseConfig);
+                         this.saveConfig();
+                         return { ok: true, id: baseConfig.id };
+                     } catch (nativeErr) {
+                         console.error('[NAS] Native fallback failed:', nativeErr);
+                     }
                  }
              }
 
@@ -231,6 +302,37 @@ class NasManager {
         const config = this.config.find(c => c.id === id);
         if (!config) throw new Error('NAS not found');
 
+        // Handle Root Listing (No specific share configured)
+        if (!config.share) {
+            // If path is empty, list shares
+            if (!dirPath || dirPath === '.' || dirPath === '/') {
+                return this.listShares(config);
+            }
+
+            // If path exists, the first component is the share name
+            // dirPath: "ShareName/Folder/File" or "ShareName\Folder\File"
+            // Normalize to forward slashes for splitting
+            const normalizedPath = dirPath.replace(/\\/g, '/');
+            const parts = normalizedPath.split('/').filter(p => p);
+            const shareName = parts[0];
+            // Reconstruct relative path using backslashes for SMB
+            const relativePath = parts.slice(1).join('\\'); 
+
+            // Create a temporary config for this specific share
+            // We don't modify the original config
+            const shareConfig = {
+                ...config,
+                share: `\\\\${config.host}\\${shareName}`
+            };
+            
+            // Use this temporary config for the rest of the operation
+            return this._listFilesInternal(shareConfig, relativePath);
+        }
+
+        return this._listFilesInternal(config, dirPath);
+    }
+
+    async _listFilesInternal(config, dirPath) {
         // Force disable native mode on Linux/Pi to prevent infinite recursion
         if (config.mode === 'native' && process.platform !== 'darwin') {
             console.log('[NAS] Forcing smb2 mode on non-darwin platform');
@@ -289,6 +391,11 @@ class NasManager {
                         }
                         reject(err);
                     } else {
+                        // SMB2 returns array of strings (filenames)
+                        // We need to determine if they are directories.
+                        // Since readdir only gives names, we have to guess or stat each one.
+                        // Statting each one is slow.
+                        // Naive guess: if it has an extension, it's a file.
                         const fileList = files.map(f => ({
                             name: f,
                             isDirectory: !f.includes('.') // Naive guess

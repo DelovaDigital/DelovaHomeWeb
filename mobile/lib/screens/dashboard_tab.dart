@@ -53,10 +53,12 @@ import '../widgets/device_card.dart';
     }
 
     Future<void> _fetchEnergyData() async {
-      // TODO: Implement API endpoint for energy data
-      // For now, we'll simulate it or wait for WebSocket implementation
-      // final data = await _apiService.getEnergyData();
-      // if (mounted) setState(() => _energyData = data);
+      try {
+        final data = await _apiService.getEnergyData();
+        if (mounted) setState(() => _energyData = data);
+      } catch (e) {
+        debugPrint('Energy data error: $e');
+      }
     }
 
     Future<void> _fetchSpotifyStatus() async {
@@ -248,7 +250,7 @@ import '../widgets/device_card.dart';
                               return;
                             }
 
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             final chosen = await showDialog<Map<String, dynamic>?>(
                               context: context,
                               builder: (ctx) => AlertDialog(
@@ -558,7 +560,6 @@ import '../widgets/device_card.dart';
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: _favoriteDevices.length,
                   itemBuilder: (context, index) {
-                    // TODO: Update DeviceCard to be glassmorphic or wrap it
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
                       child: GlassCard(

@@ -384,4 +384,40 @@ class ApiService {
     }
     return [];
   }
+
+  Future<void> updateKnxConfig(String ip, String port, String physAddr) async {
+    final baseUrl = await getBaseUrl();
+    final url = Uri.parse('$baseUrl/api/knx/config');
+    final body = {
+      'ip': ip,
+      'port': int.tryParse(port) ?? 3671,
+      'physAddr': physAddr,
+    };
+    
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update KNX config: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getEnergyData() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/energy/data'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching energy data: $e');
+    }
+    return {};
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/api_service.dart';
 import '../../widgets/gradient_background.dart';
 import '../../widgets/glass_card.dart';
 
@@ -38,7 +39,17 @@ class _KnxSettingsScreenState extends State<KnxSettingsScreen> {
     await prefs.setString('knx_port', _portController.text);
     await prefs.setString('knx_phys_addr', _physAddrController.text);
     
-    // TODO: Send config to backend to trigger reconnection
+    try {
+      await ApiService().updateKnxConfig(
+        _ipController.text,
+        _portController.text,
+        _physAddrController.text,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Backend update failed: $e')));
+      }
+    }
     
     if (mounted) {
       setState(() => _isLoading = false);

@@ -511,6 +511,22 @@ import '../widgets/device_card.dart';
                       ),
                     ],
                   ),
+                )
+              else
+                Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  child: GlassCard(
+                    child: ListTile(
+                      leading: const Icon(Icons.solar_power, color: Colors.orange),
+                      title: const Text('Energy Monitor', style: TextStyle(color: Colors.white)),
+                      subtitle: const Text('Tap to configure energy monitoring', style: TextStyle(color: Colors.white70)),
+                      trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                      onTap: () {
+                        // TODO: Navigate to energy settings
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Energy setup coming soon')));
+                      },
+                    ),
+                  ),
                 ),
 
               const SizedBox(height: 20),

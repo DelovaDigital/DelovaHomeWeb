@@ -5,6 +5,7 @@ class EnergyManager extends EventEmitter {
     constructor() {
         super();
         this.config = {
+            isConfigured: false, // Default to false, requires setup
             solarCapacity: 4000, // Watts
             gridLimit: 5000,     // Watts
             costPerKwh: 0.25,    // Currency
@@ -32,13 +33,18 @@ class EnergyManager extends EventEmitter {
         };
         
         this.usingRealData = false;
-        this.setupMqtt();
+        // this.setupMqtt(); // Only setup if configured
+        if (this.config.isConfigured) {
+            this.setupMqtt();
+        }
         
-        // Start simulation as fallback
-        this.startSimulation();
+        // Start simulation as fallback ONLY if configured and no real data
+        // this.startSimulation(); 
     }
 
     setupMqtt() {
+        if (!this.config.isConfigured) return;
+        
         mqttManager.on('connected', () => {
             console.log('[Energy] MQTT Connected, subscribing to energy topics...');
             if (this.config.mqttTopics.solar) mqttManager.subscribe(this.config.mqttTopics.solar);
@@ -80,15 +86,22 @@ class EnergyManager extends EventEmitter {
     setConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
         console.log('[Energy] Config updated:', this.config);
-        // Re-subscribe if topics changed
-        if (mqttManager.connected) {
-             if (this.config.mqttTopics.solar) mqttManager.subscribe(this.config.mqttTopics.solar);
-             if (this.config.mqttTopics.grid) mqttManager.subscribe(this.config.mqttTopics.grid);
-             if (this.config.mqttTopics.usage) mqttManager.subscribe(this.config.mqttTopics.usage);
+        
+        if (this.config.isConfigured) {
+            this.setupMqtt();
+            // Re-subscribe if topics changed
+            if (mqttManager.connected) {
+                if (this.config.mqttTopics.solar) mqttManager.subscribe(this.config.mqttTopics.solar);
+                if (this.config.mqttTopics.grid) mqttManager.subscribe(this.config.mqttTopics.grid);
+                if (this.config.mqttTopics.usage) mqttManager.subscribe(this.config.mqttTopics.usage);
+            }
         }
     }
 
-    getConfig() {
+    getData() {
+        if (!this.config.isConfigured) return null;
+        return this.data;
+    }
         return this.config;
     }
 

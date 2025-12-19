@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/gradient_background.dart';
@@ -94,20 +95,31 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
       }
 
       final url = '$baseUrl/api/nas/${widget.nasId}/stream?path=${Uri.encodeComponent(fullPath)}';
-      final uri = Uri.parse(url);
       
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open file: $name')),
-          );
-        }
-      }
+      // Determine type
+      final ext = name.split('.').last.toLowerCase();
+      final isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext);
+      
+      if (!mounted) return;
+      
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => FileViewerScreen(
+            url: url,
+            name: name,
+            isImage: isImage,
+          ),
+        ),
+      );
+
     } catch (e) {
        if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+       }
+    }
+  }
             SnackBar(content: Text('Error: $e')),
           );
        }
@@ -201,6 +213,54 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class FileViewerScreen extends StatefulWidget {
+  final String url;
+  final String name;
+  final bool isImage;
+
+  const FileViewerScreen({super.key, required this.url, required this.name, this.isImage = false});
+
+  @override
+  State<FileViewerScreen> createState() => _FileViewerScreenState();
+}
+
+class _FileViewerScreenState extends State<FileViewerScreen> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.isImage) {
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageStarted: (String url) {},
+            onPageFinished: (String url) {},
+            onWebResourceError: (WebResourceError error) {},
+          ),
+        )
+        ..loadRequest(Uri.parse(widget.url));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(widget.name, style: const TextStyle(color: Colors.white)),
+        leading: const BackButton(color: Colors.white),
+      ),
+      body: widget.isImage
+          ? Center(child: InteractiveViewer(child: Image.network(widget.url)))
+          : WebViewWidget(controller: _controller),
     );
   }
 }

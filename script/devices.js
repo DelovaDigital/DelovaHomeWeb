@@ -896,26 +896,92 @@ document.addEventListener('DOMContentLoaded', () => {
     window.startPS5Pairing = (id) => {
         if (!confirm('Ensure your PS5 is ON and you are ready to login to PSN.')) return;
         
+        // Create custom modal for pairing
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        overlay.style.zIndex = '10000';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        
+        const modal = document.createElement('div');
+        modal.style.backgroundColor = 'var(--card, #2d3748)';
+        modal.style.color = 'var(--text, #fff)';
+        modal.style.padding = '20px';
+        modal.style.borderRadius = '10px';
+        modal.style.maxWidth = '500px';
+        modal.style.width = '90%';
+        modal.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+        modal.style.display = 'flex';
+        modal.style.flexDirection = 'column';
+        modal.style.gap = '15px';
+        
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        const showPinEntry = () => {
+            modal.innerHTML = `
+                <h3 style="margin:0 0 10px 0;">PS5 Pairing - PIN Required</h3>
+                <p style="font-size:0.9em; opacity:0.8;">Please enter the PIN displayed on your PS5 screen.</p>
+                <p style="font-size:0.8em; opacity:0.6;">Go to Settings > System > Remote Play > Link Device</p>
+                
+                <input type="text" placeholder="00000000" id="ps5-pin-input" style="width:100%; padding:12px; font-size:1.2em; text-align:center; letter-spacing:5px; border-radius:4px; border:1px solid #555; background:#1a202c; color:#fff;">
+                
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                    <button id="btn-cancel-pin" style="padding:8px 16px; cursor:pointer; background:transparent; color:#aaa; border:1px solid #555; border-radius:4px;">Cancel</button>
+                    <button id="btn-submit-pin" style="padding:8px 16px; cursor:pointer; background:#48bb78; color:white; border:none; border-radius:4px;">Submit PIN</button>
+                </div>
+            `;
+
+            document.getElementById('btn-cancel-pin').onclick = () => {
+                document.body.removeChild(overlay);
+            };
+
+            document.getElementById('btn-submit-pin').onclick = () => {
+                const pin = document.getElementById('ps5-pin-input').value.trim();
+                if (!pin) return;
+
+                modal.innerHTML = `<h3 style="text-align:center;">Submitting PIN...</h3>`;
+                
+                fetch('/api/ps5/pin-submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pin })
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        modal.innerHTML = `<h3 style="text-align:center; color:#48bb78;">Pairing Successful!</h3>`;
+                        setTimeout(() => document.body.removeChild(overlay), 2000);
+                    } else {
+                        alert('Pairing failed: ' + d.error);
+                        document.body.removeChild(overlay);
+                    }
+                });
+            };
+        };
+
         const pollForPin = () => {
+            modal.innerHTML = `
+                <h3 style="margin:0 0 10px 0;">PS5 Pairing</h3>
+                <div style="text-align:center; padding:20px;">
+                    <p>Waiting for PS5 to request PIN...</p>
+                    <div class="spinner" style="margin:10px auto; width:30px; height:30px; border:3px solid rgba(255,255,255,0.3); border-radius:50%; border-top-color:#fff; animation:spin 1s ease-in-out infinite;"></div>
+                </div>
+            `;
+            
             const pollInterval = setInterval(() => {
                 fetch('/api/ps5/pair-status')
                     .then(r => r.json())
                     .then(statusData => {
                         if (statusData.status === 'pin_required') {
                             clearInterval(pollInterval);
-                            const pin = prompt('Please enter the PIN displayed on your PS5 screen (Settings > System > Remote Play > Link Device):');
-                            if (pin) {
-                                fetch('/api/ps5/pin-submit', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ pin })
-                                })
-                                .then(r => r.json())
-                                .then(d => {
-                                    if (d.success) alert('Pairing successful!');
-                                    else alert('Pairing failed: ' + d.error);
-                                });
-                            }
+                            showPinEntry();
                         }
                     });
             }, 2000);
@@ -925,46 +991,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'pin_required') {
-                    const pin = prompt('Please enter the PIN displayed on your PS5 screen (Settings > System > Remote Play > Link Device):');
-                    if (pin) {
-                        fetch('/api/ps5/pin-submit', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ pin })
-                        })
-                        .then(r => r.json())
-                        .then(d => {
-                            if (d.success) alert('Pairing successful!');
-                            else alert('Pairing failed: ' + d.error);
-                        });
-                    }
+                    showPinEntry();
                 } else if (data.status === 'auth_required') {
                     const url = data.url;
-                    
-                    // Create custom modal for pairing
-                    const overlay = document.createElement('div');
-                    overlay.style.position = 'fixed';
-                    overlay.style.top = '0';
-                    overlay.style.left = '0';
-                    overlay.style.width = '100%';
-                    overlay.style.height = '100%';
-                    overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
-                    overlay.style.zIndex = '10000';
-                    overlay.style.display = 'flex';
-                    overlay.style.alignItems = 'center';
-                    overlay.style.justifyContent = 'center';
-                    
-                    const modal = document.createElement('div');
-                    modal.style.backgroundColor = 'var(--card, #2d3748)';
-                    modal.style.color = 'var(--text, #fff)';
-                    modal.style.padding = '20px';
-                    modal.style.borderRadius = '10px';
-                    modal.style.maxWidth = '500px';
-                    modal.style.width = '90%';
-                    modal.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                    modal.style.display = 'flex';
-                    modal.style.flexDirection = 'column';
-                    modal.style.gap = '15px';
                     
                     modal.innerHTML = `
                         <h3 style="margin:0 0 10px 0;">PS5 Pairing</h3>
@@ -983,9 +1012,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button id="btn-submit-pair" style="padding:8px 16px; cursor:pointer; background:#48bb78; color:white; border:none; border-radius:4px;">Submit</button>
                         </div>
                     `;
-                    
-                    overlay.appendChild(modal);
-                    document.body.appendChild(overlay);
                     
                     // Event Listeners
                     document.getElementById('btn-copy-url').onclick = () => {
@@ -1008,8 +1034,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             return;
                         }
                         
-                        document.body.removeChild(overlay);
-                        
                         fetch('/api/ps5/pair-submit', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1018,7 +1042,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         .then(r => r.json())
                         .then(d => {
                             if (d.success) {
-                                alert('Auth code submitted. Please wait for PIN prompt...');
                                 pollForPin();
                             }
                             else alert('Pairing failed: ' + d.error);
@@ -1026,7 +1049,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
 
                 } else {
-                    alert('Pairing started. Check server logs if no URL appeared.');
                     pollForPin();
                 }
             });

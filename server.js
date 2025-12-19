@@ -1006,34 +1006,49 @@ app.post('/api/ps5/:id/standby', async (req, res) => {
 // PS5 Pairing Flow
 let currentAuthUrl = null;
 let isPinRequired = false;
+let pairingStatus = 'idle'; // idle, pairing, auth_required, pin_required, success, error
+let pairingError = null;
 
 ps5Manager.on('authUrl', (url) => {
     currentAuthUrl = url;
+    pairingStatus = 'auth_required';
 });
 
 ps5Manager.on('pin-required', () => {
     isPinRequired = true;
+    pairingStatus = 'pin_required';
 });
 
 app.post('/api/ps5/:id/pair', async (req, res) => {
-    currentAuthUrl = null; // Reset
-    isPinRequired = false; // Reset
+    currentAuthUrl = null;
+    isPinRequired = false;
+    pairingStatus = 'pairing';
+    pairingError = null;
     
     // Start pairing in background (it blocks until auth code is submitted)
     ps5Manager.pair(req.params.id).then(result => {
         console.log('Pairing finished:', result);
+        if (result.success) {
+            pairingStatus = 'success';
+        } else {
+            pairingStatus = 'error';
+            pairingError = result.error;
+        }
     });
     
     // Wait briefly for auth URL or PIN request
     let attempts = 0;
     const checkStatus = setInterval(() => {
         attempts++;
-        if (currentAuthUrl) {
+        if (pairingStatus === 'auth_required') {
             clearInterval(checkStatus);
             res.json({ status: 'auth_required', url: currentAuthUrl });
-        } else if (isPinRequired) {
+        } else if (pairingStatus === 'pin_required') {
             clearInterval(checkStatus);
             res.json({ status: 'pin_required' });
+        } else if (pairingStatus === 'error') {
+            clearInterval(checkStatus);
+            res.json({ status: 'error', error: pairingError });
         } else if (attempts > 40) { // 4 seconds timeout
             clearInterval(checkStatus);
             res.json({ status: 'started', message: 'Pairing started, check status later' });
@@ -1061,13 +1076,11 @@ app.post('/api/ps5/pin-submit', (req, res) => {
 
 // Add a status endpoint for polling
 app.get('/api/ps5/pair-status', (req, res) => {
-    if (currentAuthUrl) {
-        res.json({ status: 'auth_required', url: currentAuthUrl });
-    } else if (isPinRequired) {
-        res.json({ status: 'pin_required' });
-    } else {
-        res.json({ status: 'waiting' });
-    }
+    res.json({ 
+        status: pairingStatus, 
+        url: currentAuthUrl,
+        error: pairingError
+    });
 });
 
 app.post('/api/camera/webrtc/offer', async (req, res) => {

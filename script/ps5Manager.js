@@ -51,12 +51,13 @@ class PS5Manager extends EventEmitter {
         this.oauthStrategy.on('authUrl', (url) => this.emit('authUrl', url));
 
         const io = {
-            logError: console.error,
-            logInfo: console.log,
-            logResult: console.log,
+            logError: (...args) => console.error('[PS5] IO Error:', ...args),
+            logInfo: (...args) => console.log('[PS5] IO Info:', ...args),
+            logResult: (...args) => console.log('[PS5] IO Result:', ...args),
             prompt: async (text) => {
+                console.log('[PS5] Prompt requested:', text);
                 if (text.toLowerCase().includes('pin')) {
-                    console.log('[PS5] PIN required');
+                    console.log('[PS5] PIN required detected');
                     this.emit('pin-required');
                     return new Promise((resolve, reject) => {
                         this.resolvePin = resolve;

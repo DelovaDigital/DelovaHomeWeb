@@ -982,6 +982,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (statusData.status === 'pin_required') {
                             clearInterval(pollInterval);
                             showPinEntry();
+                        } else if (statusData.status === 'error') {
+                            clearInterval(pollInterval);
+                            alert('Pairing failed: ' + statusData.error);
+                            document.body.removeChild(overlay);
+                        } else if (statusData.status === 'success') {
+                            clearInterval(pollInterval);
+                            alert('Pairing successful!');
+                            document.body.removeChild(overlay);
                         }
                     });
             }, 2000);

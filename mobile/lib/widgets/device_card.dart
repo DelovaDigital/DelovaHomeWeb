@@ -22,6 +22,7 @@ class DeviceCard extends StatelessWidget {
     final accentColor = isDark ? Colors.cyanAccent : Colors.blueAccent;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -140,6 +141,7 @@ class DeviceCard extends StatelessWidget {
     switch (type.toLowerCase()) {
       case 'light':
       case 'bulb':
+      case 'dali':
         return Icons.lightbulb;
       case 'switch':
       case 'outlet':

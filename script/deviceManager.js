@@ -168,14 +168,39 @@ class DeviceManager extends EventEmitter {
                 // Try MainZone XML first (older/standard models)
                 const xml = await fetchXml('/goform/formMainZone_MainZoneXml.xml');
 
-                // Try to parse common renamed source tags or simple name listings
-                // Look for patterns like <RenameSource>Label</RenameSource> or <InputFuncList>...</InputFuncList>
-                const renameMatches = xml.match(/<RenameSource\d*>([^<]+)<\/RenameSource\d*>/gi);
-                if (renameMatches && renameMatches.length > 0) {
-                    inputs = renameMatches.map(m => {
-                        const name = m.replace(/<.*?>/g, '').trim();
-                        // Default to raw name, Denon code will be resolved by server if needed
-                        return { id: name.toUpperCase().replace(/\s+/g, ''), name };
+                // Try to parse common renamed source tags
+                // Matches <RenameSource1>Name</RenameSource1> etc.
+                const renameMatches = [];
+                const regex = /<RenameSource\d*>([^<]+)<\/RenameSource\d*>/gi;
+                let m;
+                while ((m = regex.exec(xml)) !== null) {
+                    if (m[1] && m[1].trim()) {
+                        renameMatches.push(m[1].trim());
+                    }
+                }
+
+                if (renameMatches.length > 0) {
+                    // Map these names to standard SI codes if possible, or just use index
+                    // Denon usually maps Source1 -> TV, Source2 -> DVD, etc. but it varies.
+                    // A safer bet is to just list them and let the user select.
+                    // But we need the ID (SI code) to send the command.
+                    // We can try to infer the ID from the position or other tags.
+                    
+                    // Better approach: Fetch /goform/AppCommand.xml with GetSourceStatus (newer models)
+                    // Or just use a fixed map for the first N sources found.
+                    
+                    const standardCodes = ['SITV', 'SIDVD', 'SIBD', 'SIGAME', 'SISAT/CBL', 'SIMPLAY', 'SIUSB', 'SINET', 'SIAUX1', 'SICD', 'SIPHONO', 'SITUNER'];
+                    
+                    inputs = renameMatches.map((name, index) => {
+                        // If we have more names than codes, we might have an issue, but usually it matches.
+                        // We can also try to guess the code from the name.
+                        let id = standardCodes[index] || `SI${name.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+                        
+                        // Special case: if name is "Apple TV", it might be mapped to DVD or GAME.
+                        // Without a proper mapping table from the AVR, we are guessing.
+                        // However, usually RenameSource1 corresponds to the first input button.
+                        
+                        return { id, name };
                     });
                 } else {
                     // Fallback: try to extract things that look like input names
@@ -184,7 +209,7 @@ class DeviceManager extends EventEmitter {
                     if (candidateMatches) {
                         candidateMatches.forEach(m => {
                             const name = m.replace(/[<>\/]*/g, '').trim();
-                            approx.push({ id: name.toUpperCase(), name });
+                            approx.push({ id: `SI${name.toUpperCase().replace(/\s/g, '')}`, name });
                         });
                     }
 

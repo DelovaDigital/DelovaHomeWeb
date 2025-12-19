@@ -23,7 +23,7 @@ class _DevicesTabState extends State<DevicesTab> {
   // Filters
   String _searchQuery = '';
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Light', 'Speaker', 'TV', 'Camera', 'Switch'];
+  final List<String> _categories = ['All', 'Light', 'Speaker', 'TV', 'Camera', 'Switch', 'Console'];
 
   @override
   void initState() {
@@ -71,8 +71,18 @@ class _DevicesTabState extends State<DevicesTab> {
     setState(() {
       _filteredDevices = _allDevices.where((device) {
         final matchesSearch = device.name.toLowerCase().contains(_searchQuery.toLowerCase());
-        final matchesCategory = _selectedCategory == 'All' || 
-            device.type.toLowerCase().contains(_selectedCategory.toLowerCase());
+        
+        bool matchesCategory = false;
+        if (_selectedCategory == 'All') {
+          matchesCategory = true;
+        } else if (_selectedCategory == 'Console') {
+          matchesCategory = device.type.toLowerCase() == 'ps5' || 
+                           device.type.toLowerCase() == 'console' || 
+                           device.type.toLowerCase() == 'game';
+        } else {
+          matchesCategory = device.type.toLowerCase().contains(_selectedCategory.toLowerCase());
+        }
+        
         return matchesSearch && matchesCategory;
       }).toList();
     });

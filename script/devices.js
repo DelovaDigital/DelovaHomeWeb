@@ -469,8 +469,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Power Button (except for sensors/locks/cameras)
         if (type !== 'sensor' && type !== 'lock' && type !== 'camera') {
+            // For PS5, use specific commands 'wake' and 'standby'
+            // For others, use 'toggle' or 'turn_on'/'turn_off'
+            let cmd = 'toggle';
+            if (type === 'ps5' || type === 'console') {
+                cmd = isOn ? 'standby' : 'wake';
+            }
+            
             controlsHtml += `
-                <button class="big-power-btn ${isOn ? 'on' : ''}" onclick="controlDevice('${device.id}', '${isOn ? 'standby' : 'wake'}')">
+                <button class="big-power-btn ${isOn ? 'on' : ''}" onclick="controlDevice('${device.id}', '${cmd}')">
                     <i class="fas fa-power-off"></i>
                 </button>
             `;

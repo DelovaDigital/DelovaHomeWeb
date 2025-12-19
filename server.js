@@ -24,6 +24,7 @@ const nasManager = require('./script/nasManager');
 const cameraStreamManager = require('./script/cameraStream');
 const knxManager = require('./script/knxManager');
 const mqttManager = require('./script/mqttManager');
+const mqttBroker = require('./script/mqttBroker');
 const energyManager = require('./script/energyManager');
 const WebSocket = require('ws');
 const url = require('url');
@@ -1334,12 +1335,23 @@ server.on('upgrade', handleUpgrade);
     
     // Initialize Managers
     initHubConfigFromDB();
+
+    // Start MQTT Broker
+    try {
+        await mqttBroker.startBroker();
+    } catch (e) {
+        console.error('Failed to start internal MQTT broker:', e);
+    }
+
+    // Start MQTT Client
+    mqttManager.on('error', (err) => {
+        // Prevent crash on connection refused if broker is down
+        console.error('[MQTT Client] Connection error (handled):', err.message);
+    });
+    mqttManager.connect();
     
     // Start Energy Simulation
     energyManager.on('update', (data) => {
-
-    // Start MQTT
-    mqttManager.connect();
         // Broadcast energy data to all connected clients
         const msg = JSON.stringify({ type: 'energy-update', data });
         wss.clients.forEach(client => {

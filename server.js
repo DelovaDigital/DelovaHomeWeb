@@ -27,6 +27,7 @@ const mqttManager = require('./script/mqttManager');
 const mqttBroker = require('./script/mqttBroker');
 const energyManager = require('./script/energyManager');
 const automationManager = require('./script/automationManager');
+const ps5Manager = require('./script/ps5Manager');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -984,6 +985,22 @@ app.get('/api/devices', (req, res) => {
     });
 
     res.json(enrichedDevices);
+});
+
+// --- PS5 Control ---
+app.get('/api/ps5/devices', async (req, res) => {
+    const devices = await ps5Manager.getDevices();
+    res.json(devices);
+});
+
+app.post('/api/ps5/:id/wake', async (req, res) => {
+    const result = await ps5Manager.wake(req.params.id);
+    res.json(result);
+});
+
+app.post('/api/ps5/:id/standby', async (req, res) => {
+    const result = await ps5Manager.standby(req.params.id);
+    res.json(result);
 });
 
 app.post('/api/camera/webrtc/offer', async (req, res) => {

@@ -2,7 +2,7 @@ const os = require('os');
 const mqtt = require('mqtt');
 
 /**
- * OmniHome PC Energy Monitor
+ * DelovaHome PC Energy Monitor
  * 
  * Setup Instructions:
  * 1. Install Node.js on the target machine.

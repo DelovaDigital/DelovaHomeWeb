@@ -210,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (type === 'cover' || type === 'blind') icon = 'fa-warehouse'; // or fa-blinds if available
             else if (type === 'vacuum') icon = 'fa-robot';
             else if (type === 'sensor') icon = 'fa-wifi';
+            else if (type === 'console' || type === 'playstation') icon = 'fa-gamepad';
             else if (type === 'nas') icon = 'fa-server';
 
             const isOn = device.state.on;
@@ -499,6 +500,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
                     </div>
+                </div>
+            `;
+        } else if (type === 'console' || type === 'playstation' || device.name.toLowerCase().includes('ps5')) {
+            controlsHtml += `
+                <div style="display: flex; flex-direction: column; gap: 15px; align-items: center; margin-top: 20px;">
+                    <p>PlayStation 5 Control</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-primary" style="padding: 15px 30px; font-size: 1.2em;" onclick="controlPS5('${device.id}', 'wake')">
+                            <i class="fas fa-power-off"></i> Wake
+                        </button>
+                        <button class="btn btn-secondary" style="padding: 15px 30px; font-size: 1.2em; background-color: #dc3545; color: white;" onclick="controlPS5('${device.id}', 'standby')">
+                            <i class="fas fa-moon"></i> Standby
+                        </button>
+                    </div>
+                    <p style="font-size: 0.8em; color: #888; margin-top: 10px;">
+                        Note: Initial setup requires 'npx playactor login' on the server.
+                    </p>
                 </div>
             `;
         } else if (type === 'nas') {
@@ -842,6 +860,20 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(data => {
             if (data.ok) fetchDevices();
         });
+    };
+
+    window.controlPS5 = (id, action) => {
+        const endpoint = action === 'wake' ? 'wake' : 'standby';
+        fetch(`/api/ps5/${id}/${endpoint}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // alert(`PS5 ${action} command sent.`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            })
+            .catch(err => console.error('PS5 Control Error:', err));
     };
 
     // Initial fetch

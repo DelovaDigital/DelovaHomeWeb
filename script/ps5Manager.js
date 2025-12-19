@@ -1,5 +1,7 @@
 const { Discovery } = require('playactor/dist/discovery');
 const { Device } = require('playactor/dist/device');
+const { PendingDevice } = require('playactor/dist/device/pending');
+const { StandardDiscoveryNetworkFactory } = require('playactor/dist/discovery/standard');
 const { CredentialManager } = require('playactor/dist/credentials');
 const { OauthCredentialRequester } = require('playactor/dist/credentials/oauth/requester');
 const EventEmitter = require('events');
@@ -104,13 +106,23 @@ class PS5Manager extends EventEmitter {
 
     async pair(deviceId) {
         try {
-            const device = this.devices.find(d => d.id === deviceId);
-            if (!device) throw new Error('Device not found');
+            console.log(`[PS5] Starting pairing for ${deviceId}...`);
+            
+            // Create a PendingDevice that uses our custom credential manager
+            const device = new PendingDevice(
+                `Device ${deviceId}`,
+                d => d.id === deviceId,
+                {},
+                { timeoutMillis: 5000 },
+                StandardDiscoveryNetworkFactory,
+                this.credentialManager
+            );
 
-            console.log(`[PS5] Starting pairing for ${device.name}...`);
-            // This will trigger performLogin if credentials don't exist
-            await this.credentialManager.getForDevice(device);
-            console.log(`[PS5] Pairing complete for ${device.name}`);
+            // Opening connection triggers authentication if needed
+            const conn = await device.openConnection();
+            console.log(`[PS5] Pairing complete for ${deviceId}`);
+            await conn.close();
+            
             return { success: true };
         } catch (err) {
             console.error('[PS5] Pairing error:', err);
@@ -124,23 +136,18 @@ class PS5Manager extends EventEmitter {
 
     async wake(deviceId) {
         try {
-            // Find device
-            const device = this.devices.find(d => d.id === deviceId);
-            if (!device) {
-                // Try to rediscover
-                await this.discover();
-            }
+            console.log(`[PS5] Waking ${deviceId}...`);
             
-            // Re-find
-            const target = this.devices.find(d => d.id === deviceId);
-            if (!target) throw new Error('Device not found');
+            const device = new PendingDevice(
+                `Device ${deviceId}`,
+                d => d.id === deviceId,
+                {},
+                { timeoutMillis: 5000 },
+                StandardDiscoveryNetworkFactory,
+                this.credentialManager
+            );
 
-            console.log(`[PS5] Waking ${target.name}...`);
-            // Connect and wake
-            // Note: This requires the device to be authenticated previously via CLI
-            const conn = await target.openConnection();
-            await conn.wake();
-            await conn.close();
+            await device.wake();
             return { success: true, status: 'AWAKE' };
         } catch (err) {
             console.error('[PS5] Wake error:', err);
@@ -150,17 +157,18 @@ class PS5Manager extends EventEmitter {
 
     async standby(deviceId) {
         try {
-             // Find device
-             const device = this.devices.find(d => d.id === deviceId);
-             if (!device) {
-                 await this.discover();
-             }
+             console.log(`[PS5] Putting ${deviceId} to standby...`);
              
-             const target = this.devices.find(d => d.id === deviceId);
-             if (!target) throw new Error('Device not found');
+             const device = new PendingDevice(
+                `Device ${deviceId}`,
+                d => d.id === deviceId,
+                {},
+                { timeoutMillis: 5000 },
+                StandardDiscoveryNetworkFactory,
+                this.credentialManager
+            );
  
-             console.log(`[PS5] Putting ${target.name} to standby...`);
-             const conn = await target.openConnection();
+             const conn = await device.openConnection();
              await conn.standby();
              await conn.close();
              return { success: true, status: 'STANDBY' };

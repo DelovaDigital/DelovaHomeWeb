@@ -262,33 +262,44 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3>Bibliotheek</h3>
                     <button class="close-modal" onclick="closeModal()">&times;</button>
                 </div>
-                <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-                    <div style="margin-bottom: 10px; font-weight: bold; color: #666;">Afspeellijsten</div>
-                    <div class="list-group">
+                <div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding: 20px;">
+                    
+                    <div style="margin-bottom: 15px; font-weight: bold; font-size: 1.1em; color: #333;">Afspeellijsten</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; margin-bottom: 30px;">
                         ${playlists.length ? playlists.map(p => `
-                            <div class="list-item" onclick="controlSpotify('play_context', '${p.uri}'); closeModal();">
-                                <img src="${p.images?.[0]?.url || 'img/default-album.png'}" style="width: 40px; height: 40px; border-radius: 4px;">
-                                <div style="flex: 1; margin-left: 10px;">
-                                    <div style="font-weight: bold;">${p.name}</div>
-                                    <div style="font-size: 0.8em; color: #666;">${p.tracks.total} nummers</div>
+                            <div onclick="controlSpotify('play_context', '${p.uri}'); closeModal();" 
+                                 style="cursor: pointer; transition: transform 0.2s;" 
+                                 onmouseover="this.style.transform='scale(1.05)'" 
+                                 onmouseout="this.style.transform='scale(1)'">
+                                <div style="position: relative; margin-bottom: 8px;">
+                                    <img src="${p.images?.[0]?.url || 'img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                    <div style="position: absolute; bottom: 5px; right: 5px; background: #1db954; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                        <i class="fas fa-play" style="font-size: 0.8em; margin-left: 2px;"></i>
+                                    </div>
                                 </div>
-                                <i class="fas fa-play-circle" style="color: #1db954; font-size: 1.5em;"></i>
+                                <div style="font-weight: bold; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}</div>
+                                <div style="font-size: 0.8em; color: #666;">${p.tracks.total} nummers</div>
                             </div>
-                        `).join('') : '<div style="padding: 10px; color: #999;">Geen afspeellijsten gevonden</div>'}
+                        `).join('') : '<div style="grid-column: 1/-1; color: #999;">Geen afspeellijsten gevonden</div>'}
                     </div>
                     
-                    <div style="margin: 20px 0 10px 0; font-weight: bold; color: #666;">Albums</div>
-                    <div class="list-group">
+                    <div style="margin-bottom: 15px; font-weight: bold; font-size: 1.1em; color: #333;">Albums</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px;">
                         ${albums.length ? albums.map(a => `
-                            <div class="list-item" onclick="controlSpotify('play_context', '${a.uri}'); closeModal();">
-                                <img src="${a.images?.[0]?.url || 'img/default-album.png'}" style="width: 40px; height: 40px; border-radius: 4px;">
-                                <div style="flex: 1; margin-left: 10px;">
-                                    <div style="font-weight: bold;">${a.name}</div>
-                                    <div style="font-size: 0.8em; color: #666;">${a.artists.map(art => art.name).join(', ')}</div>
+                            <div onclick="controlSpotify('play_context', '${a.uri}'); closeModal();"
+                                 style="cursor: pointer; transition: transform 0.2s;" 
+                                 onmouseover="this.style.transform='scale(1.05)'" 
+                                 onmouseout="this.style.transform='scale(1)'">
+                                <div style="position: relative; margin-bottom: 8px;">
+                                    <img src="${a.images?.[0]?.url || 'img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                    <div style="position: absolute; bottom: 5px; right: 5px; background: #1db954; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                                        <i class="fas fa-play" style="font-size: 0.8em; margin-left: 2px;"></i>
+                                    </div>
                                 </div>
-                                <i class="fas fa-play-circle" style="color: #1db954; font-size: 1.5em;"></i>
+                                <div style="font-weight: bold; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a.name}</div>
+                                <div style="font-size: 0.8em; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a.artists.map(art => art.name).join(', ')}</div>
                             </div>
-                        `).join('') : '<div style="padding: 10px; color: #999;">Geen albums gevonden</div>'}
+                        `).join('') : '<div style="grid-column: 1/-1; color: #999;">Geen albums gevonden</div>'}
                     </div>
                 </div>
             `;

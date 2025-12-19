@@ -135,9 +135,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function fetchDevices() {
-        fetch('/api/devices')
-            .then(res => res.json())
-            .then(devices => {
+        // Fetch standard devices
+        const p1 = fetch('/api/devices').then(res => res.json());
+        // Fetch PS5 devices specifically
+        const p2 = fetch('/api/ps5/devices').then(res => res.json()).catch(() => []);
+
+        Promise.all([p1, p2])
+            .then(([devices, ps5Devices]) => {
+                // Merge PS5 devices into main list if not already present
+                ps5Devices.forEach(ps5 => {
+                    if (!devices.find(d => d.id === ps5.id)) {
+                        devices.push({
+                            id: ps5.id,
+                            name: ps5.name,
+                            type: 'console',
+                            ip: ps5.address,
+                            state: { on: ps5.status === 'AWAKE' }
+                        });
+                    }
+                });
+
                 allDevices = devices;
                 renderDevices(devices);
                 // If modal is open, refresh it

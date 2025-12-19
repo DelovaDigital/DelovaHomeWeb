@@ -1461,6 +1461,11 @@ server.on('upgrade', handleUpgrade);
     // Initialize Managers
     initHubConfigFromDB();
 
+    // Start PS5 Discovery
+    ps5Manager.discover().then(devices => {
+        console.log(`[PS5] Initial discovery found ${devices.length} devices.`);
+    });
+
     // Start MQTT Broker
     try {
         await mqttBroker.startBroker();

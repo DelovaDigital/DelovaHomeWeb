@@ -394,6 +394,14 @@ class DeviceManager extends EventEmitter {
             // Sanitize ID to be safe for HTML attributes
             const safeId = (usn || `ssdp-${rinfo.address}`).replace(/[^a-zA-Z0-9-_:]/g, '_');
 
+            // --- PS5 Special Handling ---
+            // If we detect a PS5 via UPnP, we should also register it with the PS5 Manager
+            if (type === 'console' && (name.includes('PlayStation') || name.includes('PS5'))) {
+                // We don't need to do anything special here, the PS5 Manager has its own discovery.
+                // But we can ensure it appears in the UI even if PS5 Manager hasn't found it yet.
+            }
+
+
             let initialState = { on: false };
             if (type === 'nas' || type === 'printer') {
                 initialState = { on: true };

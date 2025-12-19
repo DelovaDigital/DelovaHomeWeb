@@ -62,10 +62,20 @@ class PS5Manager extends EventEmitter {
     async discover() {
         try {
             // Discover devices on the network
+            // Note: Discovery might fail if UDP broadcast is blocked or if multiple interfaces exist.
+            // We can try to force discovery on specific interfaces if needed, but playactor handles this generally.
             const devices = await this.discovery.discover();
+            
             // Filter for PS5s (type 'PS5')
             this.devices = devices.filter(d => d.type === 'PS5');
-            console.log(`[PS5] Discovered ${this.devices.length} PS5 devices.`);
+            
+            // If no devices found, try fallback or log
+            if (this.devices.length === 0) {
+                console.log('[PS5] No PS5 devices found via standard discovery.');
+            } else {
+                console.log(`[PS5] Discovered ${this.devices.length} PS5 devices.`);
+            }
+            
             return this.devices;
         } catch (err) {
             console.error('[PS5] Discovery error:', err);

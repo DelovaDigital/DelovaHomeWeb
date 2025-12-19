@@ -1003,6 +1003,43 @@ app.post('/api/ps5/:id/standby', async (req, res) => {
     res.json(result);
 });
 
+// PS5 Pairing Flow
+let currentAuthUrl = null;
+
+ps5Manager.on('authUrl', (url) => {
+    currentAuthUrl = url;
+});
+
+app.post('/api/ps5/:id/pair', async (req, res) => {
+    currentAuthUrl = null; // Reset
+    // Start pairing in background (it blocks until auth code is submitted)
+    ps5Manager.pair(req.params.id).then(result => {
+        console.log('Pairing finished:', result);
+    });
+    
+    // Wait briefly for auth URL to be generated
+    let attempts = 0;
+    const checkUrl = setInterval(() => {
+        attempts++;
+        if (currentAuthUrl) {
+            clearInterval(checkUrl);
+            res.json({ status: 'auth_required', url: currentAuthUrl });
+        } else if (attempts > 20) { // 2 seconds timeout
+            clearInterval(checkUrl);
+            res.json({ status: 'started', message: 'Pairing started, check status later' });
+        }
+    }, 100);
+});
+
+app.post('/api/ps5/pair-submit', (req, res) => {
+    const { code } = req.body;
+    if (ps5Manager.submitAuthCode(code)) {
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ success: false, error: 'No pending auth request' });
+    }
+});
+
 app.post('/api/camera/webrtc/offer', async (req, res) => {
     const { deviceId, rtspUrl, sdp } = req.body;
     if (!deviceId || !rtspUrl || !sdp) {

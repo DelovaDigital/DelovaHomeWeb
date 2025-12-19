@@ -514,9 +514,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="fas fa-moon"></i> Standby
                         </button>
                     </div>
-                    <p style="font-size: 0.8em; color: #888; margin-top: 10px;">
-                        Note: Initial setup requires 'npx playactor login' on the server.
-                    </p>
+                    <button class="btn btn-secondary" style="margin-top: 10px;" onclick="startPS5Pairing('${device.id}')">
+                        <i class="fas fa-link"></i> Pair / Login
+                    </button>
                 </div>
             `;
         } else if (type === 'nas') {
@@ -874,6 +874,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .catch(err => console.error('PS5 Control Error:', err));
+    };
+
+    window.startPS5Pairing = (id) => {
+        if (!confirm('Ensure your PS5 is ON and you are ready to login to PSN.')) return;
+        
+        fetch(`/api/ps5/${id}/pair`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'auth_required') {
+                    const url = data.url;
+                    const redirectUrl = prompt(`Please visit this URL to login:\n\n${url}\n\nAfter logging in, you will see a "redirect" error page. Copy the FULL URL from your browser address bar and paste it here:`);
+                    
+                    if (redirectUrl) {
+                        fetch('/api/ps5/pair-submit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ code: redirectUrl })
+                        })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.success) alert('Pairing successful!');
+                            else alert('Pairing failed: ' + d.error);
+                        });
+                    }
+                } else {
+                    alert('Pairing started. Check server logs if no URL appeared.');
+                }
+            });
     };
 
     // Initial fetch

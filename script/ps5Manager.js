@@ -1,15 +1,62 @@
 const { Discovery } = require('playactor/dist/discovery');
 const { Device } = require('playactor/dist/device');
+const { CredentialManager } = require('playactor/dist/credentials');
+const { OauthCredentialRequester } = require('playactor/dist/credentials/oauth/requester');
+const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
 
-// Path to store credentials/config if needed, though playactor handles its own config usually.
-// Playactor stores config in ~/.config/playactor/config.json by default.
-
-class PS5Manager {
+class WebOauthStrategy extends EventEmitter {
     constructor() {
+        super();
+        this.resolveLogin = null;
+    }
+
+    async performLogin(url) {
+        console.log('[PS5] Auth URL generated:', url);
+        this.emit('authUrl', url);
+        
+        return new Promise((resolve, reject) => {
+            this.resolveLogin = resolve;
+            // Timeout after 5 minutes
+            setTimeout(() => {
+                if (this.resolveLogin) {
+                    reject(new Error('Auth timeout'));
+                    this.resolveLogin = null;
+                }
+            }, 300000);
+        });
+    }
+
+    submitCode(redirectUrl) {
+        if (this.resolveLogin) {
+            this.resolveLogin(redirectUrl);
+            this.resolveLogin = null;
+            return true;
+        }
+        return false;
+    }
+}
+
+class PS5Manager extends EventEmitter {
+    constructor() {
+        super();
         this.discovery = new Discovery();
         this.devices = [];
+        
+        this.oauthStrategy = new WebOauthStrategy();
+        this.oauthStrategy.on('authUrl', (url) => this.emit('authUrl', url));
+
+        const io = {
+            logError: console.error,
+            logInfo: console.log,
+            logResult: console.log,
+            prompt: async () => ''
+        };
+
+        this.credentialManager = new CredentialManager(
+            new OauthCredentialRequester(io, this.oauthStrategy)
+        );
     }
 
     async discover() {
@@ -37,6 +84,26 @@ class PS5Manager {
             address: d.address.address,
             type: d.type
         }));
+    }
+
+    async pair(deviceId) {
+        try {
+            const device = this.devices.find(d => d.id === deviceId);
+            if (!device) throw new Error('Device not found');
+
+            console.log(`[PS5] Starting pairing for ${device.name}...`);
+            // This will trigger performLogin if credentials don't exist
+            await this.credentialManager.getForDevice(device);
+            console.log(`[PS5] Pairing complete for ${device.name}`);
+            return { success: true };
+        } catch (err) {
+            console.error('[PS5] Pairing error:', err);
+            return { success: false, error: err.message };
+        }
+    }
+
+    submitAuthCode(code) {
+        return this.oauthStrategy.submitCode(code);
     }
 
     async wake(deviceId) {

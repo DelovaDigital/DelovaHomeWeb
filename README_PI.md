@@ -41,6 +41,14 @@ pm2 startup
 ```
 *Follow the command output from `pm2 startup` to enable boot on startup.*
 
-## 6. Updating
+## 6. Setup Kiosk Mode (Optional)
+If you have a screen attached to the Pi and want to see the dashboard:
+```bash
+chmod +x builder/setup_kiosk.sh
+./builder/setup_kiosk.sh
+```
+This will install a lightweight browser environment and auto-launch DelovaHome on boot.
+
+## 7. Updating
 You can now update the system directly from the web interface (Settings -> Check for updates).
 When you release a new version on GitHub (push to main), the Pi will detect it.

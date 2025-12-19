@@ -19,6 +19,9 @@ class SpotifyManager {
 
     getAuthUrl(userId, localBaseUrl) {
         if (!this.clientId) return null;
+        
+        console.log(`[Spotify] Generating Auth URL. Redirect URI: ${this.redirectUri}`);
+
         // Use the 'state' parameter to pass the userId and localBaseUrl back to the callback
         const stateObj = { userId };
         if (localBaseUrl) {

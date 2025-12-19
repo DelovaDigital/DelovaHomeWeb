@@ -45,6 +45,7 @@ class PS5Manager extends EventEmitter {
         super();
         this.discovery = new Discovery();
         this.devices = [];
+        this.resolvePin = null;
         
         this.oauthStrategy = new WebOauthStrategy();
         this.oauthStrategy.on('authUrl', (url) => this.emit('authUrl', url));
@@ -53,12 +54,37 @@ class PS5Manager extends EventEmitter {
             logError: console.error,
             logInfo: console.log,
             logResult: console.log,
-            prompt: async () => ''
+            prompt: async (text) => {
+                if (text.toLowerCase().includes('pin')) {
+                    console.log('[PS5] PIN required');
+                    this.emit('pin-required');
+                    return new Promise((resolve, reject) => {
+                        this.resolvePin = resolve;
+                        // Timeout after 2 minutes
+                        setTimeout(() => {
+                            if (this.resolvePin) {
+                                reject(new Error('PIN timeout'));
+                                this.resolvePin = null;
+                            }
+                        }, 120000);
+                    });
+                }
+                return '';
+            }
         };
 
         this.credentialManager = new CredentialManager(
             new OauthCredentialRequester(io, this.oauthStrategy)
         );
+    }
+
+    submitPin(pin) {
+        if (this.resolvePin) {
+            this.resolvePin(pin);
+            this.resolvePin = null;
+            return true;
+        }
+        return false;
     }
 
     async discover() {

@@ -896,10 +896,49 @@ document.addEventListener('DOMContentLoaded', () => {
     window.startPS5Pairing = (id) => {
         if (!confirm('Ensure your PS5 is ON and you are ready to login to PSN.')) return;
         
+        const pollForPin = () => {
+            const pollInterval = setInterval(() => {
+                fetch('/api/ps5/pair-status')
+                    .then(r => r.json())
+                    .then(statusData => {
+                        if (statusData.status === 'pin_required') {
+                            clearInterval(pollInterval);
+                            const pin = prompt('Please enter the PIN displayed on your PS5 screen (Settings > System > Remote Play > Link Device):');
+                            if (pin) {
+                                fetch('/api/ps5/pin-submit', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ pin })
+                                })
+                                .then(r => r.json())
+                                .then(d => {
+                                    if (d.success) alert('Pairing successful!');
+                                    else alert('Pairing failed: ' + d.error);
+                                });
+                            }
+                        }
+                    });
+            }, 2000);
+        };
+
         fetch(`/api/ps5/${id}/pair`, { method: 'POST' })
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'auth_required') {
+                if (data.status === 'pin_required') {
+                    const pin = prompt('Please enter the PIN displayed on your PS5 screen (Settings > System > Remote Play > Link Device):');
+                    if (pin) {
+                        fetch('/api/ps5/pin-submit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ pin })
+                        })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (d.success) alert('Pairing successful!');
+                            else alert('Pairing failed: ' + d.error);
+                        });
+                    }
+                } else if (data.status === 'auth_required') {
                     const url = data.url;
                     
                     // Create custom modal for pairing
@@ -978,13 +1017,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         })
                         .then(r => r.json())
                         .then(d => {
-                            if (d.success) alert('Pairing successful!');
+                            if (d.success) {
+                                alert('Auth code submitted. Please wait for PIN prompt...');
+                                pollForPin();
+                            }
                             else alert('Pairing failed: ' + d.error);
                         });
                     };
 
                 } else {
                     alert('Pairing started. Check server logs if no URL appeared.');
+                    pollForPin();
                 }
             });
     };

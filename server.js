@@ -1005,27 +1005,37 @@ app.post('/api/ps5/:id/standby', async (req, res) => {
 
 // PS5 Pairing Flow
 let currentAuthUrl = null;
+let isPinRequired = false;
 
 ps5Manager.on('authUrl', (url) => {
     currentAuthUrl = url;
 });
 
+ps5Manager.on('pin-required', () => {
+    isPinRequired = true;
+});
+
 app.post('/api/ps5/:id/pair', async (req, res) => {
     currentAuthUrl = null; // Reset
+    isPinRequired = false; // Reset
+    
     // Start pairing in background (it blocks until auth code is submitted)
     ps5Manager.pair(req.params.id).then(result => {
         console.log('Pairing finished:', result);
     });
     
-    // Wait briefly for auth URL to be generated
+    // Wait briefly for auth URL or PIN request
     let attempts = 0;
-    const checkUrl = setInterval(() => {
+    const checkStatus = setInterval(() => {
         attempts++;
         if (currentAuthUrl) {
-            clearInterval(checkUrl);
+            clearInterval(checkStatus);
             res.json({ status: 'auth_required', url: currentAuthUrl });
-        } else if (attempts > 20) { // 2 seconds timeout
-            clearInterval(checkUrl);
+        } else if (isPinRequired) {
+            clearInterval(checkStatus);
+            res.json({ status: 'pin_required' });
+        } else if (attempts > 40) { // 4 seconds timeout
+            clearInterval(checkStatus);
             res.json({ status: 'started', message: 'Pairing started, check status later' });
         }
     }, 100);
@@ -1037,6 +1047,26 @@ app.post('/api/ps5/pair-submit', (req, res) => {
         res.json({ success: true });
     } else {
         res.status(400).json({ success: false, error: 'No pending auth request' });
+    }
+});
+
+app.post('/api/ps5/pin-submit', (req, res) => {
+    const { pin } = req.body;
+    if (ps5Manager.submitPin(pin)) {
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ success: false, error: 'No pending PIN request' });
+    }
+});
+
+// Add a status endpoint for polling
+app.get('/api/ps5/pair-status', (req, res) => {
+    if (currentAuthUrl) {
+        res.json({ status: 'auth_required', url: currentAuthUrl });
+    } else if (isPinRequired) {
+        res.json({ status: 'pin_required' });
+    } else {
+        res.json({ status: 'waiting' });
     }
 });
 

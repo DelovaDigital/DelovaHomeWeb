@@ -1,5 +1,5 @@
 {
-  "name": "devola-web",
+  "name": "delova-web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -21,6 +21,7 @@
     "mqtt": "^5.14.1",
     "mssql": "^12.2.0",
     "node-appletv-x": "^1.0.19",
+    "node-cron": "^4.2.1",
     "node-fetch": "^2.6.7",
     "onvif": "^0.8.1",
     "samsung-remote": "1.6.2",

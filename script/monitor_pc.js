@@ -1,9 +1,20 @@
 const os = require('os');
 const mqtt = require('mqtt');
 
+/**
+ * OmniHome PC Energy Monitor
+ * 
+ * Setup Instructions:
+ * 1. Install Node.js on the target machine.
+ * 2. Create a folder and place this script inside.
+ * 3. Run `npm install mqtt` in that folder.
+ * 4. Run `node monitor_pc.js` (or use PM2/Service to keep it running).
+ * 5. Set HUB_URL environment variable if your Hub is not at the default IP.
+ */
+
 // Configuration
 const CONFIG = {
-    hubUrl: process.env.HUB_URL || 'mqtt://192.168.0.114:1883', // Replace with your Hub IP
+    hubUrl: process.env.HUB_URL || 'mqtt://192.168.0.216:1883', // Replace with your Hub IP
     deviceName: os.hostname(),
     updateInterval: 5000 // 5 seconds
 };

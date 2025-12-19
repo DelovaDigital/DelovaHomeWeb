@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const fetch = require('node-fetch');
+const https = require('https');
 const net = require('net');
 const dgram = require('dgram');
 const fs = require('fs');
@@ -917,16 +918,26 @@ class DeviceManager extends EventEmitter {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 3000);
                 try {
+                    const httpsAgent = new https.Agent({ rejectUnauthorized: false });
                     const options = { 
                         signal: controller.signal,
-                        method: method
+                        method: method,
+                        agent: (_parsedUrl) => _parsedUrl.protocol === 'https:' ? httpsAgent : undefined
                     };
                     if (body) {
                         options.body = body;
                         options.headers = { 'Content-Type': 'text/xml' };
                     }
-                    const res = await fetch(`http://${device.ip}${path}`, options);
-                    return await res.text();
+                    
+                    // Try HTTPS first since we saw redirects/errors
+                    try {
+                         const res = await fetch(`https://${device.ip}${path}`, options);
+                         return await res.text();
+                    } catch(e) {
+                         // Fallback to HTTP if HTTPS fails
+                         const res = await fetch(`http://${device.ip}${path}`, options);
+                         return await res.text();
+                    }
                 } finally {
                     clearTimeout(timeout);
                 }

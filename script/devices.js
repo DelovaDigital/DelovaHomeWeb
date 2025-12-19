@@ -901,9 +901,76 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 if (data.status === 'auth_required') {
                     const url = data.url;
-                    const redirectUrl = prompt(`Please visit this URL to login:\n\n${url}\n\nAfter logging in, you will see a "redirect" error page. Copy the FULL URL from your browser address bar and paste it here:`);
                     
-                    if (redirectUrl) {
+                    // Create custom modal for pairing
+                    const overlay = document.createElement('div');
+                    overlay.style.position = 'fixed';
+                    overlay.style.top = '0';
+                    overlay.style.left = '0';
+                    overlay.style.width = '100%';
+                    overlay.style.height = '100%';
+                    overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+                    overlay.style.zIndex = '10000';
+                    overlay.style.display = 'flex';
+                    overlay.style.alignItems = 'center';
+                    overlay.style.justifyContent = 'center';
+                    
+                    const modal = document.createElement('div');
+                    modal.style.backgroundColor = 'var(--card, #2d3748)';
+                    modal.style.color = 'var(--text, #fff)';
+                    modal.style.padding = '20px';
+                    modal.style.borderRadius = '10px';
+                    modal.style.maxWidth = '500px';
+                    modal.style.width = '90%';
+                    modal.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                    modal.style.display = 'flex';
+                    modal.style.flexDirection = 'column';
+                    modal.style.gap = '15px';
+                    
+                    modal.innerHTML = `
+                        <h3 style="margin:0 0 10px 0;">PS5 Pairing</h3>
+                        <p style="font-size:0.9em; opacity:0.8;">1. Visit the login page below and sign in to PSN.</p>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" value="${url}" readonly style="flex:1; padding:8px; border-radius:4px; border:1px solid #555; background:#1a202c; color:#fff;" id="ps5-auth-url">
+                            <button id="btn-copy-url" style="padding:8px 12px; cursor:pointer; background:#4a5568; color:white; border:none; border-radius:4px;">Copy</button>
+                            <a href="${url}" target="_blank" style="padding:8px 12px; cursor:pointer; background:#3182ce; color:white; text-decoration:none; border-radius:4px; display:flex; align-items:center;">Open</a>
+                        </div>
+                        
+                        <p style="font-size:0.9em; opacity:0.8; margin-top:10px;">2. After logging in, you will see a "redirect" error page. Copy the FULL URL from your browser address bar and paste it here:</p>
+                        <input type="text" placeholder="Paste redirect URL here..." id="ps5-redirect-url" style="width:100%; padding:8px; border-radius:4px; border:1px solid #555; background:#1a202c; color:#fff;">
+                        
+                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                            <button id="btn-cancel-pair" style="padding:8px 16px; cursor:pointer; background:transparent; color:#aaa; border:1px solid #555; border-radius:4px;">Cancel</button>
+                            <button id="btn-submit-pair" style="padding:8px 16px; cursor:pointer; background:#48bb78; color:white; border:none; border-radius:4px;">Submit</button>
+                        </div>
+                    `;
+                    
+                    overlay.appendChild(modal);
+                    document.body.appendChild(overlay);
+                    
+                    // Event Listeners
+                    document.getElementById('btn-copy-url').onclick = () => {
+                        const copyText = document.getElementById("ps5-auth-url");
+                        copyText.select();
+                        copyText.setSelectionRange(0, 99999); 
+                        navigator.clipboard.writeText(copyText.value);
+                        document.getElementById('btn-copy-url').textContent = 'Copied!';
+                        setTimeout(() => document.getElementById('btn-copy-url').textContent = 'Copy', 2000);
+                    };
+                    
+                    document.getElementById('btn-cancel-pair').onclick = () => {
+                        document.body.removeChild(overlay);
+                    };
+                    
+                    document.getElementById('btn-submit-pair').onclick = () => {
+                        const redirectUrl = document.getElementById('ps5-redirect-url').value.trim();
+                        if (!redirectUrl) {
+                            alert('Please paste the redirect URL.');
+                            return;
+                        }
+                        
+                        document.body.removeChild(overlay);
+                        
                         fetch('/api/ps5/pair-submit', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -914,7 +981,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (d.success) alert('Pairing successful!');
                             else alert('Pairing failed: ' + d.error);
                         });
-                    }
+                    };
+
                 } else {
                     alert('Pairing started. Check server logs if no URL appeared.');
                 }

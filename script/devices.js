@@ -499,6 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="action-btn" onclick="controlDevice('${device.id}', 'home')"><i class="fas fa-home"></i> Home</button>
                         <button class="action-btn" onclick="controlDevice('${device.id}', 'options')"><i class="fas fa-bars"></i> Options</button>
                     </div>
+                    <div style="margin-top: 20px; width: 100%; display: flex; justify-content: center;">
+                        <button class="action-btn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);" onclick="startPS5Pairing('${device.id}')">
+                            <i class="fas fa-link"></i> Pair PS5
+                        </button>
+                    </div>
                 </div>
             `;
         } else if (type === 'light' && isOn) {

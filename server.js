@@ -1325,10 +1325,7 @@ try {
     server = app.listen(port, () => console.log(`Server running at http://localhost:${port}`));
 }
 
-server.on('upMQTT
-    mqttManager.connect();
-
-    // Start grade', handleUpgrade);
+server.on('upgrade', handleUpgrade);
 
 (async () => {
   try {
@@ -1340,6 +1337,9 @@ server.on('upMQTT
     
     // Start Energy Simulation
     energyManager.on('update', (data) => {
+
+    // Start MQTT
+    mqttManager.connect();
         // Broadcast energy data to all connected clients
         const msg = JSON.stringify({ type: 'energy-update', data });
         wss.clients.forEach(client => {

@@ -114,21 +114,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     };
 
-    window.controlSpotify = (command, value) => {
+    window.controlSpotify = (command, value, deviceId) => {
         const userId = getUserId();
         if (!userId) return;
+
+        const body = { command, value, userId };
+        if (deviceId) body.deviceId = deviceId;
 
         fetch(`/api/spotify/control?userId=${userId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command, value, userId }) // also include in body for middleware
+            body: JSON.stringify(body)
         })
         .then(async res => {
             const data = await res.json();
             if (!res.ok) {
                 if (data.message && data.message.includes('No active Spotify device')) {
                     alert('Geen actief Spotify-apparaat. Kies een apparaat om af te spelen.');
-                    toggleSpotifyDevices();
+                    // Pass the pending command to toggleSpotifyDevices so it can retry after selection
+                    toggleSpotifyDevices({ command, value });
                 } else {
                     console.error('Spotify control error:', data.message);
                 }
@@ -139,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(err => console.error('Fetch error:', err));
     };
 
-    window.toggleSpotifyDevices = async () => {
+    window.toggleSpotifyDevices = async (pendingCommand = null) => {
         const userId = getUserId();
         if (!userId) return;
 
@@ -162,7 +166,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="list-group">
                         ${devices.length > 0 ? devices.map(d => `
                             <div class="list-item ${d.is_active ? 'active' : ''}" style="display:flex; align-items:center;">
-                                <div style="flex:1; cursor:pointer;" onclick="controlSpotify('transfer', '${d.id}'); closeModal();">
+                                <div style="flex:1; cursor:pointer;" onclick="${pendingCommand ? 
+                                    `controlSpotify('${pendingCommand.command}', '${pendingCommand.value}', '${d.id}'); closeModal();` : 
+                                    `controlSpotify('transfer', '${d.id}'); closeModal();`}">
                                     <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
                                     <div style="display:inline-block; margin-left: 10px; vertical-align: middle;">
                                         <div style="font-weight: bold;">${d.name}</div>

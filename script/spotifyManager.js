@@ -174,11 +174,17 @@ class SpotifyManager {
         }
     }
 
-    async play(userId, uris) {
+    async play(userId, uris, deviceId) {
         const headers = await this.getHeaders(userId);
         if (!headers) throw new Error('No valid Spotify token for user');
         const body = uris ? JSON.stringify({ uris }) : undefined;
-        const resp = await fetch('https://api.spotify.com/v1/me/player/play', { 
+        
+        let url = 'https://api.spotify.com/v1/me/player/play';
+        if (deviceId) {
+            url += `?device_id=${encodeURIComponent(deviceId)}`;
+        }
+
+        const resp = await fetch(url, { 
             method: 'PUT', 
             headers: { ...headers, 'Content-Type': 'application/json' },
             body
@@ -343,10 +349,16 @@ class SpotifyManager {
         }
     }
 
-    async playContext(userId, contextUri) {
+    async playContext(userId, contextUri, deviceId) {
         const headers = await this.getHeaders(userId);
         if (!headers) throw new Error('No valid Spotify token for user');
-        const resp = await fetch('https://api.spotify.com/v1/me/player/play', {
+        
+        let url = 'https://api.spotify.com/v1/me/player/play';
+        if (deviceId) {
+            url += `?device_id=${encodeURIComponent(deviceId)}`;
+        }
+
+        const resp = await fetch(url, {
             method: 'PUT',
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ context_uri: contextUri })
@@ -362,10 +374,16 @@ class SpotifyManager {
         }
     }
 
-    async playUris(userId, uris) {
+    async playUris(userId, uris, deviceId) {
         const headers = await this.getHeaders(userId);
         if (!headers) throw new Error('No valid Spotify token for user');
-        const resp = await fetch('https://api.spotify.com/v1/me/player/play', {
+        
+        let url = 'https://api.spotify.com/v1/me/player/play';
+        if (deviceId) {
+            url += `?device_id=${encodeURIComponent(deviceId)}`;
+        }
+
+        const resp = await fetch(url, {
             method: 'PUT',
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ uris: uris })

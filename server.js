@@ -631,16 +631,16 @@ app.get('/api/spotify/devices', requireSpotifyUser, async (req, res) => {
 });
 
 app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
-    const { command, value } = req.body;
+    const { command, value, deviceId } = req.body;
     try {
-        if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined);
+        if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined, deviceId);
         else if (command === 'pause') await spotifyManager.pause(req.userId);
         else if (command === 'next') await spotifyManager.next(req.userId);
         else if (command === 'previous') await spotifyManager.previous(req.userId);
         else if (command === 'set_volume') await spotifyManager.setVolume(req.userId, value);
         else if (command === 'transfer') await spotifyManager.transferPlayback(req.userId, value);
-        else if (command === 'play_context') await spotifyManager.playContext(req.userId, value);
-        else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value);
+        else if (command === 'play_context') await spotifyManager.playContext(req.userId, value, deviceId);
+        else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value, deviceId);
         else return res.status(400).json({ ok: false, message: `Invalid command: ${command}`});
 
         res.json({ ok: true });

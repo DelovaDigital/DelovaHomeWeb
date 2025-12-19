@@ -140,7 +140,7 @@ class PS5Manager extends EventEmitter {
                 `Device ${deviceId}`,
                 d => d.id === deviceId,
                 {},
-                { timeoutMillis: 5000 },
+                { timeoutMillis: 30000 }, // Increased timeout for reliability
                 StandardDiscoveryNetworkFactory,
                 this.credentialManager
             );
@@ -169,7 +169,7 @@ class PS5Manager extends EventEmitter {
                 `Device ${deviceId}`,
                 d => d.id === deviceId,
                 {},
-                { timeoutMillis: 5000 },
+                { timeoutMillis: 60000 }, // Give it 60s to wake up and respond
                 StandardDiscoveryNetworkFactory,
                 this.credentialManager
             );
@@ -190,7 +190,7 @@ class PS5Manager extends EventEmitter {
                 `Device ${deviceId}`,
                 d => d.id === deviceId,
                 {},
-                { timeoutMillis: 5000 },
+                { timeoutMillis: 10000 },
                 StandardDiscoveryNetworkFactory,
                 this.credentialManager
             );

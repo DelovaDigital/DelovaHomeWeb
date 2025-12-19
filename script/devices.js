@@ -463,20 +463,38 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'printer') icon = 'fa-print';
         else if (type === 'receiver' || device.name.toLowerCase().includes('denon')) icon = 'fa-compact-disc';
         else if (type === 'camera') icon = 'fa-video';
+        else if (type === 'ps5' || type === 'console') icon = 'fa-gamepad';
 
         let controlsHtml = '';
 
         // Power Button (except for sensors/locks/cameras)
         if (type !== 'sensor' && type !== 'lock' && type !== 'camera') {
             controlsHtml += `
-                <button class="big-power-btn ${isOn ? 'on' : ''}" onclick="toggleDevice('${device.id}')">
+                <button class="big-power-btn ${isOn ? 'on' : ''}" onclick="controlDevice('${device.id}', '${isOn ? 'standby' : 'wake'}')">
                     <i class="fas fa-power-off"></i>
                 </button>
             `;
         }
 
         // Specific Controls
-        if (type === 'light' && isOn) {
+        if (type === 'ps5' || type === 'console') {
+             controlsHtml += `
+                <div class="remote-control">
+                    <div class="d-pad">
+                        <button class="d-btn up" onclick="controlDevice('${device.id}', 'up')"><i class="fas fa-chevron-up"></i></button>
+                        <button class="d-btn left" onclick="controlDevice('${device.id}', 'left')"><i class="fas fa-chevron-left"></i></button>
+                        <button class="d-btn center" onclick="controlDevice('${device.id}', 'enter')">OK</button>
+                        <button class="d-btn right" onclick="controlDevice('${device.id}', 'right')"><i class="fas fa-chevron-right"></i></button>
+                        <button class="d-btn down" onclick="controlDevice('${device.id}', 'down')"><i class="fas fa-chevron-down"></i></button>
+                    </div>
+                    <div class="remote-actions">
+                        <button class="action-btn" onclick="controlDevice('${device.id}', 'back')"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button class="action-btn" onclick="controlDevice('${device.id}', 'home')"><i class="fas fa-home"></i> Home</button>
+                        <button class="action-btn" onclick="controlDevice('${device.id}', 'options')"><i class="fas fa-bars"></i> Options</button>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'light' && isOn) {
             controlsHtml += `
                 <div class="modal-slider-container">
                     <label class="modal-slider-label">Helderheid: ${device.state.brightness || 0}%</label>

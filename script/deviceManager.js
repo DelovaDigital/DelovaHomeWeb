@@ -296,8 +296,12 @@ class DeviceManager extends EventEmitter {
             for await (const device of iterator) {
                 if (device.type === 'PS5') {
                     console.log(`[DeviceManager] Found PS5: ${device.name} (${device.address.address})`);
+                    
+                    // Check if device already exists (maybe as generic PC)
+                    const existingId = Array.from(this.devices.values()).find(d => d.ip === device.address.address)?.id;
+                    
                     this.addDevice({
-                        id: device.id,
+                        id: existingId || device.id, // Keep existing ID if possible to preserve prefs
                         name: device.name,
                         type: 'ps5',
                         ip: device.address.address,

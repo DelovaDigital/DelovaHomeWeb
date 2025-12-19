@@ -204,6 +204,48 @@ class PS5Manager extends EventEmitter {
             return { success: false, error: err.message };
         }
     }
+
+    async sendCommand(deviceId, command) {
+        try {
+             console.log(`[PS5] Sending command ${command} to ${deviceId}...`);
+             
+             const device = new PendingDevice(
+                `Device ${deviceId}`,
+                d => d.id === deviceId,
+                {},
+                { timeoutMillis: 10000 },
+                StandardDiscoveryNetworkFactory,
+                this.credentialManager
+            );
+ 
+             const conn = await device.openConnection();
+             
+             let key = null;
+             // Map common commands to Playactor keys
+             switch (command.toLowerCase()) {
+                 case 'up': key = 'Up'; break;
+                 case 'down': key = 'Down'; break;
+                 case 'left': key = 'Left'; break;
+                 case 'right': key = 'Right'; break;
+                 case 'enter': key = 'Enter'; break;
+                 case 'back': key = 'Back'; break;
+                 case 'home': key = 'Home'; break;
+                 case 'options': key = 'Options'; break;
+             }
+             
+             if (key) {
+                 await conn.sendKeys([key]);
+             } else {
+                 console.warn(`[PS5] Unknown command: ${command}`);
+             }
+             
+             await conn.close();
+             return { success: true };
+        } catch (err) {
+            console.error('[PS5] Command error:', err);
+            return { success: false, error: err.message };
+        }
+    }
 }
 
 const ps5Manager = new PS5Manager();

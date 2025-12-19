@@ -420,4 +420,24 @@ class ApiService {
     }
     return {};
   }
+
+  Future<void> wakePs5(String id) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/ps5/$id/wake'),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to wake PS5');
+    }
+  }
+
+  Future<void> standbyPs5(String id) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/ps5/$id/standby'),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to standby PS5');
+    }
+  }
 }

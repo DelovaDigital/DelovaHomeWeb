@@ -328,8 +328,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isSensor = widget.device.type.toLowerCase() == 'sensor';
     final isCamera = widget.device.type.toLowerCase() == 'camera';
     final isPrinter = widget.device.type.toLowerCase() == 'printer';
+    final isPs5 = widget.device.type.toLowerCase() == 'ps5' || widget.device.type.toLowerCase() == 'console' || widget.device.type.toLowerCase() == 'game' || widget.device.name.toLowerCase().contains('ps5');
     // Determine if this device should be treated like a PC/game console for Wake actions
-    final isPc = widget.device.type.toLowerCase().contains('pc') || widget.device.name.toLowerCase().contains('ps5') || widget.device.type.toLowerCase().contains('game');
+    final isPc = widget.device.type.toLowerCase().contains('pc') || (widget.device.name.toLowerCase().contains('ps5') && !isPs5) || widget.device.type.toLowerCase().contains('game');
     
     final isPoweredOn = widget.device.status.isOn;
 
@@ -547,6 +548,70 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 ),
                 const SizedBox(height: 30),
                 _buildCameraControls(),
+              ],
+
+              // --- PS5 Controls ---
+              if (isPs5) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _actionButton("Wake", Icons.power, () async {
+                       try {
+                         await _apiService.wakePs5(widget.device.id);
+                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Wake command sent')));
+                       } catch (e) {
+                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                       }
+                    }),
+                    _actionButton("Standby", Icons.power_off, () async {
+                       try {
+                         await _apiService.standbyPs5(widget.device.id);
+                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Standby command sent')));
+                       } catch (e) {
+                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                       }
+                    }),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    children: [
+                      IconButton(icon: const Icon(Icons.keyboard_arrow_up, size: 40, color: Colors.white), onPressed: () => _sendCommand('up')),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(icon: const Icon(Icons.keyboard_arrow_left, size: 40, color: Colors.white), onPressed: () => _sendCommand('left')),
+                          const SizedBox(width: 20),
+                          IconButton(icon: const Icon(Icons.circle_outlined, size: 40, color: Colors.white), onPressed: () => _sendCommand('enter')),
+                          const SizedBox(width: 20),
+                          IconButton(icon: const Icon(Icons.keyboard_arrow_right, size: 40, color: Colors.white), onPressed: () => _sendCommand('right')),
+                        ],
+                      ),
+                      IconButton(icon: const Icon(Icons.keyboard_arrow_down, size: 40, color: Colors.white), onPressed: () => _sendCommand('down')),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _actionButton("Back", Icons.arrow_back, () => _sendCommand('back')),
+                    _actionButton("Home", Icons.home, () => _sendCommand('home')),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Note: Storage and Downloads viewing is not supported by the current library.",
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
               ],
 
               // --- Printer Controls ---

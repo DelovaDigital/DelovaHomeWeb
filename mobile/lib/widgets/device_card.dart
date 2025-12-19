@@ -173,6 +173,11 @@ class DeviceCard extends StatelessWidget {
         return Icons.sensors;
       case 'fan':
         return Icons.mode_fan_off;
+      case 'ps5':
+      case 'console':
+      case 'game':
+      case 'playstation':
+        return Icons.gamepad;
       default:
         return Icons.devices;
     }

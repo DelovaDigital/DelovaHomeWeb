@@ -13,6 +13,7 @@ const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
 const mqttManager = require('./mqttManager');
+const ps5Manager = require('./ps5Manager');
 let SamsungRemote = null;
 try {
     SamsungRemote = require('samsung-remote');
@@ -287,7 +288,33 @@ class DeviceManager extends EventEmitter {
         // this.addMockDevices();
     }
 
+    async discoverPs5s() {
+        try {
+            console.log('[DeviceManager] Starting PS5 discovery...');
+            // Use a short timeout for initial discovery
+            const iterator = ps5Manager.discovery.discover({}, { timeoutMillis: 5000 });
+            for await (const device of iterator) {
+                if (device.type === 'PS5') {
+                    console.log(`[DeviceManager] Found PS5: ${device.name} (${device.address.address})`);
+                    this.addDevice({
+                        id: device.id,
+                        name: device.name,
+                        type: 'ps5',
+                        ip: device.address.address,
+                        protocol: 'ps5',
+                        state: { on: device.status === 'AWAKE' }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('[DeviceManager] PS5 Discovery error:', e);
+        }
+    }
+
     setupSsdpDiscovery() {
+        // Start PS5 Discovery
+        this.discoverPs5s();
+
         const SSDP_ADDR = '239.255.255.250';
         const SSDP_PORT = 1900;
         
@@ -1182,8 +1209,36 @@ class DeviceManager extends EventEmitter {
             socket.on('end', () => {
                 socket.destroy();
             });
+        } else if (device.type === 'ps5') {
+            this.refreshPs5(device);
         } else if (device.type === 'printer') {
             this.refreshPrinter(device);
+        }
+    }
+
+    async refreshPs5(device) {
+        try {
+            // Use a very short timeout to check if it's online
+            const iterator = ps5Manager.discovery.discover({}, { timeoutMillis: 1500 });
+            let found = false;
+            for await (const d of iterator) {
+                if (d.id === device.id) {
+                    found = true;
+                    const isOn = d.status === 'AWAKE';
+                    if (device.state.on !== isOn) {
+                        device.state.on = isOn;
+                        this.emit('device-updated', device);
+                    }
+                    break;
+                }
+            }
+            // If not found, it might be deep sleep or off network
+            if (!found && device.state.on) {
+                 device.state.on = false;
+                 this.emit('device-updated', device);
+            }
+        } catch (e) {
+            // Ignore discovery errors
         }
     }
 
@@ -1463,6 +1518,16 @@ class DeviceManager extends EventEmitter {
             this.handleAirPlayCommand(device, command, value);
         } else if (device.protocol === 'denon-avr') {
             this.handleDenonCommand(device, command, value);
+        } else if (device.type === 'ps5' || (device.type === 'console' && device.name.toLowerCase().includes('ps5'))) {
+            if (command === 'wake' || command === 'turn_on') {
+                await ps5Manager.wake(device.id);
+                device.state.on = true;
+            } else if (command === 'standby' || command === 'turn_off') {
+                await ps5Manager.standby(device.id);
+                device.state.on = false;
+            } else {
+                await ps5Manager.sendCommand(device.id, command);
+            }
         } else if (device.type === 'pc' || device.type === 'console') {
             if (command === 'turn_on') {
                 try {

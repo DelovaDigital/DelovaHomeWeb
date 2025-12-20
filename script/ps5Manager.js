@@ -47,6 +47,10 @@ class PS5Manager extends EventEmitter {
         this.devices = [];
         this.resolvePin = null;
         
+        // Connection queue to prevent "Remote already in use" errors
+        this.connectionQueue = Promise.resolve();
+        this.activeConnections = new Map();
+        
         this.oauthStrategy = new WebOauthStrategy();
         this.oauthStrategy.on('authUrl', (url) => this.emit('authUrl', url));
 
@@ -86,6 +90,66 @@ class PS5Manager extends EventEmitter {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Queue a PS5 operation to prevent simultaneous connections
+     * @param {Function} operation - Async function to execute
+     * @returns {Promise} - Result of the operation
+     */
+    async queueOperation(operation) {
+        // Chain the new operation after the current queue
+        const result = this.connectionQueue.then(operation).catch(err => {
+            console.error('[PS5] Queued operation error:', err);
+            throw err;
+        });
+        
+        // Update queue to wait for this operation
+        this.connectionQueue = result.catch(() => {}); // Catch to prevent queue blocking on error
+        
+        return result;
+    }
+
+    /**
+     * Execute PS5 operation with retry logic
+     * @param {Function} operation - Async function to execute
+     * @param {number} maxRetries - Maximum retry attempts
+     * @returns {Promise} - Result of the operation
+     */
+    async withRetry(operation, maxRetries = 3) {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                return await operation();
+            } catch (err) {
+                const isLastAttempt = attempt === maxRetries - 1;
+                const isInUseError = err.message && err.message.includes('already in use');
+                
+                if (isInUseError && !isLastAttempt) {
+                    const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
+                    console.log(`[PS5] Remote in use, retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                } else {
+                    throw err;
+                }
+            }
+        }
+    }
+
+    /**
+     * Safely close a connection with error handling
+     */
+    async safeClose(conn, deviceId) {
+        if (!conn) return;
+        
+        try {
+            await conn.close();
+            this.activeConnections.delete(deviceId);
+            console.log(`[PS5] Connection closed for ${deviceId}`);
+        } catch (err) {
+            console.error(`[PS5] Error closing connection for ${deviceId}:`, err);
+            // Still remove from active connections even if close fails
+            this.activeConnections.delete(deviceId);
+        }
     }
 
     async discover() {
@@ -132,29 +196,34 @@ class PS5Manager extends EventEmitter {
     }
 
     async pair(deviceId) {
-        try {
-            console.log(`[PS5] Starting pairing for ${deviceId}...`);
-            
-            // Create a PendingDevice that uses our custom credential manager
-            const device = new PendingDevice(
-                `Device ${deviceId}`,
-                d => d.id === deviceId,
-                {},
-                { timeoutMillis: 30000 }, // Increased timeout for reliability
-                StandardDiscoveryNetworkFactory,
-                this.credentialManager
-            );
+        return this.queueOperation(async () => {
+            return this.withRetry(async () => {
+                try {
+                    console.log(`[PS5] Starting pairing for ${deviceId}...`);
+                    
+                    // Create a PendingDevice that uses our custom credential manager
+                    const device = new PendingDevice(
+                        `Device ${deviceId}`,
+                        d => d.id === deviceId,
+                        {},
+                        { timeoutMillis: 30000 }, // Increased timeout for reliability
+                        StandardDiscoveryNetworkFactory,
+                        this.credentialManager
+                    );
 
-            // Opening connection triggers authentication if needed
-            const conn = await device.openConnection();
-            console.log(`[PS5] Pairing complete for ${deviceId}`);
-            await conn.close();
-            
-            return { success: true };
-        } catch (err) {
-            console.error('[PS5] Pairing error:', err);
-            return { success: false, error: err.message };
-        }
+                    // Opening connection triggers authentication if needed
+                    const conn = await device.openConnection();
+                    this.activeConnections.set(deviceId, conn);
+                    console.log(`[PS5] Pairing complete for ${deviceId}`);
+                    await this.safeClose(conn, deviceId);
+                    
+                    return { success: true };
+                } catch (err) {
+                    console.error('[PS5] Pairing error:', err);
+                    return { success: false, error: err.message };
+                }
+            });
+        });
     }
 
     submitAuthCode(code) {
@@ -162,89 +231,107 @@ class PS5Manager extends EventEmitter {
     }
 
     async wake(deviceId) {
-        try {
-            console.log(`[PS5] Waking ${deviceId}...`);
-            
-            const device = new PendingDevice(
-                `Device ${deviceId}`,
-                d => d.id === deviceId,
-                {},
-                { timeoutMillis: 60000 }, // Give it 60s to wake up and respond
-                StandardDiscoveryNetworkFactory,
-                this.credentialManager
-            );
+        return this.queueOperation(async () => {
+            return this.withRetry(async () => {
+                try {
+                    console.log(`[PS5] Waking ${deviceId}...`);
+                    
+                    const device = new PendingDevice(
+                        `Device ${deviceId}`,
+                        d => d.id === deviceId,
+                        {},
+                        { timeoutMillis: 60000 }, // Give it 60s to wake up and respond
+                        StandardDiscoveryNetworkFactory,
+                        this.credentialManager
+                    );
 
-            await device.wake();
-            return { success: true, status: 'AWAKE' };
-        } catch (err) {
-            console.error('[PS5] Wake error:', err);
-            return { success: false, error: err.message };
-        }
+                    await device.wake();
+                    return { success: true, status: 'AWAKE' };
+                } catch (err) {
+                    console.error('[PS5] Wake error:', err);
+                    return { success: false, error: err.message };
+                }
+            });
+        });
     }
 
     async standby(deviceId) {
-        try {
-             console.log(`[PS5] Putting ${deviceId} to standby...`);
-             
-             const device = new PendingDevice(
-                `Device ${deviceId}`,
-                d => d.id === deviceId,
-                {},
-                { timeoutMillis: 10000 },
-                StandardDiscoveryNetworkFactory,
-                this.credentialManager
-            );
- 
-             const conn = await device.openConnection();
-             await conn.standby();
-             await conn.close();
-             return { success: true, status: 'STANDBY' };
-        } catch (err) {
-            console.error('[PS5] Standby error:', err);
-            return { success: false, error: err.message };
-        }
+        return this.queueOperation(async () => {
+            return this.withRetry(async () => {
+                let conn;
+                try {
+                    console.log(`[PS5] Putting ${deviceId} to standby...`);
+                    
+                    const device = new PendingDevice(
+                        `Device ${deviceId}`,
+                        d => d.id === deviceId,
+                        {},
+                        { timeoutMillis: 10000 },
+                        StandardDiscoveryNetworkFactory,
+                        this.credentialManager
+                    );
+        
+                    conn = await device.openConnection();
+                    this.activeConnections.set(deviceId, conn);
+                    await conn.standby();
+                    await this.safeClose(conn, deviceId);
+                    return { success: true, status: 'STANDBY' };
+                } catch (err) {
+                    console.error('[PS5] Standby error:', err);
+                    if (conn) await this.safeClose(conn, deviceId);
+                    return { success: false, error: err.message };
+                }
+            });
+        });
     }
 
     async sendCommand(deviceId, command) {
-        try {
-             console.log(`[PS5] Sending command ${command} to ${deviceId}...`);
-             
-             const device = new PendingDevice(
-                `Device ${deviceId}`,
-                d => d.id === deviceId,
-                {},
-                { timeoutMillis: 10000 },
-                StandardDiscoveryNetworkFactory,
-                this.credentialManager
-            );
- 
-             const conn = await device.openConnection();
-             
-             let key = null;
-             // Map common commands to Playactor keys
-             switch (command.toLowerCase()) {
-                 case 'up': key = 'Up'; break;
-                 case 'down': key = 'Down'; break;
-                 case 'left': key = 'Left'; break;
-                 case 'right': key = 'Right'; break;
-                 case 'enter': key = 'Enter'; break;
-                 case 'back': key = 'Back'; break;
-                 case 'home': key = 'Home'; break;
-                 case 'options': key = 'Options'; break;
-             }
-             
-             if (key) {
-                 await conn.sendKeys([key]);
-             } else {
-                 console.warn(`[PS5] Unknown command: ${command}`);
-             }
-             
-             await conn.close();
-             return { success: true };
-        } catch (err) {
-            console.error('[PS5] Command error:', err);
-            return { success: false, error: err.message };
-        }
+        return this.queueOperation(async () => {
+            return this.withRetry(async () => {
+                let conn;
+                try {
+                    console.log(`[PS5] Sending command ${command} to ${deviceId}...`);
+                    
+                    const device = new PendingDevice(
+                        `Device ${deviceId}`,
+                        d => d.id === deviceId,
+                        {},
+                        { timeoutMillis: 10000 },
+                        StandardDiscoveryNetworkFactory,
+                        this.credentialManager
+                    );
+        
+                    conn = await device.openConnection();
+                    this.activeConnections.set(deviceId, conn);
+                    
+                    let key = null;
+                    // Map common commands to Playactor keys
+                    switch (command.toLowerCase()) {
+                        case 'up': key = 'Up'; break;
+                        case 'down': key = 'Down'; break;
+                        case 'left': key = 'Left'; break;
+                        case 'right': key = 'Right'; break;
+                        case 'enter': key = 'Enter'; break;
+                        case 'back': key = 'Back'; break;
+                        case 'home': key = 'Home'; break;
+                        case 'options': key = 'Options'; break;
+                    }
+                    
+                    if (key) {
+                        await conn.sendKeys([key]);
+                    } else {
+                        console.warn(`[PS5] Unknown command: ${command}`);
+                    }
+                    
+                    await this.safeClose(conn, deviceId);
+                    return { success: true };
+                } catch (err) {
+                    console.error('[PS5] Command error:', err);
+                    if (conn) await this.safeClose(conn, deviceId);
+                    return { success: false, error: err.message };
+                }
+            });
+        });
     }
 }
 

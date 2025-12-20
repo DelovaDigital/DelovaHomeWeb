@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Specific Controls
-        if (type === 'ps5' || type === 'console') {
+        if (type === 'ps5' || type === 'console' || type === 'playstation' || device.name.toLowerCase().includes('ps5')) {
              controlsHtml += `
                 <div class="remote-control">
                     <div class="d-pad">
@@ -499,9 +499,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="action-btn" onclick="controlDevice('${device.id}', 'home')"><i class="fas fa-home"></i> Home</button>
                         <button class="action-btn" onclick="controlDevice('${device.id}', 'options')"><i class="fas fa-bars"></i> Options</button>
                     </div>
-                    <div style="margin-top: 20px; width: 100%; display: flex; justify-content: center;">
-                        <button class="action-btn" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);" onclick="startPS5Pairing('${device.id}')">
+                    
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                        <button class="btn btn-primary" style="padding: 10px 20px;" onclick="controlPS5('${device.id}', 'wake')">
+                            <i class="fas fa-power-off"></i> Wake
+                        </button>
+                        <button class="btn btn-secondary" style="padding: 10px 20px; background-color: #dc3545; color: white;" onclick="controlPS5('${device.id}', 'standby')">
+                            <i class="fas fa-moon"></i> Standby
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 15px; width: 100%; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                        <button class="btn btn-secondary" style="width: 80%;" onclick="startPS5Pairing('${device.id}')">
                             <i class="fas fa-link"></i> Pair PS5
+                        </button>
+                        <button class="btn btn-secondary" style="width: 80%; background-color: #003791;" onclick="showPS5Games('${device.id}')">
+                            <i class="fas fa-gamepad"></i> Game Library
                         </button>
                     </div>
                 </div>
@@ -547,26 +560,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
                     </div>
-                </div>
-            `;
-        } else if (type === 'console' || type === 'playstation' || device.name.toLowerCase().includes('ps5')) {
-            controlsHtml += `
-                <div style="display: flex; flex-direction: column; gap: 15px; align-items: center; margin-top: 20px;">
-                    <p>PlayStation 5 Control</p>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary" style="padding: 15px 30px; font-size: 1.2em;" onclick="controlPS5('${device.id}', 'wake')">
-                            <i class="fas fa-power-off"></i> Wake
-                        </button>
-                        <button class="btn btn-secondary" style="padding: 15px 30px; font-size: 1.2em; background-color: #dc3545; color: white;" onclick="controlPS5('${device.id}', 'standby')">
-                            <i class="fas fa-moon"></i> Standby
-                        </button>
-                    </div>
-                    <button class="btn btn-secondary" style="margin-top: 10px;" onclick="startPS5Pairing('${device.id}')">
-                        <i class="fas fa-link"></i> Pair / Login
-                    </button>
-                    <button class="btn btn-secondary" style="margin-top: 10px; background-color: #003791;" onclick="showPS5Games('${device.id}')">
-                        <i class="fas fa-gamepad"></i> Game Library
-                    </button>
                 </div>
             `;
         } else if (type === 'nas') {
@@ -924,6 +917,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             })
             .catch(err => console.error('PS5 Control Error:', err));
+    };
+
+    window.controlPS5 = (id, action) => {
+        let endpoint = `/api/ps5/${id}/command`;
+        let body = { command: action };
+
+        if (action === 'wake') {
+            endpoint = `/api/ps5/${id}/wake`;
+            body = {};
+        } else if (action === 'standby') {
+            endpoint = `/api/ps5/${id}/standby`;
+            body = {};
+        }
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Optional: show feedback
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => alert('Network error: ' + err));
     };
 
     window.startPS5Pairing = (id) => {

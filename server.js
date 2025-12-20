@@ -1004,6 +1004,12 @@ app.post('/api/ps5/:id/standby', async (req, res) => {
     res.json(result);
 });
 
+app.post('/api/ps5/:id/command', async (req, res) => {
+    const { command } = req.body;
+    const result = await ps5Manager.sendCommand(req.params.id, command);
+    res.json(result);
+});
+
 // PS5 Pairing Flow
 let currentAuthUrl = null;
 let isPinRequired = false;

@@ -907,20 +907,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.controlPS5 = (id, action) => {
-        const endpoint = action === 'wake' ? 'wake' : 'standby';
-        fetch(`/api/ps5/${id}/${endpoint}`, { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    // alert(`PS5 ${action} command sent.`);
-                } else {
-                    alert(`Error: ${data.error}`);
-                }
-            })
-            .catch(err => console.error('PS5 Control Error:', err));
-    };
-
-    window.controlPS5 = (id, action) => {
         let endpoint = `/api/ps5/${id}/command`;
         let body = { command: action };
 

@@ -940,6 +940,29 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.startPS5Pairing = (id) => {
+        // Check if we should unpair first
+        if (confirm('Do you want to remove existing pairing first? (Recommended if re-pairing)')) {
+            fetch(`/api/ps5/${id}/forget`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Existing pairing removed. Proceeding to pair...');
+                        proceedToPairing(id);
+                    } else {
+                        alert('Failed to remove pairing: ' + (data.error || data.message));
+                        proceedToPairing(id);
+                    }
+                })
+                .catch(e => {
+                    console.error(e);
+                    proceedToPairing(id);
+                });
+        } else {
+            proceedToPairing(id);
+        }
+    };
+
+    function proceedToPairing(id) {
         if (!confirm('Ensure your PS5 is ON and you are ready to login to PSN.')) return;
         
         // Create custom modal for pairing

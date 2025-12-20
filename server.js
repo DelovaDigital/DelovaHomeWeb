@@ -1090,6 +1090,12 @@ app.get('/api/ps5/pair-status', (req, res) => {
     });
 });
 
+app.post('/api/ps5/:id/forget', async (req, res) => {
+    const { id } = req.params;
+    const result = await ps5Manager.forget(id);
+    res.json(result);
+});
+
 // --- PSN API Endpoints ---
 
 app.post('/api/psn/auth', async (req, res) => {

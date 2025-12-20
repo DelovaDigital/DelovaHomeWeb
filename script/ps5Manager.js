@@ -83,6 +83,41 @@ class PS5Manager extends EventEmitter {
         );
     }
 
+    async forget(deviceId) {
+        try {
+            // Access the storage directly if possible, or use a method if available
+            // CredentialManager doesn't expose delete, but we can try to access the storage
+            // The default storage is DiskCredentialsStorage
+            
+            // We need to find where the credentials are stored.
+            // By default playactor uses ~/.config/playactor/credentials.json
+            const os = require('os');
+            const path = require('path');
+            const fs = require('fs');
+            
+            const configPath = path.join(os.homedir(), '.config', 'playactor', 'credentials.json');
+            
+            if (fs.existsSync(configPath)) {
+                const data = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                if (data[deviceId]) {
+                    delete data[deviceId];
+                    fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
+                    console.log(`[PS5] Removed credentials for ${deviceId}`);
+                    return { success: true };
+                } else {
+                    console.log(`[PS5] No credentials found for ${deviceId} to remove.`);
+                    return { success: true, message: 'No credentials found' };
+                }
+            } else {
+                 console.log(`[PS5] Credentials file not found at ${configPath}`);
+                 return { success: true, message: 'No credentials file' };
+            }
+        } catch (err) {
+            console.error('[PS5] Error removing credentials:', err);
+            return { success: false, error: err.message };
+        }
+    }
+
     submitPin(pin) {
         if (this.resolvePin) {
             this.resolvePin(pin);

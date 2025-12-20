@@ -353,8 +353,11 @@ class PS5Manager extends EventEmitter {
                     conn = await device.openConnection();
                     this.activeConnections.set(deviceId, conn);
                     
-                    // Use startTitleId instead of startTitle
-                    await conn.startTitleId(titleId);
+                    if (typeof conn.startTitleId === 'function') {
+                        await conn.startTitleId(titleId);
+                    } else {
+                        throw new Error('Connection does not support starting titles. Ensure you are paired using Second Screen mode, not Remote Play.');
+                    }
                     
                     await this.safeClose(conn, deviceId);
                     return { success: true };

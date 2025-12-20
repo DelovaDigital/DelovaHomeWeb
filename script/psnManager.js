@@ -98,12 +98,13 @@ class PSNManager extends EventEmitter {
                 { limit }
             );
 
-            return response.titleTrophyGroups.map(t => ({
+            const titles = response.trophyTitles || [];
+            return titles.map(t => ({
                 name: t.trophyTitleName,
                 platform: t.trophyTitlePlatform,
                 titleId: t.npCommunicationId,
                 imageUrl: t.trophyTitleIconUrl,
-                lastPlayed: t.lastUpdatedDateTime
+                lastPlayed: t.lastUpdateDateTime
             }));
 
         } catch (e) {

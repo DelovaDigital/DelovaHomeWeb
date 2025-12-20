@@ -353,7 +353,8 @@ class PS5Manager extends EventEmitter {
                     conn = await device.openConnection();
                     this.activeConnections.set(deviceId, conn);
                     
-                    await conn.startTitle(titleId);
+                    // Use startTitleId instead of startTitle
+                    await conn.startTitleId(titleId);
                     
                     await this.safeClose(conn, deviceId);
                     return { success: true };

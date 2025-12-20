@@ -1109,7 +1109,11 @@ app.get('/api/psn/games', async (req, res) => {
         const games = await psnManager.getGameLibrary();
         res.json(games);
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        if (e.message === 'Not authenticated') {
+            res.status(401).json({ error: 'Not authenticated' });
+        } else {
+            res.status(500).json({ error: e.message });
+        }
     }
 });
 

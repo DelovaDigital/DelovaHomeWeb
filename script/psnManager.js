@@ -107,6 +107,9 @@ class PSNManager extends EventEmitter {
             }));
 
         } catch (e) {
+            if (e.message === 'Not authenticated') {
+                throw e; // Re-throw to be handled by caller without logging as error
+            }
             if (e.message && e.message.includes('401')) {
                 console.log('[PSN] Token expired, refreshing...');
                 await this.refreshToken();

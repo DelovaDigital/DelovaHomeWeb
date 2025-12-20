@@ -928,7 +928,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 // Optional: show feedback
             } else {
-                alert('Error: ' + (data.error || 'Unknown error'));
+                const errorMsg = data.error || 'Unknown error';
+                if (errorMsg.includes('Navigation (D-pad) is not supported')) {
+                    alert('PS5 Control Limitation: \n' + errorMsg);
+                } else {
+                    alert('Error: ' + errorMsg);
+                }
             }
         })
         .catch(err => alert('Network error: ' + err));

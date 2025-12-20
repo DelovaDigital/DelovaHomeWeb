@@ -310,9 +310,9 @@ class PS5Manager extends EventEmitter {
                     
                     // Verify connection supports remote control
                     if (typeof conn.sendKeys !== 'function') {
-                        console.error('[PS5] Connection established but missing sendKeys. Connection type:', conn.constructor.name);
+                        console.warn('[PS5] Connection established but missing sendKeys. Connection type:', conn.constructor.name);
                         await this.safeClose(conn, deviceId);
-                        throw new Error('Connection does not support remote control. Please re-pair your PS5.');
+                        throw new Error('Navigation (D-pad) is not supported for PS5 with the current integration. Only Wake/Standby are available.');
                     }
 
                     let key = null;

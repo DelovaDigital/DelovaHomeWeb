@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Clear anti-FOUC inline styles so CSS gradients can take over
+    document.documentElement.style.background = '';
+    document.documentElement.style.color = '';
+    if (document.body) document.body.style.background = '';
+
     // --- Auth Guard ---
     // Check if we are on a protected page (anything inside /pages/)
     if (window.location.pathname.includes('/pages/')) {

@@ -129,6 +129,10 @@ class PS5Manager extends EventEmitter {
                     console.log(`[PS5] Remote in use, retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries})`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                 } else {
+                    if (err.message && (err.message.includes('Registration error') || err.message.includes('403'))) {
+                        console.error('[PS5] Registration invalid. Please re-pair the PS5.');
+                        throw new Error('PS5 Registration invalid. Please re-pair your device.');
+                    }
                     throw err;
                 }
             }
@@ -304,6 +308,13 @@ class PS5Manager extends EventEmitter {
                     conn = await device.openConnection();
                     this.activeConnections.set(deviceId, conn);
                     
+                    // Verify connection supports remote control
+                    if (typeof conn.sendKeys !== 'function') {
+                        console.error('[PS5] Connection established but missing sendKeys. Connection type:', conn.constructor.name);
+                        await this.safeClose(conn, deviceId);
+                        throw new Error('Connection does not support remote control. Please re-pair your PS5.');
+                    }
+
                     let key = null;
                     // Map common commands to Playactor keys
                     switch (command.toLowerCase()) {

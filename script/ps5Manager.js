@@ -353,10 +353,20 @@ class PS5Manager extends EventEmitter {
                     conn = await device.openConnection();
                     this.activeConnections.set(deviceId, conn);
                     
+                    // Try to use startTitleId if available (Second Screen)
                     if (typeof conn.startTitleId === 'function') {
                         await conn.startTitleId(titleId);
-                    } else {
-                        throw new Error('Connection does not support starting titles. Ensure you are paired using Second Screen mode, not Remote Play.');
+                    } 
+                    // Fallback for Remote Play connection (PS5 default in playactor)
+                    // Remote Play connection doesn't support startTitleId directly,
+                    // but we can try to send the 'Enter' key if the user is navigating manually,
+                    // OR we can try to use a workaround if available.
+                    // However, playactor v0.4.1 doesn't support Second Screen for PS5 at all.
+                    // So we can't launch titles directly.
+                    else {
+                        console.warn('[PS5] Connection is Remote Play type. startTitleId not supported.');
+                        // Attempt to use a workaround or just fail gracefully
+                        throw new Error('Launching games is not supported on PS5 with this library version (Remote Play only).');
                     }
                     
                     await this.safeClose(conn, deviceId);

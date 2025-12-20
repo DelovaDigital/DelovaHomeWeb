@@ -1354,7 +1354,12 @@ window.launchPS5Game = async function(deviceId, titleId, name) {
             alert(`Launched ${name}!`);
             closeDeviceDetail();
         } else {
-            alert('Failed to launch: ' + (data.error || 'Unknown error'));
+            // Show a more helpful error message if it's the known limitation
+            if (data.error && data.error.includes('Remote Play only')) {
+                alert(`Cannot launch ${name}. The current PS5 control library only supports Remote Play, which cannot launch specific games. You can still use the remote control buttons.`);
+            } else {
+                alert('Failed to launch: ' + (data.error || 'Unknown error'));
+            }
         }
     } catch (e) {
         alert('Error: ' + e.message);

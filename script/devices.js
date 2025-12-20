@@ -161,7 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const modal = document.getElementById('deviceModal');
                 if (modal.style.display === 'block') {
                     const openId = modal.dataset.deviceId;
-                    if (openId) {
+                    // Only update if we are NOT in a sub-view (like Game Library)
+                    if (openId && !modal.dataset.isSubView) {
                         const device = devices.find(d => d.id === openId);
                         if (device) updateModalContent(device);
                     }
@@ -186,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // If modal is open for this device, update it
         const modal = document.getElementById('deviceModal');
-        if (modal.style.display === 'block' && modal.dataset.deviceId === updatedDevice.id) {
+        if (modal.style.display === 'block' && modal.dataset.deviceId === updatedDevice.id && !modal.dataset.isSubView) {
             updateModalContent(updatedDevice);
         }
     });
@@ -1223,6 +1224,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Global functions for PS5 Games
 window.showPS5Games = async function(deviceId) {
+    const modal = document.getElementById('deviceModal');
+    modal.dataset.isSubView = 'true'; // Prevent auto-refresh from overwriting this view
+    
     const modalBody = document.getElementById('modalDeviceBody');
     modalBody.innerHTML = '<div style="text-align:center; padding: 20px;"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading games...</p></div>';
 
@@ -1238,6 +1242,7 @@ window.showPS5Games = async function(deviceId) {
                         <p><small><a href="https://ca.account.sony.com/api/v1/ssocookie" target="_blank">Get NPSSO Token</a> (Login required)</small></p>
                         <input type="text" id="npssoToken" placeholder="NPSSO Token" style="width: 100%; padding: 10px; margin: 10px 0; background: #333; color: white; border: 1px solid #555; border-radius: 5px;">
                         <button class="btn btn-primary" onclick="authenticatePSN('${deviceId}')">Login</button>
+                        <button class="btn btn-secondary" style="margin-top: 10px;" onclick="closeSubView('${deviceId}')">Cancel</button>
                     </div>
                 `;
                 return;
@@ -1270,7 +1275,7 @@ window.showPS5Games = async function(deviceId) {
         
         // Add back button
         html = `
-            <button class="btn btn-secondary" style="margin-bottom: 10px;" onclick="closeDeviceDetail()">
+            <button class="btn btn-secondary" style="margin-bottom: 10px;" onclick="closeSubView('${deviceId}')">
                 <i class="fas fa-arrow-left"></i> Back
             </button>
             ${html}
@@ -1280,6 +1285,37 @@ window.showPS5Games = async function(deviceId) {
 
     } catch (e) {
         modalBody.innerHTML = `<div style="color: red; text-align: center; padding: 20px;">Error: ${e.message}</div>`;
+    }
+};
+
+window.closeSubView = function(deviceId) {
+    const modal = document.getElementById('deviceModal');
+    delete modal.dataset.isSubView; // Re-enable auto-refresh
+    
+    // Manually trigger a refresh of the main view
+    const device = allDevices.find(d => d.id === deviceId);
+    if (device) {
+        // We need to call the internal updateModalContent, but it's not exposed globally.
+        // However, we can just trigger a fetchDevices which will update it.
+        // Or better, we can just close and reopen if we can't access updateModalContent.
+        // Actually, updateModalContent IS defined inside the closure but not exposed.
+        // Let's expose it or just rely on the next poll.
+        // Wait, we can just close the modal for now, or better yet, expose updateModalContent.
+        // Since we can't easily expose it without rewriting a lot, let's just force a re-render by calling fetchDevices immediately.
+        // But fetchDevices is async.
+        // Let's just close the modal and let the user reopen it, OR we can try to find the device in allDevices and re-render the HTML manually.
+        // Actually, we can just set the innerHTML to "Loading..." and wait for the next poll (5s).
+        // A better UX is to just close the modal.
+        // closeDeviceDetail();
+        // Even better: let's just reload the page content if we can.
+        // Let's try to trigger a refresh.
+        
+        // Since we are inside the module scope, we can't call updateModalContent.
+        // But we can just close the modal.
+        closeDeviceDetail();
+        openDeviceDetail(deviceId); // This is global
+    } else {
+        closeDeviceDetail();
     }
 };
 

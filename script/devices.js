@@ -489,16 +489,16 @@ document.addEventListener('DOMContentLoaded', () => {
              controlsHtml += `
                 <div class="remote-control">
                     <div class="d-pad">
-                        <button class="d-btn up" onclick="controlDevice('${device.id}', 'up')"><i class="fas fa-chevron-up"></i></button>
-                        <button class="d-btn left" onclick="controlDevice('${device.id}', 'left')"><i class="fas fa-chevron-left"></i></button>
-                        <button class="d-btn center" onclick="controlDevice('${device.id}', 'enter')">OK</button>
-                        <button class="d-btn right" onclick="controlDevice('${device.id}', 'right')"><i class="fas fa-chevron-right"></i></button>
-                        <button class="d-btn down" onclick="controlDevice('${device.id}', 'down')"><i class="fas fa-chevron-down"></i></button>
+                        <button class="d-pad-btn d-pad-up" onclick="controlPS5('${device.id}', 'up')"><i class="fas fa-chevron-up"></i></button>
+                        <button class="d-pad-btn d-pad-left" onclick="controlPS5('${device.id}', 'left')"><i class="fas fa-chevron-left"></i></button>
+                        <button class="d-pad-btn d-pad-center" onclick="controlPS5('${device.id}', 'enter')">OK</button>
+                        <button class="d-pad-btn d-pad-right" onclick="controlPS5('${device.id}', 'right')"><i class="fas fa-chevron-right"></i></button>
+                        <button class="d-pad-btn d-pad-down" onclick="controlPS5('${device.id}', 'down')"><i class="fas fa-chevron-down"></i></button>
                     </div>
-                    <div class="remote-actions">
-                        <button class="action-btn" onclick="controlDevice('${device.id}', 'back')"><i class="fas fa-arrow-left"></i> Back</button>
-                        <button class="action-btn" onclick="controlDevice('${device.id}', 'home')"><i class="fas fa-home"></i> Home</button>
-                        <button class="action-btn" onclick="controlDevice('${device.id}', 'options')"><i class="fas fa-bars"></i> Options</button>
+                    <div class="remote-actions" style="display: flex; gap: 15px; margin-top: 20px;">
+                        <button class="action-btn" onclick="controlPS5('${device.id}', 'back')"><i class="fas fa-arrow-left"></i> Back</button>
+                        <button class="action-btn" onclick="controlPS5('${device.id}', 'home')"><i class="fas fa-home"></i> Home</button>
+                        <button class="action-btn" onclick="controlPS5('${device.id}', 'options')"><i class="fas fa-bars"></i> Options</button>
                     </div>
                     
                     <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">

@@ -28,6 +28,7 @@ const mqttBroker = require('./script/mqttBroker');
 const energyManager = require('./script/energyManager');
 const automationManager = require('./script/automationManager');
 const ps5Manager = require('./script/ps5Manager');
+const psnManager = require('./script/psnManager');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -1081,6 +1082,41 @@ app.get('/api/ps5/pair-status', (req, res) => {
         url: currentAuthUrl,
         error: pairingError
     });
+});
+
+// --- PSN API Endpoints ---
+
+app.post('/api/psn/auth', async (req, res) => {
+    const { npsso } = req.body;
+    if (!npsso) return res.status(400).json({ error: 'Missing NPSSO token' });
+    
+    const result = await psnManager.authenticate(npsso);
+    if (result.success) {
+        res.json({ success: true });
+    } else {
+        res.status(500).json(result);
+    }
+});
+
+app.get('/api/psn/games', async (req, res) => {
+    try {
+        const games = await psnManager.getGameLibrary();
+        res.json(games);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/ps5/:id/launch', async (req, res) => {
+    const { titleId } = req.body;
+    if (!titleId) return res.status(400).json({ error: 'Missing titleId' });
+    
+    const result = await ps5Manager.startTitle(req.params.id, titleId);
+    if (result.success) {
+        res.json({ success: true });
+    } else {
+        res.status(500).json(result);
+    }
 });
 
 app.post('/api/camera/webrtc/offer', async (req, res) => {

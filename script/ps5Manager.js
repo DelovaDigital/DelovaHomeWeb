@@ -333,6 +333,38 @@ class PS5Manager extends EventEmitter {
             });
         });
     }
+
+    async startTitle(deviceId, titleId) {
+        return this.queueOperation(async () => {
+            return this.withRetry(async () => {
+                let conn;
+                try {
+                    console.log(`[PS5] Starting title ${titleId} on ${deviceId}...`);
+                    
+                    const device = new PendingDevice(
+                        `Device ${deviceId}`,
+                        d => d.id === deviceId,
+                        {},
+                        { timeoutMillis: 10000 },
+                        StandardDiscoveryNetworkFactory,
+                        this.credentialManager
+                    );
+        
+                    conn = await device.openConnection();
+                    this.activeConnections.set(deviceId, conn);
+                    
+                    await conn.startTitle(titleId);
+                    
+                    await this.safeClose(conn, deviceId);
+                    return { success: true };
+                } catch (err) {
+                    console.error('[PS5] Start title error:', err);
+                    if (conn) await this.safeClose(conn, deviceId);
+                    return { success: false, error: err.message };
+                }
+            });
+        });
+    }
 }
 
 const ps5Manager = new PS5Manager();

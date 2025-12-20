@@ -25,6 +25,7 @@
     "node-fetch": "^2.6.7",
     "onvif": "^0.8.1",
     "playactor": "^0.4.1",
+    "psn-api": "^2.10.0",
     "samsung-remote": "1.6.2",
     "smb2": "^0.2.11",
     "uuid": "^13.0.0",

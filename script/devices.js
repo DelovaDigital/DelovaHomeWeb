@@ -564,6 +564,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn btn-secondary" style="margin-top: 10px;" onclick="startPS5Pairing('${device.id}')">
                         <i class="fas fa-link"></i> Pair / Login
                     </button>
+                    <button class="btn btn-secondary" style="margin-top: 10px; background-color: #003791;" onclick="showPS5Games('${device.id}')">
+                        <i class="fas fa-gamepad"></i> Game Library
+                    </button>
                 </div>
             `;
         } else if (type === 'nas') {
@@ -1196,3 +1199,108 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
+
+// Global functions for PS5 Games
+window.showPS5Games = async function(deviceId) {
+    const modalBody = document.getElementById('modalDeviceBody');
+    modalBody.innerHTML = '<div style="text-align:center; padding: 20px;"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Loading games...</p></div>';
+
+    try {
+        const res = await fetch('/api/psn/games');
+        if (!res.ok) {
+            const err = await res.json();
+            if (err.error && (err.error.includes('Not authenticated') || err.error.includes('401'))) {
+                modalBody.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h3>PSN Login Required</h3>
+                        <p>Please enter your NPSSO token to access your game library.</p>
+                        <p><small><a href="https://ca.account.sony.com/api/v1/ssocookie" target="_blank">Get NPSSO Token</a> (Login required)</small></p>
+                        <input type="text" id="npssoToken" placeholder="NPSSO Token" style="width: 100%; padding: 10px; margin: 10px 0; background: #333; color: white; border: 1px solid #555; border-radius: 5px;">
+                        <button class="btn btn-primary" onclick="authenticatePSN('${deviceId}')">Login</button>
+                    </div>
+                `;
+                return;
+            }
+            throw new Error(err.error || 'Failed to fetch games');
+        }
+
+        const games = await res.json();
+        if (games.length === 0) {
+            modalBody.innerHTML = '<p style="text-align:center; padding: 20px;">No games found.</p>';
+            return;
+        }
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 15px; padding: 10px;">';
+        games.forEach(game => {
+            html += `
+                <div class="game-card" style="background: rgba(255,255,255,0.05); border-radius: 10px; overflow: hidden; cursor: pointer; transition: transform 0.2s;" 
+                     onclick="launchPS5Game('${deviceId}', '${game.titleId}', '${game.name}')"
+                     onmouseover="this.style.transform='scale(1.05)'" 
+                     onmouseout="this.style.transform='scale(1)'">
+                    <img src="${game.imageUrl}" style="width: 100%; aspect-ratio: 1; object-fit: cover;">
+                    <div style="padding: 8px;">
+                        <div style="font-weight: bold; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${game.name}</div>
+                        <div style="font-size: 0.8em; color: #aaa;">${game.platform}</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        // Add back button
+        html = `
+            <button class="btn btn-secondary" style="margin-bottom: 10px;" onclick="closeDeviceDetail()">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+            ${html}
+        `;
+
+        modalBody.innerHTML = html;
+
+    } catch (e) {
+        modalBody.innerHTML = `<div style="color: red; text-align: center; padding: 20px;">Error: ${e.message}</div>`;
+    }
+};
+
+window.authenticatePSN = async function(deviceId) {
+    const npsso = document.getElementById('npssoToken').value;
+    if (!npsso) return alert('Please enter NPSSO token');
+
+    try {
+        const res = await fetch('/api/psn/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ npsso })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showPS5Games(deviceId);
+        } else {
+            alert('Authentication failed: ' + (data.error || 'Unknown error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+};
+
+window.launchPS5Game = async function(deviceId, titleId, name) {
+    if (!confirm(`Launch ${name} on PS5?`)) return;
+    
+    try {
+        const res = await fetch(`/api/ps5/${deviceId}/launch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ titleId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert(`Launched ${name}!`);
+            closeDeviceDetail();
+        } else {
+            alert('Failed to launch: ' + (data.error || 'Unknown error'));
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+    }
+};
+

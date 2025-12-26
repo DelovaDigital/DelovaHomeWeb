@@ -604,10 +604,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         } else if (type === 'nas' || type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'mac') {
+            // Escape name to prevent syntax errors in onclick
+            const safeName = device.name.replace(/'/g, "\\'");
             controlsHtml += `
                 <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
                     <p>Beheer verbindingen en bestanden.</p>
-                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.ip}', '${device.name}', '${type}')">
+                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.ip}', '${safeName}', '${type}')">
                         <i class="fas fa-key"></i> Inloggen / Koppelen
                     </button>
                     
@@ -615,8 +617,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="controlDevice('${device.id}', 'wake')">
                             <i class="fas fa-power-off"></i> Wake on LAN
                         </button>
-                        <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="window.open('rdp://${device.ip}')">
-                            <i class="fas fa-desktop"></i> Remote (RDP)
+                        <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="launchRemote('${device.ip}', '${type}')">
+                            <i class="fas fa-desktop"></i> Remote
                         </button>
                     </div>
 
@@ -948,6 +950,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ command: 'start_pairing' })
             }).catch(e => console.error('Failed to start pairing:', e));
         }
+    };
+
+    window.launchRemote = (ip, type) => {
+        let protocol = 'rdp';
+        if (type === 'mac' || type === 'rpi' || type === 'raspberrypi' || type === 'linux') {
+            protocol = 'vnc';
+        }
+        
+        const url = `${protocol}://${ip}`;
+        console.log(`Launching remote connection: ${url}`);
+        
+        // Use a temporary link to avoid blank tabs/popups
+        const link = document.createElement('a');
+        link.href = url;
+        // link.target = '_blank'; // Do NOT use _blank for protocols, it causes empty tabs
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     window.togglePiP = async (deviceId) => {

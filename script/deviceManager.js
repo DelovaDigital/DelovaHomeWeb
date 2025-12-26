@@ -3517,20 +3517,48 @@ class DeviceManager extends EventEmitter {
         const isOpen = await this._checkPort(ip, 445);
         if (isOpen) {
             // Try to resolve hostname
-            require('dns').reverse(ip, (err, hostnames) => {
+            require('dns').reverse(ip, async (err, hostnames) => {
                 let name = hostnames && hostnames.length > 0 ? hostnames[0] : `PC-${ip.split('.')[3]}`;
                 name = name.split('.')[0]; // Remove domain
                 
+                // Try to get MAC address
+                const mac = await this.getMacAddress(ip);
+
                 this.handleDiscoveredDevice({
                     id: `pc-${ip.replace(/\./g, '-')}`,
                     name: name,
                     type: 'pc',
                     ip: ip,
+                    mac: mac,
                     model: 'Windows PC',
                     raw: { type: 'smb' }
                 });
             });
         }
+    }
+
+    getMacAddress(ip) {
+        return new Promise((resolve) => {
+            const { exec } = require('child_process');
+            const cmd = process.platform === 'win32' ? `arp -a ${ip}` : `arp -n ${ip}`;
+            
+            exec(cmd, (err, stdout) => {
+                if (err) return resolve(null);
+                
+                // Parse MAC address
+                // macOS/Linux: ? (192.168.1.1) at 00:11:22:33:44:55 on en0 ...
+                // Windows: 192.168.1.1 ... 00-11-22-33-44-55 ...
+                
+                const macRegex = /([0-9A-Fa-f]{1,2}[:-]){5}([0-9A-Fa-f]{1,2})/;
+                const match = stdout.match(macRegex);
+                
+                if (match) {
+                    resolve(match[0]);
+                } else {
+                    resolve(null);
+                }
+            });
+        });
     }
 
     _checkPort(host, port, timeout = 500) {

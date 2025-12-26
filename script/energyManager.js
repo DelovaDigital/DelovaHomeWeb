@@ -60,10 +60,6 @@ class EnergyManager extends EventEmitter {
             this.emit('update', this.data);
         }
     }
-        
-        // Start simulation as fallback ONLY if configured and no real data
-        // this.startSimulation(); 
-    }
 
     setupMqtt() {
         if (!this.config.isConfigured) return;

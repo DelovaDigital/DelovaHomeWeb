@@ -19,8 +19,16 @@
 
         <main class="content-area">
             <header class="page-header">
-                <h2>Dashboard</h2>
-                <p>Overzicht van kamers, apparaten en handige widgets</p>
+                <div class="header-content">
+                    <div>
+                        <h2>Dashboard</h2>
+                        <p>Overzicht van kamers, apparaten en handige widgets</p>
+                    </div>
+                    <div class="ai-assistant">
+                        <input type="text" id="aiInput" placeholder="Ask DelovaHome (e.g. 'Turn on lights')..." />
+                        <button id="aiSubmit"><i class="fas fa-magic"></i></button>
+                    </div>
+                </div>
             </header>
 
             <div class="dashboard-grid">
@@ -28,6 +36,16 @@
                     <!-- Rooms will be loaded here -->
                 </div>
                 <aside class="widgets-panel">
+                    <div class="widget" id="presenceWidget">
+                        <h4><i class="fas fa-user-friends"></i> Presence</h4>
+                        <div id="presenceContent">Loading...</div>
+                    </div>
+
+                    <div class="widget" id="energyWidget">
+                        <h4><i class="fas fa-bolt"></i> Energy</h4>
+                        <div id="energyContent">Loading...</div>
+                    </div>
+
                     <div class="widget" id="clockWidget">
                         <div class="clock-time" id="clockTime">--:--</div>
                         <div class="clock-date" id="clockDate">--</div>

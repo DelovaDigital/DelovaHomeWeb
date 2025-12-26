@@ -9,6 +9,9 @@ import '../services/api_service.dart';
 import '../models/device.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/device_card.dart';
+import '../widgets/ai_assistant_widget.dart';
+import '../widgets/presence_widget.dart';
+import '../widgets/energy_widget.dart';
 
   class DashboardTab extends StatefulWidget {
     const DashboardTab({super.key});
@@ -25,10 +28,12 @@ import '../widgets/device_card.dart';
     Map<String, dynamic>? _weatherData;
     Map<String, dynamic>? _spotifyStatus;
     Map<String, dynamic>? _energyData;
+    Map<String, dynamic>? _presenceData;
     bool _spotifyAvailable = false;
     String? _spotifyDeviceName;
     Timer? _spotifyTimer;
     Timer? _energyTimer;
+    Timer? _presenceTimer;
 
     @override
     void initState() {
@@ -38,17 +43,20 @@ import '../widgets/device_card.dart';
       _fetchSpotifyStatus();
       _fetchSpotifyMe();
       _fetchEnergyData();
+      _fetchPresenceData();
       _spotifyTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         _fetchSpotifyStatus();
         _fetchSpotifyMe();
       });
       _energyTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchEnergyData());
+      _presenceTimer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchPresenceData());
     }
 
     @override
     void dispose() {
       _spotifyTimer?.cancel();
       _energyTimer?.cancel();
+      _presenceTimer?.cancel();
       super.dispose();
     }
 
@@ -58,6 +66,15 @@ import '../widgets/device_card.dart';
         if (mounted) setState(() => _energyData = data);
       } catch (e) {
         debugPrint('Energy data error: $e');
+      }
+    }
+
+    Future<void> _fetchPresenceData() async {
+      try {
+        final data = await _apiService.getPresenceData();
+        if (mounted) setState(() => _presenceData = data);
+      } catch (e) {
+        debugPrint('Presence data error: $e');
       }
     }
 
@@ -456,34 +473,72 @@ import '../widgets/device_card.dart';
               GlassCard(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Welkom Thuis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
-                          const SizedBox(height: 4),
-                          Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70)),
-                        ]),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text('Welkom Thuis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
+                              const SizedBox(height: 4),
+                              Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70)),
+                            ]),
+                          ),
+                          IconButton(
+                            tooltip: 'Ververs',
+                            onPressed: () async { await _fetchStats(); await _fetchWeather(); },
+                            icon: const Icon(Icons.refresh, color: Colors.white),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        tooltip: 'Ververs',
-                        onPressed: () async { await _fetchStats(); await _fetchWeather(); },
-                        icon: const Icon(Icons.refresh, color: Colors.white),
-                      ),
+                      const SizedBox(height: 12),
+                      const AIAssistantWidget(),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               
-              // Energy Card
-              if (_energyData != null)
+              // Presence & Energy Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Presence
+                  Expanded(
+                    child: GlassCard(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: _presenceData != null 
+                          ? PresenceWidget(data: _presenceData!)
+                          : const Center(child: CircularProgressIndicator(color: Colors.white)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Energy
+                  Expanded(
+                    child: GlassCard(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: _energyData != null 
+                          ? EnergyWidget(data: _energyData!)
+                          : const Center(child: CircularProgressIndicator(color: Colors.white)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const SizedBox(height: 16),
+              
+              // Spotify Card
+              if (_spotifyStatus != null && _spotifyStatus!['is_playing'] == true)
                 Container(
                   margin: const EdgeInsets.only(bottom: 20),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.orange.shade900.withValues(alpha: 0.8), Colors.orange.shade700.withValues(alpha: 0.8)],
+                      colors: [Colors.green.shade900.withValues(alpha: 0.8), Colors.green.shade700.withValues(alpha: 0.8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -491,22 +546,85 @@ import '../widgets/device_card.dart';
                     border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.solar_power, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text('Energy Monitor', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Icon(Icons.music_note, color: Colors.white),
+                          const SizedBox(width: 8),
+                          const Text('Now Playing', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.devices, color: Colors.white),
+                            onPressed: _showSpotifyDevicesDialog,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildEnergyStat('Solar', '${_energyData?['solar']?['currentPower'] ?? 0} W', Icons.wb_sunny),
-                          _buildEnergyStat('Grid', '${_energyData?['grid']?['currentPower'] ?? 0} W', Icons.electrical_services),
-                          _buildEnergyStat('Home', '${_energyData?['home']?['currentUsage'] ?? 0} W', Icons.home),
+                          if (_spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null && _spotifyStatus!['item']['album']['images'].isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                _spotifyStatus!['item']['album']['images'][0]['url'],
+                                width: 64,
+                                height: 64,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          else
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.music_note, color: Colors.white54),
+                            ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : 'Unknown Title',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['artists'][0]['name'] : 'Unknown Artist',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.skip_previous, color: Colors.white, size: 32),
+                            onPressed: () => _apiService.spotifyControl('previous'),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              _spotifyStatus!['is_playing'] ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                              color: Colors.white,
+                              size: 48,
+                            ),
+                            onPressed: () => _apiService.spotifyControl(_spotifyStatus!['is_playing'] ? 'pause' : 'play'),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.skip_next, color: Colors.white, size: 32),
+                            onPressed: () => _apiService.spotifyControl('next'),
+                          ),
                         ],
                       ),
                     ],
@@ -517,14 +635,11 @@ import '../widgets/device_card.dart';
                   margin: const EdgeInsets.only(bottom: 20),
                   child: GlassCard(
                     child: ListTile(
-                      leading: const Icon(Icons.solar_power, color: Colors.orange),
-                      title: const Text('Energy Monitor', style: TextStyle(color: Colors.white)),
-                      subtitle: const Text('Tap to configure energy monitoring', style: TextStyle(color: Colors.white70)),
+                      leading: const Icon(Icons.music_note, color: Colors.green),
+                      title: const Text('Spotify', style: TextStyle(color: Colors.white)),
+                      subtitle: Text(_spotifyAvailable ? 'Ready to play on $_spotifyDeviceName' : 'Tap to connect Spotify', style: const TextStyle(color: Colors.white70)),
                       trailing: const Icon(Icons.chevron_right, color: Colors.white54),
-                      onTap: () {
-                        // TODO: Navigate to energy settings
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Energy setup coming soon')));
-                      },
+                      onTap: _spotifyAvailable ? _openSpotifyLogin : _openSpotifyLogin,
                     ),
                   ),
                 ),

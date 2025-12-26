@@ -29,6 +29,8 @@ const energyManager = require('./script/energyManager');
 const automationManager = require('./script/automationManager');
 const ps5Manager = require('./script/ps5Manager');
 const psnManager = require('./script/psnManager');
+const presenceManager = require('./script/presenceManager');
+const aiManager = require('./script/aiManager');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -1183,6 +1185,35 @@ app.post('/api/devices/:id/command', async (req, res) => {
     } else {
         res.status(404).json({ ok: false, message: 'Device not found' });
     }
+});
+
+// --- AI / NLP ---
+app.post('/api/ai/command', async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ ok: false, message: 'Text required' });
+    
+    try {
+        const result = await aiManager.processCommand(text);
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+// --- Presence ---
+app.get('/api/presence', (req, res) => {
+    res.json(presenceManager.getPresenceStatus());
+});
+
+app.post('/api/presence/user', (req, res) => {
+    const { userId, name, deviceId } = req.body;
+    presenceManager.addPerson(userId, name, deviceId);
+    res.json({ ok: true });
+});
+
+// --- Energy ---
+app.get('/api/energy', (req, res) => {
+    res.json(energyManager.data);
 });
 
 app.post('/api/scenes/:name', async (req, res) => {

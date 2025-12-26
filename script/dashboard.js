@@ -93,6 +93,114 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // AI Assistant
+  const aiInput = document.getElementById('aiInput');
+  const aiSubmit = document.getElementById('aiSubmit');
+
+  if (aiSubmit && aiInput) {
+    const handleAI = async () => {
+      const text = aiInput.value.trim();
+      if (!text) return;
+      
+      aiSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+      try {
+        const res = await fetch('/api/ai/command', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+          alert(data.message); // Or show a nice toast
+          aiInput.value = '';
+        } else {
+          alert('AI Error: ' + data.message);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        aiSubmit.innerHTML = '<i class="fas fa-magic"></i>';
+      }
+    };
+
+    aiSubmit.addEventListener('click', handleAI);
+    aiInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleAI();
+    });
+  }
+
+  // Presence Widget
+  async function updatePresence() {
+    const el = document.getElementById('presenceContent');
+    if (!el) return;
+    
+    try {
+      const res = await fetch('/api/presence');
+      const data = await res.json();
+      
+      if (data.people.length === 0) {
+        el.innerHTML = '<div class="empty">No people tracked</div>';
+        return;
+      }
+
+      el.innerHTML = `<div class="presence-list">
+        ${data.people.map(p => `
+          <div class="person-item">
+            <div class="person-status ${p.isHome ? 'home' : 'away'}"></div>
+            <span>${p.name}</span>
+            <span style="margin-left:auto; font-size:0.8em; opacity:0.7">${p.isHome ? 'Home' : 'Away'}</span>
+          </div>
+        `).join('')}
+      </div>`;
+    } catch (e) {
+      el.innerHTML = 'Error loading presence';
+    }
+  }
+
+  // Energy Widget
+  async function updateEnergy() {
+    const el = document.getElementById('energyContent');
+    if (!el) return;
+
+    try {
+      const res = await fetch('/api/energy');
+      const data = await res.json();
+      
+      const gridPower = data.grid.currentPower || 0;
+      const solarPower = data.solar.currentPower || 0;
+      const usage = data.home.currentUsage || (gridPower + solarPower); // Estimate if not measured
+
+      el.innerHTML = `
+        <div class="energy-grid">
+          <div class="energy-item">
+            <i class="fas fa-home"></i>
+            <div class="energy-val pos">${Math.round(usage)} W</div>
+            <div style="font-size:0.8em">Usage</div>
+          </div>
+          <div class="energy-item">
+            <i class="fas fa-solar-panel"></i>
+            <div class="energy-val neg">${Math.round(solarPower)} W</div>
+            <div style="font-size:0.8em">Solar</div>
+          </div>
+          <div class="energy-item" style="grid-column: span 2">
+            <i class="fas fa-bolt"></i>
+            <div class="energy-val ${gridPower > 0 ? 'pos' : 'neg'}">${Math.round(gridPower)} W</div>
+            <div style="font-size:0.8em">Grid (${gridPower > 0 ? 'Import' : 'Export'})</div>
+          </div>
+        </div>
+      `;
+    } catch (e) {
+      el.innerHTML = 'Error loading energy';
+    }
+  }
+
+  // Initial calls
+  updatePresence();
+  updateEnergy();
+  setInterval(updatePresence, 10000);
+  setInterval(updateEnergy, 5000);
+
   // Weather widget (Open-Meteo)
   async function loadWeather(){
     try{

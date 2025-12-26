@@ -108,6 +108,49 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getEnergyData() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/energy'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching energy data: $e');
+    }
+    return {};
+  }
+
+  Future<Map<String, dynamic>> getPresenceData() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/presence'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching presence data: $e');
+    }
+    return {'people': []};
+  }
+
+  Future<Map<String, dynamic>> sendAICommand(String text) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/ai/command'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'text': text}),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error sending AI command: $e');
+    }
+    return {'ok': false, 'message': 'Connection error'};
+  }
+
   Future<List<dynamic>> getSpotifyDevices() async {
     final baseUrl = await getBaseUrl();
     try {

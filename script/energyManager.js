@@ -1,11 +1,12 @@
 const EventEmitter = require('events');
 const mqttManager = require('./mqttManager');
+const deviceManager = require('./deviceManager');
 
 class EnergyManager extends EventEmitter {
     constructor() {
         super();
         this.config = {
-            isConfigured: false, // Default to false, requires setup
+            isConfigured: true, // Enable by default for device tracking
             solarCapacity: 4000, // Watts
             gridLimit: 5000,     // Watts
             costPerKwh: 0.25,    // Currency
@@ -34,10 +35,31 @@ class EnergyManager extends EventEmitter {
         };
         
         this.usingRealData = false;
-        // this.setupMqtt(); // Only setup if configured
+        
+        // Listen to device updates for direct energy monitoring (Shelly, etc)
+        deviceManager.on('device-updated', (device) => {
+            if (device.state && device.state.power !== undefined) {
+                this.data.devices[device.name] = { power: device.state.power };
+                this.calculateTotalUsage();
+            }
+        });
+
         if (this.config.isConfigured) {
             this.setupMqtt();
         }
+    }
+
+    calculateTotalUsage() {
+        let totalDeviceUsage = 0;
+        for (const key in this.data.devices) {
+            totalDeviceUsage += (this.data.devices[key].power || 0);
+        }
+        // If we don't have a main meter, use the sum of devices
+        if (!this.usingRealData) {
+            this.data.home.currentUsage = totalDeviceUsage;
+            this.emit('update', this.data);
+        }
+    }
         
         // Start simulation as fallback ONLY if configured and no real data
         // this.startSimulation(); 

@@ -44,6 +44,15 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "none"
+		},
+		{
+			"label": "append_ai_css",
+			"type": "shell",
+			"command": "cat >> /Users/alessiodepreytere/Documents/GitHub/DelovaHomeWeb/style/base.css <<EOF\n\n/* AI Assistant */\n.header-content {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    flex-wrap: wrap;\n    gap: 15px;\n}\n\n.ai-assistant {\n    display: flex;\n    gap: 10px;\n    background: rgba(255,255,255,0.1);\n    padding: 5px;\n    border-radius: 25px;\n    border: 1px solid rgba(255,255,255,0.2);\n}\n\n.ai-assistant input {\n    background: transparent;\n    border: none;\n    color: inherit;\n    padding: 8px 15px;\n    width: 250px;\n    outline: none;\n}\n\n.ai-assistant button {\n    background: var(--primary, #007BFF);\n    color: white;\n    border: none;\n    border-radius: 50%;\n    width: 36px;\n    height: 36px;\n    cursor: pointer;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    transition: transform 0.2s;\n}\n\n.ai-assistant button:hover {\n    transform: scale(1.1);\n}\n\n/* Presence Widget */\n.presence-list {\n    display: flex;\n    flex-direction: column;\n    gap: 8px;\n}\n\n.person-item {\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    padding: 5px;\n    border-radius: 8px;\n    background: rgba(255,255,255,0.05);\n}\n\n.person-status {\n    width: 10px;\n    height: 10px;\n    border-radius: 50%;\n    background: #ccc;\n}\n\n.person-status.home { background: #4CAF50; box-shadow: 0 0 5px #4CAF50; }\n.person-status.away { background: #F44336; }\n\n/* Energy Widget */\n.energy-grid {\n    display: grid;\n    grid-template-columns: 1fr 1fr;\n    gap: 10px;\n    text-align: center;\n}\n\n.energy-item {\n    background: rgba(255,255,255,0.05);\n    padding: 10px;\n    border-radius: 8px;\n}\n\n.energy-val {\n    font-size: 1.2em;\n    font-weight: bold;\n    margin-top: 5px;\n}\n\n.energy-val.pos { color: #F44336; } /* Consuming */\n.energy-val.neg { color: #4CAF50; } /* Producing */\nEOF\n",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
 		}
 	]
 }

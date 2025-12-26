@@ -229,3 +229,97 @@ nav, .main-nav {
     opacity: 0.9;
     margin-top: 5px;
 }
+
+/* AI Assistant */
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.ai-assistant {
+    display: flex;
+    gap: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 5px;
+    border-radius: 25px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.ai-assistant input {
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 8px 15px;
+    width: 250px;
+    outline: none;
+}
+
+.ai-assistant button {
+    background: var(--primary, #007BFF);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.ai-assistant button:hover {
+    transform: scale(1.1);
+}
+
+/* Presence Widget */
+.presence-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.person-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.05);
+}
+
+.person-status {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ccc;
+}
+
+.person-status.home { background: #4CAF50; box-shadow: 0 0 5px #4CAF50; }
+.person-status.away { background: #F44336; }
+
+/* Energy Widget */
+.energy-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    text-align: center;
+}
+
+.energy-item {
+    background: rgba(255,255,255,0.05);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.energy-val {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.energy-val.pos { color: #F44336; } /* Consuming */
+.energy-val.neg { color: #4CAF50; } /* Producing */

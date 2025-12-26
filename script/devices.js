@@ -603,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
-        } else if (type === 'nas' || type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi') {
+        } else if (type === 'nas' || type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'mac') {
             controlsHtml += `
                 <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
                     <p>Beheer verbindingen en bestanden.</p>

@@ -350,6 +350,10 @@ class DeviceManager extends EventEmitter {
             this.processMdnsService(service, 'printer');
         });
 
+        // 4. Windows/SMB Discovery (Port Scan)
+        this.scanForWindowsDevices();
+        setInterval(() => this.scanForWindowsDevices(), 60000 * 10); // Every 10 minutes
+
         // Sonos Speakers
         this.bonjour.find({ type: 'sonos' }, (service) => {
             this.processMdnsService(service, 'sonos');
@@ -3431,7 +3435,7 @@ class DeviceManager extends EventEmitter {
     async pairDevice(ip, type, credentials) {
         console.log(`[Pairing] Attempting to pair ${type} at ${ip}`);
         
-        if (type === 'nas' || type === 'pc' || type === 'rpi' || type === 'computer' || type === 'raspberrypi') {
+        if (['nas', 'pc', 'rpi', 'computer', 'raspberrypi', 'mac', 'workstation'].includes(type)) {
             // Store credentials
             this.sshCredentials[ip] = {
                 username: credentials.username,
@@ -3475,6 +3479,63 @@ class DeviceManager extends EventEmitter {
         }
         
         return { ok: false, error: 'Unsupported device type for pairing' };
+    }
+
+    async scanForWindowsDevices() {
+        console.log('[Discovery] Scanning for Windows/SMB devices (Port 445)...');
+        const subnet = this.localIp.split('.').slice(0, 3).join('.');
+        
+        // Scan in batches to avoid too many open sockets
+        const batchSize = 20;
+        for (let i = 1; i < 255; i += batchSize) {
+            const batch = [];
+            for (let j = 0; j < batchSize && (i + j) < 255; j++) {
+                const ip = `${subnet}.${i + j}`;
+                if (ip === this.localIp) continue;
+                batch.push(this._checkPortAndAdd(ip));
+            }
+            await Promise.all(batch);
+        }
+    }
+
+    async _checkPortAndAdd(ip) {
+        const isOpen = await this._checkPort(ip, 445);
+        if (isOpen) {
+            // Try to resolve hostname
+            require('dns').reverse(ip, (err, hostnames) => {
+                let name = hostnames && hostnames.length > 0 ? hostnames[0] : `PC-${ip.split('.')[3]}`;
+                name = name.split('.')[0]; // Remove domain
+                
+                this.handleDiscoveredDevice({
+                    id: `pc-${ip.replace(/\./g, '-')}`,
+                    name: name,
+                    type: 'pc',
+                    ip: ip,
+                    model: 'Windows PC',
+                    raw: { type: 'smb' }
+                });
+            });
+        }
+    }
+
+    _checkPort(host, port, timeout = 500) {
+        return new Promise((resolve) => {
+            const socket = new net.Socket();
+            socket.setTimeout(timeout);
+            socket.on('connect', () => {
+                socket.destroy();
+                resolve(true);
+            });
+            socket.on('timeout', () => {
+                socket.destroy();
+                resolve(false);
+            });
+            socket.on('error', () => {
+                socket.destroy();
+                resolve(false);
+            });
+            socket.connect(port, host);
+        });
     }
 }
 

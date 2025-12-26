@@ -111,12 +111,23 @@ class DiscoveryService extends EventEmitter {
         }
         // Speakers (AirPlay/RAOP)
         else if (service.type === 'raop' || service.type === 'airplay') {
+            let type = 'speaker';
+            let model = 'AirPlay Speaker';
+            
+            // Check for Mac computers masquerading as AirPlay receivers
+            if (service.txt && service.txt.model) {
+                model = service.txt.model;
+                if (model.includes('MacBook') || model.includes('iMac') || model.includes('Macmini') || model.includes('MacPro')) {
+                    type = 'computer';
+                }
+            }
+
             device = {
                 id: `airplay-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
                 name: name.replace(/^[^@]*@/, ''), // Remove MAC prefix often found in RAOP names
-                type: 'speaker',
+                type: type,
                 ip: ip,
-                model: 'AirPlay Speaker',
+                model: model,
                 raw: service
             };
         }

@@ -1,5 +1,6 @@
 const dgram = require('dgram');
 const EventEmitter = require('events');
+const { exec } = require('child_process');
 const { Bonjour } = require('bonjour-service');
 
 class DiscoveryService extends EventEmitter {
@@ -53,13 +54,42 @@ class DiscoveryService extends EventEmitter {
         });
     }
 
-    handleMDNSService(service) {
+    getMacAddress(ip) {
+        return new Promise((resolve) => {
+            // First ping to populate ARP cache
+            const pingCmd = process.platform === 'win32' 
+                ? `ping -n 1 -w 200 ${ip}` 
+                : `ping -c 1 -W 1 ${ip}`;
+
+            exec(pingCmd, () => {
+                // Then check ARP table
+                const arpCmd = process.platform === 'win32' ? `arp -a ${ip}` : `arp -n ${ip}`;
+                
+                exec(arpCmd, (err, stdout) => {
+                    if (err) return resolve(null);
+                    
+                    const macRegex = /([0-9A-Fa-f]{1,2}[:-]){5}([0-9A-Fa-f]{1,2})/;
+                    const match = stdout.match(macRegex);
+                    
+                    if (match) {
+                        resolve(match[0]);
+                    } else {
+                        resolve(null);
+                    }
+                });
+            });
+        });
+    }
+
+    async handleMDNSService(service) {
         // Filter and normalize
         let device = null;
         const name = service.name || '';
         const ip = service.referer ? service.referer.address : (service.addresses ? service.addresses[0] : null);
         
         if (!ip) return;
+
+        const mac = await this.getMacAddress(ip);
 
         // Shelly
         if (name.toLowerCase().includes('shelly') || (service.txt && service.txt.gen)) {
@@ -144,6 +174,7 @@ class DiscoveryService extends EventEmitter {
         }
 
         if (device) {
+            if (mac) device.mac = mac;
             this.emit('discovered', device);
         }
     }

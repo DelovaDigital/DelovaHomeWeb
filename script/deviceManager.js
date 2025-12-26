@@ -135,6 +135,7 @@ class DeviceManager extends EventEmitter {
             name: info.name,
             type: info.type,
             ip: info.ip,
+            mac: info.mac,
             model: info.model,
             state: { on: false }, // Default state
             capabilities: [],
@@ -3544,23 +3545,33 @@ class DeviceManager extends EventEmitter {
     getMacAddress(ip) {
         return new Promise((resolve) => {
             const { exec } = require('child_process');
-            const cmd = process.platform === 'win32' ? `arp -a ${ip}` : `arp -n ${ip}`;
             
-            exec(cmd, (err, stdout) => {
-                if (err) return resolve(null);
+            // First ping to populate ARP cache
+            const pingCmd = process.platform === 'win32' 
+                ? `ping -n 1 -w 500 ${ip}` 
+                : `ping -c 1 -W 1 ${ip}`;
+
+            exec(pingCmd, () => {
+                // Then check ARP table
+                // On macOS/Linux, arp -n <ip> avoids DNS lookup and is faster
+                const arpCmd = process.platform === 'win32' ? `arp -a ${ip}` : `arp -n ${ip}`;
                 
-                // Parse MAC address
-                // macOS/Linux: ? (192.168.1.1) at 00:11:22:33:44:55 on en0 ...
-                // Windows: 192.168.1.1 ... 00-11-22-33-44-55 ...
-                
-                const macRegex = /([0-9A-Fa-f]{1,2}[:-]){5}([0-9A-Fa-f]{1,2})/;
-                const match = stdout.match(macRegex);
-                
-                if (match) {
-                    resolve(match[0]);
-                } else {
-                    resolve(null);
-                }
+                exec(arpCmd, (err, stdout) => {
+                    if (err) return resolve(null);
+                    
+                    // Parse MAC address
+                    // macOS/Linux: ? (192.168.1.1) at 00:11:22:33:44:55 on en0 ...
+                    // Windows: 192.168.1.1 ... 00-11-22-33-44-55 ...
+                    
+                    const macRegex = /([0-9A-Fa-f]{1,2}[:-]){5}([0-9A-Fa-f]{1,2})/;
+                    const match = stdout.match(macRegex);
+                    
+                    if (match) {
+                        resolve(match[0]);
+                    } else {
+                        resolve(null);
+                    }
+                });
             });
         });
     }

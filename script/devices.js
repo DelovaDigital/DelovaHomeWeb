@@ -505,6 +505,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let cmd = 'toggle';
             if (type === 'ps5' || type === 'console') {
                 cmd = isOn ? 'standby' : 'wake';
+            } else if ((type === 'pc' || type === 'rpi' || type === 'nas' || type === 'computer' || type === 'workstation') && !isOn) {
+                cmd = 'wake';
             }
             
             controlsHtml += `

@@ -14,6 +14,7 @@ const lgtv = require('lgtv2');
 const onvif = require('onvif');
 const mqttManager = require('./mqttManager');
 const ps5Manager = require('./ps5Manager');
+const discoveryService = require('./discoveryService');
 let SamsungRemote = null;
 try {
     SamsungRemote = require('samsung-remote');
@@ -60,8 +61,74 @@ class DeviceManager extends EventEmitter {
         this.loadAndroidTvCredentials();
         this.loadSamsungCredentials();
         this.loadCameraCredentials();
+        
+        // Integrate Discovery Service
+        discoveryService.on('discovered', (deviceInfo) => {
+            this.handleDiscoveredDevice(deviceInfo);
+        });
+        discoveryService.start();
+
         this.startDiscovery();
         this.startPolling();
+    }
+
+    handleDiscoveredDevice(info) {
+        if (this.devices.has(info.id)) return; // Already known
+
+        console.log(`[DeviceManager] Discovered new device: ${info.name} (${info.type}) at ${info.ip}`);
+
+        const device = {
+            id: info.id,
+            name: info.name,
+            type: info.type,
+            ip: info.ip,
+            model: info.model,
+            state: { on: false }, // Default state
+            capabilities: []
+        };
+
+        // Set capabilities based on type
+        if (info.type === 'shelly') {
+            device.capabilities = ['switch'];
+            // Try to get status immediately
+            this.refreshShelly(device);
+        } else if (info.type === 'chromecast') {
+            device.capabilities = ['media_control', 'volume'];
+        } else if (info.type === 'hue') {
+            device.capabilities = ['light', 'brightness', 'color'];
+        } else if (info.type === 'printer') {
+            device.capabilities = ['sensor'];
+        }
+
+        this.devices.set(device.id, device);
+        this.emit('device-added', device);
+    }
+
+    async refreshShelly(device) {
+        try {
+            // Try Gen 2 API first (RPC)
+            let res = await fetch(`http://${device.ip}/rpc/Switch.GetStatus?id=0`, { timeout: 2000 });
+            if (res.ok) {
+                const data = await res.json();
+                device.state.on = data.output;
+                if (data.apower !== undefined) device.state.power = data.apower;
+            } else {
+                // Fallback to Gen 1 API
+                res = await fetch(`http://${device.ip}/status`, { timeout: 2000 });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.relays && data.relays.length > 0) {
+                        device.state.on = data.relays[0].ison;
+                    }
+                    if (data.meters && data.meters.length > 0) {
+                        device.state.power = data.meters[0].power;
+                    }
+                }
+            }
+            this.emit('device-updated', device);
+        } catch (e) {
+            // console.error(`Error refreshing Shelly ${device.name}:`, e.message);
+        }
     }
 
     async startPolling() {
@@ -988,6 +1055,12 @@ class DeviceManager extends EventEmitter {
         const device = this.devices.get(id);
         if (!device) return;
 
+        // Shelly
+        if (device.type === 'shelly') {
+            await this.refreshShelly(device);
+            return;
+        }
+
         // Refresh Local Mac
         if (this.isLocalMachine(device.ip)) {
              const state = await this.getMacState(device.ip);
@@ -1475,6 +1548,32 @@ class DeviceManager extends EventEmitter {
         } else if (command === 'set_brightness') {
             device.state.brightness = value;
         } else if (command === 'set_volume') {
+            device.state.volume = value;
+        }
+
+        // Shelly Control
+        if (device.type === 'shelly') {
+            try {
+                let url = '';
+                if (command === 'turn_on' || (command === 'toggle' && device.state.on)) {
+                    url = `http://${device.ip}/relay/0?turn=on`;
+                } else if (command === 'turn_off' || (command === 'toggle' && !device.state.on)) {
+                    url = `http://${device.ip}/relay/0?turn=off`;
+                }
+                
+                if (url) {
+                    await fetch(url);
+                    // Refresh to confirm
+                    setTimeout(() => this.refreshShelly(device), 500);
+                }
+            } catch (e) {
+                console.error(`Error controlling Shelly ${device.name}:`, e.message);
+            }
+            this.emit('device-updated', device);
+            return device;
+        }
+
+        // Local Mac Control
             device.state.volume = value;
         } else if (command === 'volume_up') {
             device.state.volume = Math.min((parseInt(device.state.volume) || 0) + 5, 100);

@@ -988,6 +988,11 @@ app.get('/api/devices', (req, res) => {
     res.json(enrichedDevices);
 });
 
+app.post('/api/devices/scan', (req, res) => {
+    deviceManager.startDiscovery();
+    res.json({ ok: true, message: 'Discovery started' });
+});
+
 // --- PS5 Control ---
 app.get('/api/ps5/devices', async (req, res) => {
     const devices = await ps5Manager.getDevices();

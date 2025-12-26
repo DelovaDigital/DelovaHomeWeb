@@ -384,4 +384,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('device-update', (e) => {
       render();
   });
+
+  // Clock Widget
+  function updateClock() {
+      const now = new Date();
+      const timeEl = document.getElementById('clockTime');
+      const dateEl = document.getElementById('clockDate');
+      if (timeEl && dateEl) {
+          timeEl.textContent = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+          dateEl.textContent = now.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+      }
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
 });

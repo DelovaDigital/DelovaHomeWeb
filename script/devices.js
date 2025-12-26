@@ -46,6 +46,37 @@ document.addEventListener('DOMContentLoaded', () => {
     let allDevices = []; // Store devices globally for modal access
     const activeStreams = new Map(); // deviceId -> JSMpeg player
 
+    // Scan Button Logic
+    const scanBtn = document.getElementById('scanDevicesBtn');
+    if (scanBtn) {
+        scanBtn.addEventListener('click', async () => {
+            const icon = scanBtn.querySelector('i');
+            icon.classList.add('fa-spin');
+            scanBtn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/devices/scan', { method: 'POST' });
+                const data = await res.json();
+                if (data.ok) {
+                    // Wait a bit for discovery to happen then refresh
+                    setTimeout(() => {
+                        fetchDevices();
+                        icon.classList.remove('fa-spin');
+                        scanBtn.disabled = false;
+                    }, 3000);
+                } else {
+                    alert('Scan failed');
+                    icon.classList.remove('fa-spin');
+                    scanBtn.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                icon.classList.remove('fa-spin');
+                scanBtn.disabled = false;
+            }
+        });
+    }
+
     function startCameraStream(deviceId, ip, containerId) {
         if (activeStreams.has(deviceId)) {
             // Check if the container actually has the video element
@@ -465,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'receiver' || device.name.toLowerCase().includes('denon')) icon = 'fa-compact-disc';
         else if (type === 'camera') icon = 'fa-video';
         else if (type === 'ps5' || type === 'console') icon = 'fa-gamepad';
+        else if (type === 'shelly' || type === 'switch') icon = 'fa-toggle-on';
 
         let controlsHtml = '';
 
@@ -481,6 +513,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button class="big-power-btn ${isOn ? 'on' : ''}" onclick="controlDevice('${device.id}', '${cmd}')">
                     <i class="fas fa-power-off"></i>
                 </button>
+            `;
+        }
+
+        // Shelly Power Meter
+        if (type === 'shelly' && device.state.power !== undefined) {
+            controlsHtml += `
+                <div class="control-group">
+                    <label>Huidig verbruik</label>
+                    <div style="font-size: 1.5em; font-weight: bold;">${device.state.power} W</div>
+                </div>
             `;
         }
 

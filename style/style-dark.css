@@ -10,6 +10,7 @@
     --accent-hover: #00B8D4;
     --danger: #ff5252;
     --success: #69f0ae;
+    --primary: var(--accent);
 
     /* Legacy Variable Mappings */
     --card: var(--glass-bg);

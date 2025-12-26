@@ -206,3 +206,26 @@ nav, .main-nav {
         white-space: nowrap;
     }
 }
+
+/* Clock Widget */
+#clockWidget {
+    text-align: center;
+    background: var(--card);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 120px;
+}
+.clock-time {
+    font-size: 3rem;
+    font-weight: bold;
+    line-height: 1;
+}
+.clock-date {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-top: 5px;
+}

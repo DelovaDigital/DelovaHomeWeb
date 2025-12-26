@@ -232,37 +232,95 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
-    // Check for NAS and add "Bestanden" tab if configured
-    const navUl = document.querySelector('.main-nav ul');
-    if (navUl) {
+    // --- Navigation Rendering ---
+    const navContainer = document.querySelector('.main-nav');
+    if (navContainer) {
+        const currentPage = window.location.pathname.split('/').pop();
+        const menuItems = [
+            { name: 'Dashboard', icon: 'fas fa-home', href: 'dashboard.html' },
+            { name: 'Kamers', icon: 'fas fa-door-open', href: 'rooms.html' },
+            { name: 'Apparaten', icon: 'fas fa-laptop-house', href: 'devices.html' },
+            { name: 'Instellingen', icon: 'fas fa-cog', href: 'settings.html' }
+        ];
+
+        // Check for NAS (async)
         fetch('/api/nas')
             .then(res => res.json())
             .then(nasList => {
                 if (nasList && nasList.length > 0) {
-                    // Check if already exists to avoid duplicates
-                    if (!navUl.innerHTML.includes('Bestanden')) {
-                        const li = document.createElement('li');
-                        // Determine if we are on files.html to set active class
-                        const isActive = window.location.pathname.includes('files.html') ? 'class="active"' : '';
-                        li.innerHTML = `<a href="files.html" ${isActive}><i class="fas fa-folder-open"></i> Bestanden</a>`;
-                        
-                        // Insert before "Instellingen" if possible
-                        const settingsLi = Array.from(navUl.children).find(child => child.textContent.includes('Instellingen'));
-                        if (settingsLi) {
-                            navUl.insertBefore(li, settingsLi);
-                        } else {
-                            // Otherwise just append before the user menu (last item)
-                            const userMenu = navUl.querySelector('.user-menu-container');
-                            if (userMenu) {
-                                navUl.insertBefore(li, userMenu);
-                            } else {
-                                navUl.appendChild(li);
-                            }
-                        }
-                    }
+                    // Insert before Settings
+                    menuItems.splice(3, 0, { name: 'Bestanden', icon: 'fas fa-folder-open', href: 'files.html' });
                 }
+                renderNav(menuItems, currentPage);
             })
-            .catch(err => console.log('Error checking NAS status:', err));
+            .catch(() => renderNav(menuItems, currentPage));
+    }
+
+    function renderNav(items, currentPage) {
+        const nav = document.querySelector('.main-nav');
+        if (!nav) return;
+
+        let html = `
+            <div class="nav-brand">
+                <h1>DelovaHome</h1>
+            </div>
+            <ul>
+        `;
+
+        items.forEach(item => {
+            const active = currentPage === item.href ? 'class="active"' : '';
+            html += `<li><a href="${item.href}" ${active}><i class="${item.icon}"></i> ${item.name}</a></li>`;
+        });
+
+        html += `
+                <li class="user-menu-container">
+                    <span id="usernameDisplay"></span>
+                    <div class="user-avatar"></div>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#"><i class="fas fa-user"></i> Profiel</a>
+                        <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
+                    </div>
+                </li>
+            </ul>
+        `;
+
+        nav.innerHTML = html;
+        
+        // Re-initialize dynamic elements
+        const avatar = nav.querySelector('.user-avatar');
+        const dropdown = nav.querySelector('#userDropdown');
+        const logoutLink = nav.querySelector('.logout');
+        
+        if (avatar && dropdown) {
+            avatar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('show');
+            });
+            dropdown.addEventListener('click', (e) => e.stopPropagation());
+        }
+        
+        if (logoutLink) {
+            logoutLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('username');
+                localStorage.removeItem('userId');
+                window.location.href = '../index.html';
+            });
+        }
+
+        // Update username
+        const username = localStorage.getItem('username');
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        if (usernameDisplay && username) {
+            usernameDisplay.textContent = `Hallo, ${username}`;
+        }
+        
+        // Update Hub Name
+        let hubName = localStorage.getItem('hubName');
+        const brandHeader = nav.querySelector('.nav-brand h1');
+        if (brandHeader && hubName) {
+            brandHeader.textContent = hubName;
+        }
     }
 
     // WebSocket Connection

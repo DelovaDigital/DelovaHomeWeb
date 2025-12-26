@@ -1573,9 +1573,7 @@ class DeviceManager extends EventEmitter {
             return device;
         }
 
-        // Local Mac Control
-            device.state.volume = value;
-        } else if (command === 'volume_up') {
+        if (command === 'volume_up') {
             device.state.volume = Math.min((parseInt(device.state.volume) || 0) + 5, 100);
         } else if (command === 'volume_down') {
             device.state.volume = Math.max((parseInt(device.state.volume) || 0) - 5, 0);

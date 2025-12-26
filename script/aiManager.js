@@ -26,14 +26,19 @@ class AIManager {
     async processCommand(text) {
         console.log(`[AI] Processing command: "${text}"`);
         
-        for (const intent of this.intents) {
-            const match = text.match(intent.regex);
-            if (match) {
-                return await intent.handler(match);
+        try {
+            for (const intent of this.intents) {
+                const match = text.match(intent.regex);
+                if (match) {
+                    return await intent.handler(match);
+                }
             }
+        } catch (e) {
+            console.error('[AI] Error processing command:', e);
+            return { ok: false, message: "Sorry, I encountered an error processing that command." };
         }
 
-        return { ok: false, message: "I didn't understand that command." };
+        return { ok: false, message: "I didn't understand that command. Try 'Turn on lights' or 'Play music'." };
     }
 
     findDevice(nameQuery) {

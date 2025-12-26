@@ -451,18 +451,6 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getEnergyData() async {
-    final baseUrl = await getBaseUrl();
-    try {
-      final response = await http.get(Uri.parse('$baseUrl/api/energy/data'));
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      }
-    } catch (e) {
-      debugPrint('Error fetching energy data: $e');
-    }
-    return {};
-  }
 
   Future<void> wakePs5(String id) async {
     final baseUrl = await getBaseUrl();

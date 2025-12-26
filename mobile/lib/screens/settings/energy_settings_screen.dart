@@ -56,10 +56,11 @@ class _EnergySettingsScreenState extends State<EnergySettingsScreen> {
             child: GlassCard(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SwitchListTile(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SwitchListTile(
                       title: const Text('Solar Panels Installed', style: TextStyle(color: Colors.white)),
                       value: _hasSolar,
                       onChanged: (val) => setState(() => _hasSolar = val),
@@ -106,6 +107,7 @@ class _EnergySettingsScreenState extends State<EnergySettingsScreen> {
                       ),
                     ),
                   ],
+                  ),
                 ),
               ),
             ),

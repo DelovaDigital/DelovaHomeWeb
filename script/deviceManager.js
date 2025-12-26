@@ -1126,9 +1126,17 @@ class DeviceManager extends EventEmitter {
 
             socket.on('error', () => socket.destroy());
             socket.on('timeout', () => socket.destroy());
-        } else if (device.protocol === 'mdns-googlecast') {
+        } else if (device.type === 'chromecast' || device.protocol === 'mdns-googlecast') {
             // Refresh Cast Device
             const client = new CastClient();
+            client.on('error', (err) => {
+                // Connection error usually means device is off or unreachable
+                if (device.state.on) {
+                    device.state.on = false;
+                    this.emit('device-updated', device);
+                }
+            });
+
             client.connect(device.ip, () => {
                 client.getStatus((err, status) => {
                     if (!err && status) {
@@ -1171,7 +1179,6 @@ class DeviceManager extends EventEmitter {
                     client.close();
                 });
             });
-            client.on('error', () => {});
         } else if (device.protocol === 'samsung-tizen') {
             // Refresh Samsung TV (More reliable check via WebSocket with fallback)
             const checkPower = (port) => {

@@ -14,29 +14,64 @@
 }
 
 .device-modal-content {
-    background-color: #1e1e1e;
+    background-color: var(--card);
     margin: 5% auto;
     padding: 0;
     border-radius: 20px;
     width: 90%;
     max-width: 500px;
-    color: white;
+    color: var(--text);
+    border: 1px solid var(--border);
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     position: relative;
     animation: slideUp 0.3s;
     transition: max-width 0.3s ease;
 }
 
-.device-modal-content.wide {
-    max-width: 900px;
-}
-
 .device-modal-header {
     padding: 20px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: rgba(0,0,0,0.1);
+    border-radius: 20px 20px 0 0;
+}
+
+/* Tabs */
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.05);
+}
+.modal-tab {
+    flex: 1;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    color: var(--muted);
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.modal-tab:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+}
+.modal-tab.active {
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+}
+
+.tab-content {
+    display: none;
+    width: 100%;
+    animation: fadeIn 0.2s;
+}
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
 }
 
 .device-modal-header h2 {

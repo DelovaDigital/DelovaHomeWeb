@@ -37,7 +37,13 @@ class DiscoveryService extends EventEmitter {
             'spotify-connect', // Spotify
             'airplay',      // Apple TV / AirPlay
             'hap',          // HomeKit
-            'smb'           // NAS
+            'smb',          // NAS
+            'ssh',          // Linux/RPi
+            'sftp-ssh',     // Linux/RPi
+            'workstation',  // PC
+            'raop',         // AirPlay Speakers
+            'daap',         // iTunes
+            'webos-second-screen' // LG TV
         ];
 
         services.forEach(type => {
@@ -85,6 +91,43 @@ class DiscoveryService extends EventEmitter {
                 type: 'printer',
                 ip: ip,
                 model: service.txt ? service.txt.ty : 'Printer',
+                raw: service
+            };
+        }
+        // Computers / RPi / NAS
+        else if (['ssh', 'sftp-ssh', 'workstation', 'smb'].includes(service.type)) {
+            let type = 'pc';
+            if (name.toLowerCase().includes('pi') || name.toLowerCase().includes('raspberry')) type = 'rpi';
+            else if (name.toLowerCase().includes('nas') || name.toLowerCase().includes('synology') || name.toLowerCase().includes('qnap')) type = 'nas';
+            
+            device = {
+                id: `pc-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name,
+                type: type,
+                ip: ip,
+                model: 'Computer',
+                raw: service
+            };
+        }
+        // Speakers (AirPlay/RAOP)
+        else if (service.type === 'raop' || service.type === 'airplay') {
+            device = {
+                id: `airplay-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name.replace(/^[^@]*@/, ''), // Remove MAC prefix often found in RAOP names
+                type: 'speaker',
+                ip: ip,
+                model: 'AirPlay Speaker',
+                raw: service
+            };
+        }
+        // LG TV
+        else if (service.type === 'webos-second-screen') {
+            device = {
+                id: `lg-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name,
+                type: 'tv',
+                ip: ip,
+                model: 'LG WebOS',
                 raw: service
             };
         }

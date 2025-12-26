@@ -10,6 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h2 id="modalDeviceName">Device Name</h2>
                         <button class="close-modal" onclick="closeDeviceDetail()">&times;</button>
                     </div>
+                    <div class="modal-tabs" id="modalTabs" style="display:none;">
+                        <div class="modal-tab active" data-tab="controls">Bediening</div>
+                        <div class="modal-tab" data-tab="info">Info</div>
+                        <div class="modal-tab" data-tab="settings">Instellingen</div>
+                    </div>
                     <div id="modalDeviceBody" class="device-modal-body">
                         <!-- Dynamic Content -->
                     </div>
@@ -18,6 +23,19 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         
+        // Tab Logic
+        document.querySelectorAll('.modal-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.remove('active');
+                    if (c.id === `tab-${target}`) c.classList.add('active');
+                });
+            });
+        });
+
         // Close on outside click
         window.onclick = function(event) {
             const modal = document.getElementById('deviceModal');
@@ -261,6 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (type === 'sensor') icon = 'fa-wifi';
             else if (type === 'console' || type === 'playstation') icon = 'fa-gamepad';
             else if (type === 'nas') icon = 'fa-server';
+            else if (type === 'computer' || type === 'workstation' || type === 'pc') icon = 'fa-desktop';
+            else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
 
             const isOn = device.state.on;
             const statusClass = isOn ? 'on' : 'off';
@@ -330,6 +350,14 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.dataset.deviceId = id;
         document.getElementById('modalDeviceName').textContent = device.name;
         
+        // Reset tabs to Controls
+        const tabs = document.querySelectorAll('.modal-tab');
+        if (tabs.length > 0) {
+            tabs.forEach(t => t.classList.remove('active'));
+            const controlTab = document.querySelector('.modal-tab[data-tab="controls"]');
+            if (controlTab) controlTab.classList.add('active');
+        }
+        
         updateModalContent(device);
         
         modal.style.display = 'block';
@@ -365,6 +393,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateModalContent(device) {
         const modalContent = document.querySelector('.device-modal-content');
         const body = document.getElementById('modalDeviceBody');
+        const tabsContainer = document.getElementById('modalTabs');
+        
+        if (tabsContainer) tabsContainer.style.display = 'flex';
+
         const type = device.type.toLowerCase();
         const isOn = device.state.on;
         
@@ -385,80 +417,6 @@ document.addEventListener('DOMContentLoaded', () => {
                          if (isOn) iconEl.classList.add('on');
                          else iconEl.classList.remove('on');
                      }
-
-                    // --- Device context menu ---
-                    window.showDeviceMenu = (deviceId, ev) => {
-                        // remove existing menu
-                        const existing = document.getElementById('device-context-menu');
-                        if (existing) existing.remove();
-
-                        const device = allDevices.find(d => d.id === deviceId);
-                        if (!device) return;
-
-                        const menu = document.createElement('div');
-                        menu.id = 'device-context-menu';
-                        menu.style.position = 'absolute';
-                        menu.style.zIndex = 20000;
-                        menu.style.minWidth = '180px';
-                        menu.style.background = 'var(--card)';
-                        menu.style.color = 'var(--text)';
-                        menu.style.border = '1px solid var(--border)';
-                        menu.style.borderRadius = '8px';
-                        menu.style.boxShadow = '0 10px 30px rgba(2,6,23,0.6)';
-                        menu.style.padding = '6px';
-
-                        const actions = [
-                            { label: 'Details', cb: () => openDeviceDetail(deviceId) },
-                            { label: device.state.on ? 'Uitzetten' : 'Aanzetten', cb: () => toggleDevice(deviceId) },
-                            { label: 'Hernoemen', cb: async () => {
-                                const name = prompt('Nieuwe naam:', device.name);
-                                if (name && name.trim() && name !== device.name) {
-                                    await fetch(`/api/devices/${deviceId}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name: name.trim() }) });
-                                    fetchDevices();
-                                }
-                            }},
-                            { label: 'Verplaatsen naar kamer', cb: async () => {
-                                if (typeof window.showRoomPicker === 'function') {
-                                    const roomId = await window.showRoomPicker({ deviceId });
-                                    if (roomId) { await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId }) }); fetchDevices(); }
-                                } else {
-                                    alert('Room picker niet beschikbaar');
-                                }
-                            }}
-                        ];
-
-                        actions.forEach(a => {
-                            const item = document.createElement('button');
-                            item.className = 'context-item';
-                            item.textContent = a.label;
-                            item.style.display = 'block';
-                            item.style.width = '100%';
-                            item.style.padding = '8px 10px';
-                            item.style.border = 'none';
-                            item.style.background = 'transparent';
-                            item.style.textAlign = 'left';
-                            item.style.cursor = 'pointer';
-                            item.style.borderRadius = '6px';
-                            item.onmouseover = () => item.style.background = 'rgba(255,255,255,0.02)';
-                            item.onmouseout = () => item.style.background = 'transparent';
-                            item.onclick = (e) => { e.stopPropagation(); a.cb(); menu.remove(); };
-                            menu.appendChild(item);
-                        });
-
-                        document.body.appendChild(menu);
-
-                        // position it near event
-                        const x = ev.pageX || (ev.clientX + window.scrollX);
-                        const y = ev.pageY || (ev.clientY + window.scrollY);
-                        menu.style.left = (x + 6) + 'px';
-                        menu.style.top = (y + 6) + 'px';
-
-                        // click outside to close
-                        const closer = (evt) => {
-                            if (!menu.contains(evt.target)) { menu.remove(); window.removeEventListener('click', closer); }
-                        };
-                        setTimeout(() => window.addEventListener('click', closer), 0);
-                    };
                  }
                  return; 
              }
@@ -472,15 +430,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isMedia || isCamera) {
             modalContent.classList.add('wide');
-            body.classList.add('split-view');
-            // Ensure camera container has a high z-index context
-            if (isCamera) {
-                body.style.position = 'relative';
-                body.style.zIndex = '5';
-            }
         } else {
             modalContent.classList.remove('wide');
-            body.classList.remove('split-view');
         }
         
         let icon = 'fa-question-circle';
@@ -497,6 +448,9 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'camera') icon = 'fa-video';
         else if (type === 'ps5' || type === 'console') icon = 'fa-gamepad';
         else if (type === 'shelly' || type === 'switch') icon = 'fa-toggle-on';
+        else if (type === 'computer' || type === 'workstation' || type === 'pc') icon = 'fa-desktop';
+        else if (type === 'nas') icon = 'fa-server';
+        else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
 
         let controlsHtml = '';
 
@@ -780,6 +734,10 @@ document.addEventListener('DOMContentLoaded', () => {
              `;
         }
 
+        // --- BUILD TABS ---
+
+        // 1. Controls Tab
+        let tabControlsContent = '';
         if (isMedia) {
             const title = device.state.mediaTitle || 'Geen media';
             const artist = device.state.mediaArtist || '';
@@ -787,67 +745,140 @@ document.addEventListener('DOMContentLoaded', () => {
             const app = device.state.mediaApp || '';
             const state = device.state.playingState || 'stopped';
             
-            // Placeholder art
             let artContent = `<i class="fas fa-music"></i>`;
-            
-            // If we have a way to get artwork URL, we would use it here.
-            // For now, we can check if there is a global spotify state that matches this device
-            // But that's complex to access here synchronously without storing it.
-            // We'll stick to the icon for now, or maybe a generic image based on app.
-            
-            if (app.toLowerCase().includes('spotify')) {
-                artContent = `<i class="fab fa-spotify" style="color: #1db954;"></i>`;
-            } else if (app.toLowerCase().includes('netflix')) {
-                artContent = `<span style="color: #e50914; font-weight: bold; font-size: 0.5em;">NETFLIX</span>`;
-            } else if (app.toLowerCase().includes('youtube')) {
-                artContent = `<i class="fab fa-youtube" style="color: #ff0000;"></i>`;
-            }
+            if (app.toLowerCase().includes('spotify')) artContent = `<i class="fab fa-spotify" style="color: #1db954;"></i>`;
+            else if (app.toLowerCase().includes('netflix')) artContent = `<span style="color: #e50914; font-weight: bold; font-size: 0.5em;">NETFLIX</span>`;
+            else if (app.toLowerCase().includes('youtube')) artContent = `<i class="fab fa-youtube" style="color: #ff0000;"></i>`;
 
-            body.innerHTML = `
-                <div class="modal-left-col">
-                    <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
-                    ${controlsHtml}
-                </div>
-                <div class="modal-right-col">
-                    <div class="media-info-panel">
-                        <div class="album-art">
-                            ${artContent}
-                        </div>
-                        <div class="media-text">
-                            <h3>${title}</h3>
-                            <p>${artist}</p>
-                            <p class="album-name">${album}</p>
-                            <div style="margin-top: 10px; font-size: 0.8em; color: #666;">
-                                <i class="fas ${state === 'playing' ? 'fa-play' : 'fa-pause'}"></i> ${app}
+            tabControlsContent = `
+                <div style="display: flex; flex-direction: row; width: 100%; gap: 20px; align-items: flex-start;">
+                    <div class="modal-left-col">
+                        <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
+                        ${controlsHtml}
+                    </div>
+                    <div class="modal-right-col">
+                        <div class="media-info-panel">
+                            <div class="album-art">${artContent}</div>
+                            <div class="media-text">
+                                <h3>${title}</h3>
+                                <p>${artist}</p>
+                                <p class="album-name">${album}</p>
+                                <div style="margin-top: 10px; font-size: 0.8em; color: #666;">
+                                    <i class="fas ${state === 'playing' ? 'fa-play' : 'fa-pause'}"></i> ${app}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
         } else if (isCamera) {
-            body.innerHTML = `
-                <div class="modal-left-col">
-                    <i class="fas ${icon} modal-device-icon on"></i>
-                    <div style="margin-bottom: 20px; font-size: 1.2em; color: #aaa;">${device.ip}</div>
-                    ${controlsHtml}
-                </div>
-                <div class="modal-right-col">
-                    <div class="camera-view" id="camera-container-${device.id}">
-                        <div class="camera-placeholder">
-                            <i class="fas fa-circle-notch fa-spin" style="font-size: 4em; color: #555; margin-bottom: 20px;"></i>
-                            <p>Verbinden met camera...</p>
+            tabControlsContent = `
+                <div style="display: flex; flex-direction: row; width: 100%; gap: 20px; align-items: flex-start;">
+                    <div class="modal-left-col">
+                        <i class="fas ${icon} modal-device-icon on"></i>
+                        <div style="margin-bottom: 20px; font-size: 1.2em; color: #aaa;">${device.ip}</div>
+                        ${controlsHtml}
+                    </div>
+                    <div class="modal-right-col">
+                        <div class="camera-view" id="camera-container-${device.id}">
+                            <div class="camera-placeholder">
+                                <i class="fas fa-circle-notch fa-spin" style="font-size: 4em; color: #555; margin-bottom: 20px;"></i>
+                                <p>Verbinden met camera...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
-            
-            startCameraStream(device.id, device.ip, `camera-container-${device.id}`);
         } else {
-            body.innerHTML = `
+            tabControlsContent = `
                 <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
                 ${controlsHtml}
             `;
         }
+
+        // 2. Info Tab
+        const infoContent = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; text-align: left;">
+                <div style="color: #888;">Naam:</div><div>${device.name}</div>
+                <div style="color: #888;">Type:</div><div>${device.type}</div>
+                <div style="color: #888;">IP Adres:</div><div>${device.ip || 'Onbekend'}</div>
+                <div style="color: #888;">MAC Adres:</div><div>${device.mac || 'Onbekend'}</div>
+                <div style="color: #888;">Protocol:</div><div>${device.protocol || 'Onbekend'}</div>
+                <div style="color: #888;">Status:</div><div>${device.state.on ? 'Aan' : 'Uit'}</div>
+                <div style="color: #888;">ID:</div><div style="font-size: 0.8em; word-break: break-all;">${device.id}</div>
+            </div>
+        `;
+
+        // 3. Settings Tab
+        const settingsContent = `
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 20px;">
+                <div class="control-group">
+                    <label style="display: block; margin-bottom: 10px;">Apparaat Hernoemen</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="rename-input-${device.id}" value="${device.name}" style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg);">
+                        <button class="btn btn-primary" onclick="renameDevice('${device.id}')">Opslaan</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label style="display: block; margin-bottom: 10px;">Kamer Toewijzen</label>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="assignRoom('${device.id}')">Kies Kamer</button>
+                </div>
+                <div class="control-group" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
+                    <button class="btn btn-secondary" style="width: 100%; background-color: #dc3545; color: white;" onclick="deleteDevice('${device.id}')">
+                        <i class="fas fa-trash"></i> Verwijder Apparaat
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Determine active tab
+        const activeTabEl = document.querySelector('.modal-tab.active');
+        const activeTab = activeTabEl ? activeTabEl.dataset.tab : 'controls';
+
+        body.innerHTML = `
+            <div id="tab-controls" class="tab-content ${activeTab === 'controls' ? 'active' : ''}">
+                ${tabControlsContent}
+            </div>
+            <div id="tab-info" class="tab-content ${activeTab === 'info' ? 'active' : ''}">
+                ${infoContent}
+            </div>
+            <div id="tab-settings" class="tab-content ${activeTab === 'settings' ? 'active' : ''}">
+                ${settingsContent}
+            </div>
+        `;
+
+        if (isCamera) {
+            startCameraStream(device.id, device.ip, `camera-container-${device.id}`);
+        }
+        
+        // Helper functions for settings
+        window.renameDevice = async (id) => {
+            const input = document.getElementById(`rename-input-${id}`);
+            if (input && input.value.trim()) {
+                await fetch(`/api/devices/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name: input.value.trim() }) });
+                fetchDevices();
+                closeDeviceDetail();
+            }
+        };
+        
+        window.assignRoom = async (deviceId) => {
+             if (typeof window.showRoomPicker === 'function') {
+                const roomId = await window.showRoomPicker({ deviceId });
+                if (roomId) { 
+                    await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId }) }); 
+                    fetchDevices(); 
+                    closeDeviceDetail();
+                }
+            } else {
+                alert('Room picker niet beschikbaar');
+            }
+        };
+        
+        window.deleteDevice = async (id) => {
+            if(confirm('Weet je zeker dat je dit apparaat wilt verwijderen?')) {
+                alert('Verwijderen nog niet geïmplementeerd in API');
+            }
+        };
     }
 
     window.startPairing = (ip, name) => {

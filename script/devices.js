@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (controlTab) controlTab.classList.add('active');
         }
         
-        updateModalContent(device);
+        updateModalContent(device, true);
         
         modal.style.display = 'block';
     };
@@ -440,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    function updateModalContent(device) {
+    function updateModalContent(device, force = false) {
         const modalContent = document.querySelector('.device-modal-content');
         const body = document.getElementById('modalDeviceBody');
         const tabsContainer = document.getElementById('modalTabs');
@@ -460,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isCamera = type === 'camera';
 
         // Avoid full refresh for camera if stream is active OR if login form is present
-        if (isCamera) {
+        if (isCamera && !force) {
              // Check if stream is active
              if (activeStreams.has(device.id)) {
                  const leftCol = document.querySelector('.modal-left-col');

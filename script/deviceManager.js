@@ -91,9 +91,11 @@ class DeviceManager extends EventEmitter {
             
             // Update protocols/capabilities
             if (!existingDevice.protocols) existingDevice.protocols = [];
+            if (!existingDevice.capabilities) existingDevice.capabilities = [];
+
             // info.raw is the service object from bonjour
             const protocol = info.raw && info.raw.type ? info.raw.type : null;
-            if (protocol && !existingDevice.protocols.includes(protocol)) {
+            if (protocol && existingDevice.protocols && !existingDevice.protocols.includes(protocol)) {
                 existingDevice.protocols.push(protocol);
             }
             
@@ -114,8 +116,8 @@ class DeviceManager extends EventEmitter {
             
             // Merge capabilities
             if (info.type === 'chromecast') {
-                if (!existingDevice.capabilities.includes('media_control')) existingDevice.capabilities.push('media_control');
-                if (!existingDevice.capabilities.includes('volume')) existingDevice.capabilities.push('volume');
+                if (existingDevice.capabilities && !existingDevice.capabilities.includes('media_control')) existingDevice.capabilities.push('media_control');
+                if (existingDevice.capabilities && !existingDevice.capabilities.includes('volume')) existingDevice.capabilities.push('volume');
                 // If it's a chromecast, we might want to ensure the ID reflects that or we handle it correctly
                 // But we keep the original ID to avoid breaking references.
                 // However, for Cast to work, we might need to know it's a cast device.
@@ -192,28 +194,30 @@ class DeviceManager extends EventEmitter {
         console.log('[Polling] Starting polling service...');
         while (true) {
             const deviceIds = Array.from(this.devices.keys());
-            // console.log(`[Polling] Starting new poll cycle for ${deviceIds.length} devices.`);
             
-            for (const id of deviceIds) {
-                const device = this.devices.get(id);
-                if (!device) continue;
+            // Process in batches of 5 to avoid network congestion but speed up polling
+            const batchSize = 5;
+            for (let i = 0; i < deviceIds.length; i += batchSize) {
+                const batch = deviceIds.slice(i, i + batchSize);
+                await Promise.all(batch.map(async (id) => {
+                    const device = this.devices.get(id);
+                    if (!device) return;
 
-                try {
-                    // Give each refresh a max of 4 seconds to complete
-                    await Promise.race([
-                        this.refreshDevice(id),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
-                    ]);
-                } catch (e) {
-                    // console.error(`[Polling] Error refreshing ${device.name} (${device.ip}): ${e.message}`);
-                    // If a device refresh fails (e.g., timeout or connection error),
-                    // it's a strong indicator that it's off or unreachable.
-                    if (device.state.on) {
-                        // console.log(`[Polling] Marking ${device.name} as off due to refresh failure.`);
-                        device.state.on = false;
-                        this.emit('device-updated', device);
+                    try {
+                        // Give each refresh a max of 4 seconds to complete
+                        await Promise.race([
+                            this.refreshDevice(id),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
+                        ]);
+                    } catch (e) {
+                        // If a device refresh fails (e.g., timeout or connection error),
+                        // it's a strong indicator that it's off or unreachable.
+                        if (device.state.on) {
+                            device.state.on = false;
+                            this.emit('device-updated', device);
+                        }
                     }
-                }
+                }));
             }
             // Wait for 10 seconds before starting the next full poll cycle
             await new Promise(resolve => setTimeout(resolve, 10000));
@@ -857,6 +861,11 @@ class DeviceManager extends EventEmitter {
     }
 
     addDevice(device) {
+        // Ensure defaults
+        if (!device.capabilities) device.capabilities = [];
+        if (!device.protocols) device.protocols = [];
+        if (!device.state) device.state = { on: false };
+
         // Check if device already exists by IP
         let existingId = null;
         let existingDevice = null;

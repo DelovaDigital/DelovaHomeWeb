@@ -89,7 +89,23 @@ class DeviceCard extends StatelessWidget {
                     size: 32,
                   ),
                   onPressed: () async {
-                    await apiService.sendCommand(device.id, 'toggle');
+                    String cmd = 'toggle';
+                    final type = device.type.toLowerCase();
+                    
+                    // WoL Logic for PC/NAS/RPi
+                    if (!isPoweredOn && (
+                        type == 'pc' || type == 'computer' || type == 'workstation' ||
+                        type == 'nas' || type == 'server' ||
+                        type == 'rpi' || type == 'raspberry' || type == 'raspberrypi'
+                    )) {
+                      cmd = 'wake';
+                    }
+                    // PS5 Logic
+                    else if (type == 'ps5' || type == 'console') {
+                      cmd = isPoweredOn ? 'standby' : 'wake';
+                    }
+
+                    await apiService.sendCommand(device.id, cmd);
                     onRefresh();
                   },
                 ),
@@ -178,6 +194,25 @@ class DeviceCard extends StatelessWidget {
       case 'game':
       case 'playstation':
         return Icons.gamepad;
+      case 'pc':
+      case 'computer':
+      case 'desktop':
+      case 'workstation':
+      case 'mac':
+      case 'macbook':
+      case 'imac':
+      case 'windows':
+        return Icons.computer;
+      case 'nas':
+      case 'server':
+      case 'synology':
+      case 'qnap':
+        return Icons.dns;
+      case 'rpi':
+      case 'raspberry':
+      case 'raspberrypi':
+      case 'pi':
+        return Icons.memory;
       default:
         return Icons.devices;
     }

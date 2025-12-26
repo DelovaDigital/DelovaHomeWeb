@@ -604,12 +604,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         } else if (type === 'nas' || type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'mac') {
-            // Escape name to prevent syntax errors in onclick
-            const safeName = device.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
             controlsHtml += `
                 <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
                     <p>Beheer verbindingen en bestanden.</p>
-                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="console.log('Opening pairing modal for ${device.ip}'); showPairingModal('${device.ip}', '${safeName}', '${type}')">
+                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.id}')">
                         <i class="fas fa-key"></i> Inloggen / Koppelen
                     </button>
                     
@@ -1457,8 +1455,19 @@ window.authenticatePSN = async function(deviceId) {
 // --- Generic Pairing Logic ---
 let currentPairingDevice = null;
 
-window.showPairingModal = (ip, name, type) => {
-    console.log('showPairingModal called:', ip, name, type);
+window.showPairingModal = (deviceId) => {
+    // Look up device by ID to avoid escaping issues
+    const device = allDevices.find(d => d.id === deviceId);
+    if (!device) {
+        console.error('Device not found for pairing:', deviceId);
+        return;
+    }
+
+    const ip = device.ip;
+    const name = device.name;
+    const type = device.type;
+
+    console.log('showPairingModal called for:', deviceId, ip, name, type);
     const modal = document.getElementById('pairingModal');
     const title = document.getElementById('pairingTitle');
     const desc = document.getElementById('pairingDesc');

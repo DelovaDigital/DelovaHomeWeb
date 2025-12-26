@@ -110,6 +110,7 @@ class DeviceManager extends EventEmitter {
             
             // Merge specific fields if missing
             if (!existingDevice.model && info.model) existingDevice.model = info.model;
+            if (!existingDevice.mac && info.mac) existingDevice.mac = info.mac;
             
             // Merge capabilities
             if (info.type === 'chromecast') {
@@ -1602,14 +1603,17 @@ class DeviceManager extends EventEmitter {
 
         // Wake on LAN
         if (command === 'wake') {
+            if (!device.mac) {
+                console.log(`[WoL] MAC unknown for ${device.name}, attempting to resolve...`);
+                device.mac = await this.getMacAddress(device.ip);
+            }
+
             if (device.mac) {
                 console.log(`[WoL] Sending magic packet to ${device.mac} (${device.ip})`);
                 this.wakeOnLan(device.mac);
                 return device;
             } else {
                 console.warn(`[WoL] Cannot wake ${device.name}: MAC address unknown`);
-                // Try to find MAC from ARP if local
-                // For now, just return
                 return device;
             }
         }

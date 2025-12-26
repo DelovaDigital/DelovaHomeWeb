@@ -259,6 +259,90 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error('Error fetching devices:', err));
     }
 
+    function updateDeviceCard(device) {
+        let card = document.getElementById(`device-card-${device.id}`);
+        
+        // Determine Icon
+        let icon = 'fa-question-circle';
+        const type = device.type ? device.type.toLowerCase() : 'unknown';
+        if (type === 'light' || type.includes('bulb')) icon = 'fa-lightbulb';
+        else if (type === 'switch' || type.includes('outlet')) icon = 'fa-plug';
+        else if (type === 'tv') icon = 'fa-tv';
+        else if (type === 'speaker') icon = 'fa-music';
+        else if (type === 'camera') icon = 'fa-video';
+        else if (type === 'printer') icon = 'fa-print';
+        else if (type === 'thermostat' || type === 'ac') icon = 'fa-thermometer-half';
+        else if (type === 'lock') icon = 'fa-lock';
+        else if (type === 'cover' || type === 'blind') icon = 'fa-warehouse';
+        else if (type === 'vacuum') icon = 'fa-robot';
+        else if (type === 'sensor') icon = 'fa-wifi';
+        else if (type === 'console' || type === 'playstation') icon = 'fa-gamepad';
+        else if (type === 'nas') icon = 'fa-server';
+        else if (type === 'computer' || type === 'workstation' || type === 'pc') icon = 'fa-desktop';
+        else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
+
+        const isOn = device.state && device.state.on;
+        const statusClass = isOn ? 'on' : 'off';
+
+        if (!card) {
+            card = document.createElement('div');
+            card.className = `device-card ${isOn ? 'active' : ''}`;
+            card.id = `device-card-${device.id}`;
+            // Add click handler to open modal
+            card.onclick = (e) => {
+                // Prevent opening if clicking a button directly
+                if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'INPUT') return;
+                openDeviceDetail(device.id);
+            };
+            grid.appendChild(card);
+        } else {
+            // Update active class on existing card
+            if (isOn) card.classList.add('active');
+            else card.classList.remove('active');
+        }
+
+        // Simple Card Content (Summary)
+        let summary = '';
+        if (isOn) {
+            const hasMediaProtocol = (device.protocols && (device.protocols.includes('airplay') || device.protocols.includes('raop') || device.protocols.includes('spotify-connect') || device.protocols.includes('googlecast')));
+            
+            if (type === 'light') summary = `${device.state.brightness || 100}%`;
+            else if (type === 'thermostat') summary = `${device.state.temperature}°C`;
+            else if (type === 'sensor') summary = `${device.state.temperature}°C`;
+            else if (type === 'lock') summary = device.state.isLocked ? 'Locked' : 'Unlocked';
+            else if ((type === 'tv' || type === 'speaker' || type === 'receiver' || hasMediaProtocol) && device.state.mediaTitle) {
+                summary = `<span style="font-size: 0.9em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaTitle}</span>`;
+                if (device.state.mediaArtist) {
+                    summary += `<span style="font-size: 0.8em; color: #aaa; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaArtist}</span>`;
+                }
+            }
+            else summary = 'Aan';
+        } else {
+            summary = 'Uit';
+        }
+
+        const newHtml = `
+            <div class="device-header">
+                <div class="device-icon ${statusClass}"><i class="fas ${icon}"></i></div>
+                <div class="device-info">
+                    <h3>${device.name}</h3>
+                    <p class="device-ip">${summary}</p>
+                </div>
+                <button class="device-menu-btn" onclick="showDeviceMenu('${device.id}', event); event.stopPropagation();" title="Meer opties">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <button class="btn-toggle ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}'); event.stopPropagation();">
+                    <i class="fas fa-power-off"></i>
+                </button>
+            </div>
+        `;
+        
+        // Only update DOM if content changed to prevent flickering
+        if (card.innerHTML !== newHtml) {
+            card.innerHTML = newHtml;
+        }
+    }
+
     // Listen for real-time updates
     document.addEventListener('device-update', (e) => {
         const updatedDevice = e.detail;
@@ -270,8 +354,8 @@ document.addEventListener('DOMContentLoaded', () => {
             allDevices.push(updatedDevice);
         }
         
-        // Re-render
-        renderDevices(allDevices);
+        // Re-render ONLY the updated device
+        updateDeviceCard(updatedDevice);
 
         // If modal is open for this device, update it
         const modal = document.getElementById('deviceModal');
@@ -300,82 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         devices.forEach(device => {
-            let card = document.getElementById(`device-card-${device.id}`);
-            
-            // Determine Icon
-            let icon = 'fa-question-circle';
-            const type = device.type.toLowerCase();
-            if (type === 'light' || type.includes('bulb')) icon = 'fa-lightbulb';
-            else if (type === 'switch' || type.includes('outlet')) icon = 'fa-plug';
-            else if (type === 'tv') icon = 'fa-tv';
-            else if (type === 'speaker') icon = 'fa-music';
-            else if (type === 'camera') icon = 'fa-video';
-            else if (type === 'printer') icon = 'fa-print';
-            else if (type === 'thermostat' || type === 'ac') icon = 'fa-thermometer-half';
-            else if (type === 'lock') icon = 'fa-lock';
-            else if (type === 'cover' || type === 'blind') icon = 'fa-warehouse'; // or fa-blinds if available
-            else if (type === 'vacuum') icon = 'fa-robot';
-            else if (type === 'sensor') icon = 'fa-wifi';
-            else if (type === 'console' || type === 'playstation') icon = 'fa-gamepad';
-            else if (type === 'nas') icon = 'fa-server';
-            else if (type === 'computer' || type === 'workstation' || type === 'pc') icon = 'fa-desktop';
-            else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
-
-            const isOn = device.state.on;
-            const statusClass = isOn ? 'on' : 'off';
-
-            if (!card) {
-                card = document.createElement('div');
-                card.className = `device-card ${isOn ? 'active' : ''}`;
-                card.id = `device-card-${device.id}`;
-                // Add click handler to open modal
-                card.onclick = (e) => {
-                    // Prevent opening if clicking a button directly
-                    if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'INPUT') return;
-                    openDeviceDetail(device.id);
-                };
-                grid.appendChild(card);
-            } else {
-                // Update active class on existing card
-                if (isOn) card.classList.add('active');
-                else card.classList.remove('active');
-            }
-
-            // Simple Card Content (Summary)
-            let summary = '';
-            if (isOn) {
-                const hasMediaProtocol = (device.protocols && (device.protocols.includes('airplay') || device.protocols.includes('raop') || device.protocols.includes('spotify-connect') || device.protocols.includes('googlecast')));
-                
-                if (type === 'light') summary = `${device.state.brightness || 100}%`;
-                else if (type === 'thermostat') summary = `${device.state.temperature}°C`;
-                else if (type === 'sensor') summary = `${device.state.temperature}°C`;
-                else if (type === 'lock') summary = device.state.isLocked ? 'Locked' : 'Unlocked';
-                else if ((type === 'tv' || type === 'speaker' || type === 'receiver' || hasMediaProtocol) && device.state.mediaTitle) {
-                    summary = `<span style="font-size: 0.9em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaTitle}</span>`;
-                    if (device.state.mediaArtist) {
-                        summary += `<span style="font-size: 0.8em; color: #aaa; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaArtist}</span>`;
-                    }
-                }
-                else summary = 'Aan';
-            } else {
-                summary = 'Uit';
-            }
-
-            card.innerHTML = `
-                <div class="device-header">
-                    <div class="device-icon ${statusClass}"><i class="fas ${icon}"></i></div>
-                    <div class="device-info">
-                        <h3>${device.name}</h3>
-                        <p class="device-ip">${summary}</p>
-                    </div>
-                    <button class="device-menu-btn" onclick="showDeviceMenu('${device.id}', event); event.stopPropagation();" title="Meer opties">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <button class="btn-toggle ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}'); event.stopPropagation();">
-                        <i class="fas fa-power-off"></i>
-                    </button>
-                </div>
-            `;
+            updateDeviceCard(device);
         });
     }
 

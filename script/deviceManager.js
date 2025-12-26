@@ -152,6 +152,7 @@ class DeviceManager extends EventEmitter {
             device.capabilities = ['light', 'brightness', 'color'];
         } else if (info.type === 'printer') {
             device.capabilities = ['sensor'];
+            device.state.on = true; // Printers are usually "on" if discovered
         }
 
         this.devices.set(device.id, device);
@@ -1597,6 +1598,20 @@ class DeviceManager extends EventEmitter {
             }
         } catch (e) {
             console.error('Error checking Spotify state in controlDevice:', e);
+        }
+
+        // Wake on LAN
+        if (command === 'wake') {
+            if (device.mac) {
+                console.log(`[WoL] Sending magic packet to ${device.mac} (${device.ip})`);
+                this.wakeOnLan(device.mac);
+                return device;
+            } else {
+                console.warn(`[WoL] Cannot wake ${device.name}: MAC address unknown`);
+                // Try to find MAC from ARP if local
+                // For now, just return
+                return device;
+            }
         }
 
         // Update state object first (Optimistic UI)
@@ -3535,6 +3550,28 @@ class DeviceManager extends EventEmitter {
                 resolve(false);
             });
             socket.connect(port, host);
+        });
+    }
+
+    wakeOnLan(mac) {
+        if (!mac) return;
+        const dgram = require('dgram');
+        const socket = dgram.createSocket('udp4');
+        
+        // Create magic packet
+        const macBytes = mac.split(/[:\-]/).map(x => parseInt(x, 16));
+        const buffer = Buffer.alloc(6 + 16 * 6);
+        
+        for (let i = 0; i < 6; i++) buffer[i] = 0xFF;
+        for (let i = 0; i < 16; i++) {
+            for (let j = 0; j < 6; j++) {
+                buffer[6 + i * 6 + j] = macBytes[j];
+            }
+        }
+        
+        socket.send(buffer, 0, buffer.length, 9, '255.255.255.255', (err) => {
+            if (err) console.error('WoL Error:', err);
+            socket.close();
         });
     }
 }

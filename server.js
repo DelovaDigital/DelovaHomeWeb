@@ -1201,6 +1201,21 @@ app.post('/api/devices/:id/refresh', async (req, res) => {
     res.json({ ok: true });
 });
 
+app.put('/api/devices/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ ok: false, message: 'Name required' });
+    
+    const device = deviceManager.getDevice(id);
+    if (device) {
+        device.name = name;
+        deviceManager.emit('device-updated', device);
+        res.json({ ok: true, device });
+    } else {
+        res.status(404).json({ ok: false, message: 'Device not found' });
+    }
+});
+
 app.get('/api/devices/:id/state', async (req, res) => {
     const { id } = req.params;
     const device = deviceManager.getDevice(id);

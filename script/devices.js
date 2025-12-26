@@ -305,11 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // Simple Card Content (Summary)
             let summary = '';
             if (isOn) {
+                const hasMediaProtocol = (device.protocols && (device.protocols.includes('airplay') || device.protocols.includes('raop') || device.protocols.includes('spotify-connect') || device.protocols.includes('googlecast')));
+                
                 if (type === 'light') summary = `${device.state.brightness || 100}%`;
                 else if (type === 'thermostat') summary = `${device.state.temperature}°C`;
                 else if (type === 'sensor') summary = `${device.state.temperature}°C`;
                 else if (type === 'lock') summary = device.state.isLocked ? 'Locked' : 'Unlocked';
-                else if ((type === 'tv' || type === 'speaker' || type === 'receiver') && device.state.mediaTitle) {
+                else if ((type === 'tv' || type === 'speaker' || type === 'receiver' || hasMediaProtocol) && device.state.mediaTitle) {
                     summary = `<span style="font-size: 0.9em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaTitle}</span>`;
                     if (device.state.mediaArtist) {
                         summary += `<span style="font-size: 0.8em; color: #aaa; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaArtist}</span>`;
@@ -401,8 +403,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const isOn = device.state.on;
         
         // Check for media capability
+        const hasMediaProtocol = (device.protocols && (device.protocols.includes('airplay') || device.protocols.includes('raop') || device.protocols.includes('spotify-connect') || device.protocols.includes('googlecast')));
+        
         const isMedia = (type === 'tv' || type === 'speaker' || type === 'receiver' || 
                         device.protocol === 'mdns-airplay' || device.protocol === 'spotify-connect' ||
+                        hasMediaProtocol ||
                         device.name.toLowerCase().includes('denon')) && isOn;
         const isCamera = type === 'camera';
 
@@ -716,15 +721,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Add Pairing Button for Android TV / Google TV
         // Show for explicit protocol OR generic TVs that aren't other known brands
+        const proto = device.protocol || '';
         const isOtherTv = device.type === 'tv' && 
-                          !device.protocol.includes('samsung') && 
-                          !device.protocol.includes('webos') && 
-                          !device.protocol.includes('airplay') &&
+                          !proto.includes('samsung') && 
+                          !proto.includes('webos') && 
+                          !proto.includes('airplay') &&
                           !device.name.toLowerCase().includes('samsung') &&
                           !device.name.toLowerCase().includes('lg') &&
                           !device.name.toLowerCase().includes('apple');
 
-        if (device.protocol === 'mdns-googlecast' || isOtherTv) {
+        if (proto === 'mdns-googlecast' || isOtherTv) {
              controlsHtml += `
                 <div class="control-group" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
                     <button class="btn-secondary" style="width: 100%; padding: 12px;" onclick="startPairing('${device.ip}', '${device.name}')">

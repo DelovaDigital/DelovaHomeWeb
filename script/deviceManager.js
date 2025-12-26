@@ -73,6 +73,55 @@ class DeviceManager extends EventEmitter {
     }
 
     handleDiscoveredDevice(info) {
+        // Check if we already have a device with this IP
+        let existingDevice = null;
+        for (const [id, device] of this.devices) {
+            if (device.ip === info.ip) {
+                existingDevice = device;
+                break;
+            }
+        }
+
+        if (existingDevice) {
+            // Merge logic
+            // console.log(`[DeviceManager] Merging device info for ${existingDevice.name} (${existingDevice.ip}). New type: ${info.type}`);
+            
+            // Update protocols/capabilities
+            if (!existingDevice.protocols) existingDevice.protocols = [];
+            // info.raw is the service object from bonjour
+            const protocol = info.raw && info.raw.type ? info.raw.type : null;
+            if (protocol && !existingDevice.protocols.includes(protocol)) {
+                existingDevice.protocols.push(protocol);
+            }
+            
+            // Prioritize types
+            // nas > rpi > pc > tv > console > camera > speaker > printer > light > switch
+            const typePriority = ['nas', 'rpi', 'pc', 'tv', 'console', 'camera', 'speaker', 'printer', 'light', 'switch'];
+            const currentPriority = typePriority.indexOf(existingDevice.type);
+            const newPriority = typePriority.indexOf(info.type);
+            
+            // If new type is found in priority list and is higher priority (lower index) or existing is not in list
+            if (newPriority !== -1 && (currentPriority === -1 || newPriority < currentPriority)) {
+                existingDevice.type = info.type;
+            }
+            
+            // Merge specific fields if missing
+            if (!existingDevice.model && info.model) existingDevice.model = info.model;
+            
+            // Merge capabilities
+            if (info.type === 'chromecast') {
+                if (!existingDevice.capabilities.includes('media_control')) existingDevice.capabilities.push('media_control');
+                if (!existingDevice.capabilities.includes('volume')) existingDevice.capabilities.push('volume');
+                // If it's a chromecast, we might want to ensure the ID reflects that or we handle it correctly
+                // But we keep the original ID to avoid breaking references.
+                // However, for Cast to work, we might need to know it's a cast device.
+                existingDevice.protocol = 'mdns-googlecast'; // Force protocol update
+            }
+            
+            this.emit('device-updated', existingDevice);
+            return;
+        }
+
         if (this.devices.has(info.id)) return; // Already known
 
         console.log(`[DeviceManager] Discovered new device: ${info.name} (${info.type}) at ${info.ip}`);
@@ -84,7 +133,8 @@ class DeviceManager extends EventEmitter {
             ip: info.ip,
             model: info.model,
             state: { on: false }, // Default state
-            capabilities: []
+            capabilities: [],
+            protocols: info.raw && info.raw.type ? [info.raw.type] : []
         };
 
         // Set capabilities based on type
@@ -94,6 +144,7 @@ class DeviceManager extends EventEmitter {
             this.refreshShelly(device);
         } else if (info.type === 'chromecast') {
             device.capabilities = ['media_control', 'volume'];
+            device.protocol = 'mdns-googlecast';
         } else if (info.type === 'hue') {
             device.capabilities = ['light', 'brightness', 'color'];
         } else if (info.type === 'printer') {

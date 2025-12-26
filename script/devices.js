@@ -776,6 +776,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="remote-btn" onclick="togglePiP('${device.id}')" title="Picture in Picture"><i class="fas fa-external-link-alt"></i></button>
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'record')" title="Opnemen"><i class="fas fa-circle"></i></button>
                 </div>
+                <div class="control-group" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
+                    <button class="btn btn-secondary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.id}')">
+                        <i class="fas fa-key"></i> Inloggen / Koppelen
+                    </button>
+                </div>
             `;
         }
 

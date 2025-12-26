@@ -3506,6 +3506,11 @@ class DeviceManager extends EventEmitter {
             
             return { ok: true };
         }
+
+        if (type === 'camera') {
+            this.saveCameraCredentials(ip, credentials.username, credentials.password);
+            return { ok: true };
+        }
         
         return { ok: false, error: 'Unsupported device type for pairing' };
     }

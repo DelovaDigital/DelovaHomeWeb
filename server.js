@@ -993,6 +993,20 @@ app.post('/api/devices/scan', (req, res) => {
     res.json({ ok: true, message: 'Discovery started' });
 });
 
+app.post('/api/devices/pair', async (req, res) => {
+    const { ip, type, username, password, pin } = req.body;
+    
+    if (!ip || !type) return res.status(400).json({ ok: false, error: 'Missing IP or Type' });
+    
+    try {
+        const result = await deviceManager.pairDevice(ip, type, { username, password, pin });
+        res.json(result);
+    } catch (e) {
+        console.error('Pairing error:', e);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // --- PS5 Control ---
 app.get('/api/ps5/devices', async (req, res) => {
     const devices = await ps5Manager.getDevices();

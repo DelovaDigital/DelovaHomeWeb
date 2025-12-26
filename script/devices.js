@@ -42,7 +42,46 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.target == modal) {
                 closeDeviceDetail();
             }
+            const pairingModal = document.getElementById('pairingModal');
+            if (event.target == pairingModal) {
+                pairingModal.style.display = 'none';
+            }
         }
+    }
+    
+    // Create Pairing Modal if not exists
+    if (!document.getElementById('pairingModal')) {
+        const pairingHtml = `
+            <div id="pairingModal" class="device-modal" style="z-index: 1100;">
+                <div class="device-modal-content" style="max-width: 400px;">
+                    <div class="device-modal-header">
+                        <h2 id="pairingTitle">Apparaat Koppelen</h2>
+                        <button class="close-modal" onclick="document.getElementById('pairingModal').style.display='none'">&times;</button>
+                    </div>
+                    <div class="device-modal-body">
+                        <p id="pairingDesc" style="text-align: center; color: #aaa; margin-bottom: 20px;">Voer inloggegevens in.</p>
+                        
+                        <div class="control-group" style="width: 100%;">
+                            <label>Gebruikersnaam</label>
+                            <input type="text" id="pair-username" class="modal-input" placeholder="admin / pi / user">
+                        </div>
+                        
+                        <div class="control-group" style="width: 100%;">
+                            <label>Wachtwoord</label>
+                            <input type="password" id="pair-password" class="modal-input" placeholder="********">
+                        </div>
+
+                        <div class="control-group" style="width: 100%; display: none;" id="pair-pin-group">
+                            <label>PIN Code (indien nodig)</label>
+                            <input type="text" id="pair-pin" class="modal-input" placeholder="1234">
+                        </div>
+
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="submitPairing()">Verbinden</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', pairingHtml);
     }
 
     // Create a container for the device grid if it doesn't exist
@@ -564,14 +603,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
-        } else if (type === 'nas') {
+        } else if (type === 'nas' || type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi') {
             controlsHtml += `
                 <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
-                    <p>Beheer je NAS verbindingen en bestanden.</p>
-                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="window.location.href='settings.html'">
-                        <i class="fas fa-cog"></i> Verbinden / Instellen
+                    <p>Beheer verbindingen en bestanden.</p>
+                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.ip}', '${device.name}', '${type}')">
+                        <i class="fas fa-key"></i> Inloggen / Koppelen
                     </button>
-                    <button class="btn btn-secondary" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px;" onclick="window.location.href='files.html'">
+                    <button class="btn btn-secondary" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px;" onclick="window.location.href='files.html?device=${device.id}'">
                         <i class="fas fa-folder-open"></i> Bestanden Bladeren
                     </button>
                 </div>
@@ -1256,63 +1295,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const msg = JSON.parse(event.data);
             if (msg.type === 'pairing-required') {
-                showPairingModal(msg.ip, msg.name);
+                // Use the global showPairingModal
+                if (window.showPairingModal) {
+                    window.showPairingModal(msg.ip, msg.name, 'tv');
+                }
             }
         } catch (e) {
             console.error('WebSocket error:', e);
         }
     };
-
-    // --- Pairing Modal Logic ---
-    const pairingModal = document.getElementById('pairingModal');
-    const pairingPinInput = document.getElementById('pairingPin');
-    const pairingIpInput = document.getElementById('pairingIp');
-    const submitPairingBtn = document.getElementById('submitPairing');
-    const closePairingModal = pairingModal ? pairingModal.querySelector('.close-modal') : null;
-
-    function showPairingModal(ip, name) {
-        if (!pairingModal) return;
-        pairingIpInput.value = ip;
-        document.getElementById('pairingMessage').textContent = `Voer de PIN code in die op ${name || 'je TV'} verschijnt:`;
-        pairingModal.style.display = 'block';
-        pairingPinInput.focus();
-    }
-
-    if (closePairingModal) {
-        closePairingModal.onclick = () => {
-            pairingModal.style.display = 'none';
-        };
-    }
-
-    if (submitPairingBtn) {
-        submitPairingBtn.onclick = () => {
-            const pin = pairingPinInput.value;
-            const ip = pairingIpInput.value;
-            
-            // Find device ID by IP
-            const device = allDevices.find(d => d.ip === ip);
-            if (!device) {
-                alert('Apparaat niet gevonden. Wacht tot het in de lijst verschijnt.');
-                return;
-            }
-
-            fetch(`/api/devices/${device.id}/command`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ command: 'pair', value: pin })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.ok) {
-                    pairingModal.style.display = 'none';
-                    pairingPinInput.value = '';
-                    alert('Koppelen gestart...');
-                } else {
-                    alert('Fout bij koppelen: ' + data.error);
-                }
-            });
-        };
-    }
 });
 
 // Global functions for PS5 Games
@@ -1430,6 +1421,103 @@ window.authenticatePSN = async function(deviceId) {
         }
     } catch (e) {
         alert('Error: ' + e.message);
+    }
+};
+
+// --- Generic Pairing Logic ---
+let currentPairingDevice = null;
+
+window.showPairingModal = (ip, name, type) => {
+    const modal = document.getElementById('pairingModal');
+    const title = document.getElementById('pairingTitle');
+    const desc = document.getElementById('pairingDesc');
+    
+    currentPairingDevice = { ip, name, type };
+    
+    title.textContent = `Koppelen met ${name}`;
+    desc.textContent = `Voer gegevens in voor ${type ? type.toUpperCase() : 'apparaat'} (${ip})`;
+    
+    document.getElementById('pair-username').value = '';
+    document.getElementById('pair-password').value = '';
+    document.getElementById('pair-pin').value = '';
+    
+    // Toggle fields based on type
+    const userGroup = document.getElementById('pair-username').closest('.control-group');
+    const passGroup = document.getElementById('pair-password').closest('.control-group');
+    const pinGroup = document.getElementById('pair-pin-group');
+    
+    if (type === 'tv' || type === 'samsung' || type === 'lg') {
+        if (userGroup) userGroup.style.display = 'none';
+        if (passGroup) passGroup.style.display = 'none';
+        if (pinGroup) pinGroup.style.display = 'block';
+        desc.textContent = `Voer de PIN code in die op ${name || 'je TV'} verschijnt:`;
+    } else {
+        if (userGroup) userGroup.style.display = 'block';
+        if (passGroup) passGroup.style.display = 'block';
+        if (pinGroup) pinGroup.style.display = 'none';
+    }
+    
+    modal.style.display = 'block';
+    
+    if (type === 'tv' || type === 'samsung' || type === 'lg') {
+        document.getElementById('pair-pin').focus();
+    } else {
+        document.getElementById('pair-username').focus();
+    }
+};
+
+window.submitPairing = async () => {
+    if (!currentPairingDevice) return;
+    
+    const username = document.getElementById('pair-username').value;
+    const password = document.getElementById('pair-password').value;
+    const pin = document.getElementById('pair-pin').value;
+    
+    const btn = document.querySelector('#pairingModal .btn-primary');
+    const originalText = btn.textContent;
+    btn.textContent = 'Verbinden...';
+    btn.disabled = true;
+    
+    try {
+        let res;
+        if (currentPairingDevice.type === 'tv' || currentPairingDevice.type === 'samsung' || currentPairingDevice.type === 'lg') {
+             const device = allDevices.find(d => d.ip === currentPairingDevice.ip);
+             if (device) {
+                 res = await fetch(`/api/devices/${device.id}/command`, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ command: 'pair', value: pin })
+                 });
+             } else {
+                 throw new Error('Apparaat niet gevonden in lijst.');
+             }
+        } else {
+            res = await fetch('/api/devices/pair', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ip: currentPairingDevice.ip,
+                    type: currentPairingDevice.type,
+                    username,
+                    password,
+                    pin
+                })
+            });
+        }
+        
+        const data = await res.json();
+        if (data.ok) {
+            alert('Succesvol gekoppeld!');
+            document.getElementById('pairingModal').style.display = 'none';
+            if (typeof fetchDevices === 'function') fetchDevices();
+        } else {
+            alert('Koppelen mislukt: ' + (data.error || 'Onbekende fout'));
+        }
+    } catch (e) {
+        alert('Netwerkfout: ' + e.message);
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
     }
 };
 

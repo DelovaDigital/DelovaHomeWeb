@@ -14,6 +14,7 @@ const lgtv = require('lgtv2');
 const onvif = require('onvif');
 const mqttManager = require('./mqttManager');
 const ps5Manager = require('./ps5Manager');
+const nasManager = require('./nasManager');
 const discoveryService = require('./discoveryService');
 let SamsungRemote = null;
 try {
@@ -57,10 +58,12 @@ class DeviceManager extends EventEmitter {
         this.androidTvCredentials = {};
         this.samsungCredentials = {};
         this.cameraCredentials = {};
+        this.sshCredentials = {}; // New: SSH/SMB credentials
         this.loadAppleTvCredentials();
         this.loadAndroidTvCredentials();
         this.loadSamsungCredentials();
         this.loadCameraCredentials();
+        this.loadSshCredentials(); // New
         
         // Integrate Discovery Service
         discoveryService.on('discovered', (deviceInfo) => {
@@ -3408,6 +3411,70 @@ class DeviceManager extends EventEmitter {
         if (Object.keys(payload).length > 0) {
             mqttManager.publish(topic, JSON.stringify(payload));
         }
+    }
+
+    // --- Credential Management ---
+    loadSshCredentials() {
+        try {
+            if (fs.existsSync('ssh-credentials.json')) {
+                this.sshCredentials = JSON.parse(fs.readFileSync('ssh-credentials.json', 'utf8'));
+            }
+        } catch (e) { console.error('Error loading SSH credentials:', e); }
+    }
+
+    saveSshCredentials() {
+        try {
+            fs.writeFileSync('ssh-credentials.json', JSON.stringify(this.sshCredentials, null, 2));
+        } catch (e) { console.error('Error saving SSH credentials:', e); }
+    }
+
+    async pairDevice(ip, type, credentials) {
+        console.log(`[Pairing] Attempting to pair ${type} at ${ip}`);
+        
+        if (type === 'nas' || type === 'pc' || type === 'rpi' || type === 'computer' || type === 'raspberrypi') {
+            // Store credentials
+            this.sshCredentials[ip] = {
+                username: credentials.username,
+                password: credentials.password,
+                pin: credentials.pin
+            };
+            this.saveSshCredentials();
+            
+            // Update device state
+            const device = Array.from(this.devices.values()).find(d => d.ip === ip);
+            if (device) {
+                device.isPaired = true;
+                this.emit('device-updated', device);
+            }
+
+            // Add to NAS Manager for file access
+            try {
+                const existing = nasManager.config.find(c => c.host === ip);
+                if (!existing) {
+                    console.log(`[Pairing] Adding ${ip} to NAS Manager...`);
+                    // Add with share: null to allow root browsing
+                    await nasManager.addNas({
+                        host: ip,
+                        username: credentials.username,
+                        password: credentials.password,
+                        name: device ? device.name : `${type.toUpperCase()} (${ip})`,
+                        share: null
+                    });
+                } else {
+                    console.log(`[Pairing] Updating credentials for ${ip} in NAS Manager...`);
+                    existing.username = credentials.username;
+                    existing.password = credentials.password;
+                    nasManager.saveConfig();
+                }
+            } catch (err) {
+                console.error('[Pairing] Failed to add to NAS Manager:', err);
+                // We continue even if NAS part fails, as SSH pairing might be valid
+            }
+            
+            return { ok: true };
+        }
+        
+        return { ok: false, error: 'Unsupported device type for pairing' };
     }
 }
 

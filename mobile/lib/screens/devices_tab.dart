@@ -186,8 +186,8 @@ class _DevicesTabState extends State<DevicesTab> {
                               itemCount: _filteredDevices.length,
                               itemBuilder: (context, index) {
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: GlassCard(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: Card(
                                     child: DeviceCard(
                                       device: _filteredDevices[index],
                                       onRefresh: () => _fetchDevices(silent: true),

@@ -280,6 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'nas') icon = 'fa-server';
         else if (type === 'computer' || type === 'workstation' || type === 'pc') icon = 'fa-desktop';
         else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
+        else if (type === 'esphome') icon = 'fa-microchip';
+        else if (type === 'matter') icon = 'fa-atom';
+        else if (type === 'homekit') icon = 'fa-apple';
+        else if (type === 'smartthings') icon = 'fa-circle-nodes';
+        else if (type === 'chromecast') icon = 'fa-cast';
 
         const isOn = device.state && device.state.on;
         const statusClass = isOn ? 'on' : 'off';

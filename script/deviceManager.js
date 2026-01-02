@@ -100,8 +100,8 @@ class DeviceManager extends EventEmitter {
             }
             
             // Prioritize types
-            // nas > rpi > pc > tv > console > camera > speaker > printer > light > switch
-            const typePriority = ['nas', 'rpi', 'pc', 'tv', 'console', 'camera', 'speaker', 'printer', 'light', 'switch'];
+            // nas > rpi > pc > tv > console > camera > speaker > printer > light > switch > esphome > matter > homekit > smartthings
+            const typePriority = ['nas', 'rpi', 'pc', 'tv', 'console', 'camera', 'speaker', 'printer', 'light', 'switch', 'esphome', 'matter', 'homekit', 'smartthings'];
             const currentPriority = typePriority.indexOf(existingDevice.type);
             const newPriority = typePriority.indexOf(info.type);
             
@@ -149,6 +149,14 @@ class DeviceManager extends EventEmitter {
             device.capabilities = ['switch'];
             // Try to get status immediately
             this.refreshShelly(device);
+        } else if (info.type === 'esphome') {
+            device.capabilities = ['sensor', 'switch']; // Generic default
+        } else if (info.type === 'matter') {
+            device.capabilities = ['matter'];
+        } else if (info.type === 'homekit') {
+            device.capabilities = ['homekit'];
+        } else if (info.type === 'smartthings') {
+            device.capabilities = ['hub'];
         } else if (info.type === 'chromecast') {
             device.capabilities = ['media_control', 'volume'];
             device.protocol = 'mdns-googlecast';

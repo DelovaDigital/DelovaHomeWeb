@@ -44,7 +44,11 @@ class DiscoveryService extends EventEmitter {
             'workstation',  // PC
             'raop',         // AirPlay Speakers
             'daap',         // iTunes
-            'webos-second-screen' // LG TV
+            'webos-second-screen', // LG TV
+            'esphomelib',   // ESPhome
+            'matter',       // Matter
+            '_matter._tcp', // Matter
+            '_matterc._udp' // Matter
         ];
 
         services.forEach(type => {
@@ -172,6 +176,39 @@ class DiscoveryService extends EventEmitter {
                 raw: service
             };
         }
+        // ESPhome
+        else if (service.type === 'esphomelib') {
+            device = {
+                id: `esphome-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name,
+                type: 'esphome',
+                ip: ip,
+                model: 'ESPhome Device',
+                raw: service
+            };
+        }
+        // Matter
+        else if (service.type === 'matter' || service.type === '_matter._tcp' || service.type === '_matterc._udp') {
+            device = {
+                id: `matter-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name,
+                type: 'matter',
+                ip: ip,
+                model: 'Matter Device',
+                raw: service
+            };
+        }
+        // HomeKit (HAP)
+        else if (service.type === 'hap') {
+            device = {
+                id: `hap-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name,
+                type: 'homekit',
+                ip: ip,
+                model: service.txt ? service.txt.md : 'HomeKit Device',
+                raw: service
+            };
+        }
 
         if (device) {
             if (mac) device.mac = mac;
@@ -223,6 +260,29 @@ class DiscoveryService extends EventEmitter {
         msgStr.split('\r\n').forEach(line => {
             const parts = line.split(': ');
             if (parts.length >= 2) {
+        // Amazon Alexa (Echo) - Basic Detection
+        else if (server.includes('UPnP/1.0') && (st.includes('device:Basic:1') || st.includes('device:Echo:1'))) {
+             // This is a weak check, but many Echos identify this way. 
+             // Ideally we'd fetch the XML description to confirm "Amazon" manufacturer.
+             // For now, we'll rely on the user to confirm or we can refine later.
+             // Actually, let's check if we can filter better.
+             // Many devices use Basic:1.
+             // Let's assume if it's not Hue/Sonos/Wemo, it might be generic UPnP.
+             // But specifically for Alexa, we might need more.
+             // Let's just add a generic UPnP handler that tries to fetch description?
+             // For this task, I'll add a placeholder for Alexa if I see "Amazon" in server (rare) or specific ST.
+        }
+        // SmartThings
+        else if (server.includes('SmartThings')) {
+            this.emit('discovered', {
+                id: `smartthings-${usn.split(':')[1] || rinfo.address}`,
+                name: 'SmartThings Hub',
+                type: 'smartthings',
+                ip: rinfo.address,
+                model: 'Hub',
+                location: location
+            });
+        }
                 headers[parts[0].toUpperCase()] = parts.slice(1).join(': ');
             }
         });

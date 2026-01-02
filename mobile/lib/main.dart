@@ -85,28 +85,40 @@ class DelovaHomeState extends State<DelovaHome> {
         useMaterial3: true,
         brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF007BFF),
+          seedColor: const Color(0xFF3B82F6), // Blue
           brightness: Brightness.light,
+          surface: const Color(0xFFF8FAFC),
         ),
-        scaffoldBackgroundColor: Colors.transparent,
+        scaffoldBackgroundColor: const Color(0xFFF1F5F9),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          color: Colors.white,
+        ),
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFF1A1A1A)),
-          bodyMedium: TextStyle(color: Color(0xFF1A1A1A)),
-          titleLarge: TextStyle(color: Color(0xFF1A1A1A)),
+          bodyLarge: TextStyle(color: Color(0xFF1E293B), fontFamily: 'Inter'),
+          bodyMedium: TextStyle(color: Color(0xFF1E293B), fontFamily: 'Inter'),
+          titleLarge: TextStyle(color: Color(0xFF1E293B), fontFamily: 'Inter', fontWeight: FontWeight.bold),
         ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00E5FF),
+          seedColor: const Color(0xFF6366F1), // Indigo
           brightness: Brightness.dark,
+          surface: const Color(0xFF1E293B),
         ),
-        scaffoldBackgroundColor: Colors.transparent,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        cardTheme: CardThemeData(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          color: const Color(0xFF1E293B).withValues(alpha: 0.7),
+        ),
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white70),
-          titleLarge: TextStyle(color: Colors.white),
+          bodyLarge: TextStyle(color: Color(0xFFF8FAFC), fontFamily: 'Inter'),
+          bodyMedium: TextStyle(color: Color(0xFFF8FAFC), fontFamily: 'Inter'),
+          titleLarge: TextStyle(color: Color(0xFFF8FAFC), fontFamily: 'Inter', fontWeight: FontWeight.bold),
         ),
       ),
       themeMode: _themeMode,

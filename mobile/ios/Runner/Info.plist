@@ -29,6 +29,7 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_http._tcp</string>
+		<string>_delovahome._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Delova Home needs access to your local network to discover your Hub.</string>

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:nsd/nsd.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart' hide ServiceStatus; // For openAppSettings
 import 'login_screen.dart';
 import 'main_screen.dart';
 import '../utils/app_translations.dart';
@@ -38,7 +39,8 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _checkAutoLogin();
-    _startDiscovery();
+    // Add a small delay to ensure UI is ready and increase chance of permission prompt
+    Future.delayed(const Duration(seconds: 1), _startDiscovery);
   }
 
   Future<void> _loadLanguage() async {
@@ -174,10 +176,42 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
         }
       });
 
-      // Send Broadcast
       final data = utf8.encode('DELOVAHOME_DISCOVER');
-      _udpSocket!.send(data, InternetAddress('255.255.255.255'), 8888);
-      debugPrint('Sent UDP Broadcast to 255.255.255.255:8888');
+      
+      // Send multiple times to ensure delivery
+      for (int i = 0; i < 3; i++) {
+        if (_udpSocket == null) break;
+
+        // 1. Global Broadcast
+        try {
+          _udpSocket!.send(data, InternetAddress('255.255.255.255'), 8888);
+          debugPrint('Sent UDP Broadcast to 255.255.255.255:8888');
+        } catch (e) {
+          debugPrint('Global broadcast failed: $e');
+        }
+
+        // 2. Subnet Broadcast (Try to find local interface)
+        try {
+          for (var interface in await NetworkInterface.list(type: InternetAddressType.IPv4)) {
+            for (var addr in interface.addresses) {
+              if (!addr.isLoopback) {
+                // Assume /24 for simplicity: replace last segment with 255
+                final parts = addr.address.split('.');
+                if (parts.length == 4) {
+                  parts[3] = '255';
+                  final broadcastIp = parts.join('.');
+                  debugPrint('Sending to subnet broadcast: $broadcastIp');
+                  _udpSocket!.send(data, InternetAddress(broadcastIp), 8888);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Subnet broadcast failed: $e');
+        }
+
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
 
     } catch (e) {
       debugPrint('UDP Discovery failed: $e');
@@ -372,6 +406,16 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                                 Text(
                                   t('no_results'),
                                   style: TextStyle(color: subTextColor),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Check "Local Network" permission in Settings',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: subTextColor, fontSize: 12),
+                                ),
+                                TextButton(
+                                  onPressed: () => Geolocator.openAppSettings(),
+                                  child: const Text('Open Settings'),
                                 ),
                                 TextButton(
                                   onPressed: _startDiscovery,

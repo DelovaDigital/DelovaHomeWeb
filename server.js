@@ -37,6 +37,7 @@ const url = require('url');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const Bonjour = require('bonjour-service').Bonjour;
+const dgram = require('dgram');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -1705,6 +1706,38 @@ try {
 }
 
 server.on('upgrade', handleUpgrade);
+
+// --- UDP Discovery Listener ---
+const udpServer = dgram.createSocket('udp4');
+
+udpServer.on('error', (err) => {
+  console.error(`[UDP Discovery] Server error:\n${err.stack}`);
+  udpServer.close();
+});
+
+udpServer.on('message', (msg, rinfo) => {
+  const message = msg.toString();
+  if (message.includes('DELOVAHOME_DISCOVER')) {
+    console.log(`[UDP Discovery] Received discovery request from ${rinfo.address}:${rinfo.port}`);
+    
+    const response = JSON.stringify({
+      type: 'delovahome',
+      name: 'DelovaHome Hub',
+      id: 'hub-1', // You might want to make this dynamic or persistent
+      port: port
+    });
+
+    udpServer.send(response, rinfo.port, rinfo.address, (err) => {
+      if (err) console.error('[UDP Discovery] Error sending response:', err);
+      else console.log(`[UDP Discovery] Sent response to ${rinfo.address}:${rinfo.port}`);
+    });
+  }
+});
+
+udpServer.bind(8888, () => {
+    console.log('[UDP Discovery] Listening on 0.0.0.0:8888');
+});
+// ------------------------------
 
 (async () => {
   try {

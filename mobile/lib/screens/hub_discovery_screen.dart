@@ -99,11 +99,24 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     setState(() => _isScanning = true);
 
     try {
-      // Search for _http._tcp as it is more standard, and filter by TXT record
-      _discovery = await startDiscovery('_http._tcp');
+      // Search for specific service type first (more reliable)
+      _discovery = await startDiscovery('_delovahome._tcp');
       _discovery!.addServiceListener((service, status) {
         if (status == ServiceStatus.found) {
-          debugPrint('Found service: ${service.name} ${service.txt}');
+           debugPrint('Found DelovaHome service: ${service.name}');
+           setState(() {
+              if (!_hubs.any((h) => h.name == service.name)) {
+                _hubs.add(service);
+              }
+            });
+        }
+      });
+
+      // Also search for _http._tcp as fallback
+      final httpDiscovery = await startDiscovery('_http._tcp');
+      httpDiscovery.addServiceListener((service, status) {
+        if (status == ServiceStatus.found) {
+          // debugPrint('Found HTTP service: ${service.name}');
           
           bool isMatch = false;
 

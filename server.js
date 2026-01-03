@@ -350,7 +350,10 @@ app.get('/api/system/sync-db', async (req, res) => {
 let bonjour;
 try {
     bonjour = new Bonjour();
+    // Publish as generic HTTP (for compatibility)
     bonjour.publish({ name: `DelovaHome-${hubConfig.hubId.substring(0, 8)}`, type: 'http', port: port, txt: { id: hubConfig.hubId, version: hubConfig.version, type: 'delovahome' } });
+    // Publish as specific service type (for better discovery)
+    bonjour.publish({ name: `DelovaHome-${hubConfig.hubId.substring(0, 8)}`, type: 'delovahome', port: port, txt: { id: hubConfig.hubId, version: hubConfig.version } });
     console.log(`Advertising DelovaHome Hub on network (ID: ${hubConfig.hubId})`);
 } catch (e) {
     console.error('Failed to start mDNS advertisement:', e);

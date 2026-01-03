@@ -309,8 +309,27 @@ async function initUsersTable() {
     }
 }
 
+async function initPresenceUsers() {
+    try {
+        const pool = await db.getPool();
+        const result = await pool.request()
+            .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+            .query("SELECT Id, Username FROM Users WHERE HubID = @hubId");
+            
+        result.recordset.forEach(user => {
+            presenceManager.addPerson(user.Id, user.Username, 'mobile-app');
+        });
+        console.log(`[Presence] Loaded ${result.recordset.length} users from DB.`);
+    } catch (e) {
+        console.error('Failed to load users for presence:', e);
+    }
+}
+
 // Run DB sync asynchronously, catch any top-level errors
-initHubConfigFromDB().then(() => initUsersTable()).catch(err => console.error('Fatal DB Sync Error:', err));
+initHubConfigFromDB()
+    .then(() => initUsersTable())
+    .then(() => initPresenceUsers())
+    .catch(err => console.error('Fatal DB Sync Error:', err));
 
 app.get('/api/system/ping', (req, res) => {
     res.json({ ok: true, message: 'Server is running' });
@@ -404,6 +423,10 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Authentication succeeded.
+    
+    // Auto-register user for presence tracking
+    presenceManager.addPerson(user.Id, user.Username, 'mobile-app');
+
     res.json({ 
         ok: true, 
         userId: user.Id, 

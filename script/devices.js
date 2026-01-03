@@ -451,6 +451,18 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateModalContent(device, force = false) {
         const modalContent = document.querySelector('.device-modal-content');
         const body = document.getElementById('modalDeviceBody');
+        
+        // Check if user is interacting with an input in the modal
+        const activeElement = document.activeElement;
+        const isInteracting = activeElement && 
+            (activeElement.tagName === 'INPUT' || activeElement.tagName === 'SELECT' || activeElement.tagName === 'TEXTAREA') && 
+            body.contains(activeElement);
+
+        if (isInteracting && !force) {
+            console.log('Skipping modal update due to user interaction');
+            return;
+        }
+
         const tabsContainer = document.getElementById('modalTabs');
         
         if (tabsContainer) tabsContainer.style.display = 'flex';
@@ -919,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const activeTabEl = document.querySelector('.modal-tab.active');
         const activeTab = activeTabEl ? activeTabEl.dataset.tab : 'controls';
 
-        body.innerHTML = `
+        const newHtml = `
             <div id="tab-controls" class="tab-content ${activeTab === 'controls' ? 'active' : ''}">
                 ${tabControlsContent}
             </div>
@@ -930,6 +942,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${settingsContent}
             </div>
         `;
+
+        // Only update if content changed to prevent flickering
+        if (body.innerHTML !== newHtml) {
+            body.innerHTML = newHtml;
+        }
 
         if (isCamera) {
             startCameraStream(device.id, device.ip, `camera-container-${device.id}`);

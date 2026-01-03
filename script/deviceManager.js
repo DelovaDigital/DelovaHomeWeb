@@ -10,6 +10,13 @@ const os = require('os');
 const { Bonjour } = require('bonjour-service');
 const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
+
+class SpotifyReceiver extends DefaultMediaReceiver {
+  static get APP_ID() {
+    return 'CC32E753';
+  }
+}
+
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
 const mqttManager = require('./mqttManager');
@@ -3685,6 +3692,38 @@ class DeviceManager extends EventEmitter {
         socket.send(buffer, 0, buffer.length, 9, '255.255.255.255', (err) => {
             if (err) console.error('WoL Error:', err);
             socket.close();
+        });
+    }
+
+    getCastDevices() {
+        const castDevices = [];
+        for (const [id, device] of this.devices) {
+            if (device.type === 'chromecast' || device.protocol === 'mdns-googlecast') {
+                castDevices.push(device);
+            }
+        }
+        return castDevices;
+    }
+
+    launchSpotifyOnCastDevice(ip) {
+        return new Promise((resolve, reject) => {
+            const client = new CastClient();
+            client.on('error', (err) => {
+                try { client.close(); } catch(e) {}
+                reject(err);
+            });
+
+            client.connect(ip, () => {
+                client.launch(SpotifyReceiver, (err, player) => {
+                    if (err) {
+                        try { client.close(); } catch(e) {}
+                        reject(err);
+                    } else {
+                        try { client.close(); } catch(e) {}
+                        resolve(true);
+                    }
+                });
+            });
         });
     }
 }

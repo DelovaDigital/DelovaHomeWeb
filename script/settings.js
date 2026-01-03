@@ -3,24 +3,79 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.settings-nav-item');
     const sections = document.querySelectorAll('.settings-section');
 
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            // Remove active class from all items
-            navItems.forEach(nav => nav.classList.remove('active'));
-            // Add active class to clicked item
-            item.classList.add('active');
-
-            // Hide all sections
-            sections.forEach(section => section.classList.remove('active'));
-            
-            // Show target section
-            const targetId = item.getAttribute('data-target');
-            const targetSection = document.getElementById(targetId);
-            if (targetSection) {
-                targetSection.classList.add('active');
+    function switchTab(targetId) {
+        // Remove active class from all items
+        navItems.forEach(nav => {
+            if (nav.getAttribute('data-target') === targetId) {
+                nav.classList.add('active');
+            } else {
+                nav.classList.remove('active');
             }
         });
+
+        // Hide all sections
+        sections.forEach(section => section.classList.remove('active'));
+        
+        // Show target section
+        const targetSection = document.getElementById(targetId);
+        if (targetSection) {
+            targetSection.classList.add('active');
+        }
+    }
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetId = item.getAttribute('data-target');
+            switchTab(targetId);
+        });
     });
+
+    // Check URL params for initial tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        switchTab(tabParam);
+    }
+
+    // --- Profile Settings ---
+    const profileUsername = document.getElementById('profileUsername');
+    if (profileUsername) {
+        profileUsername.textContent = localStorage.getItem('username') || 'Gebruiker';
+    }
+
+    const changePassForm = document.getElementById('change-password-form');
+    if (changePassForm) {
+        changePassForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const currentPass = document.getElementById('current-pass').value;
+            const newPass = document.getElementById('new-pass').value;
+            const confirmPass = document.getElementById('confirm-pass').value;
+            const btn = changePassForm.querySelector('button');
+
+            if (newPass !== confirmPass) {
+                alert('Nieuwe wachtwoorden komen niet overeen');
+                return;
+            }
+
+            const originalText = btn.textContent;
+            btn.textContent = 'Bezig...';
+            btn.disabled = true;
+
+            try {
+                // Mock API call - replace with real endpoint
+                // const res = await fetch('/api/user/password', { ... });
+                await new Promise(r => setTimeout(r, 1000)); // Simulate delay
+                
+                alert('Wachtwoord succesvol gewijzigd (Simulatie)');
+                changePassForm.reset();
+            } catch (err) {
+                alert('Fout bij wijzigen wachtwoord');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        });
+    }
 
     // --- Energy Settings ---
     const energyForm = document.getElementById('energy-form');

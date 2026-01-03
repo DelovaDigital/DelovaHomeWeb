@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span id="usernameDisplay"></span>
                     <div class="user-avatar"></div>
                     <div class="user-dropdown" id="userDropdown">
-                        <a href="#"><i class="fas fa-user"></i> Profiel</a>
+                        <a href="settings.html?tab=profile"><i class="fas fa-user"></i> Profiel</a>
                         <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
                     </div>
                 </li>

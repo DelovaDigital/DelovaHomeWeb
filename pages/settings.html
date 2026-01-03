@@ -27,6 +27,9 @@
                     <div class="settings-nav-item active" data-target="general">
                         <i class="fas fa-sliders-h"></i> Algemeen
                     </div>
+                    <div class="settings-nav-item" data-target="profile">
+                        <i class="fas fa-user-circle"></i> Profiel
+                    </div>
                     <div class="settings-nav-item" data-target="integrations">
                         <i class="fas fa-plug"></i> Integraties
                     </div>
@@ -100,6 +103,45 @@
                                 <p>Beta</p>
                                 <button type="submit" class="btn btn-primary" id="btnCheckForUpdates">Check for updates</button>
                                 <p style="margin-top: 10px; font-size: 0.8em; color: #888;">© 2025 DelovaHub. Alle rechten voorbehouden.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Section -->
+                    <div id="profile" class="settings-section">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-user-shield"></i>
+                                <h3>Account Instellingen</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="info-row">
+                                    <span class="label">Gebruikersnaam:</span>
+                                    <span class="value" id="profileUsername">Laden...</span>
+                                </div>
+                                <div class="info-row">
+                                    <span class="label">Rol:</span>
+                                    <span class="value">Beheerder</span>
+                                </div>
+                                
+                                <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border);">
+                                
+                                <h4>Wachtwoord Wijzigen</h4>
+                                <form id="change-password-form" style="margin-top: 15px;">
+                                    <div class="form-group">
+                                        <label for="current-pass">Huidig Wachtwoord</label>
+                                        <input type="password" id="current-pass" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="new-pass">Nieuw Wachtwoord</label>
+                                        <input type="password" id="new-pass" required minlength="6">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="confirm-pass">Bevestig Nieuw Wachtwoord</label>
+                                        <input type="password" id="confirm-pass" required minlength="6">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Wachtwoord Bijwerken</button>
+                                </form>
                             </div>
                         </div>
                     </div>

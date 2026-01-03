@@ -1115,3 +1115,69 @@ input:checked + .slider:before {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* User Menu Fixes */
+.user-menu-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-menu-container:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#usernameDisplay {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    background-image: url('https://ui-avatars.com/api/?name=User&background=random');
+    background-size: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-dropdown {
+    top: calc(100% + 10px);
+    right: 0;
+    background: var(--card) !important;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    min-width: 220px;
+    padding: 8px;
+}
+
+.user-dropdown a {
+    border-radius: 8px;
+    color: var(--text);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.user-dropdown a:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--primary);
+    transform: translateX(4px);
+}
+
+.user-dropdown a i {
+    width: 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.user-dropdown a:hover i {
+    color: var(--primary);
+}

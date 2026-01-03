@@ -21,11 +21,11 @@
             <header class="page-header">
                 <div class="header-content">
                     <div>
-                        <h2>Dashboard</h2>
-                        <p>Overzicht van kamers, apparaten en handige widgets</p>
+                        <h2 data-i18n="dashboard">Dashboard</h2>
+                        <p data-i18n="dashboard_subtitle">Overzicht van kamers, apparaten en handige widgets</p>
                     </div>
                     <div class="ai-assistant">
-                        <input type="text" id="aiInput" placeholder="Ask DelovaHome (e.g. 'Turn on lights')..." />
+                        <input type="text" id="aiInput" placeholder="Ask DelovaHome (e.g. 'Turn on lights')..." data-i18n="ask_ai" />
                         <button id="aiSubmit"><i class="fas fa-magic"></i></button>
                     </div>
                 </div>
@@ -37,13 +37,13 @@
                 </div>
                 <aside class="widgets-panel">
                     <div class="widget" id="presenceWidget">
-                        <h4><i class="fas fa-user-friends"></i> Presence</h4>
-                        <div id="presenceContent">Loading...</div>
+                        <h4><i class="fas fa-user-friends"></i> <span data-i18n="presence">Presence</span></h4>
+                        <div id="presenceContent" data-i18n="loading">Loading...</div>
                     </div>
 
                     <div class="widget" id="energyWidget">
-                        <h4><i class="fas fa-bolt"></i> Energy</h4>
-                        <div id="energyContent">Loading...</div>
+                        <h4><i class="fas fa-bolt"></i> <span data-i18n="energy">Energy</span></h4>
+                        <div id="energyContent" data-i18n="loading">Loading...</div>
                     </div>
 
                     <div class="widget" id="clockWidget">
@@ -53,24 +53,24 @@
                     <div id="spotify-widget-container"></div>
 
                     <div class="widget" id="systemStatusWidget">
-                        <h4>Systeem Status</h4>
-                        <div id="systemStatusContent">Laden...</div>
+                        <h4 data-i18n="status">Systeem Status</h4>
+                        <div id="systemStatusContent" data-i18n="loading">Laden...</div>
                     </div>
 
                     <div class="widget" id="weatherWidget">
-                        <h4>Weer</h4>
-                        <div id="weatherContent" class="weather-container">Laden…</div>
+                        <h4 data-i18n="weather">Weer</h4>
+                        <div id="weatherContent" class="weather-container" data-i18n="loading">Laden…</div>
                     </div>
 
                     <div class="widget" id="printerWidget" style="display: none;">
-                        <h4>Printer Status</h4>
-                        <div id="printerContent">Laden...</div>
+                        <h4 data-i18n="printer_status">Printer Status</h4>
+                        <div id="printerContent" data-i18n="loading">Laden...</div>
                     </div>
 
                     <div class="widget" id="speedtestWidget">
-                        <h4>Speedtest</h4>
+                        <h4 data-i18n="speedtest">Speedtest</h4>
                         <div id="speedtestContent">
-                            <button id="runSpeedtest">Start Speedtest</button>
+                            <button id="runSpeedtest" data-i18n="start_speedtest">Start Speedtest</button>
                             <div id="speedtestResults"></div>
                         </div>
                     </div>
@@ -80,6 +80,7 @@
     </div>
 
     <script src="../script/script.js"></script>
+    <script src="../script/i18n.js"></script>
     <script src="../script/modal.js"></script>
     <script src="../script/dashboard.js"></script>
     <script src="../script/spotify-widget.js"></script>

@@ -20,11 +20,11 @@
             <header class="page-header">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <h2>Apparaten</h2>
-                        <p>Beheer je apparaten en voorkeuren</p>
+                        <h2 data-i18n="devices">Apparaten</h2>
+                        <p data-i18n="devices_desc">Beheer je apparaten en voorkeuren</p>
                     </div>
                     <button id="scanDevicesBtn" class="btn-primary" style="width: auto; padding: 10px 20px;">
-                        <i class="fas fa-sync-alt"></i> Scan
+                        <i class="fas fa-sync-alt"></i> <span data-i18n="scan">Scan</span>
                     </button>
                 </div>
             </header>
@@ -32,6 +32,7 @@
         </main>
     </div>
 
+    <script src="../script/i18n.js"></script>
     <script src="../script/script.js"></script>
     <script src="../script/devices.js"></script>
     <script src="../script/modal.js"></script>
@@ -42,12 +43,12 @@
     <div id="pairingModal" class="device-modal" style="display: none; z-index: 2000;">
         <div class="device-modal-content" style="max-width: 400px; text-align: center;">
             <div class="device-modal-header">
-                <h3>Apparaat Koppelen</h3>
+                <h3 data-i18n="pairing_title">Apparaat Koppelen</h3>
                 <span class="close-modal">&times;</span>
             </div>
             <div class="device-modal-body" style="padding: 20px;">
-                <p id="pairingMessage">Voer de PIN code in die op je TV verschijnt:</p>
-                <input type="text" id="pairingPin" placeholder="PIN Code" style="font-size: 1.5em; text-align: center; letter-spacing: 5px; margin: 20px 0; padding: 10px; width: 100%; background: #333; color: white; border: 1px solid #555; border-radius: 5px;">
+                <p id="pairingMessage" data-i18n="pairing_message">Voer de PIN code in die op je TV verschijnt:</p>
+                <input type="text" id="pairingPin" placeholder="PIN Code" data-i18n="pin_code" style="font-size: 1.5em; text-align: center; letter-spacing: 5px; margin: 20px 0; padding: 10px; width: 100%; background: #333; color: white; border: 1px solid #555; border-radius: 5px;">
                 <input type="hidden" id="pairingIp">
                 <button id="submitPairing" class="btn-primary" style="width: 100%; margin-top: 10px;">Koppelen</button>
             </div>

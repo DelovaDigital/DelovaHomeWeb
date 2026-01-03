@@ -25,19 +25,19 @@
                 <!-- Sidebar -->
                 <aside class="settings-sidebar">
                     <div class="settings-nav-item active" data-target="general">
-                        <i class="fas fa-sliders-h"></i> Algemeen
+                        <i class="fas fa-sliders-h"></i> <span data-i18n="general">Algemeen</span>
                     </div>
                     <div class="settings-nav-item" data-target="profile">
-                        <i class="fas fa-user-circle"></i> Profiel
+                        <i class="fas fa-user-circle"></i> <span data-i18n="profile">Profiel</span>
                     </div>
                     <div class="settings-nav-item" data-target="integrations">
-                        <i class="fas fa-plug"></i> Integraties
+                        <i class="fas fa-plug"></i> <span data-i18n="integrations">Integraties</span>
                     </div>
                     <div class="settings-nav-item" data-target="energy">
-                        <i class="fas fa-bolt"></i> Energie
+                        <i class="fas fa-bolt"></i> <span data-i18n="energy">Energie</span>
                     </div>
                     <div class="settings-nav-item" data-target="knx">
-                        <i class="fas fa-network-wired"></i> KNX
+                        <i class="fas fa-network-wired"></i> <span data-i18n="knx">KNX</span>
                     </div>
                 </aside>
 
@@ -50,24 +50,24 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-server"></i>
-                                <h3>Hub Informatie</h3>
+                                <h3 data-i18n="hub_info">Hub Informatie</h3>
                             </div>
                             <div class="card-body">
                                 <div class="info-row">
-                                    <span class="label">Hub Naam:</span>
+                                    <span class="label" data-i18n="hub_name">Hub Naam:</span>
                                     <span class="value" id="hubName">Laden...</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="label">Hub ID:</span>
+                                    <span class="label" data-i18n="hub_id">Hub ID:</span>
                                     <span class="value" id="hubId">Laden...</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="label">Versie:</span>
+                                    <span class="label" data-i18n="version">Versie:</span>
                                     <span class="value" id="hubVersion">Laden...</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="label">Status:</span>
-                                    <span class="value status-online"><i class="fas fa-circle"></i> Online</span>
+                                    <span class="label" data-i18n="status">Status:</span>
+                                    <span class="value status-online"><i class="fas fa-circle"></i> <span data-i18n="online">Online</span></span>
                                 </div>
                             </div>
                         </div>
@@ -76,18 +76,29 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-paint-brush"></i>
-                                <h3>Voorkeuren</h3>
+                                <h3 data-i18n="preferences">Voorkeuren</h3>
                             </div>
                             <div class="card-body">
                                 <div class="setting-item">
                                     <div class="setting-info">
-                                        <span class="setting-label">Donkere modus</span>
-                                        <span class="setting-desc">Schakel donker thema in</span>
+                                        <span class="setting-label" data-i18n="dark_mode">Donkere modus</span>
+                                        <span class="setting-desc" data-i18n="dark_mode_desc">Schakel donker thema in</span>
                                     </div>
                                     <label class="switch">
                                         <input type="checkbox" id="darkModeToggle">
                                         <span class="slider round"></span>
                                     </label>
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-label" data-i18n="language">Taal</span>
+                                        <span class="setting-desc" data-i18n="language_desc">Selecteer de taal van de interface</span>
+                                    </div>
+                                    <select id="languageSelect" style="padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+                                        <option value="nl">Nederlands</option>
+                                        <option value="en">English</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -96,12 +107,12 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fa-solid fa-circle-info"></i>
-                                <h3>Systeem Updates</h3>
+                                <h3 data-i18n="system_updates">Systeem Updates</h3>
                             </div>
                             <div class="card-body">
                                 <p>DelovaHub Versie 1.0.0</p>
                                 <p>Beta</p>
-                                <button type="submit" class="btn btn-primary" id="btnCheckForUpdates">Check for updates</button>
+                                <button type="submit" class="btn btn-primary" id="btnCheckForUpdates" data-i18n="check_updates">Check for updates</button>
                                 <p style="margin-top: 10px; font-size: 0.8em; color: #888;">© 2025 DelovaHub. Alle rechten voorbehouden.</p>
                             </div>
                         </div>
@@ -112,35 +123,35 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-user-shield"></i>
-                                <h3>Account Instellingen</h3>
+                                <h3 data-i18n="account_settings">Account Instellingen</h3>
                             </div>
                             <div class="card-body">
                                 <div class="info-row">
-                                    <span class="label">Gebruikersnaam:</span>
+                                    <span class="label" data-i18n="username">Gebruikersnaam:</span>
                                     <span class="value" id="profileUsername">Laden...</span>
                                 </div>
                                 <div class="info-row">
-                                    <span class="label">Rol:</span>
-                                    <span class="value">Beheerder</span>
+                                    <span class="label" data-i18n="role">Rol:</span>
+                                    <span class="value" data-i18n="admin">Beheerder</span>
                                 </div>
                                 
                                 <hr style="margin: 20px 0; border: 0; border-top: 1px solid var(--border);">
                                 
-                                <h4>Wachtwoord Wijzigen</h4>
+                                <h4 data-i18n="change_password">Wachtwoord Wijzigen</h4>
                                 <form id="change-password-form" style="margin-top: 15px;">
                                     <div class="form-group">
-                                        <label for="current-pass">Huidig Wachtwoord</label>
+                                        <label for="current-pass" data-i18n="current_password">Huidig Wachtwoord</label>
                                         <input type="password" id="current-pass" required>
                                     </div>
                                     <div class="form-group">
-                                        <label for="new-pass">Nieuw Wachtwoord</label>
+                                        <label for="new-pass" data-i18n="new_password">Nieuw Wachtwoord</label>
                                         <input type="password" id="new-pass" required minlength="6">
                                     </div>
                                     <div class="form-group">
-                                        <label for="confirm-pass">Bevestig Nieuw Wachtwoord</label>
+                                        <label for="confirm-pass" data-i18n="confirm_password">Bevestig Nieuw Wachtwoord</label>
                                         <input type="password" id="confirm-pass" required minlength="6">
                                     </div>
-                                    <button type="submit" class="btn btn-primary">Wachtwoord Bijwerken</button>
+                                    <button type="submit" class="btn btn-primary" data-i18n="update_password">Wachtwoord Bijwerken</button>
                                 </form>
                             </div>
                         </div>
@@ -152,26 +163,26 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fab fa-apple"></i>
-                                <h3>Apple Apparaat Koppelen</h3>
+                                <h3 data-i18n="apple_pairing">Apple Apparaat Koppelen</h3>
                             </div>
                             <div class="card-body">
-                                <p class="text-muted" style="margin-bottom: 15px; font-size: 0.9em;">
+                                <p class="text-muted" style="margin-bottom: 15px; font-size: 0.9em;" data-i18n="apple_pairing_desc">
                                     Koppel een Apple TV of Mac (AirPlay Receiver) om deze te bedienen.
                                 </p>
                                 <div id="atv-pairing-step-1">
                                     <div class="form-group">
-                                        <label for="atv-ip">IP Adres</label>
+                                        <label for="atv-ip" data-i18n="ip_address">IP Adres</label>
                                         <input type="text" id="atv-ip" placeholder="192.168.0.x">
                                     </div>
-                                    <button id="btn-start-pairing" class="btn btn-primary">Start Koppelen</button>
+                                    <button id="btn-start-pairing" class="btn btn-primary" data-i18n="start_pairing">Start Koppelen</button>
                                 </div>
                                 <div id="atv-pairing-step-2" style="display:none;">
                                     <p>Voer de PIN code in die op je TV verschijnt:</p>
                                     <div class="form-group">
-                                        <label for="atv-pin">PIN Code</label>
+                                        <label for="atv-pin" data-i18n="pin_code">PIN Code</label>
                                         <input type="text" id="atv-pin" placeholder="1234" maxlength="4">
                                     </div>
-                                    <button id="btn-submit-pin" class="btn btn-primary">Verstuur PIN</button>
+                                    <button id="btn-submit-pin" class="btn btn-primary" data-i18n="send_pin">Verstuur PIN</button>
                                 </div>
                                 <div id="atv-pairing-status" style="margin-top: 10px; font-weight: bold;"></div>
                             </div>
@@ -181,31 +192,31 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-hdd"></i>
-                                <h3>NAS Koppelen</h3>
+                                <h3 data-i18n="nas_pairing">NAS Koppelen</h3>
                             </div>
                             <div class="card-body">
                                 <form id="nas-form" onsubmit="event.preventDefault();">
                                     <div class="form-group">
-                                        <label for="nas-host">Host / IP</label>
+                                        <label for="nas-host" data-i18n="host_ip">Host / IP</label>
                                         <input type="text" id="nas-host" placeholder="192.168.0.x">
                                     </div>
                                     <div class="form-group">
-                                        <label for="nas-share">Share Naam</label>
+                                        <label for="nas-share" data-i18n="share_name">Share Naam</label>
                                         <input type="text" id="nas-share" placeholder="public">
                                     </div>
                                     <div class="form-group">
-                                        <label for="nas-domain">Domein (Optioneel)</label>
+                                        <label for="nas-domain" data-i18n="domain">Domein (Optioneel)</label>
                                         <input type="text" id="nas-domain" placeholder="WORKGROUP">
                                     </div>
                                     <div class="form-group">
-                                        <label for="nas-user">Gebruikersnaam</label>
+                                        <label for="nas-user" data-i18n="username">Gebruikersnaam</label>
                                         <input type="text" id="nas-user" placeholder="admin">
                                     </div>
                                     <div class="form-group">
-                                        <label for="nas-pass">Wachtwoord</label>
+                                        <label for="nas-pass" data-i18n="password">Wachtwoord</label>
                                         <input type="password" id="nas-pass" placeholder="••••••">
                                     </div>
-                                    <button id="btn-add-nas" class="btn btn-primary">Verbinden</button>
+                                    <button id="btn-add-nas" class="btn btn-primary" data-i18n="connect">Verbinden</button>
                                 </form>
                                 <div id="nas-status" style="margin-top: 10px; font-weight: bold;"></div>
                             </div>
@@ -217,23 +228,23 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-solar-panel"></i>
-                                <h3>Zonnepanelen & Energie</h3>
+                                <h3 data-i18n="solar_energy">Zonnepanelen & Energie</h3>
                             </div>
                             <div class="card-body">
                                 <form id="energy-form" onsubmit="event.preventDefault();">
                                     <div class="form-group">
-                                        <label for="solar-capacity">Capaciteit Zonnepanelen (W)</label>
+                                        <label for="solar-capacity" data-i18n="solar_capacity">Capaciteit Zonnepanelen (W)</label>
                                         <input type="number" id="solar-capacity" placeholder="4000">
                                     </div>
                                     <div class="form-group">
-                                        <label for="grid-limit">Netlimiet (W)</label>
+                                        <label for="grid-limit" data-i18n="grid_limit">Netlimiet (W)</label>
                                         <input type="number" id="grid-limit" placeholder="5000">
                                     </div>
                                     <div class="form-group">
-                                        <label for="cost-kwh">Kosten per kWh (€)</label>
+                                        <label for="cost-kwh" data-i18n="cost_kwh">Kosten per kWh (€)</label>
                                         <input type="number" step="0.01" id="cost-kwh" placeholder="0.25">
                                     </div>
-                                    <button id="btn-save-energy" class="btn btn-primary">Opslaan</button>
+                                    <button id="btn-save-energy" class="btn btn-primary" data-i18n="save">Opslaan</button>
                                 </form>
                             </div>
                         </div>
@@ -244,23 +255,23 @@
                         <div class="card settings-card">
                             <div class="card-header">
                                 <i class="fas fa-network-wired"></i>
-                                <h3>KNX Gateway</h3>
+                                <h3 data-i18n="knx_gateway">KNX Gateway</h3>
                             </div>
                             <div class="card-body">
                                 <form id="knx-form" onsubmit="event.preventDefault();">
                                     <div class="form-group">
-                                        <label for="knx-ip">Gateway IP Adres</label>
+                                        <label for="knx-ip" data-i18n="gateway_ip">Gateway IP Adres</label>
                                         <input type="text" id="knx-ip" placeholder="192.168.0.x">
                                     </div>
                                     <div class="form-group">
-                                        <label for="knx-port">Poort</label>
+                                        <label for="knx-port" data-i18n="port">Poort</label>
                                         <input type="number" id="knx-port" placeholder="3671" value="3671">
                                     </div>
                                     <div class="form-group">
-                                        <label for="knx-phys">Fysiek Adres (Client)</label>
+                                        <label for="knx-phys" data-i18n="phys_addr">Fysiek Adres (Client)</label>
                                         <input type="text" id="knx-phys" placeholder="1.1.128" value="1.1.128">
                                     </div>
-                                    <button id="btn-save-knx" class="btn btn-primary">Verbinden & Opslaan</button>
+                                    <button id="btn-save-knx" class="btn btn-primary" data-i18n="connect_save">Verbinden & Opslaan</button>
                                 </form>
                             </div>
                         </div>
@@ -271,6 +282,7 @@
         </main>
     </div>
     <script src="../script/script.js"></script>
+    <script src="../script/i18n.js"></script>
     <script src="../script/script2.js"></script>
     <script src="../script/settings.js"></script>
     <script src="../script/animations.js"></script>

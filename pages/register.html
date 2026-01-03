@@ -12,31 +12,31 @@
     <div class="auth-container">
         <div class="glass-card auth-card">
             <header>
-                <h1>Create Account</h1>
-                <p style="color: var(--text-muted); margin-bottom: 20px;">Join DelovaHome today</p>
+                <h1 data-i18n="create_account">Create Account</h1>
+                <p style="color: var(--text-muted); margin-bottom: 20px;" data-i18n="join_message">Join DelovaHome today</p>
             </header>
 
             <form id="registerForm" class="auth-form">
                 <div>
-                    <label for="username">Username</label>
-                    <input id="username" name="username" required placeholder="Choose a username">
+                    <label for="username" data-i18n="username">Username</label>
+                    <input id="username" name="username" required placeholder="Choose a username" data-i18n="choose_username">
                 </div>
 
                 <div>
-                    <label for="password">Password</label>
-                    <input id="password" name="password" type="password" required placeholder="Min. 6 characters">
+                    <label for="password" data-i18n="password">Password</label>
+                    <input id="password" name="password" type="password" required placeholder="Min. 6 characters" data-i18n="min_chars">
                 </div>
 
                 <div>
-                    <label for="confirm">Confirm Password</label>
-                    <input id="confirm" name="confirm" type="password" required placeholder="Repeat password">
+                    <label for="confirm" data-i18n="confirm_password">Confirm Password</label>
+                    <input id="confirm" name="confirm" type="password" required placeholder="Repeat password" data-i18n="repeat_password">
                 </div>
 
                 <div class="auth-actions">
                     <button type="submit" id="createUser">
-                        <i class="fas fa-user-plus"></i> Create Account
+                        <i class="fas fa-user-plus"></i> <span data-i18n="create_account">Create Account</span>
                     </button>
-                    <button type="button" id="goToLogin" class="buttonLogin">
+                    <button type="button" id="goToLogin" class="buttonLogin" data-i18n="back_login">
                         Back to Login
                     </button>
                 </div>
@@ -46,6 +46,7 @@
         </div>
     </div>
 
+    <script src="../script/i18n.js"></script>
     <script src="../script/register.js"></script>
 </body>
 </html>

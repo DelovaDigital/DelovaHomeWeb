@@ -17,15 +17,15 @@
 
     <main class="content-area">
       <header class="page-header">
-        <h2>Kamers</h2>
-        <p>Beheer je kamers en voeg apparaten toe aan kamers.</p>
+        <h2 data-i18n="rooms">Kamers</h2>
+        <p data-i18n="rooms_desc">Beheer je kamers en voeg apparaten toe aan kamers.</p>
       </header>
 
       <section class="rooms-panel">
         <div class="panel-header">
-          <h3>Kamers</h3>
+          <h3 data-i18n="rooms">Kamers</h3>
           <div>
-            <button id="addRoomHeaderBtn" class="btn-create-header" title="Nieuwe kamer"><i class="fas fa-plus"></i></button>
+            <button id="addRoomHeaderBtn" class="btn-create-header" title="Nieuwe kamer" data-i18n="new_room"><i class="fas fa-plus"></i></button>
           </div>
         </div>
         <div id="roomsList" class="rooms-list"></div>
@@ -33,6 +33,7 @@
     </main>
   </div>
 
+  <script src="../script/i18n.js"></script>
   <script src="../script/script.js"></script>
   <script src="../script/modal.js"></script>
   <script src="../script/rooms.js"></script>

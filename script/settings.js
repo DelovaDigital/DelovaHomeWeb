@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Profile Settings ---
     const profileUsername = document.getElementById('profileUsername');
     if (profileUsername) {
-        profileUsername.textContent = localStorage.getItem('username') || 'Gebruiker';
+        profileUsername.textContent = localStorage.getItem('username') || 'User';
     }
 
     const changePassForm = document.getElementById('change-password-form');
@@ -53,12 +53,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = changePassForm.querySelector('button');
 
             if (newPass !== confirmPass) {
-                alert('Nieuwe wachtwoorden komen niet overeen');
+                alert(window.t ? window.t('password_mismatch') : 'Passwords do not match');
                 return;
             }
 
             const originalText = btn.textContent;
-            btn.textContent = 'Bezig...';
+            btn.textContent = window.t ? window.t('loading') : 'Loading...';
             btn.disabled = true;
 
             try {
@@ -66,13 +66,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 // const res = await fetch('/api/user/password', { ... });
                 await new Promise(r => setTimeout(r, 1000)); // Simulate delay
                 
-                alert('Wachtwoord succesvol gewijzigd (Simulatie)');
+                alert(window.t ? window.t('password_changed') : 'Password changed');
                 changePassForm.reset();
             } catch (err) {
-                alert('Fout bij wijzigen wachtwoord');
+                alert(window.t ? window.t('error') : 'Error');
             } finally {
                 btn.textContent = originalText;
                 btn.disabled = false;
+            }
+        });
+    }
+
+    // --- Language Settings ---
+    const languageSelect = document.getElementById('languageSelect');
+    if (languageSelect) {
+        const currentLang = localStorage.getItem('language') || 'nl';
+        languageSelect.value = currentLang;
+
+        languageSelect.addEventListener('change', () => {
+            const newLang = languageSelect.value;
+            localStorage.setItem('language', newLang);
+            if (window.applyTranslations) {
+                window.applyTranslations();
+            } else {
+                window.location.reload();
             }
         });
     }

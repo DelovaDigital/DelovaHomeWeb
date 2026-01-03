@@ -13,24 +13,24 @@
         <div class="glass-card auth-card">
             <header>
                 <h1>DelovaHome</h1>
-                <p style="color: var(--text-muted); margin-bottom: 20px;">Welcome back</p>
+                <p style="color: var(--text-muted); margin-bottom: 20px;" data-i18n="welcome_back">Welcome back</p>
             </header>
 
             <form action="index.html" method="post" class="auth-form">
                 <div>
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required placeholder="Enter your username">
+                    <label for="username" data-i18n="username">Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter your username" data-i18n="enter_username">
                 </div>
                 <div>
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                    <label for="password" data-i18n="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password" data-i18n="enter_password">
                 </div>
                 
                 <div class="auth-actions">
                     <button type="submit" id="btnLogin">
-                        <i class="fas fa-sign-in-alt"></i> Login
+                        <i class="fas fa-sign-in-alt"></i> <span data-i18n="login">Login</span>
                     </button>
-                    <button type="button" id="btnCreateAccount" class="buttonLogin">
+                    <button type="button" id="btnCreateAccount" class="buttonLogin" data-i18n="create_account">
                         Create Account
                     </button>
                 </div>
@@ -38,6 +38,7 @@
         </div>
     </div>
 
+    <script src="script/i18n.js"></script>
     <script src="script/script.js"></script>
 </body>
 </html>

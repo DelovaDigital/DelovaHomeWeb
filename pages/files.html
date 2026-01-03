@@ -90,26 +90,27 @@
 
         <main class="content-area">
             <header class="page-header">
-                <h2>Bestanden</h2>
-                <p>Blader door je netwerkopslag</p>
+                <h2 data-i18n="files">Bestanden</h2>
+                <p data-i18n="files_desc">Blader door je netwerkopslag</p>
             </header>
 
             <div class="file-browser">
                 <div class="nas-list" id="nas-list">
-                    <h3>Bronnen</h3>
+                    <h3 data-i18n="sources">Bronnen</h3>
                     <!-- NAS items here -->
                 </div>
                 <div class="file-view">
                     <div class="breadcrumb" id="breadcrumb">/</div>
                     <div class="file-list" id="file-list">
                         <!-- Files here -->
-                        <div style="text-align:center; padding: 20px; color: #888;">Selecteer een bron</div>
+                        <div style="text-align:center; padding: 20px; color: #888;" data-i18n="select_source">Selecteer een bron</div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
 
+    <script src="../script/i18n.js"></script>
     <script src="../script/script.js"></script>
     <script src="../script/files.js"></script>
 </body>

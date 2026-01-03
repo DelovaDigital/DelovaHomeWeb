@@ -263,28 +263,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let card = document.getElementById(`device-card-${device.id}`);
         
         // Determine Icon
+        // Determine Icon
         let icon = 'fa-question-circle';
-        const type = device.type ? device.type.toLowerCase() : 'unknown';
-        if (type === 'light' || type.includes('bulb')) icon = 'fa-lightbulb';
-        else if (type === 'switch' || type.includes('outlet')) icon = 'fa-plug';
-        else if (type === 'tv') icon = 'fa-tv';
-        else if (type === 'speaker') icon = 'fa-music';
-        else if (type === 'camera') icon = 'fa-video';
-        else if (type === 'printer') icon = 'fa-print';
-        else if (type === 'thermostat' || type === 'ac') icon = 'fa-thermometer-half';
-        else if (type === 'lock') icon = 'fa-lock';
-        else if (type === 'cover' || type === 'blind') icon = 'fa-warehouse';
-        else if (type === 'vacuum') icon = 'fa-robot';
-        else if (type === 'sensor') icon = 'fa-wifi';
-        else if (type === 'console' || type === 'playstation') icon = 'fa-gamepad';
-        else if (type === 'nas') icon = 'fa-server';
-        else if (type === 'computer' || type === 'workstation' || type === 'pc' || type === 'mac') icon = 'fa-desktop';
-        else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
-        else if (type === 'esphome') icon = 'fa-microchip';
-        else if (type === 'matter') icon = 'fa-atom';
-        else if (type === 'homekit') icon = 'fa-apple';
-        else if (type === 'smartthings') icon = 'fa-circle-nodes';
-        else if (type === 'chromecast') icon = 'fa-cast';
+        if (typeof getDeviceIconClass === 'function') {
+            icon = getDeviceIconClass(device);
+        }
 
         const isOn = device.state && device.state.on;
         const statusClass = isOn ? 'on' : 'off';

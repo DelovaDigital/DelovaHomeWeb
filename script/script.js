@@ -382,3 +382,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+// Global helper to determine device icon
+function getDeviceIconClass(device) {
+    let icon = 'fa-question-circle';
+    const type = device.type ? device.type.toLowerCase() : 'unknown';
+    const name = device.name ? device.name.toLowerCase() : '';
+
+    if (type === 'light' || type.includes('bulb')) icon = 'fa-lightbulb';
+    else if (type === 'switch' || type.includes('outlet')) icon = 'fa-plug';
+    else if (type === 'tv') {
+        if (name.includes('apple') || name.includes('atv')) icon = 'fa-apple';
+        else icon = 'fa-tv';
+    }
+    else if (type === 'speaker') {
+        if (name.includes('homepod')) icon = 'fa-apple';
+        else if (name.includes('sonos')) icon = 'fa-music';
+        else icon = 'fa-music';
+    }
+    else if (type === 'camera') icon = 'fa-video';
+    else if (type === 'printer') icon = 'fa-print';
+    else if (type === 'thermostat' || type === 'ac') icon = 'fa-thermometer-half';
+    else if (type === 'lock') icon = 'fa-lock';
+    else if (type === 'cover' || type === 'blind') icon = 'fa-warehouse';
+    else if (type === 'vacuum') icon = 'fa-robot';
+    else if (type === 'sensor') icon = 'fa-wifi';
+    else if (type === 'console' || type === 'playstation') {
+        if (name.includes('ps5') || name.includes('playstation')) icon = 'fa-playstation';
+        else if (name.includes('xbox')) icon = 'fa-xbox';
+        else icon = 'fa-gamepad';
+    }
+    else if (type === 'nas') icon = 'fa-server';
+    else if (type === 'computer' || type === 'workstation' || type === 'pc' || type === 'mac') {
+        if (type === 'mac' || name.includes('mac') || name.includes('apple')) icon = 'fa-apple';
+        else if (name.includes('windows') || name.includes('pc')) icon = 'fa-windows';
+        else if (name.includes('linux') || name.includes('ubuntu')) icon = 'fa-linux';
+        else icon = 'fa-desktop';
+    }
+    else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-raspberry-pi';
+    else if (type === 'esphome') icon = 'fa-microchip';
+    else if (type === 'matter') icon = 'fa-atom';
+    else if (type === 'homekit') icon = 'fa-apple';
+    else if (type === 'smartthings') icon = 'fa-circle-nodes';
+    else if (type === 'chromecast') icon = 'fa-cast';
+    
+    return icon;
+}

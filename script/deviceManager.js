@@ -68,6 +68,7 @@ class DeviceManager extends EventEmitter {
         this.samsungCredentials = {};
         this.cameraCredentials = {};
         this.sshCredentials = {}; // New: SSH/SMB credentials
+        this.pythonPath = null; // Cache for python executable path
         this.loadAppleTvCredentials();
         this.loadAndroidTvCredentials();
         this.loadSamsungCredentials();
@@ -2401,6 +2402,27 @@ class DeviceManager extends EventEmitter {
             }
         }
 
+        if (command === 'set_volume') {
+            // Convert set_volume to multiple volume_up/down commands
+            // This is a rough approximation as we don't know the current volume exactly unless we track it
+            // But we can try to move towards the target if we have a current state
+            const current = parseInt(device.state.volume) || 0;
+            const target = parseInt(value);
+            const diff = target - current;
+            
+            if (diff !== 0) {
+                const steps = Math.abs(Math.round(diff / 5)); // Assuming 5% steps
+                const cmd = diff > 0 ? 'volume_up' : 'volume_down';
+                console.log(`[Samsung] Emulating set_volume: sending ${steps} x ${cmd}`);
+                
+                // Send commands in rapid succession but with slight delay to prevent flooding
+                for (let i = 0; i < steps; i++) {
+                    setTimeout(() => this.handleSamsungCommand(device, cmd, null), i * 150);
+                }
+                return;
+            }
+        }
+
         if (!key) {
             console.log(`[Samsung] Command '${command}' not supported by this library.`);
             return;
@@ -2481,48 +2503,53 @@ class DeviceManager extends EventEmitter {
         console.log(`[DeviceManager] Spawning persistent Samsung service for ${ip}...`);
         const { spawn } = require('child_process');
         
-        const isWin = process.platform === 'win32';
-        let candidates = [];
-        
-        if (isWin) {
-            candidates = [
-                path.join(__dirname, '../.venv/Scripts/python.exe'),
-                path.join(__dirname, '../../.venv/Scripts/python.exe'),
-                path.join(process.cwd(), '.venv/Scripts/python.exe'),
-                path.join(process.cwd(), 'python.exe'),
-                path.join(__dirname, '../python.exe'),
-                path.join(__dirname, '../../python.exe'),
-                path.join(__dirname, '../.venv/python.exe'),
-                path.join(process.cwd(), '.venv/python.exe')
-            ];
-        } else {
-            candidates = [
-                path.join(__dirname, '../.venv/bin/python'),
-                path.join(__dirname, '../../.venv/bin/python'),
-                path.join(process.cwd(), '.venv/bin/python'),
-                '/home/pi/DelovaHome/.venv/bin/python'
-            ];
-        }
+        let pythonPath = this.pythonPath;
 
-        let pythonPath = isWin ? 'python' : 'python3';
-        for (const cand of candidates) {
-            try {
-                if (fs.existsSync(cand)) { 
-                    if (isWin) {
-                        const p1 = path.join(path.dirname(cand), 'pyvenv.cfg');
-                        const p2 = path.join(path.dirname(path.dirname(cand)), 'pyvenv.cfg');
-                        let cfgContent = '';
-                        if (fs.existsSync(p1)) cfgContent = fs.readFileSync(p1, 'utf8');
-                        else if (fs.existsSync(p2)) cfgContent = fs.readFileSync(p2, 'utf8');
-                        
-                        if (cfgContent && (cfgContent.includes('/Applications/') || cfgContent.includes('/usr/bin'))) {
-                            continue;
+        if (!pythonPath) {
+            const isWin = process.platform === 'win32';
+            let candidates = [];
+            
+            if (isWin) {
+                candidates = [
+                    path.join(__dirname, '../.venv/Scripts/python.exe'),
+                    path.join(__dirname, '../../.venv/Scripts/python.exe'),
+                    path.join(process.cwd(), '.venv/Scripts/python.exe'),
+                    path.join(process.cwd(), 'python.exe'),
+                    path.join(__dirname, '../python.exe'),
+                    path.join(__dirname, '../../python.exe'),
+                    path.join(__dirname, '../.venv/python.exe'),
+                    path.join(process.cwd(), '.venv/python.exe')
+                ];
+            } else {
+                candidates = [
+                    path.join(__dirname, '../.venv/bin/python'),
+                    path.join(__dirname, '../../.venv/bin/python'),
+                    path.join(process.cwd(), '.venv/bin/python'),
+                    '/home/pi/DelovaHome/.venv/bin/python'
+                ];
+            }
+
+            pythonPath = isWin ? 'python' : 'python3';
+            for (const cand of candidates) {
+                try {
+                    if (fs.existsSync(cand)) { 
+                        if (isWin) {
+                            const p1 = path.join(path.dirname(cand), 'pyvenv.cfg');
+                            const p2 = path.join(path.dirname(path.dirname(cand)), 'pyvenv.cfg');
+                            let cfgContent = '';
+                            if (fs.existsSync(p1)) cfgContent = fs.readFileSync(p1, 'utf8');
+                            else if (fs.existsSync(p2)) cfgContent = fs.readFileSync(p2, 'utf8');
+                            
+                            if (cfgContent && (cfgContent.includes('/Applications/') || cfgContent.includes('/usr/bin'))) {
+                                continue;
+                            }
                         }
+                        pythonPath = cand; 
+                        break; 
                     }
-                    pythonPath = cand; 
-                    break; 
-                }
-            } catch (e) {}
+                } catch (e) {}
+            }
+            this.pythonPath = pythonPath; // Cache it
         }
 
         const scriptPath = path.join(__dirname, 'samsung_service.py');

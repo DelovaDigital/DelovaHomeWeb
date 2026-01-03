@@ -3720,7 +3720,10 @@ class DeviceManager extends EventEmitter {
                         try { client.close(); } catch(e) {}
                         reject(err);
                     } else {
-                        try { client.close(); } catch(e) {}
+                        // Don't close immediately. Some apps need the sender to stay connected for a moment to initialize.
+                        setTimeout(() => {
+                            try { client.close(); } catch(e) {}
+                        }, 5000);
                         resolve(true);
                     }
                 });

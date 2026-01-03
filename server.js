@@ -674,6 +674,15 @@ async function resolveSpotifyDeviceId(userId, deviceId) {
         const castDev = deviceManager.getCastDevices().find(d => d.ip === ip);
         if (castDev) {
             console.log(`[Spotify] Waiting for ${castDev.name} to appear in Spotify Connect...`);
+            
+            // Check if we have a valid token first
+            try {
+                const devices = await spotifyManager.getDevices(userId);
+                if (devices.length === 0) {
+                    console.warn('[Spotify] Warning: No devices found initially. Ensure you are logged in to Spotify on the target device with the SAME account.');
+                }
+            } catch (e) {}
+
             for (let i = 0; i < 20; i++) {
                 await new Promise(r => setTimeout(r, 1000));
                 const devices = await spotifyManager.getDevices(userId);

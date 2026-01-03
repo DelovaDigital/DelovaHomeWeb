@@ -211,4 +211,63 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // --- Spotify Settings ---
+    const spotifyStatusIndicator = document.getElementById('spotify-status-indicator');
+    const spotifyStatusText = document.getElementById('spotify-status-text');
+    const btnSpotifyAction = document.getElementById('btn-spotify-action');
+    const userId = localStorage.getItem('userId');
+
+    if (btnSpotifyAction && userId) {
+        async function checkSpotifyStatus() {
+            try {
+                const res = await fetch(`/api/spotify/me?userId=${userId}`);
+                const data = await res.json();
+                
+                if (data.available) {
+                    spotifyStatusIndicator.style.backgroundColor = '#1DB954'; // Spotify Green
+                    spotifyStatusText.textContent = window.t ? window.t('connected') : 'Verbonden';
+                    btnSpotifyAction.textContent = window.t ? window.t('disconnect') : 'Ontkoppelen';
+                    btnSpotifyAction.classList.replace('btn-primary', 'btn-danger');
+                    btnSpotifyAction.onclick = disconnectSpotify;
+                } else {
+                    spotifyStatusIndicator.style.backgroundColor = '#ccc';
+                    spotifyStatusText.textContent = window.t ? window.t('not_connected') : 'Niet verbonden';
+                    btnSpotifyAction.textContent = window.t ? window.t('connect') : 'Verbinden';
+                    btnSpotifyAction.classList.replace('btn-danger', 'btn-primary');
+                    btnSpotifyAction.onclick = connectSpotify;
+                }
+            } catch (e) {
+                console.error('Error checking Spotify status:', e);
+            }
+        }
+
+        function connectSpotify() {
+            window.location.href = `/api/spotify/login?userId=${userId}`;
+        }
+
+        async function disconnectSpotify() {
+            if (!confirm(window.t ? window.t('confirm_disconnect') : 'Weet je zeker dat je Spotify wilt ontkoppelen?')) return;
+            
+            try {
+                const res = await fetch('/api/spotify/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                
+                if (res.ok) {
+                    checkSpotifyStatus();
+                } else {
+                    alert('Fout bij ontkoppelen');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Netwerkfout');
+            }
+        }
+
+        // Check status on load
+        checkSpotifyStatus();
+    }
 });

@@ -159,6 +159,24 @@
 
                     <!-- Integrations Section -->
                     <div id="integrations" class="settings-section">
+                        <!-- Spotify Integration -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fab fa-spotify"></i>
+                                <h3>Spotify</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted" style="margin-bottom: 15px; font-size: 0.9em;" data-i18n="spotify_desc">
+                                    Koppel je Spotify account om muziek te bedienen via de Hub.
+                                </p>
+                                <div id="spotify-status-container" style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                                    <div id="spotify-status-indicator" style="width: 12px; height: 12px; border-radius: 50%; background-color: #ccc;"></div>
+                                    <span id="spotify-status-text">Niet verbonden</span>
+                                </div>
+                                <button id="btn-spotify-action" class="btn btn-primary">Verbinden</button>
+                            </div>
+                        </div>
+
                         <!-- Apple Device Pairing -->
                         <div class="card settings-card">
                             <div class="card-header">

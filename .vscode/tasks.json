@@ -53,6 +53,22 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "none"
+		},
+		{
+			"label": "append_btn_danger_style",
+			"type": "shell",
+			"command": "cat >> /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/style.css <<EOF\n\n.btn-danger {\n    background: var(--danger);\n    color: white;\n    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);\n    border: none;\n    padding: 0.6rem 1.2rem;\n    border-radius: 8px;\n    font-weight: 500;\n    cursor: pointer;\n    transition: all 0.2s ease;\n}\n\n.btn-danger:hover {\n    background: #dc2626;\n    box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);\n    transform: translateY(-2px);\n}\nEOF\n",
+			"args": [],
+			"isBackground": false,
+			"group": "none"
+		},
+		{
+			"label": "append_btn_danger_style_dark",
+			"type": "shell",
+			"command": "cat >> /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/style-dark.css <<EOF\n\n.btn-danger {\n    background: var(--danger);\n    color: white;\n    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);\n    border: none;\n    padding: 0.6rem 1.2rem;\n    border-radius: 8px;\n    font-weight: 500;\n    cursor: pointer;\n    transition: all 0.2s ease;\n}\n\n.btn-danger:hover {\n    background: #dc2626;\n    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);\n    transform: translateY(-2px);\n}\nEOF\n",
+			"args": [],
+			"isBackground": false,
+			"group": "none"
 		}
 	]
 }

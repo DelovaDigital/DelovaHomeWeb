@@ -127,3 +127,21 @@ input:focus {
 .d-btn:hover { background: var(--primary); }
 .action-btn { background: rgba(255,255,255,0.05); color: var(--text); }
 .action-btn:hover { background: var(--primary); }
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    transform: translateY(-2px);
+}

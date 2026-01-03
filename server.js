@@ -1211,6 +1211,24 @@ app.post('/api/presence/user', (req, res) => {
     res.json({ ok: true });
 });
 
+app.post('/api/presence/location', (req, res) => {
+    const { userId, latitude, longitude, timestamp } = req.body;
+    if (!userId || !latitude || !longitude) {
+        return res.status(400).json({ ok: false, message: 'Missing required fields' });
+    }
+    presenceManager.updateUserLocation(userId, latitude, longitude, timestamp);
+    res.json({ ok: true });
+});
+
+app.post('/api/presence/home-location', (req, res) => {
+    const { latitude, longitude, radius } = req.body;
+    if (!latitude || !longitude) {
+        return res.status(400).json({ ok: false, message: 'Missing required fields' });
+    }
+    presenceManager.setHomeLocation(latitude, longitude, radius);
+    res.json({ ok: true });
+});
+
 // --- Energy ---
 app.get('/api/energy', (req, res) => {
     res.json(energyManager.data);

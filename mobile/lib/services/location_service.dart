@@ -53,7 +53,7 @@ class LocationService {
   Future<void> _updateLocation() async {
     try {
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
       );
       
       await _apiService.updateLocation(position.latitude, position.longitude);

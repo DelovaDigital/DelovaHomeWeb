@@ -14,11 +14,8 @@ class DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isPoweredOn = device.status.isOn;
     final isLight = device.type.toLowerCase() == 'light' || device.type.toLowerCase().contains('bulb');
-    final isMedia = !isLight;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    final subTextColor = Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black54;
-    final iconColorOff = isDark ? Colors.white54 : Colors.black45;
     final accentColor = isDark ? Colors.cyanAccent : Colors.blueAccent;
 
     return GestureDetector(

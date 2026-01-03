@@ -9,6 +9,7 @@ import 'hub_discovery_screen.dart';
 import 'manage_users_screen.dart';
 import 'settings/knx_settings_screen.dart';
 import 'settings/energy_settings_screen.dart';
+import 'settings/presence_settings_screen.dart';
 import 'nas_browser_screen.dart';
 
 class SettingsTab extends StatefulWidget {
@@ -23,7 +24,6 @@ class _SettingsTabState extends State<SettingsTab> {
   bool _isCheckingUpdate = false;
   
   String _hubIp = 'Unknown';
-  String _hubId = 'Unknown';
   String _hubVersion = 'Unknown';
   String _appVersion = 'Unknown';
   List<dynamic> _nasDevices = [];
@@ -41,7 +41,6 @@ class _SettingsTabState extends State<SettingsTab> {
     
     setState(() {
       _hubIp = prefs.getString('hub_ip') ?? 'Unknown';
-      _hubId = prefs.getString('hub_id') ?? 'Unknown';
       _appVersion = packageInfo.version;
       _lang = prefs.getString('language') ?? 'nl';
     });
@@ -52,7 +51,6 @@ class _SettingsTabState extends State<SettingsTab> {
       if (mounted) {
         setState(() {
           _hubVersion = info['version'] ?? 'Unknown';
-          if (info['hubId'] != null) _hubId = info['hubId'];
         });
       }
     } catch (e) {
@@ -77,6 +75,9 @@ class _SettingsTabState extends State<SettingsTab> {
   Future<void> _setLanguage(String lang) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language', lang);
+    
+    if (!mounted) return;
+
     setState(() {
       _lang = lang;
     });
@@ -306,6 +307,14 @@ class _SettingsTabState extends State<SettingsTab> {
             GlassCard(
               child: Column(
                 children: [
+                  _buildSettingTile(
+                    icon: Icons.location_on,
+                    title: t('presence'), // Make sure this key exists or fallback
+                    subtitle: t('configure_presence'),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PresenceSettingsScreen())),
+                    textColor: textColor,
+                  ),
+                  const Divider(height: 1, indent: 60),
                   _buildSettingTile(
                     icon: Icons.router,
                     title: 'KNX',

@@ -110,11 +110,20 @@ class ApiService {
 
   Future<void> updateLocation(double latitude, double longitude) async {
     final baseUrl = await getBaseUrl();
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('userId');
+    
+    if (userId == null) {
+        debugPrint('Cannot update location: No userId found');
+        return;
+    }
+
     try {
       await http.post(
         Uri.parse('$baseUrl/api/presence/location'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
+          'userId': userId,
           'latitude': latitude,
           'longitude': longitude,
           'timestamp': DateTime.now().toIso8601String(),
@@ -122,6 +131,24 @@ class ApiService {
       );
     } catch (e) {
       debugPrint('Error updating location: $e');
+    }
+  }
+
+  Future<void> setHomeLocation(double latitude, double longitude, double radius) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/api/presence/home-location'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'latitude': latitude,
+          'longitude': longitude,
+          'radius': radius,
+        }),
+      );
+    } catch (e) {
+      debugPrint('Error setting home location: $e');
+      rethrow;
     }
   }
 

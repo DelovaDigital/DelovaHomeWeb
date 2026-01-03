@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
+import '../utils/app_translations.dart';
 import 'main_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String hubIp;
@@ -28,6 +30,22 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+  String _lang = 'nl';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _lang = prefs.getString('language') ?? 'nl';
+    });
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
@@ -94,13 +112,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
+    final mutedColor = isDark ? Colors.white70 : const Color(0xFF64748B);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -119,30 +141,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.white.withValues(alpha: 0.1),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.cyan.withValues(alpha: 0.2),
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
                         blurRadius: 20,
                         spreadRadius: 5,
                       )
                     ],
                   ),
                   child: const Icon(
-                    Icons.lock_outline_rounded,
+                    Icons.home_rounded,
                     size: 48,
-                    color: Colors.white,
+                    color: Color(0xFF3B82F6),
                   ),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Welcome Back',
+                  t('welcome_back'),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Colors.white,
+                    color: textColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Login to ${widget.hubName ?? "Hub"}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  style: TextStyle(color: mutedColor, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
 
@@ -159,60 +181,60 @@ class _LoginScreenState extends State<LoginScreen> {
                               padding: const EdgeInsets.all(12),
                               margin: const EdgeInsets.only(bottom: 20),
                               decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.2),
+                                color: Colors.red.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                               ),
                               child: Text(
                                 _errorMessage!,
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(color: Colors.red),
                                 textAlign: TextAlign.center,
                               ),
                             ),
                           
                           TextFormField(
                             controller: _usernameController,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: textColor),
                             decoration: InputDecoration(
-                              labelText: 'Username',
-                              labelStyle: const TextStyle(color: Colors.white70),
-                              prefixIcon: const Icon(Icons.person_outline, color: Colors.white70),
+                              labelText: t('username'),
+                              labelStyle: TextStyle(color: mutedColor),
+                              prefixIcon: Icon(Icons.person_outline, color: mutedColor),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                borderSide: BorderSide(color: mutedColor.withValues(alpha: 0.3)),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.cyan),
+                                borderSide: const BorderSide(color: Color(0xFF3B82F6)),
                               ),
                               filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.05),
+                              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.5),
                             ),
                             validator: (value) =>
-                                value == null || value.isEmpty ? 'Please enter username' : null,
+                                value == null || value.isEmpty ? t('enter_username') : null,
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _passwordController,
                             obscureText: true,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: textColor),
                             decoration: InputDecoration(
-                              labelText: 'Password',
-                              labelStyle: const TextStyle(color: Colors.white70),
-                              prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                              labelText: t('password'),
+                              labelStyle: TextStyle(color: mutedColor),
+                              prefixIcon: Icon(Icons.lock_outline, color: mutedColor),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                borderSide: BorderSide(color: mutedColor.withValues(alpha: 0.3)),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Colors.cyan),
+                                borderSide: const BorderSide(color: Color(0xFF3B82F6)),
                               ),
                               filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.05),
+                              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.5),
                             ),
                             validator: (value) =>
-                                value == null || value.isEmpty ? 'Please enter password' : null,
+                                value == null || value.isEmpty ? t('enter_password') : null,
                           ),
                           const SizedBox(height: 32),
                           
@@ -221,7 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.cyan,
+                                backgroundColor: const Color(0xFF3B82F6),
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
@@ -237,15 +259,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
-                                      'LOGIN',
-                                      style: TextStyle(
+                                  : Text(
+                                      t('login').toUpperCase(),
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 1.2,
                                       ),
                                     ),
                             ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RegisterScreen(
+                                    hubIp: widget.hubIp,
+                                    hubPort: widget.hubPort,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(t('create_account')),
                           ),
                         ],
                       ),

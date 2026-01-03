@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/device_card.dart';
+import '../utils/app_translations.dart';
 
 class DevicesTab extends StatefulWidget {
   const DevicesTab({super.key});
@@ -19,6 +21,7 @@ class _DevicesTabState extends State<DevicesTab> {
   bool _isLoading = true;
   String? _error;
   Timer? _timer;
+  String _lang = 'nl';
   
   // Filters
   String _searchQuery = '';
@@ -28,10 +31,35 @@ class _DevicesTabState extends State<DevicesTab> {
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     _fetchDevices();
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _fetchDevices(silent: true);
     });
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
+
+  String _getCategoryLabel(String category) {
+    switch (category) {
+      case 'All': return t('cat_all');
+      case 'Light': return t('cat_light');
+      case 'Speaker': return t('cat_speaker');
+      case 'TV': return t('cat_tv');
+      case 'Camera': return t('cat_camera');
+      case 'Switch': return t('cat_switch');
+      case 'Console': return t('cat_console');
+      default: return category;
+    }
   }
 
   @override
@@ -91,7 +119,19 @@ class _DevicesTabState extends State<DevicesTab> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Text(
+            t('devices'),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
         // Search Bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -99,7 +139,7 @@ class _DevicesTabState extends State<DevicesTab> {
             child: TextField(
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'Search devices...',
+                hintText: t('search_devices'),
                 hintStyle: const TextStyle(color: Colors.white54),
                 prefixIcon: const Icon(Icons.search, color: Colors.white54),
                 filled: true,
@@ -128,7 +168,7 @@ class _DevicesTabState extends State<DevicesTab> {
               return Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: ChoiceChip(
-                  label: Text(category),
+                  label: Text(_getCategoryLabel(category)),
                   selected: isSelected,
                   onSelected: (selected) {
                     setState(() {
@@ -166,12 +206,12 @@ class _DevicesTabState extends State<DevicesTab> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('Error: $_error', style: const TextStyle(color: Colors.redAccent)),
+                          Text('${t('error')}: $_error', style: const TextStyle(color: Colors.redAccent)),
                           const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: () => _fetchDevices(),
                             style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
-                            child: const Text('Retry'),
+                            child: Text(t('retry')),
                           ),
                         ],
                       ),
@@ -180,14 +220,14 @@ class _DevicesTabState extends State<DevicesTab> {
                       onRefresh: () => _fetchDevices(),
                       color: Colors.cyan,
                       child: _filteredDevices.isEmpty
-                          ? const Center(child: Text('No devices found', style: TextStyle(color: Colors.white54)))
+                          ? Center(child: Text(t('no_devices'), style: const TextStyle(color: Colors.white54)))
                           : ListView.builder(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                               itemCount: _filteredDevices.length,
                               itemBuilder: (context, index) {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: Card(
+                                  child: GlassCard(
                                     child: DeviceCard(
                                       device: _filteredDevices[index],
                                       onRefresh: () => _fetchDevices(silent: true),

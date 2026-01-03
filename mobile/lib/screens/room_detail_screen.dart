@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../widgets/device_card.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
+import '../utils/app_translations.dart';
 
-class RoomDetailScreen extends StatelessWidget {
+class RoomDetailScreen extends StatefulWidget {
   final String roomName;
   final List<Device> devices;
   final VoidCallback onRefresh;
@@ -17,11 +19,35 @@ class RoomDetailScreen extends StatelessWidget {
   });
 
   @override
+  State<RoomDetailScreen> createState() => _RoomDetailScreenState();
+}
+
+class _RoomDetailScreenState extends State<RoomDetailScreen> {
+  String _lang = 'nl';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(roomName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(widget.roomName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -29,8 +55,8 @@ class RoomDetailScreen extends StatelessWidget {
       ),
       body: GradientBackground(
         child: SafeArea(
-          child: devices.isEmpty
-              ? const Center(child: Text("No devices in this room", style: TextStyle(color: Colors.white70)))
+          child: widget.devices.isEmpty
+              ? Center(child: Text(t('no_devices_room'), style: const TextStyle(color: Colors.white70)))
               : GridView.builder(
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -39,12 +65,12 @@ class RoomDetailScreen extends StatelessWidget {
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                   ),
-                  itemCount: devices.length,
+                  itemCount: widget.devices.length,
                   itemBuilder: (context, index) {
                     return GlassCard(
                       child: DeviceCard(
-                        device: devices[index],
-                        onRefresh: onRefresh,
+                        device: widget.devices[index],
+                        onRefresh: widget.onRefresh,
                       ),
                     );
                   },

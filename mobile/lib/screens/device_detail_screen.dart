@@ -5,6 +5,7 @@ import '../models/device.dart';
 import '../services/api_service.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
+import '../utils/app_translations.dart';
 
 class DeviceDetailScreen extends StatefulWidget {
   final Device device;
@@ -25,10 +26,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   late double _currentBrightness;
   late double _currentVolume;
   WebViewController? _webViewController;
+  String _lang = 'nl';
 
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     _currentBrightness = widget.device.status.brightness;
     _currentVolume = widget.device.status.volume;
     
@@ -36,6 +39,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       _checkAndInitCamera();
     }
   }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
 
   Future<void> _showInputDialog() async {
     // Prefer device-provided inputs (e.g., Denon) if available, else fallback to common inputs
@@ -67,7 +81,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final choice = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Select Input'),
+        title: Text(t('select_input')),
         children: options.map((opt) => SimpleDialogOption(
           onPressed: () => Navigator.pop(context, opt['value'] as String),
           child: Text(opt['label'] as String),
@@ -78,9 +92,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     if (choice != null && choice.isNotEmpty) {
       try {
         await _sendCommand('set_input', {'value': choice});
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Input change requested')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t('input_change_requested'))));
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${t('error')}: $e')));
       }
     }
   }
@@ -108,20 +122,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Camera Credentials'),
+        title: Text(t('cam_credentials')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Please enter the username and password for this camera.'),
+            Text(t('enter_cam_creds')),
             const SizedBox(height: 10),
             TextField(
               controller: userController,
-              decoration: const InputDecoration(labelText: 'Username', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: t('username'), border: const OutlineInputBorder()),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: passController,
-              decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: t('password'), border: const OutlineInputBorder()),
               obscureText: true,
             ),
           ],
@@ -129,7 +143,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(t('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -142,7 +156,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 _initCamera(userController.text, passController.text);
               }
             },
-            child: const Text('Save'),
+            child: Text(t('save')),
           ),
         ],
       ),
@@ -335,11 +349,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isPoweredOn = widget.device.status.isOn;
 
     return SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
               const SizedBox(height: 20),
               // Hero Icon
               Hero(
@@ -899,6 +915,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             ],
           ),
         ),
+      ),
     );
   }
 

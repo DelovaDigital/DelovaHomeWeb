@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_card.dart';
+import '../utils/app_translations.dart';
 import 'room_detail_screen.dart';
 
 class RoomsTab extends StatefulWidget {
@@ -18,15 +20,28 @@ class _RoomsTabState extends State<RoomsTab> {
   bool _isLoading = true;
   String? _error;
   Timer? _timer;
+  String _lang = 'nl';
 
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     _fetchDevices();
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _fetchDevices(silent: true);
     });
   }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
 
   @override
   void dispose() {
@@ -81,12 +96,12 @@ class _RoomsTabState extends State<RoomsTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Error: $_error', style: const TextStyle(color: Colors.redAccent)),
+            Text('${t('error')}: $_error', style: const TextStyle(color: Colors.redAccent)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => _fetchDevices(),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
-              child: const Text('Retry'),
+              child: Text(t('retry')),
             ),
           ],
         ),
@@ -96,68 +111,106 @@ class _RoomsTabState extends State<RoomsTab> {
     return RefreshIndicator(
       onRefresh: () => _fetchDevices(),
       color: Colors.cyan,
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 1.1,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
-        itemCount: _rooms.length,
-        itemBuilder: (context, index) {
-          final roomName = _rooms.keys.elementAt(index);
-          final devices = _rooms[roomName]!;
-          
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RoomDetailScreen(
-                    roomName: roomName,
-                    devices: devices,
-                    onRefresh: () => _fetchDevices(),
-                  ),
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                t('rooms'),
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
-              );
-            },
-            child: Card(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _getRoomIcon(roomName),
-                      size: 32,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    roomName,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontSize: 18,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${devices.length} Devices',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
               ),
             ),
-          );
-        },
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+            sliver: _rooms.isEmpty
+                ? SliverToBoxAdapter(
+                    child: Center(
+                      child: Text(
+                        t('no_rooms'),
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                    ),
+                  )
+                : SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 1.0,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final roomName = _rooms.keys.elementAt(index);
+                        final devices = _rooms[roomName]!;
+                        final displayRoomName = roomName == 'Unassigned' ? t('unassigned') : roomName;
+                        
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RoomDetailScreen(
+                                  roomName: roomName,
+                                  devices: devices,
+                                  onRefresh: () => _fetchDevices(),
+                                ),
+                              ),
+                            );
+                          },
+                          child: GlassCard(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _getRoomIcon(roomName),
+                                    size: 32,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  displayRoomName,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${devices.length} ${t('devices_count')}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),),
+                          ),
+                        );
+                      },
+                      childCount: _rooms.length,
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }

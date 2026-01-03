@@ -16,16 +16,16 @@ class GradientBackground extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: isDark
               ? [
-                  const Color(0xFF1A237E), // Deep Indigo
-                  const Color(0xFF000000), // Black
+                  const Color(0xFF0F172A), // Slate 900
+                  const Color(0xFF1E293B), // Slate 800 (slightly lighter for gradient effect)
                 ]
               : [
-                  const Color(0xFFBFE3D7), // Mint
-                  const Color(0xFF76B5C5), // Blue-ish
+                  const Color(0xFFF5F7FA),
+                  const Color(0xFFC3CFE2),
                 ],
         ),
       ),
-      child: SafeArea(child: child),
+      child: child,
     );
   }
 }

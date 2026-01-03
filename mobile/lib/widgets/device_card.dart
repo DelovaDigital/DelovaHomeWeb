@@ -34,119 +34,102 @@ class DeviceCard extends StatelessWidget {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon + Name
-                Expanded(
-                  child: Row(
-                    children: [
-                      Hero(
-                        tag: 'device_icon_${device.id}',
-                        child: Icon(
-                          _getDeviceIcon(device.type),
-                          size: 40,
-                          color: isPoweredOn ? accentColor : iconColorOff,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Hero(
-                              tag: 'device_name_${device.id}',
-                              child: Material(
-                                color: Colors.transparent,
-                                child: Text(
-                                  device.name,
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              device.type,
-                              style: TextStyle(color: subTextColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isPoweredOn ? accentColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Hero(
+                    tag: 'device_icon_${device.id}',
+                    child: Icon(
+                      _getDeviceIcon(device.type),
+                      size: 24,
+                      color: isPoweredOn ? accentColor : Colors.white70,
+                    ),
                   ),
                 ),
-                // Quick Power Button
-                IconButton(
-                  icon: Icon(
-                    Icons.power_settings_new,
-                    color: isPoweredOn ? accentColor : iconColorOff.withValues(alpha: 0.3),
-                    size: 32,
-                  ),
-                  onPressed: () async {
-                    String cmd = 'toggle';
-                    final type = device.type.toLowerCase();
-                    
-                    // WoL Logic for PC/NAS/RPi
-                    if (!isPoweredOn && (
-                        type == 'pc' || type == 'computer' || type == 'workstation' ||
-                        type == 'nas' || type == 'server' ||
-                        type == 'rpi' || type == 'raspberry' || type == 'raspberrypi'
-                    )) {
-                      cmd = 'wake';
-                    }
-                    // PS5 Logic
-                    else if (type == 'ps5' || type == 'console') {
-                      cmd = isPoweredOn ? 'standby' : 'wake';
-                    }
+                // Power Button
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      Icons.power_settings_new,
+                      color: isPoweredOn ? accentColor : Colors.white30,
+                      size: 20,
+                    ),
+                    onPressed: () async {
+                      String cmd = 'toggle';
+                      final type = device.type.toLowerCase();
+                      
+                      // WoL Logic for PC/NAS/RPi
+                      if (!isPoweredOn && (
+                          type == 'pc' || type == 'computer' || type == 'workstation' ||
+                          type == 'nas' || type == 'server' ||
+                          type == 'rpi' || type == 'raspberry' || type == 'raspberrypi'
+                      )) {
+                        cmd = 'wake';
+                      }
+                      // PS5 Logic
+                      else if (type == 'ps5' || type == 'console') {
+                        cmd = isPoweredOn ? 'standby' : 'wake';
+                      }
 
-                    await apiService.sendCommand(device.id, cmd);
-                    onRefresh();
-                  },
+                      await apiService.sendCommand(device.id, cmd);
+                      onRefresh();
+                    },
+                  ),
                 ),
               ],
             ),
             
-            // Quick Status Info (if on)
-            if (isPoweredOn) ...[
-              const SizedBox(height: 12),
-              Divider(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1)),
-              if (isMedia && device.status.title != null && device.status.title!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        device.status.title!,
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+            const Spacer(),
+
+            // Name & Status
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Hero(
+                  tag: 'device_name_${device.id}',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Text(
+                      device.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
-                      if (device.status.artist != null && device.status.artist!.isNotEmpty)
-                        Text(
-                          device.status.artist!,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
-              
-              // Hint to tap
-              const Center(
-                child: Text(
-                  "Tap for controls",
-                  style: TextStyle(color: Colors.white30, fontSize: 12),
+                const SizedBox(height: 4),
+                Text(
+                  isPoweredOn 
+                    ? (device.status.title ?? 'On') 
+                    : 'Off',
+                  style: TextStyle(
+                    color: isPoweredOn ? Colors.white70 : Colors.white38,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ],
         ),
       ),

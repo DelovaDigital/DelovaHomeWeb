@@ -1,28 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/app_translations.dart';
 
-class PresenceWidget extends StatelessWidget {
+class PresenceWidget extends StatefulWidget {
   final Map<String, dynamic> data;
 
   const PresenceWidget({super.key, required this.data});
 
   @override
+  State<PresenceWidget> createState() => _PresenceWidgetState();
+}
+
+class _PresenceWidgetState extends State<PresenceWidget> {
+  String _lang = 'nl';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
+
+  @override
   Widget build(BuildContext context) {
-    final people = data['people'] as List<dynamic>? ?? [];
+    final people = widget.data['people'] as List<dynamic>? ?? [];
 
     if (people.isEmpty) {
-      return const Center(child: Text('No presence data', style: TextStyle(color: Colors.white54)));
+      return Center(child: Text(t('no_presence_data'), style: const TextStyle(color: Colors.white54)));
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8.0),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
           child: Row(
             children: [
-              Icon(Icons.people, color: Colors.white70, size: 16),
-              SizedBox(width: 8),
-              Text('Presence', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              const Icon(Icons.people, color: Colors.white70, size: 16),
+              const SizedBox(width: 8),
+              Text(t('presence'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -45,7 +71,7 @@ class PresenceWidget extends StatelessWidget {
                 Text(p['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
                 const Spacer(),
                 Text(
-                  isHome ? 'Home' : 'Away',
+                  isHome ? t('home') : t('away'),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
                 ),
               ],

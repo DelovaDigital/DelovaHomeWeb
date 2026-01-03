@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../utils/app_translations.dart';
 
 class AIAssistantWidget extends StatefulWidget {
   const AIAssistantWidget({super.key});
@@ -12,6 +14,24 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
   final TextEditingController _controller = TextEditingController();
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
+  String _lang = 'nl';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
 
   Future<void> _sendCommand() async {
     final text = _controller.text.trim();
@@ -47,16 +67,18 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: Colors.cyanAccent),
-          const SizedBox(width: 10),
+          const Icon(Icons.auto_awesome, color: Color(0xFF3B82F6)), // Blue
+          const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _controller,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                hintText: 'Ask DelovaHome (e.g. "Turn on lights")',
-                hintStyle: TextStyle(color: Colors.white54),
+              decoration: InputDecoration(
+                hintText: t('ask_ai'),
+                hintStyle: const TextStyle(color: Colors.white54),
                 border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
               ),
               onSubmitted: (_) => _sendCommand(),
             ),
@@ -64,8 +86,10 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
           IconButton(
             icon: _isLoading 
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-              : const Icon(Icons.send, color: Colors.white),
+              : const Icon(Icons.send, color: Color(0xFF3B82F6)),
             onPressed: _isLoading ? null : _sendCommand,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
           ),
         ],
       ),

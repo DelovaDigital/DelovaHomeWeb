@@ -1,6 +1,9 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/gradient_background.dart';
+import '../utils/app_translations.dart';
+import '../services/location_service.dart';
 import 'dashboard_tab.dart';
 import 'devices_tab.dart';
 import 'rooms_tab.dart';
@@ -15,6 +18,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  String _lang = 'nl';
+  final LocationService _locationService = LocationService();
 
   static const List<Widget> _widgetOptions = <Widget>[
     DashboardTab(),
@@ -22,6 +27,28 @@ class _MainScreenState extends State<MainScreen> {
     RoomsTab(),
     SettingsTab(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguage();
+    _locationService.init();
+  }
+
+  @override
+  void dispose() {
+    _locationService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _lang = prefs.getString('language') ?? 'nl';
+    });
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
 
   void _onItemTapped(int index) {
     setState(() {
@@ -31,6 +58,11 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = const Color(0xFF3B82F6); // Blue
+    final inactiveColor = isDark ? Colors.white70 : const Color(0xFF64748B);
+    final navBgColor = isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.7);
+
     return Scaffold(
       extendBody: true, // Important for glass effect on bottom nav
       body: GradientBackground(
@@ -48,45 +80,60 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.2),
-          backgroundBlendMode: BlendMode.srcOver,
-        ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
         child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
           child: BackdropFilter(
             filter: ui.ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-            child: BottomNavigationBar(
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              elevation: 0,
-              items: const <BottomNavigationBarItem>[
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.dashboard_outlined),
-                  activeIcon: Icon(Icons.dashboard),
-                  label: 'Dashboard',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.devices_outlined),
-                  activeIcon: Icon(Icons.devices),
-                  label: 'Devices',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.meeting_room_outlined),
-                  activeIcon: Icon(Icons.meeting_room),
-                  label: 'Rooms',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.settings_outlined),
-                  activeIcon: Icon(Icons.settings),
-                  label: 'Settings',
-                ),
-              ],
-              currentIndex: _selectedIndex,
-              selectedItemColor: Colors.cyanAccent,
-              unselectedItemColor: Colors.white70,
-              onTap: _onItemTapped,
-              type: BottomNavigationBarType.fixed,
-              showUnselectedLabels: true,
+            child: Container(
+              decoration: BoxDecoration(
+                color: navBgColor,
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: BottomNavigationBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                type: BottomNavigationBarType.fixed,
+                showSelectedLabels: true,
+                showUnselectedLabels: true,
+                selectedItemColor: activeColor,
+                unselectedItemColor: inactiveColor,
+                selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                currentIndex: _selectedIndex,
+                onTap: _onItemTapped,
+                items: <BottomNavigationBarItem>[
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.dashboard_outlined),
+                    activeIcon: const Icon(Icons.dashboard),
+                    label: t('dashboard'),
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.devices_outlined),
+                    activeIcon: const Icon(Icons.devices),
+                    label: t('devices'),
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.meeting_room_outlined),
+                    activeIcon: const Icon(Icons.meeting_room),
+                    label: t('rooms'),
+                  ),
+                  BottomNavigationBarItem(
+                    icon: const Icon(Icons.settings_outlined),
+                    activeIcon: const Icon(Icons.settings),
+                    label: t('settings'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

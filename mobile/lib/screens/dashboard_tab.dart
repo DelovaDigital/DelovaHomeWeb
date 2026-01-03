@@ -13,6 +13,8 @@ import '../widgets/ai_assistant_widget.dart';
 import '../widgets/presence_widget.dart';
 import '../widgets/energy_widget.dart';
 
+import '../utils/app_translations.dart';
+
   class DashboardTab extends StatefulWidget {
     const DashboardTab({super.key});
 
@@ -34,10 +36,12 @@ import '../widgets/energy_widget.dart';
     Timer? _spotifyTimer;
     Timer? _energyTimer;
     Timer? _presenceTimer;
+    String _lang = 'nl';
 
     @override
     void initState() {
       super.initState();
+      _loadLanguage();
       _fetchStats();
       _fetchWeather();
       _fetchSpotifyStatus();
@@ -51,6 +55,18 @@ import '../widgets/energy_widget.dart';
       _energyTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchEnergyData());
       _presenceTimer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchPresenceData());
     }
+
+    Future<void> _loadLanguage() async {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          _lang = prefs.getString('language') ?? 'nl';
+        });
+      }
+    }
+
+    String t(String key) => AppTranslations.get(key, lang: _lang);
+
 
     @override
     void dispose() {
@@ -222,7 +238,7 @@ import '../widgets/energy_widget.dart';
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: Colors.grey[900],
-            title: const Text('Select Spotify Device', style: TextStyle(color: Colors.white)),
+            title: Text(t('select_device'), style: const TextStyle(color: Colors.white)),
             content: SizedBox(
               width: double.maxFinite,
               child: ListView.builder(
@@ -327,13 +343,13 @@ import '../widgets/energy_widget.dart';
           length: 2,
           child: AlertDialog(
             backgroundColor: Colors.grey[900],
-            title: const Text('Choose Music', style: TextStyle(color: Colors.white)),
+            title: Text(t('choose_music'), style: const TextStyle(color: Colors.white)),
             content: SizedBox(
               width: double.maxFinite,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const TabBar(tabs: [Tab(text: 'Playlists'), Tab(text: 'Albums')]),
+                  TabBar(tabs: [Tab(text: t('playlists')), Tab(text: t('albums'))]),
                   SizedBox(
                     height: 300,
                     child: TabBarView(children: [
@@ -442,21 +458,11 @@ import '../widgets/energy_widget.dart';
       }
     }
 
-    Widget _buildEnergyStat(String label, String value, IconData icon) {
-      return Column(
-        children: [
-          Icon(icon, color: Colors.white70, size: 24),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-        ],
-      );
-    }
 
     @override
     Widget build(BuildContext context) {
       final now = DateTime.now();
-      final dateStr = DateFormat('EEEE d MMMM', 'nl').format(now);
+      final dateStr = DateFormat('EEEE d MMMM', _lang).format(now);
 
       return RefreshIndicator(
         onRefresh: () async {
@@ -479,7 +485,7 @@ import '../widgets/energy_widget.dart';
                         children: [
                           Expanded(
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text('Welkom Thuis', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
+                              Text(t('welcome_home'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
                               const SizedBox(height: 4),
                               Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70)),
                             ]),
@@ -551,7 +557,7 @@ import '../widgets/energy_widget.dart';
                         children: [
                           const Icon(Icons.music_note, color: Colors.white),
                           const SizedBox(width: 8),
-                          const Text('Now Playing', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(t('now_playing'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                           const Spacer(),
                           IconButton(
                             icon: const Icon(Icons.devices, color: Colors.white),
@@ -588,14 +594,14 @@ import '../widgets/energy_widget.dart';
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : 'Unknown Title',
+                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : t('unknown_title'),
                                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['artists'][0]['name'] : 'Unknown Artist',
+                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['artists'][0]['name'] : t('unknown_artist'),
                                   style: const TextStyle(color: Colors.white70, fontSize: 14),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -757,26 +763,24 @@ import '../widgets/energy_widget.dart';
       );
     }
 
-            Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
-      return Column(
-        children: [
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+    Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Column(
+          children: [
+            GlassCard(
+              borderRadius: 20,
+              child: Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                child: Icon(icon, color: Colors.white, size: 28),
               ),
-              child: Icon(icon, color: Colors.white),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12))
-        ],
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500))
+          ],
+        ),
       );
     }
     IconData _getWeatherIcon(int? code) {

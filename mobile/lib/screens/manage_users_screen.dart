@@ -1,7 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
+import '../utils/app_translations.dart';
+import '../widgets/gradient_background.dart';
+import '../widgets/glass_card.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
@@ -14,12 +18,25 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   final ApiService _apiService = ApiService();
   List<dynamic> _users = [];
   bool _isLoading = true;
+  String _lang = 'nl';
 
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     _loadUsers();
   }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
 
   Future<void> _loadUsers() async {
     setState(() => _isLoading = true);
@@ -54,22 +71,38 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add User'),
+        backgroundColor: const Color(0xFF1A237E),
+        title: Text(t('add_user'), style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: usernameController,
-              decoration: const InputDecoration(labelText: 'Username'),
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: t('username'),
+                labelStyle: const TextStyle(color: Colors.white70),
+                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              ),
             ),
             TextField(
               controller: passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: t('password'),
+                labelStyle: const TextStyle(color: Colors.white70),
+                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              ),
               obscureText: true,
             ),
             TextField(
               controller: confirmController,
-              decoration: const InputDecoration(labelText: 'Confirm Password'),
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: t('confirm_password'),
+                labelStyle: const TextStyle(color: Colors.white70),
+                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              ),
               obscureText: true,
             ),
           ],
@@ -77,15 +110,16 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
             onPressed: () async {
               if (usernameController.text.isEmpty || passwordController.text.isEmpty) return;
               if (passwordController.text != confirmController.text) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Passwords do not match')),
+                    SnackBar(content: Text(t('passwords_do_not_match'))),
                   );
                 }
                 return;
@@ -96,7 +130,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               }
               await _performAddUser(usernameController.text, passwordController.text);
             },
-            child: const Text('Add'),
+            child: Text(t('add'), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -108,6 +142,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       final baseUrl = await _apiService.getBaseUrl();
       final client = HttpClient();
       client.badCertificateCallback = (cert, host, port) => true;
+      
       final request = await client.postUrl(Uri.parse('$baseUrl/api/register'));
       request.headers.set('Content-Type', 'application/json');
       request.add(utf8.encode(jsonEncode({
@@ -122,7 +157,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       if (data['ok'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User added successfully')),
+            SnackBar(content: Text(t('user_added'))),
           );
         }
         _loadUsers();
@@ -146,76 +181,106 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete User'),
-        content: const Text('Are you sure you want to delete this user?'),
+        backgroundColor: const Color(0xFF1A237E),
+        title: Text(t('manage_users'), style: const TextStyle(color: Colors.white)),
+        content: Text(t('delete_user_confirm'), style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
 
-    if (confirm != true) return;
-
-    try {
-      final baseUrl = await _apiService.getBaseUrl();
-      final client = HttpClient();
-      client.badCertificateCallback = (cert, host, port) => true;
-      final request = await client.deleteUrl(Uri.parse('$baseUrl/api/users/$userId'));
-      
-      final response = await request.close();
-      if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User deleted')),
-          );
+    if (confirm == true) {
+      try {
+        final baseUrl = await _apiService.getBaseUrl();
+        final client = HttpClient();
+        client.badCertificateCallback = (cert, host, port) => true;
+        
+        final request = await client.deleteUrl(Uri.parse('$baseUrl/api/users/$userId'));
+        final response = await request.close();
+        
+        if (response.statusCode == 200) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(t('user_deleted'))),
+            );
+            _loadUsers();
+          }
         }
-        _loadUsers();
-      } else {
-         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to delete user')),
-          );
-        }
+      } catch (e) {
+        debugPrint('Error deleting user: $e');
       }
-    } catch (e) {
-      debugPrint('Error deleting user: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Manage Users'),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _users.length,
-              itemBuilder: (context, index) {
-                final user = _users[index];
-                
-                return ListTile(
-                  leading: CircleAvatar(child: Text(user['Username'][0].toUpperCase())),
-                  title: Text(user['Username']),
-                  subtitle: Text(user['Role'] ?? 'User'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteUser(user['Id']),
-                  ),
-                );
-              },
+      body: GradientBackground(
+        child: Column(
+          children: [
+            AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: Text(t('manage_users'), style: const TextStyle(color: Colors.white)),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.cyan))
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _users.length,
+                      itemBuilder: (context, index) {
+                        final user = _users[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GlassCard(
+                            child: ListTile(
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.person, color: Colors.white),
+                              ),
+                              title: Text(
+                                user['Username'],
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text(
+                                user['Role'] ?? 'User',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                onPressed: () => _deleteUser(user['Id']),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.cyan,
         onPressed: _addUser,
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

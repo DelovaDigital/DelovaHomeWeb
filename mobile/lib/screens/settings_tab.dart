@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_card.dart';
+import '../utils/app_translations.dart';
 import 'hub_discovery_screen.dart';
 import 'manage_users_screen.dart';
 import 'settings/knx_settings_screen.dart';
@@ -26,6 +27,7 @@ class _SettingsTabState extends State<SettingsTab> {
   String _hubVersion = 'Unknown';
   String _appVersion = 'Unknown';
   List<dynamic> _nasDevices = [];
+  String _lang = 'nl';
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _SettingsTabState extends State<SettingsTab> {
       _hubIp = prefs.getString('hub_ip') ?? 'Unknown';
       _hubId = prefs.getString('hub_id') ?? 'Unknown';
       _appVersion = packageInfo.version;
+      _lang = prefs.getString('language') ?? 'nl';
     });
 
     // Fetch Hub Info from API
@@ -69,6 +72,21 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
+  String t(String key) => AppTranslations.get(key, lang: _lang);
+
+  Future<void> _setLanguage(String lang) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('language', lang);
+    setState(() {
+      _lang = lang;
+    });
+    
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const DelovaHome()),
+      (route) => false,
+    );
+  }
+
   Future<void> _disconnect() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('hub_ip');
@@ -82,506 +100,371 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
-  Future<void> _checkForUpdates() async {
+  Future<void> _checkUpdate() async {
     setState(() => _isCheckingUpdate = true);
     try {
       final result = await _apiService.checkUpdate();
       if (mounted) {
-        final canUpdate = result['canUpdate'] == true;
-        final message = result['message'] ?? '';
-        
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text(canUpdate ? 'Update Available' : 'System Up to Date'),
-            content: Text(canUpdate ? 'A new version is available.\n$message' : 'You are on the latest version.'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-              if (canUpdate)
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _performUpdate();
-                  },
-                  child: const Text('Update Now'),
-                ),
-            ],
-          ),
-        );
+        setState(() => _isCheckingUpdate = false);
+        if (result['updateAvailable'] == true) {
+          _showUpdateDialog(result['version']);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(t('system_up_to_date'))),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    } finally {
-      if (mounted) setState(() => _isCheckingUpdate = false);
-    }
-  }
-
-  Future<void> _performUpdate() async {
-    try {
-      final result = await _apiService.updateSystem();
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Update Started'),
-            content: Text(result['message'] ?? 'System is updating...'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-            ],
-          ),
+        setState(() => _isCheckingUpdate = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${t('error')}: $e')),
         );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update Error: $e')));
       }
     }
   }
 
-  void _showAddNasDialog() {
-    final nameController = TextEditingController();
-    final ipController = TextEditingController();
-    final userController = TextEditingController();
-    final passController = TextEditingController();
-    String type = 'smb';
-    bool isLoading = false;
-    String status = '';
-
+  void _showUpdateDialog(String newVersion) {
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Add NAS'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Name')),
-                  const SizedBox(height: 10),
-                  TextField(controller: ipController, decoration: const InputDecoration(labelText: 'IP Address')),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    initialValue: type,
-                    items: const [
-                      DropdownMenuItem(value: 'smb', child: Text('SMB (Windows/Mac)')),
-                      DropdownMenuItem(value: 'nfs', child: Text('NFS (Linux)')),
-                    ],
-                    onChanged: (v) => setState(() => type = v!),
-                    decoration: const InputDecoration(labelText: 'Type'),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(controller: userController, decoration: const InputDecoration(labelText: 'Username')),
-                  const SizedBox(height: 10),
-                  TextField(controller: passController, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
-                  const SizedBox(height: 10),
-                  if (isLoading) const CircularProgressIndicator()
-                  else ElevatedButton(
-                    onPressed: () async {
-                      if (nameController.text.isEmpty || ipController.text.isEmpty) return;
-                      setState(() { isLoading = true; status = 'Adding...'; });
-                      final navigator = Navigator.of(context);
-                      final messenger = ScaffoldMessenger.of(context);
-                      try {
-                        final data = {
-                          'name': nameController.text,
-                          'ip': ipController.text,
-                          'type': type,
-                          'username': userController.text,
-                          'password': passController.text,
-                        };
-                        final res = await _apiService.addNas(data);
-                        if (res['ok'] == true) {
-                          navigator.pop();
-                          messenger.showSnackBar(const SnackBar(content: Text('NAS Added!')));
-                        } else {
-                          setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
-                        }
-                      } catch (e) {
-                        setState(() { status = 'Error: $e'; isLoading = false; });
-                      }
-                    },
-                    child: const Text('Add NAS'),
-                  ),
-                  if (status.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(status, style: TextStyle(color: status.startsWith('Error') ? Colors.red : Colors.blue)),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showAndroidTvPairingDialog() {
-    final ipController = TextEditingController();
-    final pinController = TextEditingController();
-    String status = '';
-    bool isLoading = false;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Android TV Pairing'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Enter the IP of the Android TV and the PIN displayed on the screen.'),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: ipController,
-                  decoration: const InputDecoration(labelText: 'Android TV IP Address', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: pinController,
-                  decoration: const InputDecoration(labelText: 'PIN Code', border: OutlineInputBorder()),
-                  keyboardType: TextInputType.text,
-                ),
-                const SizedBox(height: 10),
-                if (isLoading) const CircularProgressIndicator()
-                else ElevatedButton(
-                  onPressed: () async {
-                    if (ipController.text.isEmpty || pinController.text.isEmpty) return;
-                    setState(() { isLoading = true; status = 'Submitting...'; });
-                    final navigator = Navigator.of(context);
-                    final messenger = ScaffoldMessenger.of(context);
-                    try {
-                      final res = await _apiService.pairDevice(ipController.text, pinController.text);
-                      if (res['success'] == true) {
-                        navigator.pop();
-                        messenger.showSnackBar(const SnackBar(content: Text('Pairing Submitted!')));
-                      } else {
-                        setState(() { status = 'Error: ${res['error'] ?? 'Unknown error'}'; isLoading = false; });
-                      }
-                    } catch (e) {
-                      setState(() { status = 'Error: $e'; isLoading = false; });
-                    }
-                  },
-                  child: const Text('Pair Device'),
-                ),
-                if (status.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(status, style: TextStyle(color: status.startsWith('Error') ? Colors.red : Colors.blue)),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _showAppleTvPairingDialog() {
-    final ipController = TextEditingController();
-    final pinController = TextEditingController();
-    String status = '';
-    bool isStep2 = false;
-    bool isLoading = false;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Apple TV Pairing'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!isStep2) ...[
-                  TextField(
-                    controller: ipController,
-                    decoration: const InputDecoration(labelText: 'Apple TV IP Address', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  if (isLoading) const CircularProgressIndicator()
-                  else ElevatedButton(
-                    onPressed: () async {
-                      if (ipController.text.isEmpty) return;
-                      setState(() { isLoading = true; status = 'Connecting...'; });
-                      try {
-                        final res = await _apiService.startPairing(ipController.text);
-                        if (res['ok'] == true && res['status'] == 'waiting_for_pin') {
-                          setState(() { isStep2 = true; status = 'Enter PIN shown on TV'; isLoading = false; });
-                        } else {
-                          setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
-                        }
-                      } catch (e) {
-                        setState(() { status = 'Error: $e'; isLoading = false; });
-                      }
-                    },
-                    child: const Text('Start Pairing'),
-                  ),
-                ] else ...[
-                  TextField(
-                    controller: pinController,
-                    decoration: const InputDecoration(labelText: 'PIN Code', border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 10),
-                  if (isLoading) const CircularProgressIndicator()
-                  else ElevatedButton(
-                    onPressed: () async {
-                      if (pinController.text.isEmpty) return;
-                      setState(() { isLoading = true; status = 'Verifying PIN...'; });
-                      final navigator = Navigator.of(context);
-                      final messenger = ScaffoldMessenger.of(context);
-                      try {
-                        final res = await _apiService.submitPairingPin(pinController.text);
-                        if (res['ok'] == true) {
-                          navigator.pop();
-                          messenger.showSnackBar(const SnackBar(content: Text('Pairing Successful!')));
-                        } else {
-                          setState(() { status = 'Error: ${res['message']}'; isLoading = false; });
-                        }
-                      } catch (e) {
-                        setState(() { status = 'Error: $e'; isLoading = false; });
-                      }
-                    },
-                    child: const Text('Submit PIN'),
-                  ),
-                ],
-                if (status.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(status, style: TextStyle(color: status.startsWith('Error') ? Colors.red : Colors.blue)),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-            ],
-          );
-        },
+      builder: (context) => AlertDialog(
+        title: Text(t('update_available')),
+        content: Text('${t('new_version_available')}: $newVersion'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(t('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _apiService.updateSystem();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(t('update_started'))),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${t('error')}: $e')),
+                  );
+                }
+              }
+            },
+            child: Text(t('update')),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = DelovaHome.of(context);
-    final currentTheme = appState?.themeModeValue ?? ThemeMode.system;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final headerColor = isDark ? Colors.white70 : Colors.black54;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white60 : Colors.black54;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'Account & Hub',
-            style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          _buildInfoCard(context, 'Connected Hub', _hubIp, Icons.router),
-          _buildInfoCard(context, 'Hub ID', _hubId, Icons.fingerprint),
-          _buildInfoCard(context, 'Hub Version', _hubVersion, Icons.info_outline),
-          _buildInfoCard(context, 'App Version', _appVersion, Icons.mobile_friendly),
-          
-          const SizedBox(height: 20),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.logout),
-            label: const Text('Disconnect / Switch Hub'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withValues(alpha: 0.8),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 60, 20, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Text(
+                t('settings'),
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
             ),
-            onPressed: _disconnect,
-          ),
 
-          const SizedBox(height: 30),
-          Text(
-            'System Management',
-            style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.brightness_6,
-            color: Colors.amber,
-            title: 'Theme',
-            subtitle: currentTheme == ThemeMode.system ? 'System' : (currentTheme == ThemeMode.dark ? 'Dark' : 'Light'),
-            onTap: () async {
-              final choice = await showDialog<ThemeMode>(
-                context: context,
-                builder: (context) => SimpleDialog(
-                  title: const Text('Choose Theme'),
+            // Hub Info Card
+            GlassCard(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   children: [
-                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.system), child: const Text('System')),
-                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.dark), child: const Text('Dark')),
-                    SimpleDialogOption(onPressed: () => Navigator.pop(context, ThemeMode.light), child: const Text('Light')),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blueAccent.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.hub, color: Colors.blueAccent, size: 30),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Delova Hub',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                '$_hubIp • v$_hubVersion',
+                                style: TextStyle(color: subTextColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_isCheckingUpdate)
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.system_update),
+                            color: textColor,
+                            onPressed: _checkUpdate,
+                            tooltip: t('check_updates'),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-              );
-
-              if (choice != null) {
-                await appState?.setThemeMode(choice);
-                if (mounted) setState(() {});
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.people,
-            color: Colors.green,
-            title: 'Manage Users',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ManageUsersScreen())),
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.system_update,
-            color: Colors.blue,
-            title: 'Check for Updates',
-            trailing: _isCheckingUpdate 
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : null,
-            onTap: _isCheckingUpdate ? null : _checkForUpdates,
-          ),
-
-          const SizedBox(height: 30),
-          Text(
-            'Integrations',
-            style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.solar_power,
-            color: Colors.orange,
-            title: 'Energy & Solar',
-            subtitle: 'Configure solar panels and energy monitoring',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const EnergySettingsScreen())),
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.settings_input_component,
-            color: Colors.purple,
-            title: 'KNX Automation',
-            subtitle: 'Configure KNX IP Interface',
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const KnxSettingsScreen())),
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.tv,
-            color: Colors.grey,
-            title: 'Pair Apple TV',
-            onTap: _showAppleTvPairingDialog,
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.tv,
-            color: Colors.green,
-            title: 'Pair Android TV',
-            onTap: _showAndroidTvPairingDialog,
-          ),
-          const SizedBox(height: 10),
-          _buildSettingTile(
-            context,
-            icon: Icons.storage,
-            color: Colors.blueGrey,
-            title: 'Add NAS',
-            onTap: _showAddNasDialog,
-          ),
-          
-          if (_nasDevices.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Text(
-              'Connected Storage',
-              style: TextStyle(color: headerColor, fontSize: 14, fontWeight: FontWeight.bold),
+              ),
             ),
-            const SizedBox(height: 10),
-            ..._nasDevices.map((nas) {
-              final name = nas['name'] ?? 'Unknown NAS';
-              final id = nas['id']?.toString() ?? '';
-              return _buildSettingTile(
-                context,
-                icon: Icons.folder_shared,
-                color: Colors.indigo,
-                title: name,
-                subtitle: nas['ip'] ?? '',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => NasBrowserScreen(nasId: id, nasName: name),
-                  ),
-                ),
-              );
-            }),
-          ],
+            
+            const SizedBox(height: 20),
 
-          const SizedBox(height: 50),
-        ],
+            // General Settings
+            _buildSectionHeader(t('general'), textColor),
+            GlassCard(
+              child: Column(
+                children: [
+                  _buildSettingTile(
+                    icon: Icons.language,
+                    title: t('language'),
+                    subtitle: _lang == 'nl' ? 'Nederlands' : 'English',
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => Container(
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                title: const Text('Nederlands'),
+                                trailing: _lang == 'nl' ? const Icon(Icons.check, color: Colors.blue) : null,
+                                onTap: () => _setLanguage('nl'),
+                              ),
+                              ListTile(
+                                title: const Text('English'),
+                                trailing: _lang == 'en' ? const Icon(Icons.check, color: Colors.blue) : null,
+                                onTap: () => _setLanguage('en'),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    textColor: textColor,
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildSettingTile(
+                    icon: Icons.dark_mode,
+                    title: t('theme'),
+                    subtitle: DelovaHome.of(context)?.themeModeValue == ThemeMode.system 
+                        ? t('system') 
+                        : DelovaHome.of(context)?.themeModeValue == ThemeMode.dark ? t('dark') : t('light'),
+                    onTap: () {
+                      DelovaHome.of(context)?.cycleTheme();
+                    },
+                    textColor: textColor,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Integrations
+            _buildSectionHeader(t('integrations'), textColor),
+            GlassCard(
+              child: Column(
+                children: [
+                  _buildSettingTile(
+                    icon: Icons.router,
+                    title: 'KNX',
+                    subtitle: t('configure_knx'),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KnxSettingsScreen())),
+                    textColor: textColor,
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildSettingTile(
+                    icon: Icons.bolt,
+                    title: t('energy'),
+                    subtitle: t('configure_energy'),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnergySettingsScreen())),
+                    textColor: textColor,
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildSettingTile(
+                    icon: Icons.storage,
+                    title: 'NAS',
+                    subtitle: '${_nasDevices.length} ${t('devices')}',
+                    onTap: () {
+                      if (_nasDevices.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('No NAS devices found')),
+                        );
+                        return;
+                      }
+                      
+                      if (_nasDevices.length == 1) {
+                        final nas = _nasDevices.first;
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => NasBrowserScreen(
+                          nasId: nas['id'] ?? 'unknown',
+                          nasName: nas['name'] ?? 'NAS',
+                        )));
+                        return;
+                      }
+
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => Container(
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Text('Select NAS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              ),
+                              ..._nasDevices.map((nas) => ListTile(
+                                leading: const Icon(Icons.storage),
+                                title: Text(nas['name'] ?? 'NAS'),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => NasBrowserScreen(
+                                    nasId: nas['id'] ?? 'unknown',
+                                    nasName: nas['name'] ?? 'NAS',
+                                  )));
+                                },
+                              )),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    textColor: textColor,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Management
+            _buildSectionHeader(t('management'), textColor),
+            GlassCard(
+              child: Column(
+                children: [
+                  _buildSettingTile(
+                    icon: Icons.people,
+                    title: t('users'),
+                    subtitle: t('manage_users'),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
+                    textColor: textColor,
+                  ),
+                  const Divider(height: 1, indent: 60),
+                  _buildSettingTile(
+                    icon: Icons.logout,
+                    title: t('disconnect'),
+                    subtitle: t('disconnect_hub'),
+                    onTap: _disconnect,
+                    textColor: Colors.redAccent,
+                    iconColor: Colors.redAccent,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+            
+            Center(
+              child: Text(
+                'Delova Home App v$_appVersion',
+                style: TextStyle(color: subTextColor, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSettingTile(BuildContext context, {
+  Widget _buildSectionHeader(String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 10, bottom: 10),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: color.withValues(alpha: 0.6),
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingTile({
     required IconData icon,
-    required Color color,
     required String title,
     String? subtitle,
-    Widget? trailing,
-    VoidCallback? onTap,
+    required VoidCallback onTap,
+    Color? textColor,
+    Color? iconColor,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.black54;
-    final iconColor = isDark ? Colors.white54 : Colors.black45;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: GlassCard(
-        child: ListTile(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          title: Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: textColor)),
-          subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: subTextColor, fontSize: 12)) : null,
-          trailing: trailing ?? Icon(Icons.arrow_forward_ios, size: 16, color: iconColor),
-          onTap: onTap,
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: (iconColor ?? Colors.blue).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: iconColor ?? Colors.blue, size: 20),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: textColor,
+          fontWeight: FontWeight.w600,
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoCard(BuildContext context, String title, String value, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.black54;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: GlassCard(
-        child: ListTile(
-          leading: Icon(icon, color: Colors.cyan),
-          title: Text(title, style: TextStyle(color: subTextColor, fontSize: 12)),
-          subtitle: Text(value, style: TextStyle(color: textColor, fontSize: 16)),
-        ),
-      ),
+      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: textColor?.withValues(alpha: 0.6))) : null,
+      trailing: Icon(Icons.chevron_right, color: textColor?.withValues(alpha: 0.3)),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
 }

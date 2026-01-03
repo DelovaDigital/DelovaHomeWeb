@@ -32,6 +32,10 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Delova Home needs access to your local network to discover your Hub.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Delova Home needs access to your location to determine if you are home.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Delova Home needs access to your location to determine if you are home.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -5,6 +5,7 @@ import 'package:nsd/nsd.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'main_screen.dart';
+import '../utils/app_translations.dart';
 
 import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
@@ -22,10 +23,12 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
   bool _isScanning = false;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  String _lang = 'nl';
 
   @override
   void initState() {
     super.initState();
+    _loadLanguage();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -36,6 +39,17 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     _checkAutoLogin();
     _startDiscovery();
   }
+
+  Future<void> _loadLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _lang = prefs.getString('language') ?? 'nl';
+      });
+    }
+  }
+
+  String t(String key) => AppTranslations.get(key, lang: _lang);
 
   Future<void> _checkAutoLogin() async {
     final prefs = await SharedPreferences.getInstance();
@@ -140,17 +154,17 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A237E),
-        title: const Text('Manual Connect', style: TextStyle(color: Colors.white)),
+        title: Text(t('manual_connect'), style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: ipController,
               style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'IP Address',
-                labelStyle: TextStyle(color: Colors.white70),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              decoration: InputDecoration(
+                labelText: t('ip_address'),
+                labelStyle: const TextStyle(color: Colors.white70),
+                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
               ),
             ),
             TextField(
@@ -168,7 +182,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
@@ -185,7 +199,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 );
               }
             },
-            child: const Text('Connect', style: TextStyle(color: Colors.white)),
+            child: Text(t('connect'), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -272,7 +286,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
             ),
             const SizedBox(height: 10),
             Text(
-              _isScanning ? 'Searching for hubs...' : 'Scan complete',
+              _isScanning ? t('searching_hubs') : 'Scan complete',
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -291,13 +305,13 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                               children: [
                                 const Icon(Icons.wifi_off, color: Colors.white54, size: 48),
                                 const SizedBox(height: 16),
-                                const Text(
-                                  'No hubs found',
-                                  style: TextStyle(color: Colors.white70),
+                                Text(
+                                  t('no_results'),
+                                  style: const TextStyle(color: Colors.white70),
                                 ),
                                 TextButton(
                                   onPressed: _startDiscovery,
-                                  child: const Text('Retry Scan', style: TextStyle(color: Colors.cyan)),
+                                  child: Text(t('retry'), style: const TextStyle(color: Colors.cyan)),
                                 ),
                               ],
                             ),
@@ -347,9 +361,9 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
               child: TextButton.icon(
                 onPressed: _showManualConnectDialog,
                 icon: const Icon(Icons.add_link, color: Colors.white70),
-                label: const Text(
-                  'Connect Manually',
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                label: Text(
+                  t('manual_connect'),
+                  style: const TextStyle(color: Colors.white70, fontSize: 16),
                 ),
               ),
             ),

@@ -108,6 +108,23 @@ class ApiService {
     }
   }
 
+  Future<void> updateLocation(double latitude, double longitude) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/api/presence/location'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'latitude': latitude,
+          'longitude': longitude,
+          'timestamp': DateTime.now().toIso8601String(),
+        }),
+      );
+    } catch (e) {
+      debugPrint('Error updating location: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> getEnergyData() async {
     final baseUrl = await getBaseUrl();
     try {

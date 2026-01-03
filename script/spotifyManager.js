@@ -350,14 +350,46 @@ class SpotifyManager {
     async getUserPlaylists(userId) {
         const headers = await this.getHeaders(userId);
         if (!headers) return [];
+        
+        const playlists = [];
+
+        // 1. Fetch Liked Songs (Saved Tracks) Count
         try {
-            const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=20', { headers });
-            if (!response.ok) return [];
-            const data = await response.json();
-            return data.items || [];
+            const likedResp = await fetch('https://api.spotify.com/v1/me/tracks?limit=1', { headers });
+            if (likedResp.ok) {
+                const likedData = await likedResp.json();
+                if (likedData.total > 0) {
+                    playlists.push({
+                        id: 'liked-songs',
+                        name: 'Liked Songs',
+                        uri: 'spotify:collection:tracks', // Special URI we will handle
+                        images: [{ url: 'https://misc.scdn.co/liked-songs/liked-songs-300.png' }],
+                        tracks: { total: likedData.total }
+                    });
+                }
+            }
         } catch (e) {
-            return [];
+            console.error('[Spotify] Error fetching Liked Songs:', e);
         }
+
+        // 2. Fetch User Playlists
+        try {
+            // Increased limit to 50 to fetch more playlists
+            const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', { headers });
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`[Spotify] getUserPlaylists failed: ${response.status} ${text}`);
+            } else {
+                const data = await response.json();
+                if (data.items) {
+                    playlists.push(...data.items);
+                }
+            }
+        } catch (e) {
+            console.error('[Spotify] getUserPlaylists exception:', e);
+        }
+
+        return playlists;
     }
 
     async getTrack(userId, trackId) {
@@ -391,6 +423,24 @@ class SpotifyManager {
         const headers = await this.getHeaders(userId);
         if (!headers) throw new Error('No valid Spotify token for user');
         
+        // Handle "Liked Songs" special case
+        if (contextUri === 'spotify:collection:tracks') {
+            try {
+                // Fetch the first 50 liked songs
+                const tracksResp = await fetch('https://api.spotify.com/v1/me/tracks?limit=50', { headers });
+                if (tracksResp.ok) {
+                    const data = await tracksResp.json();
+                    const uris = data.items.map(item => item.track.uri);
+                    if (uris.length > 0) {
+                        return this.playUris(userId, uris, deviceId);
+                    }
+                }
+            } catch (e) {
+                console.error('[Spotify] Error playing Liked Songs:', e);
+            }
+            // Fallback if fetch fails or empty, though unlikely if we showed it
+        }
+
         let url = 'https://api.spotify.com/v1/me/player/play';
         if (deviceId) {
             url += `?device_id=${encodeURIComponent(deviceId)}`;

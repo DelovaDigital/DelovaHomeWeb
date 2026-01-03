@@ -1718,6 +1718,27 @@ app.post('/api/device/pair', (req, res) => {
     }
 });
 
+app.post('/api/device/credentials', express.json(), (req, res) => {
+    const { ip, username, password, type } = req.body;
+    
+    if (!ip || !username || !password) {
+        return res.status(400).json({ error: 'IP, username, and password are required' });
+    }
+
+    // Currently only supporting camera credentials via this generic endpoint
+    // Can be expanded for other types later
+    if (type === 'camera' || !type) { // Default to camera if type not specified for backward compatibility or ease
+        const success = deviceManager.saveCameraCredentials(ip, username, password);
+        if (success) {
+            res.json({ success: true });
+        } else {
+            res.status(500).json({ error: 'Failed to save credentials' });
+        }
+    } else {
+        res.status(400).json({ error: 'Unsupported device type' });
+    }
+});
+
 // --- Energy API ---
 app.get('/api/energy/data', (req, res) => {
     res.json(energyManager.getData());
@@ -1809,9 +1830,30 @@ const handleUpgrade = (request, socket, head) => {
         wss.handleUpgrade(request, socket, head, (ws) => {
             const query = parsedUrl.query;
             const deviceId = query.deviceId;
-            const rtspUrl = query.rtspUrl;
+            let rtspUrl = query.rtspUrl;
             
             if (deviceId && rtspUrl) {
+                // Check for credential overrides
+                try {
+                    // Extract IP from RTSP URL
+                    // Format: rtsp://user:pass@ip:port/path or rtsp://ip:port/path
+                    // We use the global URL class to parse the RTSP string
+                    const urlObj = new URL(rtspUrl);
+                    const ip = urlObj.hostname;
+                    
+                    if (deviceManager.cameraCredentials && deviceManager.cameraCredentials[ip]) {
+                        const creds = deviceManager.cameraCredentials[ip];
+                        if (creds.username && creds.password) {
+                            urlObj.username = creds.username;
+                            urlObj.password = creds.password;
+                            rtspUrl = urlObj.toString();
+                            console.log(`[Stream] Using overridden credentials for camera ${ip}`);
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Stream] Error parsing RTSP URL for credentials:', e);
+                }
+
                 const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
                 stream.addClient(ws);
             } else {

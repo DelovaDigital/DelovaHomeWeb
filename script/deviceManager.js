@@ -324,7 +324,20 @@ class DeviceManager extends EventEmitter {
         }
     }
 
-
+    saveCameraCredentials(ip, username, password) {
+        try {
+            if (!this.cameraCredentials) this.cameraCredentials = {};
+            this.cameraCredentials[ip] = { username, password };
+            
+            const credsPath = path.join(__dirname, '../camera-credentials.json');
+            fs.writeFileSync(credsPath, JSON.stringify(this.cameraCredentials, null, 4));
+            console.log(`Saved credentials for camera ${ip}`);
+            return true;
+        } catch (e) {
+            console.error('Failed to save Camera credentials:', e.message);
+            return false;
+        }
+    }
 
     loadSamsungCredentials() {
         try {

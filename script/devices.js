@@ -171,10 +171,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const btn = document.getElementById(`btn-connect-${deviceId}`);
                 if (btn) {
-                    btn.onclick = () => {
+                    btn.onclick = async () => {
                         const user = document.getElementById(`cam-user-${deviceId}`).value;
                         const pass = document.getElementById(`cam-pass-${deviceId}`).value;
                         if (user && pass) {
+                            // Save to backend
+                            try {
+                                await fetch('/api/device/credentials', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ ip, username: user, password: pass, type: 'camera' })
+                                });
+                            } catch (e) {
+                                console.error('Failed to save credentials to server:', e);
+                            }
+
                             localStorage.setItem(`camera_creds_${deviceId}`, JSON.stringify({ user, pass }));
                             // Retry stream
                             startCameraStream(deviceId, ip, containerId);

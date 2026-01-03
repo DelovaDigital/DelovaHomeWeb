@@ -20,10 +20,17 @@ class SpotifyManager {
     getAuthUrl(userId, localBaseUrl) {
         if (!this.clientId) return null;
         
-        console.log(`[Spotify] Generating Auth URL. Redirect URI: ${this.redirectUri}`);
+        // Determine dynamic redirect URI if localBaseUrl is provided
+        let currentRedirectUri = this.redirectUri;
+        if (localBaseUrl && !process.env.SPOTIFY_REDIRECT_URI) {
+             // If no hardcoded URI is set, try to construct it from the request host
+             currentRedirectUri = `${localBaseUrl}/api/spotify/callback`;
+        }
+
+        console.log(`[Spotify] Generating Auth URL. Redirect URI: ${currentRedirectUri}`);
 
         // Use the 'state' parameter to pass the userId and localBaseUrl back to the callback
-        const stateObj = { userId };
+        const stateObj = { userId, redirectUri: currentRedirectUri };
         if (localBaseUrl) {
             stateObj.localBaseUrl = localBaseUrl;
         }
@@ -32,7 +39,7 @@ class SpotifyManager {
             response_type: 'code',
             client_id: this.clientId,
             scope: this.scopes.join(' '),
-            redirect_uri: this.redirectUri,
+            redirect_uri: currentRedirectUri,
             state: state
         });
         return `https://accounts.spotify.com/authorize?${params.toString()}`;
@@ -40,8 +47,14 @@ class SpotifyManager {
 
     async handleCallback(code, state) {
         let userId;
+        let redirectUri = this.redirectUri;
+
         try {
-            userId = JSON.parse(Buffer.from(state, 'base64').toString('utf8')).userId;
+            const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+            userId = stateObj.userId;
+            if (stateObj.redirectUri) {
+                redirectUri = stateObj.redirectUri;
+            }
         } catch (e) {
             console.error('Invalid state received from Spotify callback:', e);
             return false;
@@ -55,7 +68,7 @@ class SpotifyManager {
         const params = new URLSearchParams({
             grant_type: 'authorization_code',
             code: code,
-            redirect_uri: this.redirectUri
+            redirect_uri: redirectUri
         });
 
         const response = await fetch('https://accounts.spotify.com/api/token', {

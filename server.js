@@ -621,7 +621,16 @@ app.get('/api/spotify/login', (req, res) => {
 app.get('/api/spotify/callback', async (req, res) => {
     const { code, state } = req.query;
     if (await spotifyManager.handleCallback(code, state)) {
-        // You can redirect to a success page or just close the window.
+        // Try to redirect back to the settings page if localBaseUrl is available
+        try {
+            const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+            if (stateObj.localBaseUrl) {
+                return res.redirect(`${stateObj.localBaseUrl}/pages/settings.html?tab=integrations`);
+            }
+        } catch (e) {
+            console.error('Error parsing state for redirect:', e);
+        }
+        // Fallback if no localBaseUrl
         res.send('<script>window.close();</script>');
     } else {
         res.status(500).send('Spotify authentication failed');

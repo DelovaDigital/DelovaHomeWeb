@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="device-card-inner">
                 <div class="device-card-top">
                     <div class="device-icon-wrapper ${statusClass}">
-                        <i class="fas ${icon}"></i>
+                        <i class="${icon}"></i>
                     </div>
                     <div class="device-status-indicator ${statusClass}"></div>
                 </div>

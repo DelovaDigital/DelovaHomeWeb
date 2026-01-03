@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
     unassignedPanel.innerHTML = `
       <strong>Niet-toegewezen apparaten</strong>
       <div class="unassigned-list">
-        ${unassigned.length>0 ? unassigned.map(u=>`<div class="unassigned-item" draggable="true" data-device-id="${u.id}"><i class="fas ${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(u) : 'fa-cube'}"></i> ${u.name} <small>(${u.ip || 'n/a'})</small></div>`).join('') : '<div class="empty">Geen niet-toegewezen apparaten</div>'}
+        ${unassigned.length>0 ? unassigned.map(u=>`<div class="unassigned-item" draggable="true" data-device-id="${u.id}"><i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(u) : 'fas fa-cube'}"></i> ${u.name} <small>(${u.ip || 'n/a'})</small></div>`).join('') : '<div class="empty">Geen niet-toegewezen apparaten</div>'}
       </div>
     `;
     roomsList.appendChild(unassignedPanel);
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span>${devs.length} Apparaten</span>
         </div>
         <div class="room-devices">
-          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="fas ${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fa-cube'}"></i> <span>${d.name}</span> <button data-device="${d.id}" class="unassign" title="Remove"><i class="fas fa-times"></i></button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
+          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fas fa-cube'}"></i> <span>${d.name}</span> <button data-device="${d.id}" class="unassign" title="Remove"><i class="fas fa-times"></i></button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
         </div>
         <div class="room-add">
           <select class="add-select">

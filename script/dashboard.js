@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
         <div class="room-devices">
-          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="fas ${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fa-cube'}"></i> ${d.name} <button data-device="${d.id}" class="unassign">Verwijder</button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
+          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fas fa-cube'}"></i> ${d.name} <button data-device="${d.id}" class="unassign">Verwijder</button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
         </div>
       `;
 

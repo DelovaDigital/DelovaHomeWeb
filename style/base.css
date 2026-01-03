@@ -179,6 +179,12 @@ a { text-decoration: none; color: inherit; }
 
 /* Modals */
 .modal-overlay { 
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
     background: rgba(0, 0, 0, 0.6); 
     backdrop-filter: blur(8px);
 }
@@ -187,9 +193,102 @@ a { text-decoration: none; color: inherit; }
     border-radius: var(--radius-xl); 
     padding: 30px; 
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    width: 500px; /* Default width */
 }
 
-/* Utilities */
+/* Dashboard Layout */
+#roomsList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.widgets-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Spotify Widget Buttons */
+.btn-mini {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--text);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.btn-mini:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-toggle {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-toggle-large {
+    width: 50px; 
+    height: 50px; 
+    border-radius: 50%; 
+    font-size: 1.2em;
+}
+
+.btn-toggle.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+.btn-text {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    transition: background 0.2s;
+}
+
+.btn-text:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.btn-action {
+    width: 100%;
+    padding: 10px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.2s;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+}
 .hidden { display: none !important; }
 .flex-center { display: flex; align-items: center; justify-content: center; }
 .w-full { width: 100%; }

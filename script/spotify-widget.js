@@ -71,8 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div class="control-group" style="justify-content: center; gap: 20px; margin-bottom: 15px;">
                         <button class="btn-mini" onclick="controlSpotify('previous')"><i class="fas fa-step-backward"></i></button>
-                        <button class="btn-toggle ${isPlaying ? 'active' : ''}" onclick="controlSpotify('${isPlaying ? 'pause' : 'play'}')" 
-                            style="width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2em;">
+                        <button class="btn-toggle btn-toggle-large ${isPlaying ? 'active' : ''}" onclick="controlSpotify('${isPlaying ? 'pause' : 'play'}')">
                             <i class="fas fa-${isPlaying ? 'pause' : 'play'}"></i>
                         </button>
                         <button class="btn-mini" onclick="controlSpotify('next')"><i class="fas fa-step-forward"></i></button>
@@ -87,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div style="margin-top: 15px; text-align: center;">
-                        <button class="btn-text" onclick="toggleSpotifyLibrary()" style="color: #1db954; background: none; border: none; cursor: pointer; font-weight: bold;">
+                        <button class="btn-text" onclick="toggleSpotifyLibrary()">
                             <i class="fas fa-list"></i> Afspeellijsten & Albums
                         </button>
                     </div>

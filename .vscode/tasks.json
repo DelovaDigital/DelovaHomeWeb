@@ -69,6 +69,14 @@
 			"args": [],
 			"isBackground": false,
 			"group": "none"
+		},
+		{
+			"label": "append_ripple_to_base",
+			"type": "shell",
+			"command": "cat >> /Users/alessiodepreytere/Documents/GitHub/OmniHome/web/style/base.css <<EOF\n\n/* Animations Shared */\n.fade-in-up {\n    animation: fadeInUp 0.5s ease-out forwards;\n}\n\n.ripple {\n    position: absolute;\n    border-radius: 50%;\n    background: rgba(255, 255, 255, 0.4);\n    transform: scale(0);\n    animation: ripple 0.6s linear;\n    pointer-events: none;\n}\n\n@keyframes ripple {\n    to {\n        transform: scale(4);\n        opacity: 0;\n    }\n}\nEOF\n",
+			"args": [],
+			"isBackground": false,
+			"group": "none"
 		}
 	]
 }

@@ -407,9 +407,9 @@ function getDeviceIconClass(device) {
     else if (type === 'cover' || type === 'blind') icon = 'fas fa-warehouse';
     else if (type === 'vacuum') icon = 'fas fa-robot';
     else if (type === 'sensor') icon = 'fas fa-wifi';
-    else if (type === 'console' || type === 'playstation') {
-        if (name.includes('ps5') || name.includes('playstation')) icon = 'fab fa-playstation';
-        else if (name.includes('xbox')) icon = 'fab fa-xbox';
+    else if (type === 'console' || type === 'playstation' || type === 'ps5' || type === 'xbox') {
+        if (name.includes('ps5') || name.includes('playstation') || type === 'ps5') icon = 'fab fa-playstation';
+        else if (name.includes('xbox') || type === 'xbox') icon = 'fab fa-xbox';
         else icon = 'fas fa-gamepad';
     }
     else if (type === 'nas') icon = 'fas fa-server';

@@ -327,6 +327,12 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* Buttons */
+button, .btn, .btn-mini, .btn-toggle, .btn-power, .btn-icon-only, .btn-text, .btn-action, .btn-primary {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0); /* Fix for Safari/Chrome rendering glitches */
+}
+
 .btn { 
     width: 100%; 
     padding: 14px; 

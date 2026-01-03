@@ -2542,9 +2542,8 @@ class DeviceManager extends EventEmitter {
                     } else if (msg.status === 'debug') {
                         console.log(`[Samsung Debug] ${msg.message}`);
                     } else if (msg.error === 'legacy_detected') {
-                        console.log(`[Samsung Service] Legacy TV detected at ${ip}.`);
-                        // We do NOT permanently add to legacySamsungDevices here anymore to allow retries
-                        // this.legacySamsungDevices.add(ip);
+                        console.log(`[Samsung Service] Legacy TV detected at ${ip}. Switching to legacy protocol.`);
+                        this.legacySamsungDevices.add(ip);
                     } else if (msg.error) {
                         console.error(`[Samsung Service Error] ${ip}: ${msg.error}`);
                     }
@@ -2967,20 +2966,35 @@ class DeviceManager extends EventEmitter {
         } else if (command === 'mute') {
             if (isMac) cmd = 'osascript -e "set volume output muted true"';
             if (isLinux) cmd = 'amixer -q set Master mute';
+            if (isWindows) cmd = 'powershell -c "(new-object -com wscript.shell).SendKeys([char]173)"';
         } else if (command === 'unmute') {
             if (isMac) cmd = 'osascript -e "set volume output muted false"';
             if (isLinux) cmd = 'amixer -q set Master unmute';
+            if (isWindows) cmd = 'powershell -c "(new-object -com wscript.shell).SendKeys([char]173)"'; // Toggle
         } else if (command === 'volume_up') {
             if (isMac) cmd = 'osascript -e "set volume output volume (output volume of (get volume settings) + 10)"';
             if (isLinux) cmd = 'amixer -q set Master 5%+';
+            if (isWindows) cmd = 'powershell -c "(new-object -com wscript.shell).SendKeys([char]175)"';
         } else if (command === 'volume_down') {
             if (isMac) cmd = 'osascript -e "set volume output volume (output volume of (get volume settings) - 10)"';
             if (isLinux) cmd = 'amixer -q set Master 5%-';
+            if (isWindows) cmd = 'powershell -c "(new-object -com wscript.shell).SendKeys([char]174)"';
         } else if (command === 'set_volume') {
              if (isMac) cmd = `osascript -e "set volume output volume ${value}"`;
              if (isLinux) cmd = `amixer -q set Master ${value}%`;
+             // Windows set volume absolute is hard without nircmd, skipping for now or using loop
         } else if (command === 'play' || command === 'pause') {
              if (isMac) cmd = `osascript -e 'tell application "System Events" to key code 16'`; // Media Play/Pause
+             if (isLinux) cmd = 'xdotool key XF86AudioPlay';
+             if (isWindows) cmd = 'powershell -c "(new-object -com wscript.shell).SendKeys([char]179)"';
+        } else if (command === 'next') {
+             if (isMac) cmd = `osascript -e 'tell application "System Events" to key code 19'`;
+             if (isLinux) cmd = 'xdotool key XF86AudioNext';
+             if (isWindows) cmd = 'powershell -c "(new-object -com wscript.shell).SendKeys([char]176)"';
+        } else if (command === 'previous') {
+             if (isMac) cmd = `osascript -e 'tell application "System Events" to key code 20'`;
+             if (isLinux) cmd = 'xdotool key XF86AudioPrev';
+             if (isWindows) cmd = 'powershell -c "(new-object -com wscript.shell).SendKeys([char]177)"';
         }
 
         if (!cmd) {

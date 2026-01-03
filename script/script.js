@@ -240,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { name: 'Dashboard', icon: 'fas fa-home', href: 'dashboard.html' },
             { name: 'Kamers', icon: 'fas fa-door-open', href: 'rooms.html' },
             { name: 'Apparaten', icon: 'fas fa-laptop-house', href: 'devices.html' },
+            { name: 'Automatiseringen', icon: 'fas fa-magic', href: 'automations.html' },
             { name: 'Instellingen', icon: 'fas fa-cog', href: 'settings.html' }
         ];
 

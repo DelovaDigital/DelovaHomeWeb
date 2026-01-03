@@ -1582,6 +1582,38 @@ app.get('/api/nas/:id/stream', async (req, res) => {
     }
 });
 
+// --- Automation API ---
+app.get('/api/automations', (req, res) => {
+    res.json(automationManager.getAutomations());
+});
+
+app.post('/api/automations', (req, res) => {
+    try {
+        const automation = automationManager.addAutomation(req.body);
+        res.json({ ok: true, automation });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+app.put('/api/automations/:id', (req, res) => {
+    try {
+        const automation = automationManager.updateAutomation(req.params.id, req.body);
+        res.json({ ok: true, automation });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+app.delete('/api/automations/:id', (req, res) => {
+    try {
+        automationManager.deleteAutomation(req.params.id);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
 // --- System Update Endpoints ---
 
 app.get('/api/system/info', (req, res) => {
@@ -1862,6 +1894,7 @@ udpServer.bind(8888, () => {
     
     // Initialize Managers
     initHubConfigFromDB();
+    automationManager.init();
 
     // Start PS5 Discovery
     ps5Manager.discover().then(devices => {

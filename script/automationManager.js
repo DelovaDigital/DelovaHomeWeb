@@ -1,6 +1,11 @@
 const EventEmitter = require('events');
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 const deviceManager = require('./deviceManager');
+const presenceManager = require('./presenceManager');
+
+const DATA_FILE = path.join(__dirname, '../data/automations.json');
 
 class AutomationManager extends EventEmitter {
     constructor() {
@@ -12,6 +17,37 @@ class AutomationManager extends EventEmitter {
         deviceManager.on('device-updated', (device) => {
             this.checkStateTriggers(device);
         });
+
+        // Listen for presence updates
+        presenceManager.on('home-state-changed', (state) => {
+            this.checkPresenceTriggers(state);
+        });
+    }
+
+    init() {
+        this.load();
+    }
+
+    load() {
+        try {
+            if (fs.existsSync(DATA_FILE)) {
+                const data = fs.readFileSync(DATA_FILE, 'utf8');
+                this.automations = JSON.parse(data);
+                // Register all loaded automations
+                this.automations.forEach(a => this.registerAutomation(a));
+                console.log(`[Automation] Loaded ${this.automations.length} automations.`);
+            }
+        } catch (e) {
+            console.error('[Automation] Failed to load automations:', e);
+        }
+    }
+
+    save() {
+        try {
+            fs.writeFileSync(DATA_FILE, JSON.stringify(this.automations, null, 2));
+        } catch (e) {
+            console.error('[Automation] Failed to save automations:', e);
+        }
     }
 
     // --- CRUD Operations ---
@@ -26,6 +62,7 @@ class AutomationManager extends EventEmitter {
         
         this.automations.push(automation);
         this.registerAutomation(automation);
+        this.save();
         return automation;
     }
 
@@ -39,6 +76,7 @@ class AutomationManager extends EventEmitter {
         // Re-register
         this.unregisterAutomation(id);
         this.registerAutomation(updated);
+        this.save();
         
         return updated;
     }
@@ -48,6 +86,7 @@ class AutomationManager extends EventEmitter {
         if (index !== -1) {
             this.unregisterAutomation(id);
             this.automations.splice(index, 1);
+            this.save();
         }
     }
 
@@ -108,6 +147,24 @@ class AutomationManager extends EventEmitter {
                     console.log(`[Automation] Triggered state-based automation: ${automation.name}`);
                     this.executeActions(automation.actions);
                 }
+            }
+        });
+    }
+
+    checkPresenceTriggers(state) {
+        this.automations.forEach(automation => {
+            if (!automation.enabled) return;
+            if (automation.trigger.type !== 'presence') return;
+
+            const t = automation.trigger;
+            // trigger: { type: 'presence', event: 'leave_home' | 'arrive_home' }
+            
+            if (t.event === 'leave_home' && state === 'away') {
+                 console.log(`[Automation] Triggered presence (leave) automation: ${automation.name}`);
+                 this.executeActions(automation.actions);
+            } else if (t.event === 'arrive_home' && state === 'home') {
+                 console.log(`[Automation] Triggered presence (arrive) automation: ${automation.name}`);
+                 this.executeActions(automation.actions);
             }
         });
     }

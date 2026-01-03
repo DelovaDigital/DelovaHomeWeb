@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatiseringen - DelovaHome</title>
+    <link rel="stylesheet" href="../style/base.css">
+    <script>/* Prevent white flash */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
+    <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .automation-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            transition: transform 0.2s;
+        }
+        .automation-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary);
+        }
+        .automation-info h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
+        .automation-desc { color: var(--text-muted); font-size: 0.9rem; }
+        .automation-actions { display: flex; gap: 10px; }
+        
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0; top: 0; 
+            width: 100%; height: 100%; 
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .modal-content {
+            background-color: var(--card);
+            margin: 5% auto; 
+            padding: 25px; 
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            width: 90%; 
+            max-width: 600px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group select, .form-group input { width: 100%; }
+        
+        .action-item {
+            background: rgba(0,0,0,0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="main-nav">
+            <!-- Navigation will be loaded here -->
+        </nav>
+
+        <main class="content-area">
+            <header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2>Automatiseringen</h2>
+                    <p>Beheer slimme regels voor je huis</p>
+                </div>
+                <button class="btn btn-primary" onclick="openAutomationModal()">
+                    <i class="fas fa-plus"></i> Nieuwe Automatisering
+                </button>
+            </header>
+
+            <div id="automations-list">
+                <!-- Automations will be loaded here -->
+                <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Automation Modal -->
+    <div id="automationModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAutomationModal()">&times;</span>
+            <h2 id="modalTitle">Nieuwe Automatisering</h2>
+            
+            <form id="automationForm" onsubmit="event.preventDefault(); saveAutomation();">
+                <input type="hidden" id="automationId">
+                
+                <div class="form-group">
+                    <label>Naam</label>
+                    <input type="text" id="autoName" required placeholder="Bijv. Lichten uit bij vertrek">
+                </div>
+
+                <div class="form-group">
+                    <label>Trigger Type</label>
+                    <select id="triggerType" onchange="updateTriggerFields()">
+                        <option value="presence">Aanwezigheid (Locatie)</option>
+                        <option value="time">Tijd</option>
+                        <option value="state">Apparaat Status</option>
+                    </select>
+                </div>
+
+                <!-- Trigger Specific Fields -->
+                <div id="triggerFields" style="background: rgba(0,0,0,0.03); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <!-- Presence -->
+                    <div id="trigger-presence" class="trigger-group">
+                        <label>Gebeurtenis</label>
+                        <select id="presenceEvent">
+                            <option value="leave_home">Iedereen verlaat huis</option>
+                            <option value="arrive_home">Iemand komt thuis</option>
+                        </select>
+                    </div>
+
+                    <!-- Time -->
+                    <div id="trigger-time" class="trigger-group" style="display:none;">
+                        <label>Tijd (Cron Expressie)</label>
+                        <input type="text" id="timeCron" placeholder="0 8 * * * (Elke dag om 08:00)">
+                        <small style="color: var(--text-muted);">Min Uur Dag Maand Weekdag</small>
+                    </div>
+
+                    <!-- State -->
+                    <div id="trigger-state" class="trigger-group" style="display:none;">
+                        <label>Apparaat</label>
+                        <select id="stateDevice"></select>
+                        <label style="margin-top: 10px;">Eigenschap</label>
+                        <input type="text" id="stateProperty" value="on" placeholder="on, brightness, etc.">
+                        <label style="margin-top: 10px;">Waarde</label>
+                        <input type="text" id="stateValue" placeholder="true, 100, etc.">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        Acties
+                        <button type="button" class="btn-mini" onclick="addAction()" style="background: var(--primary); color: white; border: none; border-radius: 4px; padding: 2px 8px; cursor: pointer;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </label>
+                    <div id="actionsList">
+                        <!-- Actions will be added here -->
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeAutomationModal()">Annuleren</button>
+                    <button type="submit" class="btn btn-primary">Opslaan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../script/script.js"></script>
+    <script src="../script/automations.js"></script>
+</body>
+</html>

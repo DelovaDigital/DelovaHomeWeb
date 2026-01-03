@@ -126,7 +126,7 @@ class ApiService {
           'userId': userId,
           'latitude': latitude,
           'longitude': longitude,
-          'timestamp': DateTime.now().toIso8601String(),
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
         }),
       );
     } catch (e) {

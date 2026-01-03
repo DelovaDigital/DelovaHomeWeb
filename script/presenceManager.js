@@ -69,28 +69,32 @@ class PresenceManager extends EventEmitter {
 
     addPerson(userId, name, trackingDeviceId) {
         // Keep existing data if present
-        const existing = this.people.get(userId);
+        const uid = String(userId);
+        const existing = this.people.get(uid);
         
-        this.people.set(userId, {
-            userId,
+        this.people.set(uid, {
+            userId: uid,
             name,
             deviceId: trackingDeviceId,
             isHome: existing ? existing.isHome : false,
             lastSeen: existing ? existing.lastSeen : 0,
             location: existing ? existing.location : null
         });
-        console.log(`[Presence] Tracking ${name} via device ${trackingDeviceId}`);
+        console.log(`[Presence] Tracking ${name} via device ${trackingDeviceId} (ID: ${uid})`);
     }
 
     updateUserLocation(userId, lat, lon, timestamp) {
-        const person = this.people.get(userId);
+        // Ensure userId is treated as a string for map lookup
+        const uid = String(userId);
+        const person = this.people.get(uid);
+        
         if (!person) {
             // If person doesn't exist, maybe create a temporary one or ignore?
             // Better to ignore if we don't know them, or auto-create if we have a name?
             // For now, let's assume they are registered via addPerson or we find them by ID.
             // If we don't have them, we can't really track them effectively without a name.
             // But let's try to find them or create a placeholder.
-            console.warn(`[Presence] Received location for unknown user ${userId}`);
+            console.warn(`[Presence] Received location for unknown user ${uid} (Available: ${Array.from(this.people.keys()).join(', ')})`);
             return;
         }
 

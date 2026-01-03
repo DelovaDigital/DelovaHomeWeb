@@ -259,6 +259,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(`/api/spotify/albums?userId=${userId}`)
             ]);
             
+            if (playlistsRes.status === 403) {
+                const msg = 'Access Denied (403): This app is in Development Mode. To allow all users to connect, the app owner must apply for "Quota Extension" in the Spotify Developer Dashboard.';
+                console.error(msg);
+                alert(msg);
+                return;
+            }
+
             const playlists = await playlistsRes.json();
             const albums = await albumsRes.json();
             

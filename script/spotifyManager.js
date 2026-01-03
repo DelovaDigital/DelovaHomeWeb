@@ -377,6 +377,9 @@ class SpotifyManager {
             // Increased limit to 50 to fetch more playlists
             const response = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', { headers });
             if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('SPOTIFY_NOT_REGISTERED');
+                }
                 const text = await response.text();
                 console.error(`[Spotify] getUserPlaylists failed: ${response.status} ${text}`);
             } else {
@@ -386,6 +389,7 @@ class SpotifyManager {
                 }
             }
         } catch (e) {
+            if (e.message === 'SPOTIFY_NOT_REGISTERED') throw e;
             console.error('[Spotify] getUserPlaylists exception:', e);
         }
 

@@ -25,6 +25,13 @@ except ImportError as e:
     print(json.dumps({ 'error': 'missing_dependency', 'module': 'androidtvremote2', 'message': str(e) }))
     sys.exit(2)
 
+try:
+    from androidtv.setup import setup
+    from androidtv.constants import KEYS as ADB_KEYS
+    ANDROIDTV_AVAILABLE = True
+except ImportError:
+    ANDROIDTV_AVAILABLE = False
+
 # The path to the configuration file
 CERT_FILE = os.path.join(os.path.dirname(__file__), '../androidtv-cert.pem')
 KEY_FILE = os.path.join(os.path.dirname(__file__), '../androidtv-key.pem')
@@ -43,54 +50,74 @@ class AndroidTVManager:
     def __init__(self, ip):
         self.ip = ip
         self.remote = None
+        self.protocol = None
         self.cert_path, self.key_path = ensure_certificates()
 
     async def connect(self):
         """Connect to the Android TV."""
         print(json.dumps({"status": "debug", "message": f"Connecting to {self.ip}..."}), flush=True)
         
-        self.remote = AndroidTVRemote(
-            client_name="DelovaHome",
-            certfile=self.cert_path,
-            keyfile=self.key_path,
-            host=self.ip
-        )
-        
+        # Try AndroidTVRemote2 first (Google TV)
         try:
+            self.remote = AndroidTVRemote(
+                client_name="DelovaHome",
+                certfile=self.cert_path,
+                keyfile=self.key_path,
+                host=self.ip
+            )
+            
             # Add timeout to connection attempt
-            await asyncio.wait_for(self.remote.async_connect(), timeout=10.0)
-            print(json.dumps({"status": "connected"}), flush=True)
-        except asyncio.TimeoutError:
-            print(json.dumps({"status": "failed", "error": "Connection timed out"}), flush=True)
-        except Exception as e:
-            error_msg = str(e)
-            if "Need to pair" in error_msg or "InvalidAuth" in error_msg or "SSLError" in error_msg:
-                print(json.dumps({"status": "pairing_required"}), flush=True)
-                await self.pair()
-            else:
-                print(json.dumps({"status": "failed", "error": str(e)}), flush=True)
+            await asyncio.wait_for(self.remote.async_connect(), timeout=5.0)
+            self.protocol = 'androidtvremote2'
+            print(json.dumps({"status": "connected", "protocol": "androidtvremote2"}), flush=True)
+            return
+        except (asyncio.TimeoutError, OSError, Exception) as e:
+            # Only catch pairing errors if we want to trigger pairing flow
+            if isinstance(e, Exception) and ("Need to pair" in str(e) or "InvalidAuth" in str(e)):
+                 print(json.dumps({"status": "pairing_required"}), flush=True)
+                 await self.pair()
+                 return
+
+            print(json.dumps({"status": "debug", "message": f"AndroidTVRemote2 failed: {e}. Trying ADB..."}), flush=True)
+            self.remote = None
+
+        # Try ADB (Older Android TV)
+        if ANDROIDTV_AVAILABLE:
+            try:
+                # Run setup in executor as it might be blocking
+                loop = asyncio.get_running_loop()
+                # Use adbkey from home dir if exists, else let it generate/use default
+                adbkey = os.path.expanduser('~/.android/adbkey')
+                
+                self.remote = await loop.run_in_executor(None, lambda: setup(self.ip, port=5555, device_class='androidtv', adbkey=adbkey if os.path.exists(adbkey) else None))
+                
+                if await loop.run_in_executor(None, self.remote.adb_connect):
+                    self.protocol = 'adb'
+                    print(json.dumps({"status": "connected", "protocol": "adb"}), flush=True)
+                    return
+                else:
+                    print(json.dumps({"status": "failed", "error": "ADB connection failed"}), flush=True)
+            except Exception as e:
+                print(json.dumps({"status": "failed", "error": f"ADB error: {e}"}), flush=True)
+        else:
+             print(json.dumps({"status": "failed", "error": "Connection failed and androidtv library not available"}), flush=True)
 
 
     async def pair(self):
-        """Pair with the Android TV."""
+        """Pair with the Android TV (AndroidTVRemote2 only)."""
         try:
             await self.remote.async_start_pairing()
             print(json.dumps({"status": "waiting_for_pin"}), flush=True)
             
-            # We need to wait for the PIN from stdin
-            # The main loop will call handle_pin_input when it receives a PIN
-            # But we need to pause here until we get it.
-            # We can use an asyncio.Future for this.
             self.pin_future = asyncio.get_running_loop().create_future()
-            
             pin = await self.pin_future
             
             await self.remote.async_finish_pairing(pin)
             print(json.dumps({"status": "paired"}), flush=True)
             
-            # Re-connect after pairing to establish control session
             print(json.dumps({"status": "debug", "message": "Re-connecting after pairing..."}), flush=True)
             await self.remote.async_connect()
+            self.protocol = 'androidtvremote2'
             print(json.dumps({"status": "connected"}), flush=True)
             
         except Exception as e:
@@ -115,7 +142,6 @@ class AndroidTVManager:
                     return
 
                 # Map common commands to Android TV key codes
-                # See: https://developer.android.com/reference/android/view/KeyEvent
                 key_map = {
                     'up': 'DPAD_UP',
                     'down': 'DPAD_DOWN',
@@ -137,23 +163,39 @@ class AndroidTVManager:
                     'rewind': 'MEDIA_REWIND',
                     'fast_forward': 'MEDIA_FAST_FORWARD',
                     'turn_off': 'POWER',
-                    'turn_on': 'POWER', # Or WAKEUP
+                    'turn_on': 'POWER',
                     'toggle': 'POWER'
                 }
                 
                 key_to_send = key_map.get(command.lower(), command.upper())
                 
-                if hasattr(self.remote, 'async_send_key_command'):
-                    await self.remote.async_send_key_command(key_to_send)
-                else:
-                    self.remote.send_key_command(key_to_send)
+                if self.protocol == 'androidtvremote2':
+                    if hasattr(self.remote, 'async_send_key_command'):
+                        await self.remote.async_send_key_command(key_to_send)
+                    else:
+                        self.remote.send_key_command(key_to_send)
+                elif self.protocol == 'adb':
+                    # ADB handling
+                    loop = asyncio.get_running_loop()
+                    adb_key_code = ADB_KEYS.get(key_to_send)
                     
-                print(json.dumps({"status": "ok", "command": command, "sent": key_to_send}), flush=True)
+                    if adb_key_code:
+                        await loop.run_in_executor(None, self.remote.adb_shell, f'input keyevent {adb_key_code}')
+                    else:
+                        # Fallback for POWER if not in KEYS (it usually is)
+                        if key_to_send == 'POWER':
+                             await loop.run_in_executor(None, self.remote.adb_shell, 'input keyevent 26')
+                        else:
+                             print(json.dumps({"status": "error", "message": f"Unknown key for ADB: {key_to_send}"}), flush=True)
+                             return
+
+                print(json.dumps({"status": "ok", "command": command, "sent": key_to_send, "protocol": self.protocol}), flush=True)
 
         except json.JSONDecodeError:
             print(json.dumps({"status": "error", "message": "Invalid JSON"}), flush=True)
         except Exception as e:
             print(json.dumps({"status": "error", "message": str(e)}), flush=True)
+
 
 
 async def main():

@@ -866,6 +866,9 @@ app.get('/api/spotify/playlists', requireSpotifyUser, async (req, res) => {
         const playlists = await spotifyManager.getUserPlaylists(req.userId);
         res.json(playlists);
     } catch (e) {
+        if (e.message === 'SPOTIFY_NOT_REGISTERED') {
+            return res.status(403).json({ error: 'User not registered in Spotify Dashboard' });
+        }
         console.error('Error getting spotify playlists:', e);
         res.json([]);
     }

@@ -706,6 +706,8 @@ async function resolveSpotifyDeviceId(userId, deviceId) {
             console.warn(`[Spotify] Timeout waiting for ${castDev.name}.`);
             const finalDevices = await spotifyManager.getDevices(userId);
             console.warn(`[Spotify] Final available devices: ${finalDevices.map(d => d.name).join(', ')}`);
+            
+            throw new Error(`Device did not appear in Spotify Connect. Please ensure the Spotify app on '${castDev.name}' is logged into YOUR account.`);
         }
         throw new Error('Cast device did not appear in Spotify Connect list');
     }

@@ -15,6 +15,7 @@ const onvif = require('onvif');
 const mqttManager = require('./mqttManager');
 const ps5Manager = require('./ps5Manager');
 const nasManager = require('./nasManager');
+const hueManager = require('./hueManager');
 const discoveryService = require('./discoveryService');
 let SamsungRemote = null;
 try {
@@ -71,8 +72,36 @@ class DeviceManager extends EventEmitter {
         });
         discoveryService.start();
 
+        // Integrate Hue Manager
+        hueManager.on('light_update', (light) => {
+            this.handleHueLightUpdate(light);
+        });
+
         this.startDiscovery();
         this.startPolling();
+    }
+
+    handleHueLightUpdate(light) {
+        const device = {
+            id: light.id,
+            name: light.name,
+            ip: light.bridgeIp, // Use bridge IP for connection
+            type: 'light', // Generic type
+            model: light.model,
+            manufacturer: light.manufacturer,
+            status: {
+                on: light.on,
+                brightness: light.brightness,
+                color: light.color,
+                ct: light.ct,
+                reachable: light.reachable
+            },
+            capabilities: ['onoff', 'brightness', 'color'],
+            protocol: 'hue'
+        };
+        
+        this.devices.set(device.id, device);
+        this.emit('device-updated', device);
     }
 
     handleDiscoveredDevice(info) {
@@ -1133,6 +1162,9 @@ class DeviceManager extends EventEmitter {
         const device = this.devices.get(id);
         if (!device) return;
 
+        // Skip Hue devices (managed by hueManager)
+        if (device.protocol === 'hue') return;
+
         // Shelly
         if (device.type === 'shelly') {
             await this.refreshShelly(device);
@@ -1557,6 +1589,22 @@ class DeviceManager extends EventEmitter {
         if (!device) return null;
 
         console.log(`Controlling ${device.name} (${device.protocol}): ${command} = ${value}`);
+
+        if (device.protocol === 'hue') {
+            try {
+                const state = {};
+                if (command === 'turn_on') state.on = true;
+                if (command === 'turn_off') state.on = false;
+                if (command === 'set_brightness') state.brightness = value; // 0-100
+                if (command === 'set_color') state.xy = value; // [x, y]
+                
+                await hueManager.setLightState(id, state);
+                return { success: true };
+            } catch (e) {
+                console.error(`[DeviceManager] Hue control error:`, e);
+                return { success: false, error: e.message };
+            }
+        }
 
         // Check if this device is the active Spotify device
         // If so, route media/volume commands to Spotify

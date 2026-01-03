@@ -31,6 +31,7 @@ const ps5Manager = require('./script/ps5Manager');
 const psnManager = require('./script/psnManager');
 const presenceManager = require('./script/presenceManager');
 const aiManager = require('./script/aiManager');
+const hueManager = require('./script/hueManager');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -997,6 +998,15 @@ app.post('/api/devices/scan', (req, res) => {
 
 app.post('/api/devices/pair', async (req, res) => {
     const { ip, type, username, password, pin } = req.body;
+
+    if (type === 'hue') {
+        const result = await hueManager.pairBridge(ip);
+        if (result.success) {
+            return res.json({ ok: true, message: 'Paired with Hue Bridge', username: result.username });
+        } else {
+            return res.status(400).json({ ok: false, message: result.error || 'Pairing failed' });
+        }
+    }
     
     if (!ip || !type) return res.status(400).json({ ok: false, error: 'Missing IP or Type' });
     
@@ -1643,6 +1653,9 @@ server.on('upgrade', handleUpgrade);
     ps5Manager.discover().then(devices => {
         console.log(`[PS5] Initial discovery found ${devices.length} devices.`);
     });
+
+    // Start Hue Manager
+    hueManager.start();
 
     // Start MQTT Broker
     try {

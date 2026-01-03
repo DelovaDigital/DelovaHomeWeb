@@ -237,13 +237,21 @@ class SpotifyManager {
 
     async getDevices(userId) {
         const headers = await this.getHeaders(userId);
-        if (!headers) return [];
+        if (!headers) {
+            console.warn(`[Spotify] No headers for user ${userId} (not linked?)`);
+            return [];
+        }
         try {
             const response = await fetch('https://api.spotify.com/v1/me/player/devices', { headers });
-            if (!response.ok) return [];
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`[Spotify] getDevices failed: ${response.status} ${text}`);
+                return [];
+            }
             const data = await response.json();
             return data.devices || [];
         } catch (e) {
+            console.error('[Spotify] getDevices exception:', e);
             return [];
         }
     }

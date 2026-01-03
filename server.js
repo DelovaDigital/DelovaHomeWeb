@@ -659,72 +659,62 @@ app.get('/api/spotify/me', requireSpotifyUser, async (req, res) => {
 
 
 
+// Helper to resolve Cast Device ID to Spotify Device ID
+async function resolveSpotifyDeviceId(userId, deviceId) {
+    if (typeof deviceId === 'string' && deviceId.startsWith('cast:')) {
+        const ip = deviceId.split('cast:')[1];
+        console.log(`[Spotify] Launching on Cast device: ${ip}`);
+        
+        try {
+            await deviceManager.launchSpotifyOnCastDevice(ip);
+        } catch (e) {
+            console.error('Failed to launch Spotify on Cast device:', e);
+        }
+        
+        const castDev = deviceManager.getCastDevices().find(d => d.ip === ip);
+        if (castDev) {
+            console.log(`[Spotify] Waiting for ${castDev.name} to appear in Spotify Connect...`);
+            for (let i = 0; i < 20; i++) {
+                await new Promise(r => setTimeout(r, 1000));
+                const devices = await spotifyManager.getDevices(userId);
+                
+                const match = devices.find(d => 
+                    d.name === castDev.name || 
+                    d.name.toLowerCase().includes(castDev.name.toLowerCase()) ||
+                    castDev.name.toLowerCase().includes(d.name.toLowerCase())
+                );
+
+                if (match) {
+                    console.log(`[Spotify] Found device ID: ${match.id} (matched ${match.name})`);
+                    return match.id;
+                }
+            }
+            console.warn(`[Spotify] Timeout waiting for ${castDev.name}.`);
+        }
+        throw new Error('Cast device did not appear in Spotify Connect list');
+    }
+    return deviceId;
+}
+
 app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
     const { command, value, deviceId } = req.body;
     try {
-        if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined, deviceId);
+        // Resolve device ID if it's a Cast device
+        let targetDeviceId = deviceId;
+        if (command === 'transfer') targetDeviceId = value; // Transfer passes ID in value
+        
+        if (targetDeviceId && targetDeviceId.startsWith('cast:')) {
+            targetDeviceId = await resolveSpotifyDeviceId(req.userId, targetDeviceId);
+        }
+
+        if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined, targetDeviceId);
         else if (command === 'pause') await spotifyManager.pause(req.userId);
         else if (command === 'next') await spotifyManager.next(req.userId);
         else if (command === 'previous') await spotifyManager.previous(req.userId);
         else if (command === 'set_volume') await spotifyManager.setVolume(req.userId, value);
-        else if (command === 'transfer') {
-            let targetId = value;
-            // Handle Cast Devices
-            if (typeof value === 'string' && value.startsWith('cast:')) {
-                const ip = value.split('cast:')[1];
-                console.log(`[Spotify] Launching on Cast device: ${ip}`);
-                
-                try {
-                    await deviceManager.launchSpotifyOnCastDevice(ip);
-                } catch (e) {
-                    console.error('Failed to launch Spotify on Cast device:', e);
-                    // Continue anyway, maybe it's already running
-                }
-                
-                // Wait for device to appear in Spotify API
-                let found = false;
-                const castDev = deviceManager.getCastDevices().find(d => d.ip === ip);
-                
-                if (castDev) {
-                    console.log(`[Spotify] Waiting for ${castDev.name} to appear in Spotify Connect...`);
-                    for (let i = 0; i < 20; i++) { // Try for 20 seconds
-                        await new Promise(r => setTimeout(r, 1000));
-                        const devices = await spotifyManager.getDevices(req.userId);
-                        
-                        // Debug logging to see what Spotify sees
-                        // console.log(`[Spotify] Available devices: ${devices.map(d => d.name).join(', ')}`);
-
-                        // Fuzzy match name
-                        const match = devices.find(d => 
-                            d.name === castDev.name || 
-                            d.name.toLowerCase().includes(castDev.name.toLowerCase()) ||
-                            castDev.name.toLowerCase().includes(d.name.toLowerCase())
-                        );
-
-                        if (match) {
-                            targetId = match.id;
-                            found = true;
-                            console.log(`[Spotify] Found device ID: ${targetId} (matched ${match.name})`);
-                            break;
-                        }
-                    }
-                }
-                
-                if (!found) {
-                    // Fallback: If we only have one active device and it's new, maybe that's it?
-                    // Or just throw error
-                    console.warn(`[Spotify] Timeout waiting for ${castDev ? castDev.name : 'device'}. Available devices:`);
-                    const finalDevices = await spotifyManager.getDevices(req.userId);
-                    console.warn(finalDevices.map(d => d.name).join(', '));
-                    
-                    throw new Error('Cast device did not appear in Spotify Connect list after launching app');
-                }
-            }
-            
-            await spotifyManager.transferPlayback(req.userId, targetId);
-        }
-        else if (command === 'play_context') await spotifyManager.playContext(req.userId, value, deviceId);
-        else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value, deviceId);
+        else if (command === 'transfer') await spotifyManager.transferPlayback(req.userId, targetDeviceId);
+        else if (command === 'play_context') await spotifyManager.playContext(req.userId, value, targetDeviceId);
+        else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value, targetDeviceId);
         else return res.status(400).json({ ok: false, message: `Invalid command: ${command}`});
 
         res.json({ ok: true });

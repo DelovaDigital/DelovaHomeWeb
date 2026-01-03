@@ -18,12 +18,13 @@ class HubDiscoveryScreen extends StatefulWidget {
 }
 
 class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTickerProviderStateMixin {
-  final List<Service> _hubs = [];
+  final List<HubInfo> _hubs = [];
   Discovery? _discovery;
   bool _isScanning = false;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   String _lang = 'nl';
+  RawDatagramSocket? _udpSocket;
 
   @override
   void initState() {
@@ -96,19 +97,21 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
 
   Future<void> _startDiscovery() async {
     if (_isScanning) return;
-    setState(() => _isScanning = true);
+    setState(() {
+      _isScanning = true;
+      _hubs.clear();
+    });
 
+    // 1. Start UDP Discovery (Fast & Reliable on local subnet)
+    _startUDPDiscovery();
+
+    // 2. Start mDNS Discovery (Standard)
     try {
       // Search for specific service type first (more reliable)
       _discovery = await startDiscovery('_delovahome._tcp');
       _discovery!.addServiceListener((service, status) {
         if (status == ServiceStatus.found) {
-           debugPrint('Found DelovaHome service: ${service.name}');
-           setState(() {
-              if (!_hubs.any((h) => h.name == service.name)) {
-                _hubs.add(service);
-              }
-            });
+           _addServiceToHubs(service);
         }
       });
 
@@ -116,10 +119,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       final httpDiscovery = await startDiscovery('_http._tcp');
       httpDiscovery.addServiceListener((service, status) {
         if (status == ServiceStatus.found) {
-          // debugPrint('Found HTTP service: ${service.name}');
-          
           bool isMatch = false;
-
           // 1. Check TXT record (Best method)
           if (service.txt != null && service.txt!.containsKey('type')) {
              try {
@@ -130,18 +130,13 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                }
              } catch (e) { /* ignore decode error */ }
           }
-
-          // 2. Fallback: Check Service Name (If TXT is stripped by router)
+          // 2. Fallback: Check Service Name
           if (!isMatch && (service.name != null && service.name!.toLowerCase().startsWith('delovahome'))) {
              isMatch = true;
           }
 
           if (isMatch) {
-            setState(() {
-              if (!_hubs.any((h) => h.name == service.name)) {
-                _hubs.add(service);
-              }
-            });
+            _addServiceToHubs(service);
           }
         }
       });
@@ -151,11 +146,84 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     }
   }
 
+  Future<void> _startUDPDiscovery() async {
+    try {
+      _udpSocket = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
+      _udpSocket!.broadcastEnabled = true;
+      
+      _udpSocket!.listen((RawSocketEvent event) {
+        if (event == RawSocketEvent.read) {
+          final datagram = _udpSocket!.receive();
+          if (datagram != null) {
+            try {
+              final msg = utf8.decode(datagram.data);
+              final data = jsonDecode(msg);
+              if (data['type'] == 'delovahome') {
+                debugPrint('Found Hub via UDP: ${data['name']} at ${datagram.address.address}');
+                _addHubInfo(HubInfo(
+                  name: data['name'],
+                  ip: datagram.address.address,
+                  port: int.tryParse(data['port'].toString()) ?? 3000,
+                  id: data['id']
+                ));
+              }
+            } catch (e) {
+              // Not our packet
+            }
+          }
+        }
+      });
+
+      // Send Broadcast
+      final data = utf8.encode('DELOVAHOME_DISCOVER');
+      _udpSocket!.send(data, InternetAddress('255.255.255.255'), 8888);
+      debugPrint('Sent UDP Broadcast to 255.255.255.255:8888');
+
+    } catch (e) {
+      debugPrint('UDP Discovery failed: $e');
+    }
+  }
+
+  void _addServiceToHubs(Service service) {
+    String? ip;
+    if (service.addresses != null && service.addresses!.isNotEmpty) {
+      try {
+        ip = service.addresses!.firstWhere((addr) => addr.type == InternetAddressType.IPv4).address;
+      } catch (e) {
+        ip = service.addresses!.first.address;
+      }
+    } else {
+      ip = service.host;
+    }
+
+    if (ip != null) {
+      _addHubInfo(HubInfo(
+        name: service.name ?? 'Unknown Hub',
+        ip: ip,
+        port: service.port ?? 3000,
+        id: null // mDNS might have it in TXT but we can live without it for listing
+      ));
+    }
+  }
+
+  void _addHubInfo(HubInfo info) {
+    if (mounted) {
+      setState(() {
+        // Avoid duplicates by IP
+        if (!_hubs.any((h) => h.ip == info.ip)) {
+          _hubs.add(info);
+        }
+      });
+    }
+  }
+
   Future<void> _stopDiscovery() async {
     if (_discovery != null) {
       await stopDiscovery(_discovery!);
       _discovery = null;
     }
+    _udpSocket?.close();
+    _udpSocket = null;
     if (mounted) setState(() => _isScanning = false);
   }
 
@@ -219,41 +287,18 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     );
   }
 
-  Future<void> _connectToHub(Service service) async {
-    // Extract IP and Port
-    String? ip;
-    int? port = service.port;
-
-    if (service.addresses != null && service.addresses!.isNotEmpty) {
-      // Prefer IPv4
-      try {
-        ip = service.addresses!.firstWhere((addr) => addr.type == InternetAddressType.IPv4).address;
-      } catch (e) {
-        ip = service.addresses!.first.address;
-      }
-    } else {
-      ip = service.host;
-    }
-
-    if (ip != null) {
-      // Navigate to Login Screen with Hub details
-      if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => LoginScreen(
-              hubIp: ip!,
-              hubPort: port?.toString() ?? '3000',
-              hubName: service.name,
-            ),
+  Future<void> _connectToHub(HubInfo hub) async {
+    // Navigate to Login Screen with Hub details
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => LoginScreen(
+            hubIp: hub.ip,
+            hubPort: hub.port.toString(),
+            hubName: hub.name,
           ),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not resolve Hub IP')),
-        );
-      }
+        ),
+      );
     }
   }
 
@@ -354,7 +399,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                                 child: const Icon(Icons.router, color: Colors.white),
                               ),
                               title: Text(
-                                hub.name ?? 'Unknown Hub',
+                                hub.name,
                                 style: TextStyle(
                                   color: textColor,
                                   fontWeight: FontWeight.bold,
@@ -362,7 +407,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                                 ),
                               ),
                               subtitle: Text(
-                                '${hub.host}:${hub.port}',
+                                '${hub.ip}:${hub.port}',
                                 style: TextStyle(color: subTextColor),
                               ),
                               trailing: Icon(Icons.arrow_forward_ios, color: subTextColor),
@@ -391,4 +436,13 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       ),
     );
   }
+}
+
+class HubInfo {
+  final String name;
+  final String ip;
+  final int port;
+  final String? id;
+  
+  HubInfo({required this.name, required this.ip, required this.port, this.id});
 }

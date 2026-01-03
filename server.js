@@ -359,6 +359,45 @@ try {
     console.error('Failed to start mDNS advertisement:', e);
 }
 
+// Start UDP Broadcast Listener (Fallback Discovery)
+const dgram = require('dgram');
+const udpSocket = dgram.createSocket('udp4');
+const UDP_PORT = 8888;
+
+udpSocket.on('error', (err) => {
+    console.error(`UDP Discovery error:\n${err.stack}`);
+    udpSocket.close();
+});
+
+udpSocket.on('message', (msg, rinfo) => {
+    const message = msg.toString().trim();
+    if (message === 'DELOVAHOME_DISCOVER') {
+        console.log(`Received UDP discovery from ${rinfo.address}:${rinfo.port}`);
+        const response = JSON.stringify({
+            ok: true,
+            id: hubConfig.hubId,
+            name: hubConfig.name,
+            version: hubConfig.version,
+            port: port,
+            type: 'delovahome'
+        });
+        udpSocket.send(response, rinfo.port, rinfo.address, (err) => {
+            if (err) console.error('UDP send error:', err);
+        });
+    }
+});
+
+udpSocket.on('listening', () => {
+    const address = udpSocket.address();
+    console.log(`UDP Discovery listening ${address.address}:${address.port}`);
+});
+
+try {
+    udpSocket.bind(UDP_PORT);
+} catch (e) {
+    console.error('Failed to bind UDP port:', e);
+}
+
 app.use(express.json());
 // Serve static files from project root
 app.use(express.static(__dirname));

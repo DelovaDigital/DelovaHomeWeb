@@ -687,20 +687,36 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
                 
                 if (castDev) {
                     console.log(`[Spotify] Waiting for ${castDev.name} to appear in Spotify Connect...`);
-                    for (let i = 0; i < 8; i++) { // Try for 8 seconds
+                    for (let i = 0; i < 20; i++) { // Try for 20 seconds
                         await new Promise(r => setTimeout(r, 1000));
                         const devices = await spotifyManager.getDevices(req.userId);
-                        const match = devices.find(d => d.name === castDev.name);
+                        
+                        // Debug logging to see what Spotify sees
+                        // console.log(`[Spotify] Available devices: ${devices.map(d => d.name).join(', ')}`);
+
+                        // Fuzzy match name
+                        const match = devices.find(d => 
+                            d.name === castDev.name || 
+                            d.name.toLowerCase().includes(castDev.name.toLowerCase()) ||
+                            castDev.name.toLowerCase().includes(d.name.toLowerCase())
+                        );
+
                         if (match) {
                             targetId = match.id;
                             found = true;
-                            console.log(`[Spotify] Found device ID: ${targetId}`);
+                            console.log(`[Spotify] Found device ID: ${targetId} (matched ${match.name})`);
                             break;
                         }
                     }
                 }
                 
                 if (!found) {
+                    // Fallback: If we only have one active device and it's new, maybe that's it?
+                    // Or just throw error
+                    console.warn(`[Spotify] Timeout waiting for ${castDev ? castDev.name : 'device'}. Available devices:`);
+                    const finalDevices = await spotifyManager.getDevices(req.userId);
+                    console.warn(finalDevices.map(d => d.name).join(', '));
+                    
                     throw new Error('Cast device did not appear in Spotify Connect list after launching app');
                 }
             }

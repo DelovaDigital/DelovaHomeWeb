@@ -103,14 +103,14 @@ a { text-decoration: none; color: inherit; }
 
 .device-grid { 
     display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); /* Wider cards */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Wider cards */
     gap: 24px; /* Increased gap */
     margin-top: 24px; 
 }
 
 .rooms-grid { 
     display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); 
     gap: 30px; /* Increased gap */
     margin-top: 30px; 
 }
@@ -568,8 +568,7 @@ a { text-decoration: none; color: inherit; }
     display: flex;
     flex-direction: column;
     gap: 8px;
-    overflow-y: auto;
-    max-height: 200px;
+    /* Removed max-height to allow expansion */
 }
 
 .room-device {
@@ -626,4 +625,46 @@ a { text-decoration: none; color: inherit; }
 .room-card.drag-over {
     border: 2px dashed var(--primary) !important;
     background: rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Rooms Page Specifics */
+.rooms-panel {
+    width: 100%;
+}
+
+.unassigned-panel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.unassigned-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.unassigned-item {
+    background: var(--card);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    cursor: grab;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.unassigned-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.unassigned-item:active {
+    cursor: grabbing;
 }

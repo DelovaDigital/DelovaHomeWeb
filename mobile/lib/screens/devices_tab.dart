@@ -122,8 +122,8 @@ class _DevicesTabState extends State<DevicesTab> {
     final textColor = isDark ? Colors.white : Colors.black87;
     final hintColor = isDark ? Colors.white54 : Colors.black54;
     final chipSelectedColor = isDark ? Colors.cyan : Colors.blue;
-    final chipUnselectedColor = isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.1);
-    final chipBorderColor = isDark ? Colors.white.withOpacity(0.2) : Colors.grey.withOpacity(0.3);
+    final chipUnselectedColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1);
+    final chipBorderColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.3);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,9 +184,9 @@ class _DevicesTabState extends State<DevicesTab> {
                     });
                   },
                   backgroundColor: chipUnselectedColor,
-                  selectedColor: chipSelectedColor.withOpacity(0.2),
+                  selectedColor: chipSelectedColor.withValues(alpha: 0.2),
                   labelStyle: TextStyle(
-                    color: isSelected ? chipSelectedColor : textColor.withOpacity(0.7),
+                    color: isSelected ? chipSelectedColor : textColor.withValues(alpha: 0.7),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                   shape: RoundedRectangleBorder(

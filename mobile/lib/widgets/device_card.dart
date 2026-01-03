@@ -13,13 +13,12 @@ class DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPoweredOn = device.status.isOn;
-    final isLight = device.type.toLowerCase() == 'light' || device.type.toLowerCase().contains('bulb');
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final accentColor = isDark ? Colors.cyanAccent : Colors.blueAccent;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subTextColor = isDark ? Colors.white70 : Colors.black54;
-    final iconBgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1);
+    final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1);
     final iconColor = isDark ? Colors.white70 : Colors.black54;
 
     return GestureDetector(
@@ -48,7 +47,7 @@ class DeviceCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isPoweredOn ? accentColor.withOpacity(0.2) : iconBgColor,
+                    color: isPoweredOn ? accentColor.withValues(alpha: 0.2) : iconBgColor,
                     shape: BoxShape.circle,
                   ),
                   child: Hero(
@@ -68,7 +67,7 @@ class DeviceCard extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     icon: Icon(
                       Icons.power_settings_new,
-                      color: isPoweredOn ? accentColor : iconColor.withOpacity(0.5),
+                      color: isPoweredOn ? accentColor : iconColor.withValues(alpha: 0.5),
                       size: 20,
                     ),
                     onPressed: () async {
@@ -123,7 +122,7 @@ class DeviceCard extends StatelessWidget {
                     ? (device.status.title ?? 'On') 
                     : 'Off',
                   style: TextStyle(
-                    color: isPoweredOn ? subTextColor : subTextColor.withOpacity(0.6),
+                    color: isPoweredOn ? subTextColor : subTextColor.withValues(alpha: 0.6),
                     fontSize: 12,
                   ),
                   maxLines: 1,
@@ -138,67 +137,46 @@ class DeviceCard extends StatelessWidget {
   }
 
   IconData _getDeviceIcon(String type) {
-    switch (type.toLowerCase()) {
-      case 'light':
-      case 'bulb':
-      case 'dali':
-        return Icons.lightbulb;
-      case 'switch':
-      case 'outlet':
-      case 'plug':
-        return Icons.power;
-      case 'tv':
-        return Icons.tv;
-      case 'speaker':
-        return Icons.speaker;
-      case 'camera':
-        return Icons.videocam;
-      case 'printer':
-        return Icons.print;
-      case 'thermostat':
-      case 'ac':
-      case 'climate':
-        return Icons.thermostat;
-      case 'lock':
-      case 'security':
-        return Icons.lock;
-      case 'cover':
-      case 'blind':
-      case 'curtain':
-        return Icons.curtains;
-      case 'vacuum':
-      case 'robot':
-        return Icons.cleaning_services;
-      case 'sensor':
-        return Icons.sensors;
-      case 'fan':
-        return Icons.mode_fan_off;
-      case 'ps5':
-      case 'console':
-      case 'game':
-      case 'playstation':
-        return Icons.gamepad;
-      case 'pc':
-      case 'computer':
-      case 'desktop':
-      case 'workstation':
-      case 'mac':
-      case 'macbook':
-      case 'imac':
-      case 'windows':
-        return Icons.computer;
-      case 'nas':
-      case 'server':
-      case 'synology':
-      case 'qnap':
-        return Icons.dns;
-      case 'rpi':
-      case 'raspberry':
-      case 'raspberrypi':
-      case 'pi':
-        return Icons.memory;
-      default:
-        return Icons.devices;
+    final t = type.toLowerCase();
+    final name = device.name.toLowerCase();
+    final model = device.model?.toLowerCase() ?? '';
+
+    if (t == 'light' || t.contains('bulb') || t == 'hue' || t == 'dali') return Icons.lightbulb;
+    if (t == 'switch' || t.contains('outlet') || t == 'shelly' || t == 'plug') return Icons.power;
+    if (t == 'tv' || t == 'television') {
+      if (name.contains('apple') || name.contains('atv') || model.contains('apple') || model.contains('tv')) return Icons.apple;
+      return Icons.tv;
     }
+    if (t == 'speaker' || t == 'sonos') {
+      if (name.contains('homepod') || model.contains('homepod')) return Icons.speaker;
+      if (name.contains('apple') || name.contains('atv') || name.contains('mac') || model.contains('apple') || model.contains('mac')) return Icons.apple;
+      return Icons.speaker;
+    }
+    if (t == 'camera') return Icons.videocam;
+    if (t == 'printer') return Icons.print;
+    if (t == 'thermostat' || t == 'ac' || t == 'climate') return Icons.thermostat;
+    if (t == 'lock' || t == 'security') return Icons.lock;
+    if (t == 'cover' || t == 'blind' || t == 'curtain') return Icons.curtains;
+    if (t == 'vacuum' || t == 'robot') return Icons.cleaning_services;
+    if (t == 'sensor') return Icons.sensors;
+    if (t == 'fan') return Icons.mode_fan_off;
+    
+    if (t == 'ps5' || t == 'console' || t == 'game' || t == 'playstation' || t == 'xbox') {
+      if (name.contains('ps5') || name.contains('playstation') || t == 'ps5' || model.contains('ps5')) return Icons.gamepad;
+      if (name.contains('xbox') || t == 'xbox' || model.contains('xbox')) return Icons.gamepad;
+      return Icons.gamepad;
+    }
+
+    if (t == 'nas' || t == 'server' || t == 'synology' || t == 'qnap') return Icons.dns;
+    
+    if (t == 'pc' || t == 'computer' || t == 'desktop' || t == 'workstation' || t == 'mac' || t == 'macbook' || t == 'imac' || t == 'windows') {
+       if (t == 'mac' || name.contains('mac') || name.contains('apple') || model.contains('mac') || model.contains('apple')) return Icons.laptop_mac;
+       if (name.contains('windows') || name.contains('pc') || model.contains('windows')) return Icons.desktop_windows;
+       return Icons.computer;
+    }
+
+    if (t == 'rpi' || t == 'raspberry' || t == 'raspberrypi' || t == 'pi') return Icons.memory;
+    
+    return Icons.devices;
   }
 }

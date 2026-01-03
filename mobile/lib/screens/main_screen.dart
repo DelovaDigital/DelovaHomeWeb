@@ -1,13 +1,12 @@
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/gradient_background.dart';
 import '../utils/app_translations.dart';
 import '../services/location_service.dart';
 import 'dashboard_tab.dart';
 import 'devices_tab.dart';
 import 'rooms_tab.dart';
 import 'settings_tab.dart';
+import 'automations_tab.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,6 +24,7 @@ class _MainScreenState extends State<MainScreen> {
     DashboardTab(),
     DevicesTab(),
     RoomsTab(),
+    AutomationsTab(),
     SettingsTab(),
   ];
 
@@ -79,13 +79,18 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        margin: const EdgeInsets.fromLTRB(
+          10,
+          0,
+          10,
+          20,
+        ), // Reduced margin to give more space
         decoration: BoxDecoration(
           color: navBarColor,
           borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 25,
               offset: const Offset(0, 8),
             ),
@@ -94,14 +99,40 @@ class _MainScreenState extends State<MainScreen> {
         child: SafeArea(
           bottom: false, // We handle bottom padding manually via margin/padding
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8), // Reduced padding
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, t('dashboard')),
-                _buildNavItem(1, Icons.devices_outlined, Icons.devices, t('devices')),
-                _buildNavItem(2, Icons.meeting_room_outlined, Icons.meeting_room, t('rooms')),
-                _buildNavItem(3, Icons.settings_outlined, Icons.settings, t('settings')),
+                _buildNavItem(
+                  0,
+                  Icons.dashboard_outlined,
+                  Icons.dashboard,
+                  t('dashboard'),
+                ),
+                _buildNavItem(
+                  1,
+                  Icons.devices_outlined,
+                  Icons.devices,
+                  t('devices'),
+                ),
+                _buildNavItem(
+                  2,
+                  Icons.meeting_room_outlined,
+                  Icons.meeting_room,
+                  t('rooms'),
+                ),
+                _buildNavItem(
+                  3,
+                  Icons.auto_awesome_outlined,
+                  Icons.auto_awesome,
+                  t('Automations'),
+                ),
+                _buildNavItem(
+                  4,
+                  Icons.settings_outlined,
+                  Icons.settings,
+                  t('settings'),
+                ),
               ],
             ),
           ),
@@ -110,42 +141,65 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    IconData activeIcon,
+    String label,
+  ) {
     final isSelected = _selectedIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeColor = const Color(0xFF007AFF);
     final inactiveColor = isDark ? Colors.grey[400] : const Color(0xFF4A4A4A);
 
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              color: isSelected ? activeColor : inactiveColor,
-              size: 24,
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: activeColor,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
+    // If screen is small, hide text for non-selected items to prevent overflow
+    // With 5 items, we might run out of space.
+    // Let's only show text for selected item, or maybe just icon if space is tight.
+    // The current implementation only shows text if selected: `if (isSelected) ...[ Text(...) ]`
+    // But with 5 items, even that might be too wide on small screens.
+    // Let's reduce padding or font size if needed, or use Flexible.
+
+    return Flexible(
+      child: GestureDetector(
+        onTap: () => _onItemTapped(index),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ), // Reduced horizontal padding
+          decoration: BoxDecoration(
+            color: isSelected
+                ? activeColor.withValues(alpha: 0.12)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSelected ? activeIcon : icon,
+                color: isSelected ? activeColor : inactiveColor,
+                size: 24,
               ),
+              if (isSelected) ...[
+                const SizedBox(width: 4), // Reduced spacing
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: activeColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12, // Reduced font size
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

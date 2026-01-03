@@ -4,6 +4,7 @@ class Device {
   final String type;
   final String ip;
   final String? room;
+  final String? model;
   final DeviceStatus status;
   final List<dynamic>? inputs;
 
@@ -13,6 +14,7 @@ class Device {
     required this.type,
     required this.ip,
     this.room,
+    this.model,
     this.inputs,
     required this.status,
   });
@@ -24,6 +26,7 @@ class Device {
       type: json['type'] ?? 'unknown',
       ip: json['ip'] ?? '',
       room: json['roomName'] ?? json['room'],
+      model: json['model'],
       inputs: json['inputs'],
       status: DeviceStatus.fromJson(json['state'] ?? json['status'] ?? {}),
     );

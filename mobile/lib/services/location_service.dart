@@ -1,7 +1,32 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:workmanager/workmanager.dart';
 import 'api_service.dart';
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    if (task == 'backgroundLocationUpdate') {
+      try {
+        final apiService = ApiService();
+        // We need to ensure we have permissions, but in background we assume we do.
+        // Note: On Android, this might require "Background Location" permission if running when app is closed.
+        
+        Position position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high)
+        );
+        
+        await apiService.updateLocation(position.latitude, position.longitude);
+        debugPrint('Background Location updated: ${position.latitude}, ${position.longitude}');
+      } catch (e) {
+        debugPrint('Error in background location task: $e');
+        return Future.value(false);
+      }
+    }
+    return Future.value(true);
+  });
+}
 
 class LocationService {
   final ApiService _apiService = ApiService();
@@ -32,7 +57,24 @@ class LocationService {
       return;
     } 
 
-    // Start listening for location updates or periodic updates
+    // Initialize Workmanager for background tasks
+    await Workmanager().initialize(
+      callbackDispatcher,
+    );
+
+    // Register periodic task (every 15 minutes is the minimum for Android WorkManager, 
+    // but on iOS it's up to the OS. We request 15 mins).
+    // The user asked for 10, but Android minimum is 15. We'll set frequency to 15 minutes.
+    await Workmanager().registerPeriodicTask(
+      "1",
+      "backgroundLocationUpdate",
+      frequency: const Duration(minutes: 15),
+      constraints: Constraints(
+        networkType: NetworkType.connected,
+      ),
+    );
+
+    // Start listening for location updates or periodic updates (Foreground)
     _startLocationUpdates();
   }
 

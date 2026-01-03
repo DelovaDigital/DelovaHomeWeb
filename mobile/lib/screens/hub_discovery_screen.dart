@@ -473,7 +473,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
               padding: const EdgeInsets.all(20),
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyan.withOpacity(0.2),
+                  backgroundColor: Colors.cyan.withValues(alpha: 0.2),
                   foregroundColor: textColor,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),

@@ -120,6 +120,7 @@ class AppTranslations {
       'dark': 'Dark',
       'light': 'Light',
       'users': 'Users',
+      'Automations': 'Automations',
     },
     'nl': {
       'welcome': 'Welkom bij DelovaHome',
@@ -241,6 +242,7 @@ class AppTranslations {
       'dark': 'Donker',
       'light': 'Licht',
       'users': 'Gebruikers',
+      'Automations': 'Automatiseringen',
     },
   };
 

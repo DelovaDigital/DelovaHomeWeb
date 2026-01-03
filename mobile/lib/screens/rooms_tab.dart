@@ -90,7 +90,7 @@ class _RoomsTabState extends State<RoomsTab> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subTextColor = isDark ? Colors.white70 : Colors.black54;
-    final iconBgColor = isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.1);
+    final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1);
     final iconColor = isDark ? Colors.white : Colors.black54;
 
     if (_isLoading) {

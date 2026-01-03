@@ -527,4 +527,63 @@ class ApiService {
       throw Exception('Failed to disconnect Spotify');
     }
   }
+
+  // --- Automations ---
+
+  Future<List<dynamic>> getAutomations() async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/automations'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching automations: $e');
+    }
+    return [];
+  }
+
+  Future<void> addAutomation(Map<String, dynamic> automation) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/automations'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(automation),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to add automation');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  Future<void> updateAutomation(String id, Map<String, dynamic> automation) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/automations/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(automation),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update automation');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  Future<void> deleteAutomation(String id) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.delete(Uri.parse('$baseUrl/api/automations/$id'));
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete automation');
+      }
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
 }

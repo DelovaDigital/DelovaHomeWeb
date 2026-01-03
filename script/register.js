@@ -11,25 +11,21 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    msg.style.visibility = 'hidden';
+    msg.style.display = 'none';
     msg.textContent = '';
-    msg.style.backgroundColor = '';
+    msg.className = ''; // Reset classes
 
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const confirm = document.getElementById('confirm').value;
 
     if (!username || !password) {
-      msg.textContent = 'Vul gebruikersnaam en wachtwoord in';
-      msg.style.backgroundColor = 'red';
-      msg.style.visibility = 'visible';
+      showError('Vul gebruikersnaam en wachtwoord in');
       return;
     }
 
     if (password !== confirm) {
-      msg.textContent = 'Wachtwoorden komen niet overeen';
-      msg.style.backgroundColor = 'red';
-      msg.style.visibility = 'visible';
+      showError('Wachtwoorden komen niet overeen');
       return;
     }
 
@@ -43,9 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        msg.style.backgroundColor = 'green';
-        msg.textContent = 'Gebruiker aangemaakt!';
-        msg.style.visibility = 'visible';
+        showSuccess('Gebruiker aangemaakt!');
         
         // Flag for first-time setup wizard
         localStorage.setItem('setupRequired', 'true');
@@ -56,47 +50,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
 
       } else {
-        msg.style.backgroundColor = 'red';
-        msg.textContent = data.message || 'Fout bij aanmaken gebruiker';
-        msg.style.visibility = 'visible';
+        showError(data.message || 'Fout bij aanmaken gebruiker');
         form.reset();
       }
     } catch (err) {
       console.error('Registration failed', err);
-      msg.style.backgroundColor = 'red';
-      msg.textContent = 'Kon geen verbinding maken met de server';
-      msg.style.visibility = 'visible';
+      showError('Kon geen verbinding maken met de server');
     }
   });
+
+  function showError(text) {
+      msg.textContent = text;
+      msg.style.background = 'rgba(239, 68, 68, 0.1)';
+      msg.style.color = '#ef4444';
+      msg.style.border = '1px solid #ef4444';
+      msg.style.display = 'block';
+  }
+
+  function showSuccess(text) {
+      msg.textContent = text;
+      msg.style.background = 'rgba(16, 185, 129, 0.1)';
+      msg.style.color = '#10b981';
+      msg.style.border = '1px solid #10b981';
+      msg.style.display = 'block';
+  }
 
   function validateInputs() {
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const confirm = document.getElementById('confirm').value;
+    
     if (username && password.length >= 6 && password === confirm) {
       createUserBtn.disabled = false;
-      createUserBtn.style.backgroundColor = '#4CAF50';
-      createUserBtn.style.color = 'white';
-      msg.style.visibility = 'hidden';
+      createUserBtn.style.opacity = '1';
+      createUserBtn.style.cursor = 'pointer';
+      msg.style.display = 'none';
       return;
     }
+    
     if (password.length > 0 && password.length < 6) {
-      msg.textContent = 'Wachtwoord moet minstens 6 tekens zijn';
-      msg.style.backgroundColor = 'red';
-      msg.style.visibility = 'visible';
+       // Optional: show real-time validation
     }
-    else if (confirm.length > 0 && password !== confirm) {
-      msg.textContent = 'Wachtwoorden komen niet overeen';
-      msg.style.backgroundColor = 'red';
-      msg.style.visibility = 'visible';
-    }
-    else {
-      msg.style.visibility = 'hidden';
-    }
-
+    
     createUserBtn.disabled = true;
-    createUserBtn.style.backgroundColor = 'white';
-    createUserBtn.style.color = 'gray';
+    createUserBtn.style.opacity = '0.5';
+    createUserBtn.style.cursor = 'not-allowed';
   }
 
   document.getElementById('username').addEventListener('input', validateInputs);

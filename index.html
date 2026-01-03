@@ -13,21 +13,26 @@
         <div class="glass-card auth-card">
             <header>
                 <h1>DelovaHome</h1>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">Welcome back</p>
             </header>
 
             <form action="index.html" method="post" class="auth-form">
                 <div>
-                    <label for="username">Gebruikersnaam</label>
-                    <input type="text" id="username" name="username" required placeholder="Gebruikersnaam">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter your username">
                 </div>
                 <div>
-                    <label for="password">Wachtwoord</label>
-                    <input type="password" id="password" name="password" required placeholder="Wachtwoord">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
                 </div>
                 
                 <div class="auth-actions">
-                    <button type="submit" id="btnLogin">Inloggen</button>
-                    <button type="button" id="btnCreateAccount" class="buttonLogin">Maak account aan</button>
+                    <button type="submit" id="btnLogin">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                    <button type="button" id="btnCreateAccount" class="buttonLogin">
+                        Create Account
+                    </button>
                 </div>
             </form>
         </div>

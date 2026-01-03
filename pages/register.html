@@ -12,32 +12,37 @@
     <div class="auth-container">
         <div class="glass-card auth-card">
             <header>
-                <h1>Maak gebruiker</h1>
+                <h1>Create Account</h1>
+                <p style="color: var(--text-muted); margin-bottom: 20px;">Join DelovaHome today</p>
             </header>
 
             <form id="registerForm" class="auth-form">
                 <div>
-                    <label for="username">Gebruikersnaam</label>
-                    <input id="username" name="username" required placeholder="Gebruikersnaam">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" required placeholder="Choose a username">
                 </div>
 
                 <div>
-                    <label for="password">Wachtwoord</label>
-                    <input id="password" name="password" type="password" required placeholder="Geef minimaal 6 karakters">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" required placeholder="Min. 6 characters">
                 </div>
 
                 <div>
-                    <label for="confirm">Bevestig wachtwoord</label>
-                    <input id="confirm" name="confirm" type="password" required placeholder="Herhaal wachtwoord">
+                    <label for="confirm">Confirm Password</label>
+                    <input id="confirm" name="confirm" type="password" required placeholder="Repeat password">
                 </div>
 
                 <div class="auth-actions">
-                    <button type="submit" id="createUser">Maak gebruiker</button>
-                    <button type="button" id="goToLogin" class="buttonLogin">Ga naar login</button>
+                    <button type="submit" id="createUser">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </button>
+                    <button type="button" id="goToLogin" class="buttonLogin">
+                        Back to Login
+                    </button>
                 </div>
             </form>
 
-            <div id="msg" aria-live="polite" style="margin-top: 15px;"></div>
+            <div id="msg" aria-live="polite" style="margin-top: 15px; border-radius: 8px; padding: 10px; display: none;"></div>
         </div>
     </div>
 

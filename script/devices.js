@@ -263,12 +263,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let card = document.getElementById(`device-card-${device.id}`);
         
         // Determine Icon
-        // Determine Icon
         let icon = 'fa-question-circle';
         if (typeof getDeviceIconClass === 'function') {
             icon = getDeviceIconClass(device);
         }
 
+        const type = device.type ? device.type.toLowerCase() : 'unknown';
         const isOn = device.state && device.state.on;
         const statusClass = isOn ? 'on' : 'off';
 

@@ -1336,13 +1336,10 @@ app.post('/api/devices/:id/command', async (req, res) => {
     
     // console.log(`Received command for ${id}: ${command} = ${value}`);
 
-    const device = await deviceManager.controlDevice(id, command, value);
+    // Fire and forget for faster UI response
+    deviceManager.controlDevice(id, command, value).catch(e => console.error('Control error:', e));
     
-    if (device) {
-        res.json({ ok: true, device });
-    } else {
-        res.status(404).json({ ok: false, message: 'Device not found' });
-    }
+    res.json({ ok: true });
 });
 
 // --- AI / NLP ---

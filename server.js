@@ -1458,6 +1458,37 @@ app.post('/api/pair/pin', async (req, res) => {
     }
 });
 
+app.post('/api/pair-ssh', async (req, res) => {
+    const { ip, type, username, password } = req.body;
+    if (!ip || !username || !password) return res.status(400).json({ ok: false, message: 'Missing fields' });
+
+    try {
+        const result = await deviceManager.pairDevice(ip, type, { username, password });
+        
+        if (result.ok) {
+             // Ensure device is in the list
+             const existing = Array.from(deviceManager.devices.values()).find(d => d.ip === ip);
+             if (!existing) {
+                 deviceManager.addDevice({
+                    id: `ssh-${ip.replace(/\./g, '-')}`,
+                    name: `${type.charAt(0).toUpperCase() + type.slice(1)} (${ip})`,
+                    type: type,
+                    ip: ip,
+                    protocol: 'ssh',
+                    deviceId: `ssh-${ip}`,
+                    paired: true,
+                    state: { on: true }
+                });
+             }
+        }
+        
+        res.json(result);
+    } catch (err) {
+        console.error('SSH Pair Error:', err);
+        res.status(500).json({ ok: false, message: err.message });
+    }
+});
+
 // NAS API
 app.get('/api/nas', (req, res) => {
     res.json(nasManager.getNasList());

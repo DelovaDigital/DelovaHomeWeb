@@ -227,6 +227,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // SSH Pairing Logic
+    const btnPairSsh = document.getElementById('btn-pair-ssh');
+    const sshIp = document.getElementById('ssh-ip');
+    const sshType = document.getElementById('ssh-type');
+    const sshUser = document.getElementById('ssh-user');
+    const sshPass = document.getElementById('ssh-pass');
+    const sshStatus = document.getElementById('ssh-status');
+
+    if (btnPairSsh) {
+        btnPairSsh.addEventListener('click', async () => {
+            const ip = sshIp.value.trim();
+            const type = sshType.value;
+            const username = sshUser.value.trim();
+            const password = sshPass.value.trim();
+
+            if (!ip || !username || !password) {
+                sshStatus.textContent = 'Alle velden zijn verplicht.';
+                sshStatus.style.color = 'red';
+                return;
+            }
+
+            sshStatus.textContent = 'Verbinden...';
+            sshStatus.style.color = 'orange';
+            btnPairSsh.disabled = true;
+
+            try {
+                const res = await fetch('/api/pair-ssh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip, type, username, password })
+                });
+                const data = await res.json();
+
+                if (data.ok) {
+                    sshStatus.textContent = 'Gekoppeld!';
+                    sshStatus.style.color = 'green';
+                    // Clear inputs
+                    sshIp.value = '';
+                    sshUser.value = '';
+                    sshPass.value = '';
+                    
+                    setTimeout(() => {
+                         sshStatus.textContent = '';
+                         btnPairSsh.disabled = false;
+                    }, 2000);
+                } else {
+                    sshStatus.textContent = 'Fout: ' + (data.message || 'Kon niet koppelen');
+                    sshStatus.style.color = 'red';
+                    btnPairSsh.disabled = false;
+                }
+            } catch (err) {
+                sshStatus.textContent = 'Netwerkfout: ' + err.message;
+                sshStatus.style.color = 'red';
+                btnPairSsh.disabled = false;
+            }
+        });
+    }
+
     // Initial load
     loadHubInfo();
 });

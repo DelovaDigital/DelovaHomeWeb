@@ -8,6 +8,7 @@ const path = require('path');
 const WebSocket = require('ws');
 const os = require('os');
 const { Bonjour } = require('bonjour-service');
+const { Client: SSHClient } = require('ssh2');
 const CastClient = require('castv2-client').Client;
 const DefaultMediaReceiver = require('castv2-client').DefaultMediaReceiver;
 
@@ -1786,16 +1787,22 @@ class DeviceManager extends EventEmitter {
             } else {
                 await ps5Manager.sendCommand(device.id, command);
             }
-        } else if (device.type === 'pc' || device.type === 'console') {
-            if (command === 'turn_on') {
+        } else if (['pc', 'computer', 'mac', 'linux', 'server', 'rpi', 'raspberrypi', 'nas', 'workstation'].includes(device.type) || device.type === 'console') {
+            if (command === 'turn_on' || command === 'wake') {
                 try {
                     const mac = device.mac || device.macAddress || await this.getMacAddress(device.ip);
                     if (mac) {
                         console.log(`[DeviceManager] Sending WOL to ${device.name} (${mac})`);
                         this.sendWol(mac);
+                        device.state.on = true;
                     }
                 } catch (e) {
                     console.error('Error sending WOL:', e);
+                }
+            } else {
+                // Try SSH for other commands
+                if (this.sshCredentials[device.ip]) {
+                    this.handleSshCommand(device, command, value);
                 }
             }
         } else if (device.type === 'camera') {
@@ -2879,6 +2886,119 @@ class DeviceManager extends EventEmitter {
         console.log('Credentials saved.');
     }
 
+    handleSshCommand(device, command, value) {
+        const creds = this.sshCredentials[device.ip];
+        if (!creds) {
+            console.warn(`[SSH] No credentials for ${device.name} (${device.ip})`);
+            return Promise.resolve();
+        }
+
+        const conn = new SSHClient();
+        
+        return new Promise((resolve, reject) => {
+            conn.on('ready', () => {
+                console.log(`[SSH] Connected to ${device.ip}`);
+                
+                // Determine OS first if needed, or just run command based on device type/best guess
+                conn.exec('uname -s', (err, stream) => {
+                    if (err) {
+                        // Might be Windows or restricted shell
+                        this._executeSshCommand(conn, device, command, value, 'windows', resolve, reject);
+                        return;
+                    }
+                    
+                    let output = '';
+                    stream.on('data', (data) => { output += data; })
+                          .on('close', () => {
+                              const osType = output.trim().toLowerCase();
+                              this._executeSshCommand(conn, device, command, value, osType, resolve, reject);
+                          });
+                });
+            }).on('error', (err) => {
+                console.error(`[SSH] Connection error for ${device.ip}:`, err);
+                conn.end();
+                // Don't reject, just log, so we don't crash the UI
+                resolve(); 
+            }).connect({
+                host: device.ip,
+                port: 22,
+                username: creds.username,
+                password: creds.password,
+                readyTimeout: 5000
+            });
+        });
+    }
+
+    _executeSshCommand(conn, device, command, value, osType, resolve, reject) {
+        let cmd = '';
+        const isMac = osType === 'darwin';
+        const isLinux = osType === 'linux';
+        const isWindows = osType === 'windows' || (!isMac && !isLinux); // Fallback
+
+        if (command === 'turn_off') {
+            if (isMac || isLinux) cmd = 'sudo shutdown -h now';
+            if (isWindows) cmd = 'shutdown /s /t 0';
+        } else if (command === 'reboot') {
+            if (isMac || isLinux) cmd = 'sudo reboot';
+            if (isWindows) cmd = 'shutdown /r /t 0';
+        } else if (command === 'sleep') {
+            if (isMac) cmd = 'pmset sleepnow';
+            if (isLinux) cmd = 'systemctl suspend';
+            if (isWindows) cmd = 'rundll32.exe powrprof.dll,SetSuspendState 0,1,0';
+        } else if (command === 'mute') {
+            if (isMac) cmd = 'osascript -e "set volume output muted true"';
+            if (isLinux) cmd = 'amixer -q set Master mute';
+        } else if (command === 'unmute') {
+            if (isMac) cmd = 'osascript -e "set volume output muted false"';
+            if (isLinux) cmd = 'amixer -q set Master unmute';
+        } else if (command === 'volume_up') {
+            if (isMac) cmd = 'osascript -e "set volume output volume (output volume of (get volume settings) + 10)"';
+            if (isLinux) cmd = 'amixer -q set Master 5%+';
+        } else if (command === 'volume_down') {
+            if (isMac) cmd = 'osascript -e "set volume output volume (output volume of (get volume settings) - 10)"';
+            if (isLinux) cmd = 'amixer -q set Master 5%-';
+        } else if (command === 'set_volume') {
+             if (isMac) cmd = `osascript -e "set volume output volume ${value}"`;
+             if (isLinux) cmd = `amixer -q set Master ${value}%`;
+        } else if (command === 'play' || command === 'pause') {
+             if (isMac) cmd = `osascript -e 'tell application "System Events" to key code 16'`; // Media Play/Pause
+        }
+
+        if (!cmd) {
+            console.warn(`[SSH] Command ${command} not supported for OS ${osType}`);
+            conn.end();
+            resolve();
+            return;
+        }
+
+        console.log(`[SSH] Executing on ${device.ip} (${osType}): ${cmd}`);
+        conn.exec(cmd, (err, stream) => {
+            if (err) {
+                console.error(`[SSH] Exec error:`, err);
+                conn.end();
+                resolve();
+                return;
+            }
+            stream.on('close', (code, signal) => {
+                console.log(`[SSH] Command finished with code ${code}`);
+                conn.end();
+                
+                // Update state if successful
+                if (code === 0) {
+                    if (command === 'turn_off') {
+                        device.state.on = false;
+                        this.emit('device-updated', device);
+                    }
+                }
+                resolve();
+            }).on('data', (data) => {
+                // console.log('STDOUT: ' + data);
+            }).stderr.on('data', (data) => {
+                // console.log('STDERR: ' + data);
+            });
+        });
+    }
+
     handleYeelightCommand(device, command, value) {
         const socket = new net.Socket();
         const id = 1; // Request ID
@@ -3527,7 +3647,7 @@ class DeviceManager extends EventEmitter {
     async pairDevice(ip, type, credentials) {
         console.log(`[Pairing] Attempting to pair ${type} at ${ip}`);
         
-        if (['nas', 'pc', 'rpi', 'computer', 'raspberrypi', 'mac', 'workstation'].includes(type)) {
+        if (['nas', 'pc', 'rpi', 'computer', 'raspberrypi', 'mac', 'workstation', 'linux', 'server'].includes(type)) {
             // Store credentials
             this.sshCredentials[ip] = {
                 username: credentials.username,

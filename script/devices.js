@@ -224,6 +224,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 disableGl: false
             });
 
+            // Add "Edit Credentials" button overlay
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = '<i class="fas fa-key"></i>';
+            editBtn.className = 'btn-edit-creds';
+            editBtn.title = 'Change Credentials';
+            editBtn.style.position = 'absolute';
+            editBtn.style.top = '10px';
+            editBtn.style.right = '10px';
+            editBtn.style.zIndex = '20';
+            editBtn.style.background = 'rgba(0,0,0,0.5)';
+            editBtn.style.color = 'white';
+            editBtn.style.border = 'none';
+            editBtn.style.borderRadius = '50%';
+            editBtn.style.width = '30px';
+            editBtn.style.height = '30px';
+            editBtn.style.cursor = 'pointer';
+            
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm('Reset camera credentials?')) {
+                    localStorage.removeItem(`camera_creds_${deviceId}`);
+                    player.destroy();
+                    activeStreams.delete(deviceId);
+                    startCameraStream(deviceId, ip, containerId);
+                }
+            };
+            
+            container.appendChild(editBtn);
+
             activeStreams.set(deviceId, { 
                 destroy: () => { 
                     player.destroy(); 

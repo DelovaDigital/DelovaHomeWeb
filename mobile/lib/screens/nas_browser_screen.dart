@@ -147,13 +147,18 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white54 : Colors.black54;
+    final iconColor = isDark ? Colors.white70 : Colors.black54;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(widget.nasName, style: const TextStyle(color: Colors.white)),
-        leading: const BackButton(color: Colors.white),
+        title: Text(widget.nasName, style: TextStyle(color: textColor)),
+        leading: BackButton(color: textColor),
       ),
       body: GradientBackground(
         child: Column(
@@ -172,7 +177,7 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
                       Expanded(
                         child: Text(
                           _currentPath,
-                          style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+                          style: TextStyle(color: textColor, fontFamily: 'monospace'),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -190,7 +195,7 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
                   : _error != null
                       ? Center(child: Text('${t('error')}: $_error', style: const TextStyle(color: Colors.redAccent)))
                       : _files.isEmpty
-                          ? Center(child: Text(t('empty_folder'), style: const TextStyle(color: Colors.white54)))
+                          ? Center(child: Text(t('empty_folder'), style: TextStyle(color: subTextColor)))
                           : ListView.builder(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: _files.length,
@@ -206,10 +211,10 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
                                     child: ListTile(
                                       leading: Icon(
                                         _getFileIcon(type, name),
-                                        color: isDir ? Colors.amber : Colors.white70,
+                                        color: isDir ? Colors.amber : iconColor,
                                       ),
-                                      title: Text(name, style: const TextStyle(color: Colors.white)),
-                                      trailing: isDir ? const Icon(Icons.chevron_right, color: Colors.white54) : null,
+                                      title: Text(name, style: TextStyle(color: textColor)),
+                                      trailing: isDir ? Icon(Icons.chevron_right, color: subTextColor) : null,
                                       onTap: isDir ? () => _navigateTo(name) : () => _openFile(name),
                                     ),
                                   ),

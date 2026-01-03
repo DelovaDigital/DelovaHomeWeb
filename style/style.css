@@ -85,12 +85,107 @@ body {
     color: white;
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
     border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-primary:hover, button:hover {
     background: var(--primary-hover);
     box-shadow: 0 4px 6px rgba(59, 130, 246, 0.4);
     transform: translateY(-2px);
+}
+
+.btn-icon {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* AI Assistant */
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.ai-assistant {
+    display: flex;
+    gap: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 5px;
+    border-radius: 25px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.ai-assistant input {
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 8px 15px;
+    width: 250px;
+    outline: none;
+}
+
+.ai-assistant button {
+    background: var(--primary, #007BFF);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    padding: 0; /* Reset padding */
+}
+
+.ai-assistant button:hover {
+    transform: scale(1.1);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 20px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
 }
 
 /* Inputs */

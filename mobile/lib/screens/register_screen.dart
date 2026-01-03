@@ -97,13 +97,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
+    final subTextColor = isDark ? Colors.white70 : const Color(0xFF64748B);
+    final inputFillColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.5);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -126,28 +131,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             t('create_account'),
                             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF1E293B),
+                                  color: textColor,
                                 ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             t('join_message'),
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: const Color(0xFF64748B),
+                                  color: subTextColor,
                                 ),
                           ),
                           const SizedBox(height: 32),
                           TextFormField(
                             controller: _usernameController,
+                            style: TextStyle(color: textColor),
                             decoration: InputDecoration(
                               labelText: t('username'),
                               hintText: t('choose_username'),
-                              prefixIcon: const Icon(Icons.person_outline),
+                              prefixIcon: Icon(Icons.person_outline, color: subTextColor),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.5),
+                              fillColor: inputFillColor,
+                              labelStyle: TextStyle(color: subTextColor),
+                              hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.5)),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -160,15 +168,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: true,
+                            style: TextStyle(color: textColor),
                             decoration: InputDecoration(
                               labelText: t('password'),
                               hintText: t('min_chars'),
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              prefixIcon: Icon(Icons.lock_outline, color: subTextColor),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.5),
+                              fillColor: inputFillColor,
+                              labelStyle: TextStyle(color: subTextColor),
+                              hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.5)),
                             ),
                             validator: (value) {
                               if (value == null || value.length < 6) {
@@ -181,15 +192,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           TextFormField(
                             controller: _confirmController,
                             obscureText: true,
+                            style: TextStyle(color: textColor),
                             decoration: InputDecoration(
                               labelText: t('confirm_password'),
                               hintText: t('repeat_password'),
-                              prefixIcon: const Icon(Icons.lock_outline),
+                              prefixIcon: Icon(Icons.lock_outline, color: subTextColor),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.5),
+                              fillColor: inputFillColor,
+                              labelStyle: TextStyle(color: subTextColor),
+                              hintStyle: TextStyle(color: subTextColor.withValues(alpha: 0.5)),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {

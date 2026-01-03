@@ -217,6 +217,7 @@ class PresenceManager extends EventEmitter {
     getPresenceStatus() {
         return {
             state: this.homeState,
+            homeLocation: this.homeLocation,
             people: Array.from(this.people.values())
         };
     }

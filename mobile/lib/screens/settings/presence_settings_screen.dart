@@ -22,6 +22,7 @@ class _PresenceSettingsScreenState extends State<PresenceSettingsScreen> {
   void initState() {
     super.initState();
     _loadLanguage();
+    _loadCurrentSettings();
   }
 
   Future<void> _loadLanguage() async {
@@ -29,6 +30,22 @@ class _PresenceSettingsScreenState extends State<PresenceSettingsScreen> {
     setState(() {
       _lang = prefs.getString('language') ?? 'nl';
     });
+  }
+
+  Future<void> _loadCurrentSettings() async {
+    try {
+      final data = await _apiService.getPresenceData();
+      if (data.containsKey('homeLocation')) {
+        final home = data['homeLocation'];
+        if (mounted && home != null) {
+          setState(() {
+            _radius = (home['radius'] as num?)?.toDouble() ?? 100.0;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading presence settings: $e');
+    }
   }
 
   String t(String key) => AppTranslations.get(key, lang: _lang);

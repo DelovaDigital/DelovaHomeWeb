@@ -246,6 +246,12 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final iconColor = isDark ? Colors.white : Colors.black87;
+    final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+
     return Scaffold(
       body: GradientBackground(
         child: Column(
@@ -258,7 +264,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: iconBgColor,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.cyan.withValues(alpha: 0.3),
@@ -267,28 +273,28 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                     )
                   ],
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.home_rounded,
                   size: 60,
-                  color: Colors.white,
+                  color: iconColor,
                 ),
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'DelovaHome',
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: textColor,
                 letterSpacing: 1.5,
               ),
             ),
             const SizedBox(height: 10),
             Text(
               _isScanning ? t('searching_hubs') : 'Scan complete',
-              style: const TextStyle(
-                color: Colors.white70,
+              style: TextStyle(
+                color: subTextColor,
                 fontSize: 16,
               ),
             ),
@@ -303,11 +309,11 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.wifi_off, color: Colors.white54, size: 48),
+                                Icon(Icons.wifi_off, color: subTextColor, size: 48),
                                 const SizedBox(height: 16),
                                 Text(
                                   t('no_results'),
-                                  style: const TextStyle(color: Colors.white70),
+                                  style: TextStyle(color: subTextColor),
                                 ),
                                 TextButton(
                                   onPressed: _startDiscovery,
@@ -336,17 +342,17 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                               ),
                               title: Text(
                                 hub.name ?? 'Unknown Hub',
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: textColor,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
                                 ),
                               ),
                               subtitle: Text(
                                 '${hub.host}:${hub.port}',
-                                style: const TextStyle(color: Colors.white70),
+                                style: TextStyle(color: subTextColor),
                               ),
-                              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white54),
+                              trailing: Icon(Icons.arrow_forward_ios, color: subTextColor),
                               onTap: () => _connectToHub(hub),
                             ),
                           ),
@@ -360,10 +366,10 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
               padding: const EdgeInsets.all(20),
               child: TextButton.icon(
                 onPressed: _showManualConnectDialog,
-                icon: const Icon(Icons.add_link, color: Colors.white70),
+                icon: Icon(Icons.add_link, color: subTextColor),
                 label: Text(
                   t('manual_connect'),
-                  style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  style: TextStyle(color: subTextColor, fontSize: 16),
                 ),
               ),
             ),

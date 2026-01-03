@@ -34,9 +34,13 @@ class _PresenceWidgetState extends State<PresenceWidget> {
   @override
   Widget build(BuildContext context) {
     final people = widget.data['people'] as List<dynamic>? ?? [];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final mutedColor = isDark ? Colors.white54 : Colors.black45;
 
     if (people.isEmpty) {
-      return Center(child: Text(t('no_presence_data'), style: const TextStyle(color: Colors.white54)));
+      return Center(child: Text(t('no_presence_data'), style: TextStyle(color: mutedColor)));
     }
 
     return Column(
@@ -46,9 +50,9 @@ class _PresenceWidgetState extends State<PresenceWidget> {
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Row(
             children: [
-              const Icon(Icons.people, color: Colors.white70, size: 16),
+              Icon(Icons.people, color: subTextColor, size: 16),
               const SizedBox(width: 8),
-              Text(t('presence'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              Text(t('presence'), style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
@@ -68,11 +72,11 @@ class _PresenceWidgetState extends State<PresenceWidget> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(p['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
+                Text(p['name'] ?? 'Unknown', style: TextStyle(color: textColor)),
                 const Spacer(),
                 Text(
                   isHome ? t('home') : t('away'),
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                  style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 12),
                 ),
               ],
             ),

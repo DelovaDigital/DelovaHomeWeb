@@ -87,6 +87,12 @@ class _RoomsTabState extends State<RoomsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final iconBgColor = isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.1);
+    final iconColor = isDark ? Colors.white : Colors.black54;
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: Colors.cyan));
     }
@@ -118,10 +124,10 @@ class _RoomsTabState extends State<RoomsTab> {
             sliver: SliverToBoxAdapter(
               child: Text(
                 t('rooms'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: textColor,
                 ),
               ),
             ),
@@ -133,7 +139,7 @@ class _RoomsTabState extends State<RoomsTab> {
                     child: Center(
                       child: Text(
                         t('no_rooms'),
-                        style: const TextStyle(color: Colors.white70),
+                        style: TextStyle(color: subTextColor),
                       ),
                     ),
                   )
@@ -172,22 +178,22 @@ class _RoomsTabState extends State<RoomsTab> {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.1),
+                                    color: iconBgColor,
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
                                     _getRoomIcon(roomName),
                                     size: 32,
-                                    color: Colors.white,
+                                    color: iconColor,
                                   ),
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
                                   displayRoomName,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                                    color: textColor,
                                   ),
                                   textAlign: TextAlign.center,
                                   maxLines: 1,
@@ -196,8 +202,8 @@ class _RoomsTabState extends State<RoomsTab> {
                                 const SizedBox(height: 4),
                                 Text(
                                   '${devices.length} ${t('devices_count')}',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
+                                  style: TextStyle(
+                                    color: subTextColor,
                                     fontSize: 14,
                                   ),
                                 ),

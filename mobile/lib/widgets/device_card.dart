@@ -17,6 +17,10 @@ class DeviceCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final accentColor = isDark ? Colors.cyanAccent : Colors.blueAccent;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final iconBgColor = isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1);
+    final iconColor = isDark ? Colors.white70 : Colors.black54;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -44,7 +48,7 @@ class DeviceCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isPoweredOn ? accentColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                    color: isPoweredOn ? accentColor.withOpacity(0.2) : iconBgColor,
                     shape: BoxShape.circle,
                   ),
                   child: Hero(
@@ -52,7 +56,7 @@ class DeviceCard extends StatelessWidget {
                     child: Icon(
                       _getDeviceIcon(device.type),
                       size: 24,
-                      color: isPoweredOn ? accentColor : Colors.white70,
+                      color: isPoweredOn ? accentColor : iconColor,
                     ),
                   ),
                 ),
@@ -64,7 +68,7 @@ class DeviceCard extends StatelessWidget {
                     padding: EdgeInsets.zero,
                     icon: Icon(
                       Icons.power_settings_new,
-                      color: isPoweredOn ? accentColor : Colors.white30,
+                      color: isPoweredOn ? accentColor : iconColor.withOpacity(0.5),
                       size: 20,
                     ),
                     onPressed: () async {
@@ -106,7 +110,7 @@ class DeviceCard extends StatelessWidget {
                       device.name,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                        color: textColor,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -119,7 +123,7 @@ class DeviceCard extends StatelessWidget {
                     ? (device.status.title ?? 'On') 
                     : 'Off',
                   style: TextStyle(
-                    color: isPoweredOn ? Colors.white70 : Colors.white38,
+                    color: isPoweredOn ? subTextColor : subTextColor.withOpacity(0.6),
                     fontSize: 12,
                   ),
                   maxLines: 1,

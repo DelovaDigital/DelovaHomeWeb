@@ -79,21 +79,22 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
       bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         decoration: BoxDecoration(
           color: navBarColor,
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(35),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 5),
+              blurRadius: 25,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: SafeArea(
+          bottom: false, // We handle bottom padding manually via margin/padding
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -113,7 +114,7 @@ class _MainScreenState extends State<MainScreen> {
     final isSelected = _selectedIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeColor = const Color(0xFF007AFF);
-    final inactiveColor = isDark ? Colors.grey[400] : Colors.grey[600];
+    final inactiveColor = isDark ? Colors.grey[400] : const Color(0xFF4A4A4A);
 
     return GestureDetector(
       onTap: () => _onItemTapped(index),
@@ -121,10 +122,10 @@ class _MainScreenState extends State<MainScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? activeColor.withOpacity(0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
           children: [

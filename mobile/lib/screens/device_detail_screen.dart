@@ -252,11 +252,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       final devices = await _apiService.getSpotifyDevices();
       if (mounted) {
         Navigator.pop(context); // Close loading
+        
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final dialogBg = isDark ? Colors.grey[900] : Colors.white;
+        final textColor = isDark ? Colors.white : Colors.black87;
+        final subTextColor = isDark ? Colors.grey : Colors.black54;
+
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            backgroundColor: Colors.grey[900],
-            title: const Text('Select Spotify Device', style: TextStyle(color: Colors.white)),
+            backgroundColor: dialogBg,
+            title: Text('Select Spotify Device', style: TextStyle(color: textColor)),
             content: SizedBox(
               width: double.maxFinite,
               child: ListView.builder(
@@ -269,10 +275,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     leading: Icon(
                       d['type'] == 'Computer' ? Icons.computer : 
                       d['type'] == 'Smartphone' ? Icons.smartphone : Icons.speaker,
-                      color: isActive ? Colors.green : Colors.grey,
+                      color: isActive ? Colors.green : subTextColor,
                     ),
-                    title: Text(d['name'], style: TextStyle(color: isActive ? Colors.green : Colors.white)),
-                    subtitle: Text(d['type'], style: const TextStyle(color: Colors.grey)),
+                    title: Text(d['name'], style: TextStyle(color: isActive ? Colors.green : textColor)),
+                    subtitle: Text(d['type'], style: TextStyle(color: subTextColor)),
                     onTap: () async {
                       Navigator.pop(context);
                       await _apiService.transferSpotifyPlayback(d['id']);
@@ -285,7 +291,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(t('cancel')),
               ),
             ],
           ),
@@ -301,6 +307,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     final isLight = widget.device.type.toLowerCase() == 'light' || widget.device.type.toLowerCase().contains('bulb');
     final isTv = widget.device.type.toLowerCase() == 'tv' || widget.device.type.toLowerCase() == 'receiver';
     // isPc is calculated in _buildBody, removing unused variable here
@@ -313,10 +322,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.device.name, style: const TextStyle(color: Colors.white)),
+        title: Text(widget.device.name, style: TextStyle(color: textColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
         actions: [
           if (widget.device.type.toLowerCase() == 'camera')
             IconButton(
@@ -339,6 +348,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   }
 
   Widget _buildBody(bool isLight, bool isTv, bool isSpeaker, bool isThermostat, bool isLock, bool isCover, bool isVacuum) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white54 : Colors.black54;
+    final iconColor = isDark ? Colors.white24 : Colors.black26;
+
     final isSensor = widget.device.type.toLowerCase() == 'sensor';
     final isCamera = widget.device.type.toLowerCase() == 'camera';
     final isPrinter = widget.device.type.toLowerCase() == 'printer';
@@ -363,7 +377,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 child: Icon(
                   _getDeviceIcon(widget.device.type),
                   size: 120,
-                  color: isPoweredOn ? Colors.cyanAccent : Colors.white24,
+                  color: isPoweredOn ? Colors.cyanAccent : iconColor,
                 ),
               ),
               const SizedBox(height: 30),
@@ -374,10 +388,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   color: Colors.transparent,
                   child: Text(
                     widget.device.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: textColor,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -386,7 +400,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               const SizedBox(height: 10),
               Text(
                 widget.device.type.toUpperCase(),
-                style: const TextStyle(color: Colors.white54, letterSpacing: 1.5),
+                style: TextStyle(color: subTextColor, letterSpacing: 1.5),
               ),
               const SizedBox(height: 40),
 
@@ -400,7 +414,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isPoweredOn ? Colors.white : Colors.white.withValues(alpha: 0.1),
+                    color: isPoweredOn ? Colors.white : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
                     boxShadow: isPoweredOn
                         ? [
                             BoxShadow(
@@ -410,12 +424,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             )
                           ]
                         : [],
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1)),
                   ),
                   child: Icon(
                     Icons.power_settings_new,
                     size: 40,
-                    color: isPoweredOn ? Colors.cyan : Colors.white,
+                    color: isPoweredOn ? Colors.cyan : (isDark ? Colors.white : Colors.black54),
                   ),
                 ),
               ),
@@ -453,9 +467,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               if (isThermostat) ...[
                 Text(
                   "${widget.device.status.targetTemperature ?? 21}°C",
-                  style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: textColor),
                 ),
-                const Text("Target Temperature", style: TextStyle(color: Colors.white70)),
+                Text("Target Temperature", style: TextStyle(color: subTextColor)),
                 const SizedBox(height: 20),
                 Slider(
                   value: (widget.device.status.targetTemperature ?? 21).clamp(10, 30),
@@ -475,14 +489,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     _modeButton('Heat', Icons.local_fire_department, Colors.redAccent),
                     _modeButton('Cool', Icons.ac_unit, Colors.cyanAccent),
                     _modeButton('Auto', Icons.hdr_auto, Colors.greenAccent),
-                    _modeButton('Off', Icons.power_off, Colors.white54),
+                    _modeButton('Off', Icons.power_off, subTextColor),
                   ],
                 ),
               ],
 
               // --- Cover Controls ---
               if (isCover) ...[
-                const Text("Position", style: TextStyle(color: Colors.white70)),
+                Text("Position", style: TextStyle(color: subTextColor)),
                 Slider(
                   value: (widget.device.status.position ?? 0).toDouble().clamp(0, 100),
                   min: 0,
@@ -593,23 +607,23 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Column(
                     children: [
-                      IconButton(icon: const Icon(Icons.keyboard_arrow_up, size: 40, color: Colors.white), onPressed: () => _sendCommand('up')),
+                      IconButton(icon: Icon(Icons.keyboard_arrow_up, size: 40, color: textColor), onPressed: () => _sendCommand('up')),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          IconButton(icon: const Icon(Icons.keyboard_arrow_left, size: 40, color: Colors.white), onPressed: () => _sendCommand('left')),
+                          IconButton(icon: Icon(Icons.keyboard_arrow_left, size: 40, color: textColor), onPressed: () => _sendCommand('left')),
                           const SizedBox(width: 20),
-                          IconButton(icon: const Icon(Icons.circle_outlined, size: 40, color: Colors.white), onPressed: () => _sendCommand('enter')),
+                          IconButton(icon: Icon(Icons.circle_outlined, size: 40, color: textColor), onPressed: () => _sendCommand('enter')),
                           const SizedBox(width: 20),
-                          IconButton(icon: const Icon(Icons.keyboard_arrow_right, size: 40, color: Colors.white), onPressed: () => _sendCommand('right')),
+                          IconButton(icon: Icon(Icons.keyboard_arrow_right, size: 40, color: textColor), onPressed: () => _sendCommand('right')),
                         ],
                       ),
-                      IconButton(icon: const Icon(Icons.keyboard_arrow_down, size: 40, color: Colors.white), onPressed: () => _sendCommand('down')),
+                      IconButton(icon: Icon(Icons.keyboard_arrow_down, size: 40, color: textColor), onPressed: () => _sendCommand('down')),
                     ],
                   ),
                 ),
@@ -622,9 +636,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   "Note: Storage and Downloads viewing is not supported by the current library.",
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                  style: TextStyle(color: subTextColor, fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -635,7 +649,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 if (widget.device.status.printerStatus != null)
                   Text(
                     "Status: ${widget.device.status.printerStatus}",
-                    style: const TextStyle(color: Colors.white, fontSize: 18),
+                    style: TextStyle(color: textColor, fontSize: 18),
                   ),
                 const SizedBox(height: 20),
                 if (widget.device.status.inks != null)
@@ -753,9 +767,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
               // --- Light Controls ---
               if (isLight && isPoweredOn) ...[
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Brightness', style: TextStyle(color: Colors.white70)),
+                  child: Text('Brightness', style: TextStyle(color: subTextColor)),
                 ),
                 Slider(
                   value: _currentBrightness.clamp(0, 100),
@@ -768,9 +782,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   onChangeEnd: (val) => _sendCommand('set_brightness', {'value': val.toInt()}),
                 ),
                 const SizedBox(height: 20),
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Color', style: TextStyle(color: Colors.white70)),
+                  child: Text('Color', style: TextStyle(color: subTextColor)),
                 ),
                 const SizedBox(height: 10),
                 _buildColorPalette(),
@@ -790,9 +804,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             width: 150,
                             height: 150,
                             decoration: BoxDecoration(
-                              color: Colors.black26,
+                              color: isDark ? Colors.black26 : Colors.black12,
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2)],
+                              boxShadow: [BoxShadow(color: isDark ? Colors.black26 : Colors.black12, blurRadius: 10, spreadRadius: 2)],
                             ),
                             child: Icon(
                               widget.device.status.app?.toLowerCase().contains('spotify') == true 
@@ -801,13 +815,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                               size: 80, 
                               color: widget.device.status.app?.toLowerCase().contains('spotify') == true 
                                   ? Colors.greenAccent 
-                                  : Colors.white54
+                                  : iconColor
                             ),
                           ),
                           const SizedBox(height: 20),
                           Text(
                             widget.device.status.title!,
-                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -815,7 +829,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                           if (widget.device.status.artist != null)
                             Text(
                               widget.device.status.artist!,
-                              style: const TextStyle(color: Colors.white70, fontSize: 16),
+                              style: TextStyle(color: subTextColor, fontSize: 16),
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -823,7 +837,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                           if (widget.device.status.album != null)
                             Text(
                               widget.device.status.album!,
-                              style: const TextStyle(color: Colors.white54, fontSize: 14),
+                              style: TextStyle(color: subTextColor, fontSize: 14),
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -834,11 +848,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Icon(Icons.apps, size: 16, color: Colors.white30),
+                                  Icon(Icons.apps, size: 16, color: subTextColor),
                                   const SizedBox(width: 5),
                                   Text(
                                     widget.device.status.app!,
-                                    style: const TextStyle(color: Colors.white30, fontSize: 12),
+                                    style: TextStyle(color: subTextColor, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -850,9 +864,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 
                 const SizedBox(height: 20),
 
-                const Align(
+                Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Volume', style: TextStyle(color: Colors.white70)),
+                  child: Text('Volume', style: TextStyle(color: subTextColor)),
                 ),
                 Slider(
                   value: _currentVolume.clamp(0, 100),
@@ -935,27 +949,38 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   }
 
   Widget _actionButton(String label, IconData icon, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final bgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1);
+
     return Column(
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: bgColor,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: Border.all(color: borderColor),
           ),
           child: IconButton(
-            icon: Icon(icon, color: Colors.white),
+            icon: Icon(icon, color: textColor),
             iconSize: 32,
             onPressed: onTap,
           ),
         ),
         const SizedBox(height: 8),
-        Text(label, style: const TextStyle(color: Colors.white70)),
+        Text(label, style: TextStyle(color: subTextColor)),
       ],
     );
   }
 
   Widget _triBar(String label, int level, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final bgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1);
+
     final barHeight = 60.0;
     final fill = (level.clamp(0, 100)) / 100.0;
     return Column(
@@ -964,9 +989,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           width: 18,
           height: barHeight,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: bgColor,
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: Border.all(color: borderColor),
           ),
           child: Align(
             alignment: Alignment.bottomCenter,
@@ -981,12 +1006,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Text(label, style: TextStyle(color: subTextColor, fontSize: 12)),
       ],
     );
   }
 
   Widget _sensorTile(String label, String value, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final iconColor = isDark ? Colors.cyanAccent : Colors.blueAccent;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: GlassCard(
@@ -994,13 +1024,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Icon(icon, color: Colors.cyanAccent, size: 32),
+              Icon(icon, color: iconColor, size: 32),
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(color: Colors.white70)),
-                  Text(value, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(label, style: TextStyle(color: subTextColor)),
+                  Text(value, style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold)),
                 ],
               ),
             ],
@@ -1011,8 +1041,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   }
 
   Widget _mediaButton(IconData icon, VoidCallback onTap, {double size = 48}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : Colors.black87;
+
     return IconButton(
-      icon: Icon(icon, color: Colors.white),
+      icon: Icon(icon, color: iconColor),
       iconSize: size,
       onPressed: onTap,
     );
@@ -1066,6 +1099,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   }
 
   Widget _buildRemoteControl() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : Colors.black87;
+    final bgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1);
+    final centerBtnColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1);
+
     return Column(
       children: [
         Row(
@@ -1081,9 +1120,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           width: 220,
           height: 220,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: bgColor,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: Border.all(color: borderColor),
           ),
           child: Stack(
             children: [
@@ -1111,7 +1150,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: centerBtnColor,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -1121,7 +1160,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                         )
                       ],
                     ),
-                    child: const Icon(Icons.circle, color: Colors.white),
+                    child: Icon(Icons.circle, color: iconColor),
                   ),
                 ),
               ),
@@ -1133,31 +1172,40 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   }
 
   Widget _remoteBtn(IconData icon, String cmd) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : Colors.black87;
     return IconButton(
-      icon: Icon(icon, color: Colors.white),
+      icon: Icon(icon, color: iconColor),
       iconSize: 32,
       onPressed: () => _sendCommand(cmd),
     );
   }
 
   Widget _dpadBtn(IconData icon, String cmd) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? Colors.white : Colors.black87;
     return IconButton(
-      icon: Icon(icon, color: Colors.white),
+      icon: Icon(icon, color: iconColor),
       iconSize: 48,
       onPressed: () => _sendCommand(cmd),
     );
   }
 
   Widget _buildCameraControls() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final bgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1);
+
     return Column(
       children: [
-        const Text("Camera Control", style: TextStyle(color: Colors.white70)),
+        Text("Camera Control", style: TextStyle(color: subTextColor)),
         const SizedBox(height: 20),
         Container(
           width: 220,
           height: 220,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: bgColor,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
@@ -1166,7 +1214,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 spreadRadius: 2,
               )
             ],
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            border: Border.all(color: borderColor),
           ),
           child: Stack(
             children: [

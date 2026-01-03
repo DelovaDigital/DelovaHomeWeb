@@ -463,6 +463,9 @@ import '../utils/app_translations.dart';
     Widget build(BuildContext context) {
       final now = DateTime.now();
       final dateStr = DateFormat('EEEE d MMMM', _lang).format(now);
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final textColor = isDark ? Colors.white : Colors.black87;
+      final subTextColor = isDark ? Colors.white70 : Colors.black54;
 
       return RefreshIndicator(
         onRefresh: () async {
@@ -485,15 +488,15 @@ import '../utils/app_translations.dart';
                         children: [
                           Expanded(
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(t('welcome_home'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.white)),
+                              Text(t('welcome_home'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
                               const SizedBox(height: 4),
-                              Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70)),
+                              Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: subTextColor)),
                             ]),
                           ),
                           IconButton(
                             tooltip: 'Ververs',
                             onPressed: () async { await _fetchStats(); await _fetchWeather(); },
-                            icon: const Icon(Icons.refresh, color: Colors.white),
+                            icon: Icon(Icons.refresh, color: textColor),
                           ),
                         ],
                       ),
@@ -642,9 +645,9 @@ import '../utils/app_translations.dart';
                   child: GlassCard(
                     child: ListTile(
                       leading: const Icon(Icons.music_note, color: Colors.green),
-                      title: const Text('Spotify', style: TextStyle(color: Colors.white)),
-                      subtitle: Text(_spotifyAvailable ? 'Ready to play on $_spotifyDeviceName' : 'Tap to connect Spotify', style: const TextStyle(color: Colors.white70)),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.white54),
+                      title: Text('Spotify', style: TextStyle(color: textColor)),
+                      subtitle: Text(_spotifyAvailable ? 'Ready to play on $_spotifyDeviceName' : 'Tap to connect Spotify', style: TextStyle(color: subTextColor)),
+                      trailing: Icon(Icons.chevron_right, color: subTextColor),
                       onTap: _spotifyAvailable ? _openSpotifyLogin : _openSpotifyLogin,
                     ),
                   ),
@@ -673,7 +676,7 @@ import '../utils/app_translations.dart';
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Snelkoppelingen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text('Snelkoppelingen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -685,12 +688,12 @@ import '../utils/app_translations.dart';
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Spotify', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text('Spotify', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 12),
               _buildSpotifyCard(),
               const SizedBox(height: 24),
               if (_favoriteDevices.isNotEmpty) ...[
-                const Text('Favorieten', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text('Favorieten', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
                 const SizedBox(height: 12),
                 ListView.builder(
                   shrinkWrap: true,
@@ -749,21 +752,29 @@ import '../utils/app_translations.dart';
       }
     }
     Widget _buildStatusCard({required IconData icon, required String title, required String subtitle, required Color color}) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final textColor = isDark ? Colors.white : Colors.black87;
+      final subTextColor = isDark ? Colors.white70 : Colors.black54;
+
       return GlassCard(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Icon(icon, color: color, size: 32),
             const SizedBox(height: 12),
-            Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            Text(title, style: TextStyle(color: subTextColor, fontSize: 14)),
             const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))
+            Text(subtitle, style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold))
           ]),
         ),
       );
     }
 
     Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final textColor = isDark ? Colors.white70 : Colors.black54;
+      final iconColor = isDark ? Colors.white : Colors.black87;
+
       return GestureDetector(
         onTap: onTap,
         child: Column(
@@ -774,11 +785,11 @@ import '../utils/app_translations.dart';
                 width: 64,
                 height: 64,
                 alignment: Alignment.center,
-                child: Icon(icon, color: Colors.white, size: 28),
+                child: Icon(icon, color: iconColor, size: 28),
               ),
             ),
             const SizedBox(height: 8),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500))
+            Text(label, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w500))
           ],
         ),
       );
@@ -806,6 +817,12 @@ import '../utils/app_translations.dart';
     }
 
     Widget _buildSpotifyCard() {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final textColor = isDark ? Colors.white : Colors.black87;
+      final subTextColor = isDark ? Colors.white70 : Colors.black54;
+      final iconColor = isDark ? Colors.white : Colors.black87;
+      final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+
       final isPlaying = _spotifyStatus?['is_playing'] == true;
       final item = _spotifyStatus != null && _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : 'Not playing';
       final albumImages = _spotifyStatus != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null ? _spotifyStatus!['item']['album']['images'] as List<dynamic>? : null;
@@ -831,38 +848,38 @@ import '../utils/app_translations.dart';
                         width: 64,
                         height: 64,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: iconBgColor,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.music_off, color: Colors.white54),
+                        child: Icon(Icons.music_off, color: subTextColor),
                       ),
               ),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Spotify', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Spotify', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
-                  child: Text(item, key: ValueKey<String>(item), style: const TextStyle(color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  child: Text(item, key: ValueKey<String>(item), style: TextStyle(color: subTextColor), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ),
                 const SizedBox(height: 8),
                 TweenAnimationBuilder<double>(
                   tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
                   duration: const Duration(milliseconds: 300),
                   builder: (context, value, child) {
-                    return LinearProgressIndicator(value: value, backgroundColor: Colors.white10, valueColor: const AlwaysStoppedAnimation<Color>(Colors.green));
+                    return LinearProgressIndicator(value: value, backgroundColor: isDark ? Colors.white10 : Colors.black12, valueColor: const AlwaysStoppedAnimation<Color>(Colors.green));
                   },
                 ),
                 const SizedBox(height: 6),
                 if (_spotifyAvailable && _spotifyDeviceName != null)
-                  Text('Apparaat: $_spotifyDeviceName', style: const TextStyle(color: Colors.white54, fontSize: 12))
+                  Text('Apparaat: $_spotifyDeviceName', style: TextStyle(color: subTextColor, fontSize: 12))
               ])),
               const SizedBox(width: 8),
               if (!_spotifyAvailable)
                 ElevatedButton(onPressed: _openSpotifyLogin, style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text('Verbinden'))
               else
                 IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.white70),
+                  icon: Icon(Icons.refresh, color: subTextColor),
                   onPressed: () async { await _fetchSpotifyMe(); if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spotify beschikbaar')));
                   } },
@@ -871,7 +888,7 @@ import '../utils/app_translations.dart';
             const SizedBox(height: 12),
             Column(children: [
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_previous), color: Colors.white),
+                IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_previous), color: iconColor),
                 IconButton(
                   onPressed: _spotifyAvailable ? () async { if (isPlaying) {
                     await _apiService.spotifyControl('pause');
@@ -881,18 +898,18 @@ import '../utils/app_translations.dart';
                   icon: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                    child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, key: ValueKey<bool>(isPlaying), color: Colors.white, size: 32),
+                    child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, key: ValueKey<bool>(isPlaying), color: iconColor, size: 32),
                   ),
                 ),
-                IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('next'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_next), color: Colors.white),
+                IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('next'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_next), color: iconColor),
               ]),
               const SizedBox(height: 8),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                TextButton(onPressed: _spotifyAvailable ? _showSpotifyMusicPicker : null, child: const Text('Kies muziek', style: TextStyle(color: Colors.white70))),
+                TextButton(onPressed: _spotifyAvailable ? _showSpotifyMusicPicker : null, child: Text('Kies muziek', style: TextStyle(color: subTextColor))),
                 const SizedBox(width: 8),
-                TextButton(onPressed: _spotifyAvailable ? () async { final q = await _showSpotifySearchDialog(); if (q != null && q.isNotEmpty) { final results = await _apiService.searchSpotify(q); if (!mounted) return; _showSpotifySearchResults(results); } } : null, child: const Text('Zoeken', style: TextStyle(color: Colors.white70))),
+                TextButton(onPressed: _spotifyAvailable ? () async { final q = await _showSpotifySearchDialog(); if (q != null && q.isNotEmpty) { final results = await _apiService.searchSpotify(q); if (!mounted) return; _showSpotifySearchResults(results); } } : null, child: Text('Zoeken', style: TextStyle(color: subTextColor))),
                 const SizedBox(width: 8),
-                TextButton(onPressed: _spotifyAvailable ? _showSpotifyDevicesDialog : null, child: const Text('Kies apparaat', style: TextStyle(color: Colors.white70))),
+                TextButton(onPressed: _spotifyAvailable ? _showSpotifyDevicesDialog : null, child: Text('Kies apparaat', style: TextStyle(color: subTextColor))),
               ])
             ])
           ]),

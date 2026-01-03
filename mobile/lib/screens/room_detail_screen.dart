@@ -44,19 +44,23 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(widget.roomName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(widget.roomName, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
         centerTitle: true,
       ),
       body: GradientBackground(
         child: SafeArea(
           child: widget.devices.isEmpty
-              ? Center(child: Text(t('no_devices_room'), style: const TextStyle(color: Colors.white70)))
+              ? Center(child: Text(t('no_devices_room'), style: TextStyle(color: subTextColor)))
               : GridView.builder(
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

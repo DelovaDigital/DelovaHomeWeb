@@ -41,13 +41,19 @@ class _EnergySettingsScreenState extends State<EnergySettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.2);
+    final fillColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Energy Configuration', style: TextStyle(color: Colors.white)),
+        title: Text('Energy Configuration', style: TextStyle(color: textColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: GradientBackground(
         child: SafeArea(
@@ -61,7 +67,7 @@ class _EnergySettingsScreenState extends State<EnergySettingsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SwitchListTile(
-                      title: const Text('Solar Panels Installed', style: TextStyle(color: Colors.white)),
+                      title: Text('Solar Panels Installed', style: TextStyle(color: textColor)),
                       value: _hasSolar,
                       onChanged: (val) => setState(() => _hasSolar = val),
                       activeThumbColor: Colors.cyan,
@@ -70,23 +76,23 @@ class _EnergySettingsScreenState extends State<EnergySettingsScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _capacityController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: textColor),
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           labelText: 'Total Capacity (Watts)',
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: subTextColor),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            borderSide: BorderSide(color: borderColor),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Colors.cyan),
                           ),
                           filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          fillColor: fillColor,
                           suffixText: 'W',
-                          suffixStyle: const TextStyle(color: Colors.white),
+                          suffixStyle: TextStyle(color: textColor),
                         ),
                       ),
                     ],

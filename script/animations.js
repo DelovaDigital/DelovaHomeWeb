@@ -24,6 +24,35 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Ripple Effect for Buttons
+    document.addEventListener('click', function(e) {
+      const target = e.target.closest('button, .btn-primary');
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        const circle = document.createElement('span');
+        const diameter = Math.max(rect.width, rect.height);
+        const radius = diameter / 2;
+
+        circle.style.width = circle.style.height = `${diameter}px`;
+        circle.style.left = `${e.clientX - rect.left - radius}px`;
+        circle.style.top = `${e.clientY - rect.top - radius}px`;
+        circle.classList.add('ripple');
+
+        const ripple = target.getElementsByClassName('ripple')[0];
+        if (ripple) {
+          ripple.remove();
+        }
+
+        target.appendChild(circle);
+      }
+    });
+
+    // Apply Fade In Up to main content
+    const mainContent = document.querySelector('.content-area');
+    if (mainContent) {
+        mainContent.classList.add('fade-in-up');
+    }
+
     // Ensure user dropdown respects the CSS show transition (script toggles .show)
     // If existing code toggles inline display, normalize it: convert display toggles to class toggles
     const dropdown = document.getElementById('userDropdown');

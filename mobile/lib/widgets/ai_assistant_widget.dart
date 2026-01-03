@@ -58,12 +58,18 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final hintColor = isDark ? Colors.white54 : Colors.black54;
+    final bgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: bgColor,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
@@ -72,10 +78,10 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
           Expanded(
             child: TextField(
               controller: _controller,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: t('ask_ai'),
-                hintStyle: const TextStyle(color: Colors.white54),
+                hintStyle: TextStyle(color: hintColor),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -85,7 +91,7 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
           ),
           IconButton(
             icon: _isLoading 
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: textColor))
               : const Icon(Icons.send, color: Color(0xFF3B82F6)),
             onPressed: _isLoading ? null : _sendCommand,
             padding: EdgeInsets.zero,

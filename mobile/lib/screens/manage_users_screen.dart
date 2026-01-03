@@ -64,6 +64,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Future<void> _addUser() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final dialogBgColor = isDark ? const Color(0xFF1A237E) : Colors.white;
+    final borderColor = isDark ? Colors.white30 : Colors.black26;
+
     final usernameController = TextEditingController();
     final passwordController = TextEditingController();
     final confirmController = TextEditingController();
@@ -71,37 +77,37 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A237E),
-        title: Text(t('add_user'), style: const TextStyle(color: Colors.white)),
+        backgroundColor: dialogBgColor,
+        title: Text(t('add_user'), style: TextStyle(color: textColor)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: usernameController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: t('username'),
-                labelStyle: const TextStyle(color: Colors.white70),
-                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                labelStyle: TextStyle(color: subTextColor),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
               ),
             ),
             TextField(
               controller: passwordController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: t('password'),
-                labelStyle: const TextStyle(color: Colors.white70),
-                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                labelStyle: TextStyle(color: subTextColor),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
               ),
               obscureText: true,
             ),
             TextField(
               controller: confirmController,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 labelText: t('confirm_password'),
-                labelStyle: const TextStyle(color: Colors.white70),
-                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                labelStyle: TextStyle(color: subTextColor),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
               ),
               obscureText: true,
             ),
@@ -110,7 +116,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
+            child: Text(t('cancel'), style: TextStyle(color: subTextColor)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
@@ -178,16 +184,21 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Future<void> _deleteUser(int userId) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final dialogBgColor = isDark ? const Color(0xFF1A237E) : Colors.white;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A237E),
-        title: Text(t('manage_users'), style: const TextStyle(color: Colors.white)),
-        content: Text(t('delete_user_confirm'), style: const TextStyle(color: Colors.white70)),
+        backgroundColor: dialogBgColor,
+        title: Text(t('manage_users'), style: TextStyle(color: textColor)),
+        content: Text(t('delete_user_confirm'), style: TextStyle(color: subTextColor)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
+            child: Text(t('cancel'), style: TextStyle(color: subTextColor)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -223,6 +234,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final iconColor = isDark ? Colors.white : Colors.black87;
+    final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+
     return Scaffold(
       body: GradientBackground(
         child: Column(
@@ -230,9 +247,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
             AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              title: Text(t('manage_users'), style: const TextStyle(color: Colors.white)),
+              title: Text(t('manage_users'), style: TextStyle(color: textColor)),
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                icon: Icon(Icons.arrow_back, color: textColor),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -251,18 +268,18 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                               leading: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: iconBgColor,
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.person, color: Colors.white),
+                                child: Icon(Icons.person, color: iconColor),
                               ),
                               title: Text(
                                 user['Username'],
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                               ),
                               subtitle: Text(
                                 user['Role'] ?? 'User',
-                                style: const TextStyle(color: Colors.white70),
+                                style: TextStyle(color: subTextColor),
                               ),
                               trailing: IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.redAccent),

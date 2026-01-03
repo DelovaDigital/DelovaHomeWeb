@@ -41,6 +41,10 @@ class _EnergyWidgetState extends State<EnergyWidget> {
     final solarPower = (solar['currentPower'] ?? 0).toDouble();
     final usage = (home['currentUsage'] ?? (gridPower + solarPower)).toDouble();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -50,14 +54,14 @@ class _EnergyWidgetState extends State<EnergyWidget> {
             children: [
               const Icon(Icons.bolt, color: Colors.yellowAccent, size: 16),
               const SizedBox(width: 8),
-              Text(t('energy_monitor'), style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              Text(t('energy_monitor'), style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold)),
             ],
           ),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildItem(Icons.home, '${usage.round()} W', t('usage'), Colors.white),
+            _buildItem(Icons.home, '${usage.round()} W', t('usage'), textColor),
             _buildItem(Icons.wb_sunny, '${solarPower.round()} W', t('solar'), Colors.greenAccent),
             _buildItem(
               Icons.electrical_services, 
@@ -72,12 +76,15 @@ class _EnergyWidgetState extends State<EnergyWidget> {
   }
 
   Widget _buildItem(IconData icon, String value, String label, Color color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? Colors.white54 : Colors.black45;
+
     return Column(
       children: [
         Icon(icon, color: color.withValues(alpha: 0.8), size: 24),
         const SizedBox(height: 4),
         Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10)),
+        Text(label, style: TextStyle(color: labelColor, fontSize: 10)),
       ],
     );
   }

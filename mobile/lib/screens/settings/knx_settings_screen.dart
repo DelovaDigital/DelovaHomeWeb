@@ -60,13 +60,19 @@ class _KnxSettingsScreenState extends State<KnxSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final borderColor = isDark ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.2);
+    final fillColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05);
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('KNX Configuration', style: TextStyle(color: Colors.white)),
+        title: Text('KNX Configuration', style: TextStyle(color: textColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: GradientBackground(
         child: SafeArea(
@@ -78,66 +84,66 @@ class _KnxSettingsScreenState extends State<KnxSettingsScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      const Text(
+                      Text(
                         'Configure your KNX IP Interface or Router connection details.',
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: subTextColor),
                       ),
                       const SizedBox(height: 20),
                       TextField(
                         controller: _ipController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: textColor),
                         decoration: InputDecoration(
                           labelText: 'Gateway IP Address',
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: subTextColor),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            borderSide: BorderSide(color: borderColor),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Colors.cyan),
                           ),
                           filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          fillColor: fillColor,
                         ),
                       ),
                       const SizedBox(height: 16),
                       TextField(
                         controller: _portController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: textColor),
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           labelText: 'Port (Default: 3671)',
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: subTextColor),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            borderSide: BorderSide(color: borderColor),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Colors.cyan),
                           ),
                           filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          fillColor: fillColor,
                         ),
                       ),
                       const SizedBox(height: 16),
                       TextField(
                         controller: _physAddrController,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: textColor),
                         decoration: InputDecoration(
                           labelText: 'Client Physical Address',
-                          labelStyle: const TextStyle(color: Colors.white70),
+                          labelStyle: TextStyle(color: subTextColor),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            borderSide: BorderSide(color: borderColor),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: const BorderSide(color: Colors.cyan),
                           ),
                           filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          fillColor: fillColor,
                         ),
                       ),
                       const SizedBox(height: 32),

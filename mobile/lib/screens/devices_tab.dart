@@ -118,6 +118,13 @@ class _DevicesTabState extends State<DevicesTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final hintColor = isDark ? Colors.white54 : Colors.black54;
+    final chipSelectedColor = isDark ? Colors.cyan : Colors.blue;
+    final chipUnselectedColor = isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.1);
+    final chipBorderColor = isDark ? Colors.white.withOpacity(0.2) : Colors.grey.withOpacity(0.3);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -125,10 +132,10 @@ class _DevicesTabState extends State<DevicesTab> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Text(
             t('devices'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: textColor,
             ),
           ),
         ),
@@ -137,11 +144,11 @@ class _DevicesTabState extends State<DevicesTab> {
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: GlassCard(
             child: TextField(
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: t('search_devices'),
-                hintStyle: const TextStyle(color: Colors.white54),
-                prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                hintStyle: TextStyle(color: hintColor),
+                prefixIcon: Icon(Icons.search, color: hintColor),
                 filled: true,
                 fillColor: Colors.transparent,
                 border: OutlineInputBorder(
@@ -176,16 +183,16 @@ class _DevicesTabState extends State<DevicesTab> {
                       _applyFilters();
                     });
                   },
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                  selectedColor: Colors.cyan.withValues(alpha: 0.5),
+                  backgroundColor: chipUnselectedColor,
+                  selectedColor: chipSelectedColor.withOpacity(0.2),
                   labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
+                    color: isSelected ? chipSelectedColor : textColor.withOpacity(0.7),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(
-                      color: isSelected ? Colors.cyan : Colors.white.withValues(alpha: 0.2),
+                      color: isSelected ? chipSelectedColor : chipBorderColor,
                     ),
                   ),
                   showCheckmark: false,

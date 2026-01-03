@@ -515,4 +515,16 @@ class ApiService {
       throw Exception('Failed to standby PS5');
     }
   }
+
+  Future<void> disconnectSpotify(int userId) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/spotify/logout'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'userId': userId}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to disconnect Spotify');
+    }
+  }
 }

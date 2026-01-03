@@ -531,7 +531,16 @@ app.get('/api/users', async (req, res) => {
         const pool = await db.getPool();
         const result = await pool.request()
             .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
-            .query("SELECT Id, Username, Role, CreatedAt FROM Users WHERE HubID = @hubId");
+            .query(`
+                SELECT 
+                    Id, 
+                    Username, 
+                    Role, 
+                    CreatedAt,
+                    CASE WHEN SpotifyAccessToken IS NOT NULL THEN 1 ELSE 0 END AS HasSpotify
+                FROM Users 
+                WHERE HubID = @hubId
+            `);
         res.json({ ok: true, users: result.recordset });
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });
@@ -616,6 +625,19 @@ app.get('/api/spotify/callback', async (req, res) => {
         res.send('<script>window.close();</script>');
     } else {
         res.status(500).send('Spotify authentication failed');
+    }
+});
+
+app.post('/api/spotify/logout', async (req, res) => {
+    const userId = req.body.userId;
+    if (!userId) {
+        return res.status(400).json({ ok: false, message: 'Missing userId' });
+    }
+    const success = await spotifyManager.disconnect(userId);
+    if (success) {
+        res.json({ ok: true });
+    } else {
+        res.status(500).json({ ok: false, message: 'Failed to disconnect Spotify' });
     }
 });
 

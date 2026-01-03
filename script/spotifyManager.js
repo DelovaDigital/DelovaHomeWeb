@@ -93,6 +93,23 @@ class SpotifyManager {
         return false;
     }
 
+    async disconnect(userId) {
+        try {
+            const pool = await db.getPool();
+            await pool.request()
+                .input('userId', db.sql.Int, userId)
+                .query(`UPDATE Users SET 
+                            SpotifyAccessToken = NULL, 
+                            SpotifyRefreshToken = NULL, 
+                            SpotifyTokenExpiration = NULL
+                        WHERE Id = @userId`);
+            return true;
+        } catch (e) {
+            console.error(`Error disconnecting Spotify for user ${userId}:`, e);
+            return false;
+        }
+    }
+
     async refreshAccessToken(userId, refreshToken) {
         if (!refreshToken) return null;
 

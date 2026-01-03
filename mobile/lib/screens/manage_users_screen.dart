@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
 import '../widgets/gradient_background.dart';
@@ -232,6 +233,65 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     }
   }
 
+  Future<void> _toggleSpotify(int userId, bool hasSpotify) async {
+    if (hasSpotify) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final textColor = isDark ? Colors.white : Colors.black87;
+      final subTextColor = isDark ? Colors.white70 : Colors.black54;
+      final dialogBgColor = isDark ? const Color(0xFF1A237E) : Colors.white;
+
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: dialogBgColor,
+          title: Text('Spotify', style: TextStyle(color: textColor)),
+          content: Text('Disconnect Spotify for this user?', style: TextStyle(color: subTextColor)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(t('cancel'), style: TextStyle(color: subTextColor)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Disconnect', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        try {
+          await _apiService.disconnectSpotify(userId);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Spotify disconnected')),
+            );
+            _loadUsers();
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: $e')),
+            );
+          }
+        }
+      }
+    } else {
+      try {
+        final baseUrl = await _apiService.getBaseUrl();
+        final url = '$baseUrl/api/spotify/login?userId=$userId';
+        if (await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+          // We can't easily know when they come back, but we can reload users when they return to the app
+          // For now, just reload after a delay or let them refresh manually
+        }
+      } catch (e) {
+        debugPrint('Error launching URL: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -281,9 +341,29 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                 user['Role'] ?? 'User',
                                 style: TextStyle(color: subTextColor),
                               ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.redAccent),
-                                onPressed: () => _deleteUser(user['Id']),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.music_note, 
+                                      color: (user['HasSpotify'] == 1 || user['HasSpotify'] == true) 
+                                          ? Colors.green 
+                                          : Colors.grey
+                                    ),
+                                    onPressed: () => _toggleSpotify(
+                                      user['Id'], 
+                                      (user['HasSpotify'] == 1 || user['HasSpotify'] == true)
+                                    ),
+                                    tooltip: (user['HasSpotify'] == 1 || user['HasSpotify'] == true) 
+                                        ? 'Disconnect Spotify' 
+                                        : 'Connect Spotify',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.redAccent),
+                                    onPressed: () => _deleteUser(user['Id']),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

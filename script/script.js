@@ -387,17 +387,18 @@ function getDeviceIconClass(device) {
     let icon = 'fas fa-question-circle';
     const type = device.type ? device.type.toLowerCase() : 'unknown';
     const name = device.name ? device.name.toLowerCase() : '';
+    const model = device.model ? device.model.toLowerCase() : '';
 
     if (type === 'light' || type.includes('bulb') || type === 'hue') icon = 'fas fa-lightbulb';
     else if (type === 'switch' || type.includes('outlet') || type === 'shelly') icon = 'fas fa-plug';
     else if (type === 'tv' || type === 'television') {
-        if (name.includes('apple') || name.includes('atv')) icon = 'fab fa-apple';
+        if (name.includes('apple') || name.includes('atv') || model.includes('apple') || model.includes('tv')) icon = 'fab fa-apple';
         else icon = 'fas fa-tv';
     }
     else if (type === 'speaker' || type === 'sonos') {
-        if (name.includes('homepod')) icon = 'fab fa-apple';
-        else if (name.includes('apple') || name.includes('atv')) icon = 'fab fa-apple';
-        else if (name.includes('sonos') || type === 'sonos') icon = 'fas fa-music';
+        if (name.includes('homepod') || model.includes('homepod')) icon = 'fab fa-apple';
+        else if (name.includes('apple') || name.includes('atv') || name.includes('mac') || model.includes('apple') || model.includes('mac')) icon = 'fab fa-apple';
+        else if (name.includes('sonos') || type === 'sonos' || model.includes('sonos')) icon = 'fas fa-music';
         else icon = 'fas fa-music';
     }
     else if (type === 'camera') icon = 'fas fa-video';
@@ -408,15 +409,15 @@ function getDeviceIconClass(device) {
     else if (type === 'vacuum') icon = 'fas fa-robot';
     else if (type === 'sensor') icon = 'fas fa-wifi';
     else if (type === 'console' || type === 'playstation' || type === 'ps5' || type === 'xbox') {
-        if (name.includes('ps5') || name.includes('playstation') || type === 'ps5') icon = 'fab fa-playstation';
-        else if (name.includes('xbox') || type === 'xbox') icon = 'fab fa-xbox';
+        if (name.includes('ps5') || name.includes('playstation') || type === 'ps5' || model.includes('ps5')) icon = 'fab fa-playstation';
+        else if (name.includes('xbox') || type === 'xbox' || model.includes('xbox')) icon = 'fab fa-xbox';
         else icon = 'fas fa-gamepad';
     }
     else if (type === 'nas') icon = 'fas fa-server';
     else if (type === 'computer' || type === 'workstation' || type === 'pc' || type === 'mac') {
-        if (type === 'mac' || name.includes('mac') || name.includes('apple')) icon = 'fab fa-apple';
-        else if (name.includes('windows') || name.includes('pc')) icon = 'fab fa-windows';
-        else if (name.includes('linux') || name.includes('ubuntu')) icon = 'fab fa-linux';
+        if (type === 'mac' || name.includes('mac') || name.includes('apple') || model.includes('mac') || model.includes('apple')) icon = 'fab fa-apple';
+        else if (name.includes('windows') || name.includes('pc') || model.includes('windows')) icon = 'fab fa-windows';
+        else if (name.includes('linux') || name.includes('ubuntu') || model.includes('linux')) icon = 'fab fa-linux';
         else icon = 'fas fa-desktop';
     }
     else if (type === 'raspberrypi' || type === 'rpi') icon = 'fab fa-raspberry-pi';

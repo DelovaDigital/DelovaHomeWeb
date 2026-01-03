@@ -192,6 +192,11 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
 
         // 2. Subnet Broadcast (Try to find local interface)
         try {
+          // Hardcoded fallbacks for common subnets
+          _udpSocket!.send(data, InternetAddress('192.168.0.255'), 8888);
+          _udpSocket!.send(data, InternetAddress('192.168.1.255'), 8888);
+          _udpSocket!.send(data, InternetAddress('192.168.178.255'), 8888); // FritzBox default
+
           for (var interface in await NetworkInterface.list(type: InternetAddressType.IPv4)) {
             for (var addr in interface.addresses) {
               if (!addr.isLoopback) {
@@ -466,12 +471,17 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
             // Manual Connect Button
             Padding(
               padding: const EdgeInsets.all(20),
-              child: TextButton.icon(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.cyan.withOpacity(0.2),
+                  foregroundColor: textColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
                 onPressed: _showManualConnectDialog,
-                icon: Icon(Icons.add_link, color: subTextColor),
+                icon: const Icon(Icons.add_link),
                 label: Text(
                   t('manual_connect'),
-                  style: TextStyle(color: subTextColor, fontSize: 16),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

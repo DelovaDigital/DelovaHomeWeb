@@ -1682,8 +1682,10 @@ udpServer.on('error', (err) => {
 
 udpServer.on('message', (msg, rinfo) => {
   const message = msg.toString();
+  console.log(`[UDP Discovery] Packet received from ${rinfo.address}:${rinfo.port} - Content: ${message}`);
+  
   if (message.includes('DELOVAHOME_DISCOVER')) {
-    console.log(`[UDP Discovery] Received discovery request from ${rinfo.address}:${rinfo.port}`);
+    console.log(`[UDP Discovery] Valid discovery request from ${rinfo.address}:${rinfo.port}`);
     
     const response = JSON.stringify({
       type: 'delovahome',

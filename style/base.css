@@ -509,63 +509,204 @@ a { text-decoration: none; color: inherit; }
 /* Settings Layout */
 .settings-container {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     min-height: 600px;
+    align-items: flex-start; /* Prevent stretching */
 }
 
 .settings-sidebar {
-    width: 250px;
-    border-radius: 15px;
+    width: 280px;
+    border-radius: var(--radius-lg);
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 10px;
     flex-shrink: 0;
+    position: sticky;
+    top: 100px; /* Stick below header */
 }
 
 .settings-nav-item {
-    padding: 12px 15px;
-    border-radius: 10px;
+    padding: 14px 20px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 10px;
-    transition: background 0.2s;
+    gap: 12px;
+    transition: all 0.2s;
     font-weight: 500;
+    color: var(--text-muted);
+}
+
+.settings-nav-item:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+}
+
+.settings-nav-item.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .settings-content {
     flex: 1;
+    min-width: 0; /* Prevent overflow */
 }
 
-.settings-section {
+.settings-card {
+    margin-bottom: 24px;
+    padding: 30px;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+.card-header i {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+}
+
+.setting-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.setting-label {
+    font-weight: 600;
+}
+
+.setting-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* Switch Toggle */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255,255,255,0.1);
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: var(--primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Setup Wizard */
+.setup-wizard-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.setup-wizard-container {
+    width: 100%;
+    max-width: 600px;
+    padding: 40px;
+    text-align: center;
+}
+
+.setup-step {
     display: none;
-    animation: fadeIn 0.3s ease;
+    animation: fadeIn 0.5s ease;
 }
 
-.settings-section.active {
+.setup-step.active {
     display: block;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+.setup-icon {
+    font-size: 4rem;
+    color: var(--primary);
+    margin-bottom: 20px;
 }
 
-/* Responsive Settings */
-@media (max-width: 768px) {
-    .settings-container {
-        flex-direction: column;
-    }
-    .settings-sidebar {
-        width: 100%;
-        flex-direction: row;
-        overflow-x: auto;
-        padding: 10px;
-    }
-    .settings-nav-item {
-        white-space: nowrap;
-    }
+.setup-title {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.setup-desc {
+    color: var(--text-muted);
+    margin-bottom: 30px;
+    font-size: 1.1rem;
+}
+
+.setup-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
 }
 
 /* Clock Widget */

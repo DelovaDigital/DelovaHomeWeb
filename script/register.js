@@ -46,6 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
         msg.style.backgroundColor = 'green';
         msg.textContent = 'Gebruiker aangemaakt!';
         msg.style.visibility = 'visible';
+        
+        // Flag for first-time setup wizard
+        localStorage.setItem('setupRequired', 'true');
+        
         form.reset();
         setTimeout(() => {
           window.location.href = '../index.html';

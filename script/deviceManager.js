@@ -3714,6 +3714,7 @@ class DeviceManager extends EventEmitter {
             });
 
             client.connect(ip, () => {
+                // Try launching with the specific Spotify App ID
                 client.launch(SpotifyReceiver, (err, player) => {
                     if (err) {
                         try { client.close(); } catch(e) {}

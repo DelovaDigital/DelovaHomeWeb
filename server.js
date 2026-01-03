@@ -678,6 +678,11 @@ async function resolveSpotifyDeviceId(userId, deviceId) {
                 await new Promise(r => setTimeout(r, 1000));
                 const devices = await spotifyManager.getDevices(userId);
                 
+                // Debug: Print available devices every 5 seconds
+                if (i % 5 === 0) {
+                     console.log(`[Spotify] Available devices: ${devices.map(d => d.name).join(', ')}`);
+                }
+
                 const match = devices.find(d => 
                     d.name === castDev.name || 
                     d.name.toLowerCase().includes(castDev.name.toLowerCase()) ||
@@ -690,6 +695,8 @@ async function resolveSpotifyDeviceId(userId, deviceId) {
                 }
             }
             console.warn(`[Spotify] Timeout waiting for ${castDev.name}.`);
+            const finalDevices = await spotifyManager.getDevices(userId);
+            console.warn(`[Spotify] Final available devices: ${finalDevices.map(d => d.name).join(', ')}`);
         }
         throw new Error('Cast device did not appear in Spotify Connect list');
     }

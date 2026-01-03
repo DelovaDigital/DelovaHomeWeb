@@ -59,83 +59,92 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = const Color(0xFF3B82F6); // Blue
-    final inactiveColor = isDark ? Colors.white70 : const Color(0xFF64748B);
-    final navBgColor = isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.7);
+    final bgColor = isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F7);
+    final navBarColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return Scaffold(
-      extendBody: true, // Important for glass effect on bottom nav
-      body: GradientBackground(
+      backgroundColor: bgColor,
+      extendBody: true,
+      body: SafeArea(
+        bottom: false,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, anim) {
+            return FadeTransition(opacity: anim, child: child);
+          },
+          child: KeyedSubtree(
+            key: ValueKey<int>(_selectedIndex),
+            child: _widgetOptions.elementAt(_selectedIndex),
+          ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+        decoration: BoxDecoration(
+          color: navBarColor,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
         child: SafeArea(
-          bottom: false,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, anim) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-            child: KeyedSubtree(
-              key: ValueKey<int>(_selectedIndex),
-              child: _widgetOptions.elementAt(_selectedIndex),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard, t('dashboard')),
+                _buildNavItem(1, Icons.devices_outlined, Icons.devices, t('devices')),
+                _buildNavItem(2, Icons.meeting_room_outlined, Icons.meeting_room, t('rooms')),
+                _buildNavItem(3, Icons.settings_outlined, Icons.settings, t('settings')),
+              ],
             ),
           ),
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: navBgColor,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: BottomNavigationBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                type: BottomNavigationBarType.fixed,
-                showSelectedLabels: true,
-                showUnselectedLabels: true,
-                selectedItemColor: activeColor,
-                unselectedItemColor: inactiveColor,
-                selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                currentIndex: _selectedIndex,
-                onTap: _onItemTapped,
-                items: <BottomNavigationBarItem>[
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.dashboard_outlined),
-                    activeIcon: const Icon(Icons.dashboard),
-                    label: t('dashboard'),
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.devices_outlined),
-                    activeIcon: const Icon(Icons.devices),
-                    label: t('devices'),
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.meeting_room_outlined),
-                    activeIcon: const Icon(Icons.meeting_room),
-                    label: t('rooms'),
-                  ),
-                  BottomNavigationBarItem(
-                    icon: const Icon(Icons.settings_outlined),
-                    activeIcon: const Icon(Icons.settings),
-                    label: t('settings'),
-                  ),
-                ],
-              ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
+    final isSelected = _selectedIndex == index;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = const Color(0xFF007AFF);
+    final inactiveColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
+    return GestureDetector(
+      onTap: () => _onItemTapped(index),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? activeIcon : icon,
+              color: isSelected ? activeColor : inactiveColor,
+              size: 24,
             ),
-          ),
+            if (isSelected) ...[
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: activeColor,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

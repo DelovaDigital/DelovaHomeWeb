@@ -166,6 +166,7 @@ class _SettingsTabState extends State<SettingsTab> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subTextColor = isDark ? Colors.white60 : Colors.black54;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -176,11 +177,11 @@ class _SettingsTabState extends State<SettingsTab> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.only(bottom: 20, left: 5),
               child: Text(
                 t('settings'),
                 style: TextStyle(
-                  fontSize: 32,
+                  fontSize: 34,
                   fontWeight: FontWeight.bold,
                   color: textColor,
                 ),
@@ -188,7 +189,18 @@ class _SettingsTabState extends State<SettingsTab> {
             ),
 
             // Hub Info Card
-            GlassCard(
+            Container(
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -198,7 +210,7 @@ class _SettingsTabState extends State<SettingsTab> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.blueAccent.withValues(alpha: 0.2),
+                            color: Colors.blueAccent.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.hub, color: Colors.blueAccent, size: 30),
@@ -243,178 +255,173 @@ class _SettingsTabState extends State<SettingsTab> {
               ),
             ),
             
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
 
             // General Settings
             _buildSectionHeader(t('general'), textColor),
-            GlassCard(
-              child: Column(
-                children: [
-                  _buildSettingTile(
-                    icon: Icons.language,
-                    title: t('language'),
-                    subtitle: _lang == 'nl' ? 'Nederlands' : 'English',
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => Container(
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                title: const Text('Nederlands'),
-                                trailing: _lang == 'nl' ? const Icon(Icons.check, color: Colors.blue) : null,
-                                onTap: () => _setLanguage('nl'),
-                              ),
-                              ListTile(
-                                title: const Text('English'),
-                                trailing: _lang == 'en' ? const Icon(Icons.check, color: Colors.blue) : null,
-                                onTap: () => _setLanguage('en'),
-                              ),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
+            _buildSettingsCard(
+              context,
+              [
+                _buildSettingTile(
+                  icon: Icons.language,
+                  title: t('language'),
+                  subtitle: _lang == 'nl' ? 'Nederlands' : 'English',
+                  onTap: () {
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                         ),
-                      );
-                    },
-                    textColor: textColor,
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSettingTile(
-                    icon: Icons.dark_mode,
-                    title: t('theme'),
-                    subtitle: DelovaHome.of(context)?.themeModeValue == ThemeMode.system 
-                        ? t('system') 
-                        : DelovaHome.of(context)?.themeModeValue == ThemeMode.dark ? t('dark') : t('light'),
-                    onTap: () {
-                      DelovaHome.of(context)?.cycleTheme();
-                    },
-                    textColor: textColor,
-                  ),
-                ],
-              ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ListTile(
+                              title: const Text('Nederlands'),
+                              trailing: _lang == 'nl' ? const Icon(Icons.check, color: Colors.blue) : null,
+                              onTap: () => _setLanguage('nl'),
+                            ),
+                            ListTile(
+                              title: const Text('English'),
+                              trailing: _lang == 'en' ? const Icon(Icons.check, color: Colors.blue) : null,
+                              onTap: () => _setLanguage('en'),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  textColor: textColor,
+                ),
+                _buildSettingTile(
+                  icon: Icons.dark_mode,
+                  title: t('theme'),
+                  subtitle: DelovaHome.of(context)?.themeModeValue == ThemeMode.system 
+                      ? t('system') 
+                      : DelovaHome.of(context)?.themeModeValue == ThemeMode.dark ? t('dark') : t('light'),
+                  onTap: () {
+                    DelovaHome.of(context)?.cycleTheme();
+                  },
+                  textColor: textColor,
+                ),
+              ],
+              cardColor,
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
 
             // Integrations
             _buildSectionHeader(t('integrations'), textColor),
-            GlassCard(
-              child: Column(
-                children: [
-                  _buildSettingTile(
-                    icon: Icons.location_on,
-                    title: t('presence'), // Make sure this key exists or fallback
-                    subtitle: t('configure_presence'),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PresenceSettingsScreen())),
-                    textColor: textColor,
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSettingTile(
-                    icon: Icons.router,
-                    title: 'KNX',
-                    subtitle: t('configure_knx'),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KnxSettingsScreen())),
-                    textColor: textColor,
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSettingTile(
-                    icon: Icons.bolt,
-                    title: t('energy'),
-                    subtitle: t('configure_energy'),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnergySettingsScreen())),
-                    textColor: textColor,
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSettingTile(
-                    icon: Icons.storage,
-                    title: 'NAS',
-                    subtitle: '${_nasDevices.length} ${t('devices')}',
-                    onTap: () {
-                      if (_nasDevices.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('No NAS devices found')),
-                        );
-                        return;
-                      }
-                      
-                      if (_nasDevices.length == 1) {
-                        final nas = _nasDevices.first;
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => NasBrowserScreen(
-                          nasId: nas['id'] ?? 'unknown',
-                          nasName: nas['name'] ?? 'NAS',
-                        )));
-                        return;
-                      }
-
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => Container(
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Text('Select NAS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                              ),
-                              ..._nasDevices.map((nas) => ListTile(
-                                leading: const Icon(Icons.storage),
-                                title: Text(nas['name'] ?? 'NAS'),
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => NasBrowserScreen(
-                                    nasId: nas['id'] ?? 'unknown',
-                                    nasName: nas['name'] ?? 'NAS',
-                                  )));
-                                },
-                              )),
-                              const SizedBox(height: 20),
-                            ],
-                          ),
-                        ),
+            _buildSettingsCard(
+              context,
+              [
+                _buildSettingTile(
+                  icon: Icons.location_on,
+                  title: t('presence'),
+                  subtitle: t('configure_presence'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PresenceSettingsScreen())),
+                  textColor: textColor,
+                ),
+                _buildSettingTile(
+                  icon: Icons.router,
+                  title: 'KNX',
+                  subtitle: t('configure_knx'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KnxSettingsScreen())),
+                  textColor: textColor,
+                ),
+                _buildSettingTile(
+                  icon: Icons.bolt,
+                  title: t('energy'),
+                  subtitle: t('configure_energy'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EnergySettingsScreen())),
+                  textColor: textColor,
+                ),
+                _buildSettingTile(
+                  icon: Icons.storage,
+                  title: 'NAS',
+                  subtitle: '${_nasDevices.length} ${t('devices')}',
+                  onTap: () {
+                    if (_nasDevices.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No NAS devices found')),
                       );
-                    },
-                    textColor: textColor,
-                  ),
-                ],
-              ),
+                      return;
+                    }
+                    
+                    if (_nasDevices.length == 1) {
+                      final nas = _nasDevices.first;
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => NasBrowserScreen(
+                        nasId: nas['id'] ?? 'unknown',
+                        nasName: nas['name'] ?? 'NAS',
+                      )));
+                      return;
+                    }
+
+                    showModalBottomSheet(
+                      context: context,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => Container(
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text('Select NAS', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            ),
+                            ..._nasDevices.map((nas) => ListTile(
+                              leading: const Icon(Icons.storage),
+                              title: Text(nas['name'] ?? 'NAS'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => NasBrowserScreen(
+                                  nasId: nas['id'] ?? 'unknown',
+                                  nasName: nas['name'] ?? 'NAS',
+                                )));
+                              },
+                            )),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  textColor: textColor,
+                ),
+              ],
+              cardColor,
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
 
             // Management
             _buildSectionHeader(t('management'), textColor),
-            GlassCard(
-              child: Column(
-                children: [
-                  _buildSettingTile(
-                    icon: Icons.people,
-                    title: t('users'),
-                    subtitle: t('manage_users'),
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
-                    textColor: textColor,
-                  ),
-                  const Divider(height: 1, indent: 60),
-                  _buildSettingTile(
-                    icon: Icons.logout,
-                    title: t('disconnect'),
-                    subtitle: t('disconnect_hub'),
-                    onTap: _disconnect,
-                    textColor: Colors.redAccent,
-                    iconColor: Colors.redAccent,
-                  ),
-                ],
-              ),
+            _buildSettingsCard(
+              context,
+              [
+                _buildSettingTile(
+                  icon: Icons.people,
+                  title: t('users'),
+                  subtitle: t('manage_users'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageUsersScreen())),
+                  textColor: textColor,
+                ),
+                _buildSettingTile(
+                  icon: Icons.logout,
+                  title: t('disconnect'),
+                  subtitle: t('disconnect_hub'),
+                  onTap: _disconnect,
+                  textColor: Colors.redAccent,
+                  iconColor: Colors.redAccent,
+                ),
+              ],
+              cardColor,
             ),
 
             const SizedBox(height: 30),
@@ -433,15 +440,40 @@ class _SettingsTabState extends State<SettingsTab> {
 
   Widget _buildSectionHeader(String title, Color color) {
     return Padding(
-      padding: const EdgeInsets.only(left: 10, bottom: 10),
+      padding: const EdgeInsets.only(left: 15, bottom: 10),
       child: Text(
         title.toUpperCase(),
         style: TextStyle(
-          color: color.withValues(alpha: 0.6),
-          fontSize: 12,
+          color: color.withOpacity(0.6),
+          fontSize: 13,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.2,
         ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard(BuildContext context, List<Widget> children, Color color) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1)
+              Divider(height: 1, indent: 60, color: Colors.grey.withOpacity(0.1)),
+          ],
+        ],
       ),
     );
   }
@@ -458,22 +490,23 @@ class _SettingsTabState extends State<SettingsTab> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: (iconColor ?? Colors.blue).withValues(alpha: 0.1),
+          color: (iconColor ?? Colors.blue).withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: iconColor ?? Colors.blue, size: 20),
+        child: Icon(icon, color: iconColor ?? Colors.blue, size: 22),
       ),
       title: Text(
         title,
         style: TextStyle(
           color: textColor,
           fontWeight: FontWeight.w600,
+          fontSize: 16,
         ),
       ),
-      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: textColor?.withValues(alpha: 0.6))) : null,
-      trailing: Icon(Icons.chevron_right, color: textColor?.withValues(alpha: 0.3)),
+      subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: textColor?.withOpacity(0.6), fontSize: 13)) : null,
+      trailing: Icon(Icons.chevron_right, color: textColor?.withOpacity(0.3)),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
     );
   }
 }

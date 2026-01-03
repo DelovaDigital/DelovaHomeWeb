@@ -278,7 +278,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'sensor') icon = 'fa-wifi';
         else if (type === 'console' || type === 'playstation') icon = 'fa-gamepad';
         else if (type === 'nas') icon = 'fa-server';
-        else if (type === 'computer' || type === 'workstation' || type === 'pc') icon = 'fa-desktop';
+        else if (type === 'computer' || type === 'workstation' || type === 'pc' || type === 'mac') icon = 'fa-desktop';
         else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
         else if (type === 'esphome') icon = 'fa-microchip';
         else if (type === 'matter') icon = 'fa-atom';
@@ -521,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (type === 'camera') icon = 'fa-video';
         else if (type === 'ps5' || type === 'console') icon = 'fa-gamepad';
         else if (type === 'shelly' || type === 'switch') icon = 'fa-toggle-on';
-        else if (type === 'computer' || type === 'workstation' || type === 'pc') icon = 'fa-desktop';
+        else if (type === 'computer' || type === 'workstation' || type === 'pc' || type === 'mac') icon = 'fa-desktop';
         else if (type === 'nas') icon = 'fa-server';
         else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
 
@@ -534,7 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let cmd = 'toggle';
             if (type === 'ps5' || type === 'console') {
                 cmd = isOn ? 'standby' : 'wake';
-            } else if ((type === 'pc' || type === 'rpi' || type === 'nas' || type === 'computer' || type === 'workstation') && !isOn) {
+            } else if ((type === 'pc' || type === 'rpi' || type === 'nas' || type === 'computer' || type === 'workstation' || type === 'mac') && !isOn) {
                 cmd = 'wake';
             }
             

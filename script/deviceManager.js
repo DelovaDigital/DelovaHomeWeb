@@ -444,6 +444,15 @@ class DeviceManager extends EventEmitter {
         this.bonjour.find({ type: 'rdp' }, (service) => {
             this.processMdnsService(service, 'pc');
         });
+        this.bonjour.find({ type: 'ssh' }, (service) => {
+            this.processMdnsService(service, 'pc');
+        });
+        this.bonjour.find({ type: 'rfb' }, (service) => { // VNC / Screen Sharing
+            this.processMdnsService(service, 'pc');
+        });
+        this.bonjour.find({ type: 'device-info' }, (service) => {
+            this.processMdnsService(service, 'pc');
+        });
 
         // LG WebOS TV Discovery
         this.bonjour.find({ type: 'webos-second-screen' }, (service) => {
@@ -827,10 +836,20 @@ class DeviceManager extends EventEmitter {
             type = 'receiver';
         } else if (lowerName.includes('pioneer') || model.toLowerCase().includes('pioneer')) {
             type = 'receiver';
-        } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation') || service.type === 'smb' || service.type === 'afpovertcp') {
+        } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation')) {
             type = 'nas';
-        } else if (sourceType === 'pc' || lowerName.includes('windows') || lowerName.includes('pc') || lowerName.includes('desktop') || lowerName.includes('laptop') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
+        } else if (sourceType === 'pc' || service.type === 'ssh' || service.type === 'rfb' || service.type === 'device-info' || lowerName.includes('windows') || lowerName.includes('pc') || lowerName.includes('desktop') || lowerName.includes('laptop') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
             type = 'pc';
+            if (model.toLowerCase().includes('mac') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
+                type = 'mac';
+            }
+        } else if (service.type === 'smb' || service.type === 'afpovertcp') {
+             // Could be NAS or PC.
+             if (model.toLowerCase().includes('mac') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
+                 type = 'mac';
+             } else {
+                 type = 'nas';
+             }
         } else if (lowerName.includes('sensor') || lowerName.includes('homepod') || model.includes('AudioAccessory')) {
             type = 'sensor';
             if (model.includes('AudioAccessory5')) name = 'HomePod Mini';

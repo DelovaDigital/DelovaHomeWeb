@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!card) {
             card = document.createElement('div');
-            card.className = `device-card ${isOn ? 'active' : ''}`;
+            card.className = `device-card`;
             card.id = `device-card-${device.id}`;
             // Add click handler to open modal
             card.onclick = (e) => {
@@ -300,10 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 openDeviceDetail(device.id);
             };
             grid.appendChild(card);
-        } else {
-            // Update active class on existing card
-            if (isOn) card.classList.add('active');
-            else card.classList.remove('active');
         }
 
         // Simple Card Content (Summary)
@@ -327,18 +323,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const newHtml = `
-            <div class="device-header">
-                <div class="device-icon ${statusClass}"><i class="fas ${icon}"></i></div>
-                <div class="device-info">
-                    <h3>${device.name}</h3>
-                    <p class="device-ip">${summary}</p>
+            <div class="device-card-inner">
+                <div class="device-card-top">
+                    <div class="device-icon-wrapper ${statusClass}">
+                        <i class="fas ${icon}"></i>
+                    </div>
+                    <div class="device-status-indicator ${statusClass}"></div>
                 </div>
-                <button class="device-menu-btn" onclick="showDeviceMenu('${device.id}', event); event.stopPropagation();" title="Meer opties">
-                    <i class="fas fa-ellipsis-v"></i>
-                </button>
-                <button class="btn-toggle ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}'); event.stopPropagation();">
-                    <i class="fas fa-power-off"></i>
-                </button>
+                <div class="device-card-middle">
+                    <h3 class="device-name">${device.name}</h3>
+                    <p class="device-status-text">${summary}</p>
+                </div>
+                <div class="device-card-bottom">
+                    <button class="btn-icon-only" onclick="showDeviceMenu('${device.id}', event); event.stopPropagation();" title="Meer opties">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                    <button class="btn-power ${isOn ? 'active' : ''}" onclick="toggleDevice('${device.id}'); event.stopPropagation();">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
             </div>
         `;
         
@@ -578,20 +581,25 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else if (type === 'light' && isOn) {
             controlsHtml += `
-                <div class="modal-slider-container">
-                    <label class="modal-slider-label">Helderheid: ${device.state.brightness || 0}%</label>
-                    <input type="range" class="modal-slider" min="0" max="100" value="${device.state.brightness || 0}"
-                        onchange="controlDevice('${device.id}', 'set_brightness', this.value)">
+                <div class="modal-control-group">
+                    <div class="modal-slider-container">
+                        <label class="modal-slider-label" style="display:block; margin-bottom:10px; font-weight:500;">Helderheid: ${device.state.brightness || 0}%</label>
+                        <input type="range" class="modal-slider" min="0" max="100" value="${device.state.brightness || 0}"
+                            onchange="controlDevice('${device.id}', 'set_brightness', this.value)">
+                    </div>
                 </div>
-                <div class="color-palette">
-                    <div class="color-swatch" style="background: #ffffff" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:255,b:255})"></div>
-                    <div class="color-swatch" style="background: #ff0000" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:0,b:0})"></div>
-                    <div class="color-swatch" style="background: #00ff00" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:255,b:0})"></div>
-                    <div class="color-swatch" style="background: #0000ff" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:0,b:255})"></div>
-                    <div class="color-swatch" style="background: #ffa500" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:165,b:0})"></div>
-                    <div class="color-swatch" style="background: #800080" onclick="controlDevice('${device.id}', 'set_color', {r:128,g:0,b:128})"></div>
-                    <div class="color-swatch" style="background: #00ffff" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:255,b:255})"></div>
-                    <div class="color-swatch" style="background: #ffc0cb" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:192,b:203})"></div>
+                <div class="modal-control-group">
+                    <label style="display:block; margin-bottom:10px; font-weight:500;">Kleur</label>
+                    <div class="color-palette">
+                        <div class="color-swatch" style="background: #ffffff" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:255,b:255})"></div>
+                        <div class="color-swatch" style="background: #ff0000" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:0,b:0})"></div>
+                        <div class="color-swatch" style="background: #00ff00" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:255,b:0})"></div>
+                        <div class="color-swatch" style="background: #0000ff" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:0,b:255})"></div>
+                        <div class="color-swatch" style="background: #ffa500" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:165,b:0})"></div>
+                        <div class="color-swatch" style="background: #800080" onclick="controlDevice('${device.id}', 'set_color', {r:128,g:0,b:128})"></div>
+                        <div class="color-swatch" style="background: #00ffff" onclick="controlDevice('${device.id}', 'set_color', {r:0,g:255,b:255})"></div>
+                        <div class="color-swatch" style="background: #ffc0cb" onclick="controlDevice('${device.id}', 'set_color', {r:255,g:192,b:203})"></div>
+                    </div>
                 </div>
             `;
         } else if (type === 'tv' && isOn) {

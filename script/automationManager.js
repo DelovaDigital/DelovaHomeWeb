@@ -26,6 +26,12 @@ class AutomationManager extends EventEmitter {
 
     init() {
         console.log(`[Automation] Manager initialized. Server time: ${new Date().toString()}`);
+        
+        // Debug: Heartbeat to verify cron is running
+        cron.schedule('* * * * *', () => {
+            console.log(`[Automation] System Check at ${new Date().toLocaleTimeString()} - Active Tasks: ${this.tasks.size}`);
+        });
+
         this.load();
     }
 
@@ -100,7 +106,8 @@ class AutomationManager extends EventEmitter {
         if (automation.trigger.type === 'time' && automation.trigger.cron) {
             if (!cron.validate(automation.trigger.cron)) {
                 console.error(`[Automation] Invalid cron expression for '${automation.name}': ${automation.trigger.cron}`);
-                return;
+                retuconsole.log(`[Automation] Actions to execute:`, JSON.stringify(automation.actions));
+                    rn;
             }
 
             try {

@@ -72,6 +72,26 @@ function getTriggerDescription(t) {
     if (t.type === 'presence') {
         return t.event === 'leave_home' ? 'Bij verlaten huis' : 'Bij thuiskomst';
     } else if (t.type === 'time') {
+        // Try to parse standard time cron: "0 46 11 * * *" or "46 11 * * *"
+        const parts = t.cron.split(' ');
+        // Check for simple daily schedule (ending in * * *)
+        if (parts.length >= 5 && parts.slice(parts.length - 3).every(p => p === '*')) {
+            let h, m;
+            if (parts.length === 5) {
+                // min hour * * *
+                m = parts[0];
+                h = parts[1];
+            } else if (parts.length === 6) {
+                // sec min hour * * *
+                m = parts[1];
+                h = parts[2];
+            }
+            
+            if (!isNaN(h) && !isNaN(m)) {
+                const pad = (n) => n.toString().padStart(2, '0');
+                return `Tijd: ${pad(h)}:${pad(m)}`;
+            }
+        }
         return `Tijd: ${t.cron}`;
     } else if (t.type === 'state') {
         const d = devices.find(dev => dev.id === t.deviceId);

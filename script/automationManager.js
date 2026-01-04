@@ -103,6 +103,7 @@ class AutomationManager extends EventEmitter {
                     this.executeActions(automation.actions);
                 });
                 this.tasks.set(automation.id, task);
+                console.log(`[Automation] Scheduled '${automation.name}' with cron: ${automation.trigger.cron}`);
             } catch (e) {
                 console.error(`[Automation] Invalid cron expression for ${automation.name}:`, e);
             }

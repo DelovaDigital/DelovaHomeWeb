@@ -214,7 +214,14 @@ window.saveAutomation = async () => {
     if (triggerType === 'presence') {
         trigger.event = document.getElementById('presenceEvent').value;
     } else if (triggerType === 'time') {
-        trigger.cron = document.getElementById('timeCron').value;
+        let cronVal = document.getElementById('timeCron').value.trim();
+        // Support simple HH:MM format
+        const timeMatch = cronVal.match(/^(\d{1,2}):(\d{2})$/);
+        if (timeMatch) {
+            const [_, h, m] = timeMatch;
+            cronVal = `0 ${parseInt(m)} ${parseInt(h)} * * *`;
+        }
+        trigger.cron = cronVal;
     } else if (triggerType === 'state') {
         trigger.deviceId = document.getElementById('stateDevice').value;
         trigger.property = document.getElementById('stateProperty').value;

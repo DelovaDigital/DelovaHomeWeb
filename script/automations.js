@@ -17,15 +17,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadDevices() {
     try {
         const res = await fetch('/api/devices');
+        if (!res.ok) throw new Error('Failed to fetch devices');
         devices = await res.json();
         
+        if (!Array.isArray(devices)) devices = [];
+        
+        console.log(`[Automations] Loaded ${devices.length} devices.`);
+
         // Populate device dropdowns
         const stateDevice = document.getElementById('stateDevice');
         if (stateDevice) {
             stateDevice.innerHTML = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
         }
+        
+        // Re-render actions if modal is open to update dropdowns
+        if (document.getElementById('automationModal').style.display === 'block') {
+            renderActions();
+        }
     } catch (e) {
         console.error('Error loading devices:', e);
+        devices = [];
     }
 }
 

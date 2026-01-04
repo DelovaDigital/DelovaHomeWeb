@@ -266,8 +266,8 @@ class _AutomationsTabState extends State<AutomationsTab> {
                     'trigger': {
                       'type': triggerType,
                       if (triggerType == 'time')
-                        'time':
-                            '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
+                        'cron':
+                            '0 ${selectedTime.minute} ${selectedTime.hour} * * *',
                       if (triggerType == 'presence') 'event': presenceEvent,
                     },
                     'actions': actions,

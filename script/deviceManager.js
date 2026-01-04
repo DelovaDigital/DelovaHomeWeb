@@ -98,7 +98,7 @@ class DeviceManager extends EventEmitter {
             type: 'light', // Generic type
             model: light.model,
             manufacturer: light.manufacturer,
-            status: {
+            state: {
                 on: light.on,
                 brightness: light.brightness,
                 color: light.color,

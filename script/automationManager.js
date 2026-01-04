@@ -133,6 +133,7 @@ class AutomationManager extends EventEmitter {
                 // We need to access nested properties safely?
                 // device.state.on
                 
+                if (!device.state) return;
                 let currentValue = device.state[t.property];
                 
                 // Handle nested properties if needed, but flat state is common

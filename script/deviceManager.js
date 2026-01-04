@@ -1627,7 +1627,10 @@ class DeviceManager extends EventEmitter {
 
     async controlDevice(id, command, value) {
         const device = this.devices.get(id);
-        if (!device) return null;
+        if (!device) {
+            console.error(`[DeviceManager] Control failed: Device with ID '${id}' not found.`);
+            return null;
+        }
 
         console.log(`Controlling ${device.name} (${device.protocol}): ${command} = ${value}`);
 

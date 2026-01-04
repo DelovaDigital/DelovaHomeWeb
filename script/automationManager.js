@@ -25,6 +25,7 @@ class AutomationManager extends EventEmitter {
     }
 
     init() {
+        console.log(`[Automation] Manager initialized. Server time: ${new Date().toString()}`);
         this.load();
     }
 
@@ -97,6 +98,11 @@ class AutomationManager extends EventEmitter {
 
         // Time-based triggers
         if (automation.trigger.type === 'time' && automation.trigger.cron) {
+            if (!cron.validate(automation.trigger.cron)) {
+                console.error(`[Automation] Invalid cron expression for '${automation.name}': ${automation.trigger.cron}`);
+                return;
+            }
+
             try {
                 const task = cron.schedule(automation.trigger.cron, () => {
                     console.log(`[Automation] Executing time-based automation: ${automation.name}`);
@@ -105,7 +111,7 @@ class AutomationManager extends EventEmitter {
                 this.tasks.set(automation.id, task);
                 console.log(`[Automation] Scheduled '${automation.name}' with cron: ${automation.trigger.cron}`);
             } catch (e) {
-                console.error(`[Automation] Invalid cron expression for ${automation.name}:`, e);
+                console.error(`[Automation] Error scheduling ${automation.name}:`, e);
             }
         }
     }

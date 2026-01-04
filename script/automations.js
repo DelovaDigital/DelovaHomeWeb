@@ -72,6 +72,7 @@ function getTriggerDescription(t) {
     if (t.type === 'presence') {
         return t.event === 'leave_home' ? 'Bij verlaten huis' : 'Bij thuiskomst';
     } else if (t.type === 'time') {
+        if (!t.cron) return 'Tijd: Onbekend';
         // Try to parse standard time cron: "0 46 11 * * *" or "46 11 * * *"
         const parts = t.cron.split(' ');
         // Check for simple daily schedule (ending in * * *)

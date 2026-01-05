@@ -64,7 +64,8 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
           onWebResourceError: (WebResourceError error) {
             debugPrint('WebView error: ${error.description} (Code: ${error.errorCode})');
             // Ignore some common non-fatal errors or cancellations
-            if (error.errorCode == -999) return; 
+            // 102 is "Frame load interrupted" which happens when we return NavigationDecision.prevent
+            if (error.errorCode == -999 || error.errorCode == 102) return; 
             
             if (mounted) {
               setState(() {

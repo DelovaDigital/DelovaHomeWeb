@@ -95,7 +95,7 @@ class DeviceCard extends StatelessWidget {
               ],
             ),
             
-            const Spacer(),
+            const SizedBox(height: 12),
 
             // Name & Status
             Column(

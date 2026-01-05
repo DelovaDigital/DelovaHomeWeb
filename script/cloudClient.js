@@ -33,13 +33,17 @@ class CloudClient {
     }
 
     async linkHub(cloudUrl, username, password, hubName, email = null) {
+        const https = require('https');
+        const agent = new https.Agent({ rejectUnauthorized: false });
+
         // 0. Register if email is provided
         if (email) {
             console.log('[Cloud] Registering new user...');
             const regRes = await fetch(`${cloudUrl}/api/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, email })
+                body: JSON.stringify({ username, password, email }),
+                agent: cloudUrl.startsWith('https') ? agent : undefined
             });
             const regData = await regRes.json();
             if (!regData.success && regData.error !== 'Username taken') {
@@ -51,7 +55,8 @@ class CloudClient {
         const loginRes = await fetch(`${cloudUrl}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password }),
+            agent: cloudUrl.startsWith('https') ? agent : undefined
         });
         const loginData = await loginRes.json();
         
@@ -72,7 +77,8 @@ class CloudClient {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${loginData.token}`
             },
-            body: JSON.stringify({ hubId, name: hubName })
+            body: JSON.stringify({ hubId, name: hubName }),
+            agent: cloudUrl.startsWith('https') ? agent : undefined
         });
         
         const linkData = await linkRes.json();

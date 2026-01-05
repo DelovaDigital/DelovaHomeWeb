@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../services/api_service.dart';
-import '../../widgets/glass_card.dart';
 import '../../utils/app_translations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -105,7 +104,7 @@ class _PresenceSettingsScreenState extends State<PresenceSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GlassCard(
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(

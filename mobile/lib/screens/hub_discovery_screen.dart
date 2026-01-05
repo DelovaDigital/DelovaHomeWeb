@@ -9,9 +9,6 @@ import 'main_screen.dart';
 import 'hub_login_screen.dart';
 import '../utils/app_translations.dart';
 
-import '../widgets/gradient_background.dart';
-import '../widgets/glass_card.dart';
-
 class HubDiscoveryScreen extends StatefulWidget {
   const HubDiscoveryScreen({super.key});
 
@@ -298,173 +295,170 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A237E),
-          title: Text(t('cloud_login'), style: const TextStyle(color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Visibility(
-                visible: false,
-                child: TextField(
-                  controller: urlController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: t('cloud_url'),
-                    hintText: 'https://cloud.delovahome.com',
-                    labelStyle: const TextStyle(color: Colors.white70),
-                    hintStyle: const TextStyle(color: Colors.white30),
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+        builder: (context, setState) {
+          final theme = Theme.of(context);
+          return AlertDialog(
+            title: Text(t('cloud_login')),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Visibility(
+                  visible: false,
+                  child: TextField(
+                    controller: urlController,
+                    decoration: InputDecoration(
+                      labelText: t('cloud_url'),
+                      hintText: 'https://cloud.delovahome.com',
+                      border: const OutlineInputBorder(),
+                    ),
                   ),
                 ),
-              ),
-              TextField(
-                controller: emailController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: t('email_or_username'),
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    labelText: t('email_or_username'),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.person),
+                  ),
                 ),
-              ),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  labelText: t('password'),
-                  labelStyle: const TextStyle(color: Colors.white70),
-                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: t('password'),
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock),
+                  ),
                 ),
-              ),
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 16.0),
-                  child: CircularProgressIndicator(color: Colors.cyan),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
+                if (isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16.0),
+                    child: CircularProgressIndicator(),
+                  ),
+              ],
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-              onPressed: isLoading ? null : () async {
-                if (urlController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
-                  return;
-                }
-                
-                setState(() => isLoading = true);
-                
-                try {
-                  // Construct URL
-                  String baseUrl = urlController.text.trim();
-                  if (!baseUrl.toLowerCase().startsWith('http')) {
-                    baseUrl = 'https://$baseUrl';
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(t('cancel')),
+              ),
+              FilledButton(
+                onPressed: isLoading ? null : () async {
+                  if (urlController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
+                    return;
                   }
-                  // Remove trailing slash
-                  if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+                  
+                  setState(() => isLoading = true);
+                  
+                  try {
+                    // Construct URL
+                    String baseUrl = urlController.text.trim();
+                    if (!baseUrl.toLowerCase().startsWith('http')) {
+                      baseUrl = 'https://$baseUrl';
+                    }
+                    // Remove trailing slash
+                    if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
 
-                  // Use Cloud Auth Endpoint
-                  final url = Uri.parse('$baseUrl/api/auth/login');
-                  
-                  final client = HttpClient();
-                  client.badCertificateCallback = (cert, host, port) => true;
-                  
-                  final request = await client.postUrl(url);
-                  request.headers.set('Content-Type', 'application/json');
-                  request.add(utf8.encode(jsonEncode({
-                    'username': emailController.text,
-                    'password': passwordController.text,
-                  })));
-                  
-                  final response = await request.close();
-                  final responseBody = await response.transform(utf8.decoder).join();
-                  final data = jsonDecode(responseBody);
-
-                  // Check for success (Cloud API uses 'success', Hub uses 'ok')
-                  if (response.statusCode == 200 && (data['success'] == true || data['ok'] == true)) {
-                    // Login Success
-                    final prefs = await SharedPreferences.getInstance();
+                    // Use Cloud Auth Endpoint
+                    final url = Uri.parse('$baseUrl/api/auth/login');
                     
-                    // Store Cloud Token
-                    if (data['token'] != null) {
-                      await prefs.setString('cloud_token', data['token']);
-                    }
+                    final client = HttpClient();
+                    client.badCertificateCallback = (cert, host, port) => true;
                     
-                    // Store User Info
-                    if (data['user'] != null) {
-                        await prefs.setString('username', data['user']['username'] ?? emailController.text);
-                        if (data['user']['id'] != null) {
-                            await prefs.setString('userId', data['user']['id'].toString());
-                        }
-                    }
+                    final request = await client.postUrl(url);
+                    request.headers.set('Content-Type', 'application/json');
+                    request.add(utf8.encode(jsonEncode({
+                      'username': emailController.text,
+                      'password': passwordController.text,
+                    })));
+                    
+                    final response = await request.close();
+                    final responseBody = await response.transform(utf8.decoder).join();
+                    final data = jsonDecode(responseBody);
 
-                    // Handle Hub Selection
-                    List<dynamic> hubs = [];
-                    if (data['user'] != null && data['user']['hubs'] != null) {
-                      hubs = data['user']['hubs'];
-                    } else if (data['hubs'] != null) {
-                        hubs = data['hubs'];
-                    }
-
-                    if (context.mounted) {
-                      Navigator.pop(context); // Close login dialog
+                    // Check for success (Cloud API uses 'success', Hub uses 'ok')
+                    if (response.statusCode == 200 && (data['success'] == true || data['ok'] == true)) {
+                      // Login Success
+                      final prefs = await SharedPreferences.getInstance();
                       
-                      if (hubs.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(t('no_hubs_linked'))),
-                        );
-                      } else if (hubs.length == 1) {
-                        // Auto-select single hub
-                        // BUT we still need to login to the Hub itself!
-                        // So we navigate to HubLoginScreen
-                        
-                        // Construct Proxy URL for Cloud Connection
-                        final proxyUrl = '$baseUrl/api/proxy/${hubs[0]['id']}';
+                      // Store Cloud Token
+                      if (data['token'] != null) {
+                        await prefs.setString('cloud_token', data['token']);
+                      }
+                      
+                      // Store User Info
+                      if (data['user'] != null) {
+                          await prefs.setString('username', data['user']['username'] ?? emailController.text);
+                          if (data['user']['id'] != null) {
+                              await prefs.setString('userId', data['user']['id'].toString());
+                          }
+                      }
 
-                        if (context.mounted) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => HubLoginScreen(
-                                hubIp: proxyUrl,
-                                hubPort: '',
-                                hubId: hubs[0]['id'],
-                                hubName: hubs[0]['name'],
-                                cloudToken: data['token'],
-                              ),
-                            ),
+                      // Handle Hub Selection
+                      List<dynamic> hubs = [];
+                      if (data['user'] != null && data['user']['hubs'] != null) {
+                        hubs = data['user']['hubs'];
+                      } else if (data['hubs'] != null) {
+                          hubs = data['hubs'];
+                      }
+
+                      if (context.mounted) {
+                        Navigator.pop(context); // Close login dialog
+                        
+                        if (hubs.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(t('no_hubs_linked'))),
                           );
+                        } else if (hubs.length == 1) {
+                          // Auto-select single hub
+                          // BUT we still need to login to the Hub itself!
+                          // So we navigate to HubLoginScreen
+                          
+                          // Construct Proxy URL for Cloud Connection
+                          final proxyUrl = '$baseUrl/api/proxy/${hubs[0]['id']}';
+
+                          if (context.mounted) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => HubLoginScreen(
+                                  hubIp: proxyUrl,
+                                  hubPort: '',
+                                  hubId: hubs[0]['id'],
+                                  hubName: hubs[0]['name'],
+                                  cloudToken: data['token'],
+                                ),
+                              ),
+                            );
+                          }
+                        } else {
+                          // Show Hub Selection Dialog
+                          // We need to pass baseUrl to the dialog so it can save it
+                          _showHubSelectionDialog(hubs, cloudUrl: baseUrl, cloudToken: data['token']);
                         }
-                      } else {
-                        // Show Hub Selection Dialog
-                        // We need to pass baseUrl to the dialog so it can save it
-                        _showHubSelectionDialog(hubs, cloudUrl: baseUrl, cloudToken: data['token']);
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(data['error'] ?? data['message'] ?? 'Login failed')),
+                        );
                       }
                     }
-                  } else {
+                  } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(data['error'] ?? data['message'] ?? 'Login failed')),
+                        SnackBar(content: Text('${t('connection_error')}: $e')),
                       );
                     }
+                  } finally {
+                    if (mounted) setState(() => isLoading = false);
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${t('connection_error')}: $e')),
-                    );
-                  }
-                } finally {
-                  if (mounted) setState(() => isLoading = false);
-                }
-              },
-              child: const Text('Login', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+                },
+                child: const Text('Login'),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
@@ -481,29 +475,26 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A237E),
-        title: Text(t('manual_connect'), style: const TextStyle(color: Colors.white)),
+        title: Text(t('manual_connect')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: ipController,
-              style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: t('ip_address'),
                 hintText: 'e.g. 192.168.1.10',
-                labelStyle: const TextStyle(color: Colors.white70),
-                hintStyle: const TextStyle(color: Colors.white30),
-                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.lan),
               ),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: portController,
-              style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 labelText: 'Port',
-                labelStyle: TextStyle(color: Colors.white70),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.numbers),
               ),
               keyboardType: TextInputType.number,
             ),
@@ -512,10 +503,9 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
+            child: Text(t('cancel')),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+          FilledButton.tonal(
             onPressed: () {
               if (ipController.text.isNotEmpty) {
                 Navigator.pop(context);
@@ -529,7 +519,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 );
               }
             },
-            child: Text(t('connect'), style: const TextStyle(color: Colors.white)),
+            child: Text(t('connect')),
           ),
         ],
       ),
@@ -556,8 +546,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A237E),
-        title: const Text('Select Hub', style: TextStyle(color: Colors.white)),
+        title: const Text('Select Hub'),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView.builder(
@@ -566,9 +555,9 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
             itemBuilder: (context, index) {
               final hub = hubs[index];
               return ListTile(
-                leading: const Icon(Icons.router, color: Colors.cyan),
-                title: Text(hub['name'] ?? 'Unknown Hub', style: const TextStyle(color: Colors.white)),
-                subtitle: Text(hub['id'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                leading: const Icon(Icons.router),
+                title: Text(hub['name'] ?? 'Unknown Hub'),
+                subtitle: Text(hub['id'] ?? ''),
                 onTap: () async {
                   if (cloudUrl != null && cloudToken != null) {
                       // Cloud Flow: Go to Hub Login
@@ -614,175 +603,147 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.black54;
-    final iconColor = isDark ? Colors.white : Colors.black87;
-    final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      body: GradientBackground(
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Column(
-                children: [
-                  SizedBox(height: size.height * 0.08), // Dynamic top spacing
-                  // Animated Logo / Icon
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: Container(
-                      padding: EdgeInsets.all(size.height * 0.025), // Dynamic padding
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: iconBgColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.cyan.withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            spreadRadius: 5,
-                          )
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.home_rounded,
-                        size: size.height * 0.08, // Dynamic icon size
-                        color: iconColor,
-                      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              children: [
+                SizedBox(height: size.height * 0.08), // Dynamic top spacing
+                // Animated Logo / Icon
+                ScaleTransition(
+                  scale: _pulseAnimation,
+                  child: Container(
+                    padding: EdgeInsets.all(size.height * 0.025), // Dynamic padding
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.colorScheme.primaryContainer,
+                    ),
+                    child: Icon(
+                      Icons.home_rounded,
+                      size: size.height * 0.08, // Dynamic icon size
+                      color: theme.colorScheme.onPrimaryContainer,
                     ),
                   ),
-                  SizedBox(height: size.height * 0.03),
-                  Text(
-                    'DelovaHome',
-                    style: TextStyle(
-                      fontSize: size.height * 0.04, // Dynamic font size
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                      letterSpacing: 1.5,
-                    ),
+                ),
+                SizedBox(height: size.height * 0.03),
+                Text(
+                  'DelovaHome',
+                  style: theme.textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _isScanning ? t('searching_hubs') : t('scan_complete'),
-                    style: TextStyle(
-                      color: subTextColor,
-                      fontSize: size.height * 0.02,
-                    ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _isScanning ? t('searching_hubs') : t('scan_complete'),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  SizedBox(height: size.height * 0.05),
-                  
-                  // Hub List
-                  Expanded(
-                    child: _hubs.isEmpty
-                        ? Center(
-                            child: _isScanning
-                                ? const CircularProgressIndicator(color: Colors.cyan)
-                                : Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.wifi_off, color: subTextColor, size: 48),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        t('no_results'),
-                                        style: TextStyle(color: subTextColor),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        t('check_permission'),
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(color: subTextColor, fontSize: 12),
-                                      ),
-                                      TextButton(
-                                        onPressed: () => Geolocator.openAppSettings(),
-                                        child: Text(t('open_settings')),
-                                      ),
-                                      TextButton(
-                                        onPressed: _startDiscovery,
-                                        child: Text(t('retry'), style: const TextStyle(color: Colors.cyan)),
-                                      ),
-                                    ],
-                                  ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: _hubs.length,
-                            itemBuilder: (context, index) {
-                              final hub = _hubs[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: GlassCard(
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.all(16),
-                                    leading: Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: Colors.cyan.withValues(alpha: 0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.router, color: Colors.white),
-                                    ),
-                                    title: Text(
-                                      hub.name,
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
+                ),
+                SizedBox(height: size.height * 0.05),
+                
+                // Hub List
+                Expanded(
+                  child: _hubs.isEmpty
+                      ? Center(
+                          child: _isScanning
+                              ? const CircularProgressIndicator()
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.wifi_off, color: theme.colorScheme.outline, size: 48),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      t('no_results'),
+                                      style: theme.textTheme.bodyLarge?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
                                       ),
                                     ),
-                                    subtitle: Text(
-                                      '${hub.ip}:${hub.port}',
-                                      style: TextStyle(color: subTextColor),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      t('check_permission'),
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
                                     ),
-                                    trailing: Icon(Icons.arrow_forward_ios, color: subTextColor),
-                                    onTap: () => _connectToHub(hub),
-                                  ),
+                                    TextButton(
+                                      onPressed: () => Geolocator.openAppSettings(),
+                                      child: Text(t('open_settings')),
+                                    ),
+                                    FilledButton.tonal(
+                                      onPressed: _startDiscovery,
+                                      child: Text(t('retry')),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            },
-                          ),
-                  ),
-                  
-                  // Manual Connect Button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.cyan.withValues(alpha: 0.2),
-                            foregroundColor: textColor,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          ),
-                          onPressed: _connectToCloudHub,
-                          icon: const Icon(Icons.cloud),
-                          label: const Text(
-                            'Connect to Cloud',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: _hubs.length,
+                          itemBuilder: (context, index) {
+                            final hub = _hubs[index];
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Card(
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.all(16),
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primaryContainer,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.router, color: theme.colorScheme.onPrimaryContainer),
+                                  ),
+                                  title: Text(
+                                    hub.name,
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${hub.ip}:${hub.port}',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                                  onTap: () => _connectToHub(hub),
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.withValues(alpha: 0.2),
-                            foregroundColor: textColor,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          ),
-                          onPressed: _showManualConnectDialog,
-                          icon: const Icon(Icons.lan),
-                          label: const Text(
-                            'Connect Locally',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
+                ),
+                
+                // Manual Connect Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _connectToCloudHub,
+                        icon: const Icon(Icons.cloud),
+                        label: const Text('Connect to Cloud'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _showManualConnectDialog,
+                        icon: const Icon(Icons.lan),
+                        label: const Text('Connect Locally'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                ],
-              ),
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),

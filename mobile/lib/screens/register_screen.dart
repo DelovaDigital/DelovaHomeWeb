@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/gradient_background.dart';
-import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -121,7 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                GlassCard(
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(32.0),
                     child: Form(

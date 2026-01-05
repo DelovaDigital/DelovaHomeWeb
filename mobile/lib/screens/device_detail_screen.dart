@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
 import '../widgets/gradient_background.dart';
-import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
 import 'nas_browser_screen.dart';
 
@@ -834,7 +833,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               if (isSpeaker && isPoweredOn) ...[
                 // Media Info Panel
                 if (widget.device.status.title != null && widget.device.status.title!.isNotEmpty)
-                  GlassCard(
+                  Card(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
@@ -1059,7 +1058,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: GlassCard(
+      child: Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(

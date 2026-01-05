@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/gradient_background.dart';
 
 class NasBrowserScreen extends StatefulWidget {
@@ -167,7 +166,7 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
             // Path Breadcrumb (Simple)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: GlassCard(
+              child: Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
@@ -207,7 +206,7 @@ class _NasBrowserScreenState extends State<NasBrowserScreen> {
 
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: GlassCard(
+                                  child: Card(
                                     child: ListTile(
                                       leading: Icon(
                                         _getFileIcon(type, name),

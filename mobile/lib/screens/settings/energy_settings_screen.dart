@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/gradient_background.dart';
-import '../../widgets/glass_card.dart';
 
 class EnergySettingsScreen extends StatefulWidget {
   const EnergySettingsScreen({super.key});
@@ -59,7 +58,7 @@ class _EnergySettingsScreenState extends State<EnergySettingsScreen> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: GlassCard(
+            child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: SingleChildScrollView(

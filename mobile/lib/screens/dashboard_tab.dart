@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'spotify_login_screen.dart';
 import '../services/api_service.dart';
 import '../models/device.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/device_card.dart';
 import '../widgets/ai_assistant_widget.dart';
 import '../widgets/presence_widget.dart';
@@ -496,7 +495,7 @@ import '../utils/app_translations.dart';
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Topbar / Navigation
-              GlassCard(
+              Card(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
                   child: Column(
@@ -531,7 +530,7 @@ import '../utils/app_translations.dart';
                 children: [
                   // Presence
                   Expanded(
-                    child: GlassCard(
+                    child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: _presenceData != null 
@@ -543,7 +542,7 @@ import '../utils/app_translations.dart';
                   const SizedBox(width: 16),
                   // Energy
                   Expanded(
-                    child: GlassCard(
+                    child: Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: _energyData != null 
@@ -659,7 +658,7 @@ import '../utils/app_translations.dart';
               else
                 Container(
                   margin: const EdgeInsets.only(bottom: 20),
-                  child: GlassCard(
+                  child: Card(
                     child: ListTile(
                       leading: const Icon(Icons.music_note, color: Colors.green),
                       title: Text('Spotify', style: TextStyle(color: textColor)),
@@ -719,9 +718,7 @@ import '../utils/app_translations.dart';
                   itemBuilder: (context, index) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
-                      child: GlassCard(
-                        child: DeviceCard(device: _favoriteDevices[index], onRefresh: _fetchStats),
-                      ),
+                      child: DeviceCard(device: _favoriteDevices[index], onRefresh: _fetchStats),
                     );
                   },
                 ),
@@ -773,7 +770,7 @@ import '../utils/app_translations.dart';
       final textColor = isDark ? Colors.white : Colors.black87;
       final subTextColor = isDark ? Colors.white70 : Colors.black54;
 
-      return GlassCard(
+      return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -796,8 +793,8 @@ import '../utils/app_translations.dart';
         onTap: onTap,
         child: Column(
           children: [
-            GlassCard(
-              borderRadius: 20,
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               child: Container(
                 width: 64,
                 height: 64,
@@ -846,7 +843,7 @@ import '../utils/app_translations.dart';
       final artwork = (albumImages != null && albumImages.isNotEmpty) ? albumImages[0]['url'] : null;
       final progress = (_spotifyStatus != null && _spotifyStatus!['progress_ms'] != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['duration_ms'] != null) ? (_spotifyStatus!['progress_ms'] as num) / (_spotifyStatus!['item']['duration_ms'] as num) : 0.0;
 
-      return GlassCard(
+      return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

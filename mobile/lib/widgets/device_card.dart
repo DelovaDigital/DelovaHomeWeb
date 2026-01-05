@@ -1,182 +1,236 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
 import '../screens/device_detail_screen.dart';
 
-class DeviceCard extends StatelessWidget {
+class DeviceCard extends StatefulWidget {
   final Device device;
   final VoidCallback onRefresh;
-  final ApiService apiService = ApiService();
 
-  DeviceCard({super.key, required this.device, required this.onRefresh});
+  const DeviceCard({
+    super.key,
+    required this.device,
+    required this.onRefresh,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final isPoweredOn = device.status.isOn;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    final accentColor = isDark ? Colors.cyanAccent : Colors.blueAccent;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.black54;
-    final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.withValues(alpha: 0.1);
-    final iconColor = isDark ? Colors.white70 : Colors.black54;
+  State<DeviceCard> createState() => _DeviceCardState();
+}
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => DeviceDetailScreen(
-              device: device,
-              onRefresh: onRefresh,
-            ),
-          ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isPoweredOn ? accentColor.withValues(alpha: 0.2) : iconBgColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Hero(
-                    tag: 'device_icon_${device.id}',
-                    child: Icon(
-                      _getDeviceIcon(device.type),
-                      size: 24,
-                      color: isPoweredOn ? accentColor : iconColor,
-                    ),
-                  ),
-                ),
-                // Power Button
-                SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      Icons.power_settings_new,
-                      color: isPoweredOn ? accentColor : iconColor.withValues(alpha: 0.5),
-                      size: 20,
-                    ),
-                    onPressed: () async {
-                      String cmd = 'toggle';
-                      final type = device.type.toLowerCase();
-                      
-                      // WoL Logic for PC/NAS/RPi
-                      if (!isPoweredOn && (
-                          type == 'pc' || type == 'computer' || type == 'workstation' ||
-                          type == 'nas' || type == 'server' ||
-                          type == 'rpi' || type == 'raspberry' || type == 'raspberrypi'
-                      )) {
-                        cmd = 'wake';
-                      }
-                      // PS5 Logic
-                      else if (type == 'ps5' || type == 'console') {
-                        cmd = isPoweredOn ? 'standby' : 'wake';
-                      }
+class _DeviceCardState extends State<DeviceCard> with SingleTickerProviderStateMixin {
+  final ApiService _apiService = ApiService();
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  bool _isToggling = false;
 
-                      await apiService.sendCommand(device.id, cmd);
-                      onRefresh();
-                    },
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 12),
-
-            // Name & Status
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Hero(
-                  tag: 'device_name_${device.id}',
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Text(
-                      device.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isPoweredOn 
-                    ? (device.status.title ?? 'On') 
-                    : 'Off',
-                  style: TextStyle(
-                    color: isPoweredOn ? subTextColor : subTextColor.withValues(alpha: 0.6),
-                    fontSize: 12,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(_) => _controller.forward();
+  void _handleTapUp(_) => _controller.reverse();
+  void _handleTapCancel() => _controller.reverse();
+
+  Future<void> _handleToggle() async {
+    if (_isToggling) return;
+    setState(() => _isToggling = true);
+    HapticFeedback.lightImpact();
+
+    try {
+      final isPoweredOn = widget.device.status.isOn;
+      String cmd = 'toggle';
+      final type = widget.device.type.toLowerCase();
+      
+      // WoL Logic for PC/NAS/RPi
+      if (!isPoweredOn && (
+          type == 'pc' || type == 'computer' || type == 'workstation' ||
+          type == 'nas' || type == 'server' ||
+          type == 'rpi' || type == 'raspberry' || type == 'raspberrypi'
+      )) {
+        cmd = 'wake';
+      }
+      // PS5 Logic
+      else if (type == 'ps5' || type == 'console') {
+        cmd = isPoweredOn ? 'standby' : 'wake';
+      }
+      
+      await _apiService.sendCommand(widget.device.id, cmd);
+      widget.onRefresh();
+    } catch (e) {
+      debugPrint('Error toggling device: $e');
+    } finally {
+      if (mounted) setState(() => _isToggling = false);
+    }
+  }
+
   IconData _getDeviceIcon(String type) {
-    final t = type.toLowerCase();
-    final name = device.name.toLowerCase();
-    final model = device.model?.toLowerCase() ?? '';
+    switch (type.toLowerCase()) {
+      case 'light': return Icons.lightbulb_outline;
+      case 'hue': return Icons.lightbulb;
+      case 'switch': return Icons.toggle_on_outlined;
+      case 'tv': return Icons.tv;
+      case 'speaker': return Icons.speaker;
+      case 'pc': return Icons.computer;
+      case 'console': return Icons.gamepad;
+      case 'ps5': return Icons.gamepad;
+      case 'camera': return Icons.videocam_outlined;
+      case 'thermostat': return Icons.thermostat;
+      default: return Icons.devices_other;
+    }
+  }
 
-    if (t == 'light' || t.contains('bulb') || t == 'hue' || t == 'dali') return Icons.lightbulb;
-    if (t == 'switch' || t.contains('outlet') || t == 'shelly' || t == 'plug') return Icons.power;
-    if (t == 'tv' || t == 'television') {
-      if (name.contains('apple') || name.contains('atv') || model.contains('apple') || model.contains('tv')) return Icons.apple;
-      return Icons.tv;
-    }
-    if (t == 'speaker' || t == 'sonos') {
-      if (name.contains('homepod') || model.contains('homepod')) return Icons.speaker;
-      if (name.contains('apple') || name.contains('atv') || name.contains('mac') || model.contains('apple') || model.contains('mac')) return Icons.apple;
-      return Icons.speaker;
-    }
-    if (t == 'camera') return Icons.videocam;
-    if (t == 'printer') return Icons.print;
-    if (t == 'thermostat' || t == 'ac' || t == 'climate') return Icons.thermostat;
-    if (t == 'lock' || t == 'security') return Icons.lock;
-    if (t == 'cover' || t == 'blind' || t == 'curtain') return Icons.curtains;
-    if (t == 'vacuum' || t == 'robot') return Icons.cleaning_services;
-    if (t == 'sensor') return Icons.sensors;
-    if (t == 'fan') return Icons.mode_fan_off;
-    
-    if (t == 'ps5' || t == 'console' || t == 'game' || t == 'playstation' || t == 'xbox') {
-      if (name.contains('ps5') || name.contains('playstation') || t == 'ps5' || model.contains('ps5')) return Icons.gamepad;
-      if (name.contains('xbox') || t == 'xbox' || model.contains('xbox')) return Icons.gamepad;
-      return Icons.gamepad;
-    }
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isOn = widget.device.status.isOn;
 
-    if (t == 'nas' || t == 'server' || t == 'synology' || t == 'qnap') return Icons.dns;
+    // Dynamic colors based on state
+    final Color activeColor = colorScheme.primary;
+    final Color inactiveColor = theme.brightness == Brightness.dark 
+        ? colorScheme.surfaceContainerLow 
+        : Colors.white;
     
-    if (t == 'pc' || t == 'computer' || t == 'desktop' || t == 'workstation' || t == 'mac' || t == 'macbook' || t == 'imac' || t == 'windows') {
-       if (t == 'mac' || name.contains('mac') || name.contains('apple') || model.contains('mac') || model.contains('apple')) return Icons.laptop_mac;
-       if (name.contains('windows') || name.contains('pc') || model.contains('windows')) return Icons.desktop_windows;
-       return Icons.computer;
-    }
+    final Color contentColor = isOn ? colorScheme.onPrimary : colorScheme.onSurface;
+    final Color iconColor = isOn ? colorScheme.onPrimary : colorScheme.onSurfaceVariant;
 
-    if (t == 'rpi' || t == 'raspberry' || t == 'raspberrypi' || t == 'pi') return Icons.memory;
-    
-    return Icons.devices;
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) => Transform.scale(
+        scale: _scaleAnimation.value,
+        child: child,
+      ),
+      child: GestureDetector(
+        onTapDown: _handleTapDown,
+        onTapUp: (details) {
+            _handleTapUp(details);
+            Navigator.of(context).push(
+                MaterialPageRoute(
+                builder: (context) => DeviceDetailScreen(
+                    device: widget.device,
+                    onRefresh: widget.onRefresh,
+                ),
+                ),
+            );
+        },
+        onTapCancel: _handleTapCancel,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: isOn ? activeColor : inactiveColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isOn 
+                  ? Colors.transparent 
+                  : (theme.brightness == Brightness.dark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+              width: 1,
+            ),
+            boxShadow: [
+              if (isOn && theme.brightness == Brightness.light)
+                BoxShadow(
+                  color: activeColor.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+               if (!isOn && theme.brightness == Brightness.light)
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Header: Icon + Toggle
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(
+                      _getDeviceIcon(widget.device.type),
+                      color: iconColor,
+                      size: 26,
+                    ),
+                    // Circular Toggle Button (Action)
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _handleToggle,
+                        borderRadius: BorderRadius.circular(50),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isOn 
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : (theme.brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                          ),
+                          child: _isToggling
+                            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: contentColor))
+                            : Icon(
+                                Icons.power_settings_new_rounded,
+                                color: contentColor,
+                                size: 20,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 12), // Minimum spacing
+
+                // Footer: Name + Status
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.device.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: contentColor,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                        letterSpacing: -0.2,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isOn ? 'Aan' : (widget.device.status.powerState == 'standby' ? 'Standby' : 'Uit'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: contentColor.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

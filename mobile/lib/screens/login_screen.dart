@@ -2,8 +2,6 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../widgets/gradient_background.dart';
-import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
 import 'main_screen.dart';
 import 'register_screen.dart';
@@ -204,21 +202,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF1E293B);
-    final mutedColor = isDark ? Colors.white70 : const Color(0xFF64748B);
+    final theme = Theme.of(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: textColor),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: GradientBackground(
+      body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -232,37 +226,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      )
-                    ],
+                    color: theme.colorScheme.primaryContainer,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.home_rounded,
                     size: 48,
-                    color: Color(0xFF3B82F6),
+                    color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   t('welcome_back'),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: textColor,
+                  style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '${t('login_to')} ${widget.hubName ?? "Hub"}',
-                  style: TextStyle(color: mutedColor, fontSize: 16),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 40),
 
-                GlassCard(
+                Card(
+                  elevation: 0,
+                  color: theme.colorScheme.surfaceContainer,
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Form(
@@ -275,34 +265,22 @@ class _LoginScreenState extends State<LoginScreen> {
                               padding: const EdgeInsets.all(12),
                               margin: const EdgeInsets.only(bottom: 20),
                               decoration: BoxDecoration(
-                                color: Colors.red.withValues(alpha: 0.1),
+                                color: theme.colorScheme.errorContainer,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                               ),
                               child: Text(
                                 _errorMessage!,
-                                style: const TextStyle(color: Colors.red),
+                                style: TextStyle(color: theme.colorScheme.onErrorContainer),
                                 textAlign: TextAlign.center,
                               ),
                             ),
                           
                           TextFormField(
                             controller: _usernameController,
-                            style: TextStyle(color: textColor),
                             decoration: InputDecoration(
                               labelText: t('username_or_email'),
-                              labelStyle: TextStyle(color: mutedColor),
-                              prefixIcon: Icon(Icons.person_outline, color: mutedColor),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: mutedColor.withValues(alpha: 0.3)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFF3B82F6)),
-                              ),
-                              filled: true,
-                              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.5),
+                              prefixIcon: const Icon(Icons.person_outline),
+                              border: const OutlineInputBorder(),
                             ),
                             validator: (value) =>
                                 value == null || value.isEmpty ? t('enter_username') : null,
@@ -311,21 +289,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: true,
-                            style: TextStyle(color: textColor),
                             decoration: InputDecoration(
                               labelText: t('password'),
-                              labelStyle: TextStyle(color: mutedColor),
-                              prefixIcon: Icon(Icons.lock_outline, color: mutedColor),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: mutedColor.withValues(alpha: 0.3)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFF3B82F6)),
-                              ),
-                              filled: true,
-                              fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.5),
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              border: const OutlineInputBorder(),
                             ),
                             validator: (value) =>
                                 value == null || value.isEmpty ? t('enter_password') : null,
@@ -334,16 +301,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           
                           SizedBox(
                             height: 50,
-                            child: ElevatedButton(
+                            child: FilledButton(
                               onPressed: _isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF3B82F6),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
                               child: _isLoading
                                   ? const SizedBox(
                                       height: 20,
@@ -353,14 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : Text(
-                                      t('login').toUpperCase(),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2,
-                                      ),
-                                    ),
+                                  : Text(t('login').toUpperCase()),
                             ),
                           ),
                           const SizedBox(height: 16),

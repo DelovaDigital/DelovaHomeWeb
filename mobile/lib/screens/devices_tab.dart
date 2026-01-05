@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/device_card.dart';
 import '../utils/app_translations.dart';
 
@@ -19,7 +18,6 @@ class _DevicesTabState extends State<DevicesTab> {
   List<Device> _allDevices = [];
   List<Device> _filteredDevices = [];
   bool _isLoading = true;
-  String? _error;
   Timer? _timer;
   String _lang = 'nl';
   
@@ -72,7 +70,6 @@ class _DevicesTabState extends State<DevicesTab> {
     if (!silent) {
       setState(() {
         _isLoading = true;
-        _error = null;
       });
     }
 
@@ -88,7 +85,6 @@ class _DevicesTabState extends State<DevicesTab> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          if (!silent) _error = e.toString();
           _isLoading = false;
         });
       }
@@ -118,134 +114,108 @@ class _DevicesTabState extends State<DevicesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final hintColor = isDark ? Colors.white54 : Colors.black54;
-    final chipSelectedColor = isDark ? Colors.cyan : Colors.blue;
-    final chipUnselectedColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1);
-    final chipBorderColor = isDark ? Colors.white.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.3);
+    final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: Text(
-            t('devices'),
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          // Modern Sliver App Bar
+          SliverAppBar.large(
+            title: Text(t('devices')),
+            centerTitle: false,
+            floating: true,
+            pinned: true,
+            actions: [
+              IconButton(onPressed: () => _fetchDevices(silent: false), icon: const Icon(Icons.refresh))
+            ],
           ),
-        ),
-        // Search Bar
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: GlassCard(
-            child: TextField(
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                hintText: t('search_devices'),
-                hintStyle: TextStyle(color: hintColor),
-                prefixIcon: Icon(Icons.search, color: hintColor),
-                filled: true,
-                fillColor: Colors.transparent,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+
+          // Search & Filter Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Column(
+                children: [
+                   // Search Bar replaced with Material 3 SearchBar
+                   SearchBar(
+                     hintText: t('search_devices'),
+                     leading: const Icon(Icons.search),
+                     elevation: WidgetStateProperty.all(0),
+                     backgroundColor: WidgetStateProperty.all(
+                       theme.colorScheme.surfaceContainerHigh
+                     ),
+                     onChanged: (val) {
+                       setState(() => _searchQuery = val);
+                       _applyFilters();
+                     },
+                   ),
+                   const SizedBox(height: 16),
+                   // Filter Chips
+                   SingleChildScrollView(
+                     scrollDirection: Axis.horizontal,
+                     child: Row(
+                       children: _categories.map((cat) {
+                         final isSelected = _selectedCategory == cat;
+                         return Padding(
+                           padding: const EdgeInsets.only(right: 8.0),
+                           child: FilterChip(
+                             label: Text(_getCategoryLabel(cat)),
+                             selected: isSelected,
+                             onSelected: (_) {
+                               setState(() {
+                                 _selectedCategory = cat;
+                                 _applyFilters();
+                               });
+                             },
+                             showCheckmark: false,
+                             labelStyle: TextStyle(
+                               color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                             ),
+                             selectedColor: theme.colorScheme.primary,
+                             backgroundColor: theme.colorScheme.surfaceContainer,
+                             side: BorderSide.none,
+                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                           ),
+                         );
+                       }).toList(),
+                     ),
+                   ),
+                ],
               ),
-              onChanged: (value) {
-                _searchQuery = value;
-                _applyFilters();
-              },
             ),
           ),
-        ),
 
-        // Category Chips
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            children: _categories.map((category) {
-              final isSelected = _selectedCategory == category;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: ChoiceChip(
-                  label: Text(_getCategoryLabel(category)),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedCategory = category;
-                      _applyFilters();
-                    });
-                  },
-                  backgroundColor: chipUnselectedColor,
-                  selectedColor: chipSelectedColor.withValues(alpha: 0.2),
-                  labelStyle: TextStyle(
-                    color: isSelected ? chipSelectedColor : textColor.withValues(alpha: 0.7),
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(
-                      color: isSelected ? chipSelectedColor : chipBorderColor,
+          // Device Grid
+          _isLoading 
+          ? const SliverFillRemaining(child: Center(child: CircularProgressIndicator())) 
+          : _filteredDevices.isEmpty 
+              ? SliverFillRemaining(child: Center(child: Text(t('no_devices'))))
+              : SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverGrid(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                       crossAxisCount: 2,
+                       childAspectRatio: 1.1, // Adjusted for new card aspect
+                       crossAxisSpacing: 12,
+                       mainAxisSpacing: 12,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        return DeviceCard(
+                          device: _filteredDevices[index],
+                          onRefresh: () => _fetchDevices(silent: true),
+                        );
+                      },
+                      childCount: _filteredDevices.length,
                     ),
                   ),
-                  showCheckmark: false,
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        
-        const SizedBox(height: 10),
-
-        // Device List
-        Expanded(
-          child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Colors.cyan))
-              : _error != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('${t('error')}: $_error', style: const TextStyle(color: Colors.redAccent)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () => _fetchDevices(),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
-                            child: Text(t('retry')),
-                          ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: () => _fetchDevices(),
-                      color: Colors.cyan,
-                      child: _filteredDevices.isEmpty
-                          ? Center(child: Text(t('no_devices'), style: const TextStyle(color: Colors.white54)))
-                          : ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                              itemCount: _filteredDevices.length,
-                              itemBuilder: (context, index) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: GlassCard(
-                                    child: DeviceCard(
-                                      device: _filteredDevices[index],
-                                      onRefresh: () => _fetchDevices(silent: true),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-        ),
-      ],
+            ),
+          
+          // Bottom padding for nav bar
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        ],
+      ),
     );
   }
+
 }

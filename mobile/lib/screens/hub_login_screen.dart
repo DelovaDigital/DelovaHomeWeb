@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/gradient_background.dart';
-import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
 import 'main_screen.dart';
 
@@ -191,7 +190,7 @@ class _HubLoginScreenState extends State<HubLoginScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                GlassCard(
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Form(

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
-import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
 import 'room_detail_screen.dart';
 
@@ -87,14 +86,8 @@ class _RoomsTabState extends State<RoomsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.black54;
-    final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1);
-    final iconColor = isDark ? Colors.white : Colors.black54;
-
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.cyan));
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_error != null) {
@@ -102,11 +95,10 @@ class _RoomsTabState extends State<RoomsTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('${t('error')}: $_error', style: const TextStyle(color: Colors.redAccent)),
+            Text('${t('error')}: $_error', style: TextStyle(color: Theme.of(context).colorScheme.error)),
             const SizedBox(height: 16),
-            ElevatedButton(
+            FilledButton.tonal(
               onPressed: () => _fetchDevices(),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
               child: Text(t('retry')),
             ),
           ],
@@ -114,109 +106,104 @@ class _RoomsTabState extends State<RoomsTab> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () => _fetchDevices(),
-      color: Colors.cyan,
-      child: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                t('rooms'),
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () => _fetchDevices(),
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar.large(
+              title: Text(t('rooms')),
+              centerTitle: false,
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            sliver: _rooms.isEmpty
-                ? SliverToBoxAdapter(
+            
+            _rooms.isEmpty
+                ? SliverFillRemaining(
                     child: Center(
                       child: Text(
                         t('no_rooms'),
-                        style: TextStyle(color: subTextColor),
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                       ),
                     ),
                   )
-                : SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.0,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final roomName = _rooms.keys.elementAt(index);
-                        final devices = _rooms[roomName]!;
-                        final displayRoomName = roomName == 'Unassigned' ? t('unassigned') : roomName;
-                        
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => RoomDetailScreen(
-                                  roomName: roomName,
-                                  devices: devices,
-                                  onRefresh: () => _fetchDevices(),
+                : SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.0,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final roomName = _rooms.keys.elementAt(index);
+                          final devices = _rooms[roomName]!;
+                          final displayRoomName = roomName == 'Unassigned' ? t('unassigned') : roomName;
+                          final theme = Theme.of(context);
+                          
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RoomDetailScreen(
+                                    roomName: roomName,
+                                    devices: devices,
+                                    onRefresh: () => _fetchDevices(),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Card(
+                              elevation: 0,
+                              color: theme.colorScheme.surfaceContainer,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.primaryContainer,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        _getRoomIcon(roomName),
+                                        size: 32,
+                                        color: theme.colorScheme.onPrimaryContainer,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      displayRoomName,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${devices.length} ${t('devices_count')}',
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            );
-                          },
-                          child: GlassCard(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: iconBgColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    _getRoomIcon(roomName),
-                                    size: 32,
-                                    color: iconColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  displayRoomName,
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${devices.length} ${t('devices_count')}',
-                                  style: TextStyle(
-                                    color: subTextColor,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),),
-                          ),
-                        );
-                      },
-                      childCount: _rooms.length,
+                            ),
+                          );
+                        },
+                        childCount: _rooms.length,
+                      ),
                     ),
-                  ),
-          ),
-        ],
+            ),
+             const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
       ),
     );
   }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/api_service.dart';
 import '../../widgets/gradient_background.dart';
-import '../../widgets/glass_card.dart';
 
 class KnxSettingsScreen extends StatefulWidget {
   const KnxSettingsScreen({super.key});
@@ -78,7 +77,7 @@ class _KnxSettingsScreenState extends State<KnxSettingsScreen> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: GlassCard(
+            child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: SingleChildScrollView(

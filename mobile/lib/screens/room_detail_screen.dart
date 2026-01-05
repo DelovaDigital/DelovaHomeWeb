@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
 import '../widgets/device_card.dart';
 import '../widgets/gradient_background.dart';
-import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
 
 class RoomDetailScreen extends StatefulWidget {
@@ -71,12 +70,10 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                   ),
                   itemCount: widget.devices.length,
                   itemBuilder: (context, index) {
-                    return GlassCard(
-                      child: DeviceCard(
+                    return DeviceCard(
                         device: widget.devices[index],
                         onRefresh: widget.onRefresh,
-                      ),
-                    );
+                      );
                   },
                 ),
         ),

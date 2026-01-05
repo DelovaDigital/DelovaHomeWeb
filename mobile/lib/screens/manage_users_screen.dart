@@ -6,7 +6,6 @@ import 'spotify_login_screen.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
 import '../widgets/gradient_background.dart';
-import '../widgets/glass_card.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
@@ -358,7 +357,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                         final user = _users[index];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: GlassCard(
+                          child: Card(
                             child: ListTile(
                               leading: Container(
                                 padding: const EdgeInsets.all(8),

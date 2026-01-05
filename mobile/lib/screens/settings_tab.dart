@@ -38,13 +38,14 @@ class _SettingsTabState extends State<SettingsTab> {
     final prefs = await SharedPreferences.getInstance();
     final packageInfo = await PackageInfo.fromPlatform();
 
+    if (!mounted) return;
+
     setState(() {
       _hubIp = prefs.getString('hub_ip') ?? 'Unknown';
       _appVersion = packageInfo.version;
       _lang = prefs.getString('language') ?? 'nl';
     });
 
-    // Fetch Hub Info from API
     try {
       final info = await _apiService.getSystemInfo();
       if (mounted) {
@@ -56,7 +57,6 @@ class _SettingsTabState extends State<SettingsTab> {
       debugPrint('Error fetching hub info: $e');
     }
 
-    // Fetch NAS Devices
     try {
       final nas = await _apiService.getNasDevices();
       if (mounted) {
@@ -109,17 +109,17 @@ class _SettingsTabState extends State<SettingsTab> {
         if (result['updateAvailable'] == true) {
           _showUpdateDialog(result['version']);
         } else {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(t('system_up_to_date'))));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(t('system_up_to_date'))),
+          );
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isCheckingUpdate = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('${t('error')}: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${t('error')}: $e')),
+        );
       }
     }
   }
@@ -135,21 +135,21 @@ class _SettingsTabState extends State<SettingsTab> {
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(t('cancel')),
           ),
-          ElevatedButton(
+          FilledButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
               try {
                 await _apiService.updateSystem();
                 if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(t('update_started'))));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(t('update_started'))),
+                  );
                 }
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('${t('error')}: $e')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${t('error')}: $e')),
+                  );
                 }
               }
             },
@@ -162,362 +162,213 @@ class _SettingsTabState extends State<SettingsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white60 : Colors.black54;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 60, 20, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20, left: 5),
-              child: Text(
-                t('settings'),
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-            ),
-
-            // Hub Info Card
-            Container(
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Row(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: Text(t('settings')),
+            centerTitle: false,
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                children: [
+                  _buildHubInfoCard(theme),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(t('general'), theme),
+                  const SizedBox(height: 8),
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.blueAccent.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.hub,
-                            color: Colors.blueAccent,
-                            size: 30,
-                          ),
+                        _buildSettingTile(
+                          icon: Icons.language,
+                          title: t('language'),
+                          subtitle: _lang == 'nl' ? 'Nederlands' : 'English',
+                          onTap: _showLanguageSelector,
+                          theme: theme,
                         ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Delova Hub',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                ),
-                              ),
-                              Text(
-                                '$_hubIp • v$_hubVersion',
-                                style: TextStyle(color: subTextColor),
-                              ),
-                            ],
-                          ),
+                        Divider(height: 1, indent: 56, color: theme.colorScheme.outlineVariant),
+                        _buildSettingTile(
+                          icon: Icons.dark_mode,
+                          title: t('theme'),
+                          subtitle: _getThemeModeString(context),
+                          onTap: () {
+                            DelovaHome.of(context)?.cycleTheme();
+                          },
+                          theme: theme,
                         ),
-                        if (_isCheckingUpdate)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else
-                          IconButton(
-                            icon: const Icon(Icons.system_update),
-                            color: textColor,
-                            onPressed: _checkUpdate,
-                            tooltip: t('check_updates'),
-                          ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(t('integrations'), theme),
+                  const SizedBox(height: 8),
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        _buildSettingTile(
+                          icon: Icons.location_on,
+                          title: t('presence'),
+                          subtitle: t('configure_presence'),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const PresenceSettingsScreen()),
+                          ),
+                          theme: theme,
+                        ),
+                        Divider(height: 1, indent: 56, color: theme.colorScheme.outlineVariant),
+                        _buildSettingTile(
+                          icon: Icons.router,
+                          title: 'KNX',
+                          subtitle: t('configure_knx'),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const KnxSettingsScreen()),
+                          ),
+                          theme: theme,
+                        ),
+                        Divider(height: 1, indent: 56, color: theme.colorScheme.outlineVariant),
+                        _buildSettingTile(
+                          icon: Icons.bolt,
+                          title: t('energy'),
+                          subtitle: t('configure_energy'),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const EnergySettingsScreen()),
+                          ),
+                          theme: theme,
+                        ),
+                        Divider(height: 1, indent: 56, color: theme.colorScheme.outlineVariant),
+                        _buildSettingTile(
+                          icon: Icons.storage,
+                          title: 'NAS',
+                          subtitle: '${_nasDevices.length} ${t('devices')}',
+                          onTap: _handleNasTap,
+                          theme: theme,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildSectionHeader(t('management'), theme),
+                  const SizedBox(height: 8),
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        _buildSettingTile(
+                          icon: Icons.people,
+                          title: t('users'),
+                          subtitle: t('manage_users'),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
+                          ),
+                          theme: theme,
+                        ),
+                        Divider(height: 1, indent: 56, color: theme.colorScheme.outlineVariant),
+                        _buildSettingTile(
+                          icon: Icons.logout,
+                          title: t('disconnect'),
+                          subtitle: t('disconnect_hub'),
+                          onTap: _disconnect,
+                          theme: theme,
+                          isDestructive: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    'Delova Home App v$_appVersion',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                  const SizedBox(height: 100), // Bottom padding
+                ],
               ),
             ),
-
-            const SizedBox(height: 25),
-
-            // General Settings
-            _buildSectionHeader(t('general'), textColor),
-            _buildSettingsCard(context, [
-              _buildSettingTile(
-                icon: Icons.language,
-                title: t('language'),
-                subtitle: _lang == 'nl' ? 'Nederlands' : 'English',
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ListTile(
-                            title: const Text('Nederlands'),
-                            trailing: _lang == 'nl'
-                                ? const Icon(Icons.check, color: Colors.blue)
-                                : null,
-                            onTap: () => _setLanguage('nl'),
-                          ),
-                          ListTile(
-                            title: const Text('English'),
-                            trailing: _lang == 'en'
-                                ? const Icon(Icons.check, color: Colors.blue)
-                                : null,
-                            onTap: () => _setLanguage('en'),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-                textColor: textColor,
-              ),
-              _buildSettingTile(
-                icon: Icons.dark_mode,
-                title: t('theme'),
-                subtitle:
-                    DelovaHome.of(context)?.themeModeValue == ThemeMode.system
-                    ? t('system')
-                    : DelovaHome.of(context)?.themeModeValue == ThemeMode.dark
-                    ? t('dark')
-                    : t('light'),
-                onTap: () {
-                  DelovaHome.of(context)?.cycleTheme();
-                },
-                textColor: textColor,
-              ),
-            ], cardColor),
-
-            const SizedBox(height: 25),
-
-            // Integrations
-            _buildSectionHeader(t('integrations'), textColor),
-            _buildSettingsCard(context, [
-              _buildSettingTile(
-                icon: Icons.location_on,
-                title: t('presence'),
-                subtitle: t('configure_presence'),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const PresenceSettingsScreen(),
-                  ),
-                ),
-                textColor: textColor,
-              ),
-              _buildSettingTile(
-                icon: Icons.router,
-                title: 'KNX',
-                subtitle: t('configure_knx'),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const KnxSettingsScreen()),
-                ),
-                textColor: textColor,
-              ),
-              _buildSettingTile(
-                icon: Icons.bolt,
-                title: t('energy'),
-                subtitle: t('configure_energy'),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const EnergySettingsScreen(),
-                  ),
-                ),
-                textColor: textColor,
-              ),
-              _buildSettingTile(
-                icon: Icons.storage,
-                title: 'NAS',
-                subtitle: '${_nasDevices.length} ${t('devices')}',
-                onTap: () {
-                  if (_nasDevices.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No NAS devices found')),
-                    );
-                    return;
-                  }
-
-                  if (_nasDevices.length == 1) {
-                    final nas = _nasDevices.first;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => NasBrowserScreen(
-                          nasId: nas['id'] ?? 'unknown',
-                          nasName: nas['name'] ?? 'NAS',
-                        ),
-                      ),
-                    );
-                    return;
-                  }
-
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Text(
-                              'Select NAS',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          ..._nasDevices.map(
-                            (nas) => ListTile(
-                              leading: const Icon(Icons.storage),
-                              title: Text(nas['name'] ?? 'NAS'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => NasBrowserScreen(
-                                      nasId: nas['id'] ?? 'unknown',
-                                      nasName: nas['name'] ?? 'NAS',
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-                textColor: textColor,
-              ),
-            ], cardColor),
-
-            const SizedBox(height: 25),
-
-            // Management
-            _buildSectionHeader(t('management'), textColor),
-            _buildSettingsCard(context, [
-              _buildSettingTile(
-                icon: Icons.people,
-                title: t('users'),
-                subtitle: t('manage_users'),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
-                ),
-                textColor: textColor,
-              ),
-              _buildSettingTile(
-                icon: Icons.logout,
-                title: t('disconnect'),
-                subtitle: t('disconnect_hub'),
-                onTap: _disconnect,
-                textColor: Colors.redAccent,
-                iconColor: Colors.redAccent,
-              ),
-            ], cardColor),
-
-            const SizedBox(height: 30),
-
-            Center(
-              child: Text(
-                'Delova Home App v$_appVersion',
-                style: TextStyle(color: subTextColor, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 15, bottom: 10),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          color: color.withValues(alpha: 0.6),
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsCard(
-    BuildContext context,
-    List<Widget> children,
-    Color color,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        children: [
-          for (int i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i < children.length - 1)
-              Divider(
-                height: 1,
-                indent: 60,
-                color: Colors.grey.withValues(alpha: 0.1),
+    );
+  }
+
+  Widget _buildHubInfoCard(ThemeData theme) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.hub,
+                color: theme.colorScheme.onPrimaryContainer,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Delova Hub',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '$_hubIp • v$_hubVersion',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_isCheckingUpdate)
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              IconButton.filledTonal(
+                icon: const Icon(Icons.system_update),
+                onPressed: _checkUpdate,
+                tooltip: t('check_updates'),
               ),
           ],
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, ThemeData theme) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, bottom: 4),
+        child: Text(
+          title,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
@@ -527,41 +378,122 @@ class _SettingsTabState extends State<SettingsTab> {
     required String title,
     String? subtitle,
     required VoidCallback onTap,
-    Color? textColor,
-    Color? iconColor,
+    required ThemeData theme,
+    bool isDestructive = false,
   }) {
+    final color = isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface;
+    final iconColor = isDestructive ? theme.colorScheme.error : theme.colorScheme.primary;
+
     return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: (iconColor ?? Colors.blue).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: iconColor ?? Colors.blue, size: 22),
-      ),
+      leading: Icon(icon, color: iconColor),
       title: Text(
         title,
-        style: TextStyle(
-          color: textColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 16,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
         ),
       ),
       subtitle: subtitle != null
           ? Text(
               subtitle,
-              style: TextStyle(
-                color: textColor?.withValues(alpha: 0.6),
-                fontSize: 13,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             )
           : null,
-      trailing: Icon(
-        Icons.chevron_right,
-        color: textColor?.withValues(alpha: 0.3),
-      ),
+      trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    );
+  }
+
+  String _getThemeModeString(BuildContext context) {
+    final mode = DelovaHome.of(context)?.themeModeValue;
+    if (mode == ThemeMode.system) return t('system');
+    if (mode == ThemeMode.dark) return t('dark');
+    return t('light');
+  }
+
+  void _showLanguageSelector() {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Nederlands'),
+              trailing: _lang == 'nl' ? const Icon(Icons.check) : null,
+              onTap: () => _setLanguage('nl'),
+            ),
+            ListTile(
+              title: const Text('English'),
+              trailing: _lang == 'en' ? const Icon(Icons.check) : null,
+              onTap: () => _setLanguage('en'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleNasTap() {
+    if (_nasDevices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No NAS devices found')),
+      );
+      return;
+    }
+
+    if (_nasDevices.length == 1) {
+      final nas = _nasDevices.first;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NasBrowserScreen(
+            nasId: nas['id'] ?? 'unknown',
+            nasName: nas['name'] ?? 'NAS',
+          ),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Select NAS',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            ..._nasDevices.map(
+              (nas) => ListTile(
+                leading: const Icon(Icons.storage),
+                title: Text(nas['name'] ?? 'NAS'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NasBrowserScreen(
+                        nasId: nas['id'] ?? 'unknown',
+                        nasName: nas['name'] ?? 'NAS',
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

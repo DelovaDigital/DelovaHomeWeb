@@ -218,49 +218,72 @@ document.addEventListener('DOMContentLoaded', () => {
         const temp = w.current_weather.temperature;
         const wind = w.current_weather.windspeed;
         
-        let iconHtml = '';
-        let desc = '';
+        let iconClass = 'fa-sun';
+        let colorClass = 'weather-icon-sun';
+        let desc = 'Zonnig';
 
         // WMO Weather interpretation codes (WW)
         if (code === 0) {
-            iconHtml = '<div class="sun"></div>';
+            iconClass = 'fa-sun';
+            colorClass = 'weather-icon-sun';
             desc = 'Zonnig';
         } else if (code >= 1 && code <= 3) {
-            iconHtml = '<div class="cloud"></div>';
-            if (code === 1) { iconHtml += '<div class="sun" style="left: 40px; top: -10px; width: 30px; height: 30px;"></div>'; desc = 'Licht bewolkt'; }
-            else desc = 'Bewolkt';
+            if (code === 1) { 
+                iconClass = 'fa-cloud-sun'; 
+                desc = 'Licht bewolkt'; 
+            } else { 
+                iconClass = 'fa-cloud'; 
+                desc = 'Bewolkt'; 
+            }
+            colorClass = 'weather-icon-cloud';
         } else if (code >= 45 && code <= 48) {
-            iconHtml = '<div class="cloud" style="background: #bdc3c7;"></div>';
+            iconClass = 'fa-smog';
+            colorClass = 'weather-icon-cloud';
             desc = 'Mist';
         } else if (code >= 51 && code <= 67) {
-            iconHtml = '<div class="cloud" style="background: #7f8c8d;"></div><div class="rain-drop"></div><div class="rain-drop"></div><div class="rain-drop"></div>';
+            iconClass = 'fa-cloud-rain';
+            colorClass = 'weather-icon-rain';
             desc = 'Regen';
         } else if (code >= 71 && code <= 77) {
-            iconHtml = '<div class="cloud" style="background: #bdc3c7;"></div><div class="snowflake">❄</div><div class="snowflake" style="left: 20px; animation-delay: 1s;">❄</div>';
+            iconClass = 'fa-snowflake';
+            colorClass = 'weather-icon-snow';
             desc = 'Sneeuw';
         } else if (code >= 80 && code <= 82) {
-            iconHtml = '<div class="cloud" style="background: #34495e;"></div><div class="rain-drop"></div><div class="rain-drop"></div><div class="rain-drop"></div>';
+            iconClass = 'fa-cloud-showers-heavy';
+            colorClass = 'weather-icon-rain';
             desc = 'Buien';
         } else if (code >= 95) {
-            iconHtml = '<div class="cloud" style="background: #2c3e50;"></div><div style="position: absolute; bottom: -20px; left: 20px; color: #f1c40f; font-size: 20px;">⚡</div>';
+            iconClass = 'fa-bolt';
+            colorClass = 'weather-icon-storm';
             desc = 'Onweer';
         } else {
-            iconHtml = '<div class="sun"></div>';
+            iconClass = 'fa-question-circle';
+            colorClass = 'weather-icon-cloud';
             desc = 'Onbekend';
         }
 
-        weatherContent.style.position = 'relative';
         weatherContent.innerHTML = `
-            <div style="position: absolute; top: 0; right: 0; cursor: pointer; color: #aaa; padding: 5px;" onclick="changeWeatherLocation()" title="Locatie wijzigen">
+            <div class="weather-location-btn" onclick="changeWeatherLocation()" title="Locatie wijzigen">
                 <i class="fas fa-map-marker-alt"></i>
             </div>
-            <div class="weather-icon">${iconHtml}</div>
-            <div class="weather-temp">${temp}°C</div>
-            <div class="weather-desc">${desc}</div>
-            <div style="font-size: 1em; font-weight: bold; margin-top: 8px; color: #444;">
-                <i class="fas fa-location-arrow" style="font-size: 0.8em; margin-right: 5px;"></i>${loc.name}
+            
+            <div class="weather-main">
+                <i class="fas ${iconClass} weather-icon-large ${colorClass}"></i>
+                <div class="weather-temp-large">${Math.round(temp)}°</div>
             </div>
-            <div style="font-size: 0.8em; color: #888; margin-top: 2px;">Wind: ${wind} km/h</div>
+            
+            <div class="weather-desc-text">${desc}</div>
+            
+            <div class="weather-details">
+                <div class="weather-detail-item">
+                    <i class="fas fa-location-arrow"></i>
+                    <span>${loc.name}</span>
+                </div>
+                <div class="weather-detail-item">
+                    <i class="fas fa-wind"></i>
+                    <span>${wind} km/h</span>
+                </div>
+            </div>
         `;
       } else {
         weatherContent.innerText = 'Weer informatie niet beschikbaar';

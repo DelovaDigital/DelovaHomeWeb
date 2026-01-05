@@ -95,6 +95,8 @@ class SpotifyManager {
             redirect_uri: redirectUri
         });
 
+        console.log(`[Spotify] Exchanging code for token. Redirect URI: ${redirectUri}`);
+
         const response = await fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: {
@@ -114,6 +116,7 @@ class SpotifyManager {
                 redirect_uri: redirectUri,
                 clientId: this.clientId ? 'Set' : 'Unset'
             });
+            return false;
         }
 
         if (data.access_token) {

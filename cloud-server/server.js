@@ -1,6 +1,7 @@
 const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
+const https = require('https');
 const uuid = require('uuid');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -10,7 +11,32 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const server = http.createServer(app);
+
+// Define Project Root early
+const PROJECT_ROOT = path.join(__dirname, '..');
+
+// Try to load SSL Certs
+let server;
+const certPath = path.join(PROJECT_ROOT, 'server.cert');
+const keyPath = path.join(PROJECT_ROOT, 'server.key');
+
+if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    try {
+        const options = {
+            key: fs.readFileSync(keyPath),
+            cert: fs.readFileSync(certPath)
+        };
+        server = https.createServer(options, app);
+        console.log('Cloud Server starting in HTTPS mode');
+    } catch (e) {
+        console.error('Failed to load SSL certs, falling back to HTTP:', e);
+        server = http.createServer(app);
+    }
+} else {
+    console.log('No SSL certs found (server.cert/key), starting in HTTP mode');
+    server = http.createServer(app);
+}
+
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 4000;
@@ -20,7 +46,7 @@ app.use(express.json());
 app.use(cors());
 
 // --- Serve Static Files (Frontend) ---
-const PROJECT_ROOT = path.join(__dirname, '..');
+// const PROJECT_ROOT = path.join(__dirname, '..'); // Already defined above
 app.use(express.static(PROJECT_ROOT)); // Serve root files like index.html
 app.use('/style', express.static(path.join(PROJECT_ROOT, 'style')));
 app.use('/script', express.static(path.join(PROJECT_ROOT, 'script')));
@@ -361,7 +387,7 @@ wss.on('connection', (ws, req) => {
     
     console.log(`Hub connected: ${hubId}`);
     connectedHubs.set(hubId, ws);
-    
+
     ws.on('message', (message) => {
         try {
             const msg = JSON.parse(message);
@@ -402,6 +428,12 @@ wss.on('connection', (ws, req) => {
         console.log(`Hub disconnected: ${hubId}`);
         connectedHubs.delete(hubId);
     });
+});
+
+// Debug endpoint to list connected hubs
+app.get('/api/debug/hubs', (req, res) => {
+    const hubs = Array.from(connectedHubs.keys());
+    res.json({ count: hubs.length, hubs });
 });
 
 server.listen(PORT, () => {

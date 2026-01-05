@@ -642,20 +642,25 @@ app.get('/api/spotify/login', (req, res) => {
 // Spotify redirects here after the user grants permission.
 app.get('/api/spotify/callback', async (req, res) => {
     const { code, state } = req.query;
-    if (await spotifyManager.handleCallback(code, state)) {
-        // Try to redirect back to the settings page if localBaseUrl is available
-        try {
-            const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
-            if (stateObj.localBaseUrl) {
-                return res.redirect(`${stateObj.localBaseUrl}/pages/settings.html?tab=integrations`);
+    try {
+        if (await spotifyManager.handleCallback(code, state)) {
+            // Try to redirect back to the settings page if localBaseUrl is available
+            try {
+                const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+                if (stateObj.localBaseUrl) {
+                    return res.redirect(`${stateObj.localBaseUrl}/pages/settings.html?tab=integrations`);
+                }
+            } catch (e) {
+                console.error('Error parsing state for redirect:', e);
             }
-        } catch (e) {
-            console.error('Error parsing state for redirect:', e);
+            // Fallback if no localBaseUrl
+            res.send('<script>window.close();</script>');
+        } else {
+            res.status(500).send('Spotify authentication failed. Check server logs.');
         }
-        // Fallback if no localBaseUrl
-        res.send('<script>window.close();</script>');
-    } else {
-        res.status(500).send('Spotify authentication failed');
+    } catch (e) {
+        console.error('Spotify Callback Error:', e);
+        res.status(500).send('Internal Server Error during Spotify Callback');
     }
 });
 

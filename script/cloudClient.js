@@ -102,7 +102,8 @@ class CloudClient {
         const wsUrl = cloudUrl.replace(/^http/, 'ws') + `?id=${hubId}&secret=${hubSecret}`;
 
         console.log(`[Cloud] Connecting to ${wsUrl}...`);
-        this.ws = new WebSocket(wsUrl);
+        // Allow self-signed certs for internal/dev setups
+        this.ws = new WebSocket(wsUrl, { rejectUnauthorized: false });
 
         this.ws.on('open', () => {
             console.log('[Cloud] Connected to Cloud Server');

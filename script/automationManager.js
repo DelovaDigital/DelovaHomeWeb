@@ -199,8 +199,15 @@ class AutomationManager extends EventEmitter {
     }
 
     async executeActions(actions) {
+        if (!actions || actions.length === 0) {
+            console.warn('[Automation] No actions to execute.');
+            return;
+        }
+        console.log(`[Automation] Processing ${actions.length} actions.`);
+
         for (const action of actions) {
             try {
+                console.log(`[Automation] Action: ${action.type} -> ${action.deviceId || action.sceneName} : ${action.command}`);
                 if (action.type === 'device') {
                     await deviceManager.controlDevice(action.deviceId, action.command, action.value);
                 } else if (action.type === 'scene') {

@@ -223,12 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
         async function checkSpotifyStatus() {
             try {
                 let query = '';
-                if (userId && /^\d+$/.test(userId)) {
-                    query = `userId=${userId}`;
-                } else if (username) {
+                // If we are on Cloud, we might have a UUID userId but we need to check status using username
+                // because the backend resolves it.
+                if (username) {
                     query = `username=${username}`;
-                } else {
-                    // Fallback for UUID userId if username is missing (shouldn't happen)
+                } else if (userId) {
                     query = `userId=${userId}`;
                 }
 

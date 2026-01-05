@@ -622,6 +622,9 @@ app.get('/api/spotify/login', (req, res) => {
         username = req.headers['x-delova-username'];
     }
 
+    // If userId is missing but we have username, that's fine, spotifyManager will resolve it.
+    // If userId is present but is a UUID (Cloud ID), we also rely on username.
+    
     if (!userId && !username) {
         return res.status(400).send('User ID or Username is required to link Spotify account.');
     }
@@ -678,7 +681,7 @@ app.post('/api/spotify/logout', async (req, res) => {
 });
 
 // A middleware to extract userId for spotify routes
-const requireSpotifyUser = (req, res, next) => {
+const requireSpotifyUser = async (req, res, next) => {
     let userId = req.query.userId || (req.body && req.body.userId);
     let username = req.query.username || (req.body && req.body.username);
     
@@ -690,6 +693,38 @@ const requireSpotifyUser = (req, res, next) => {
     if (!userId && !username) {
         return res.status(400).json({ ok: false, message: 'Missing userId or username for Spotify request' });
     }
+
+    // If userId is missing or invalid (UUID), try to resolve it from username
+    if ((!userId || !/^\d+$/.test(userId)) && username) {
+        try {
+            const pool = await db.getPool();
+            // Try exact match first
+            let result = await pool.request()
+                .input('username', db.sql.NVarChar(255), username)
+                .query('SELECT Id FROM Users WHERE Username = @username');
+            
+            if (result.recordset.length > 0) {
+                userId = result.recordset[0].Id;
+            } else {
+                // Try case-insensitive match on Hub
+                const hubId = hubConfig.hubId;
+                result = await pool.request()
+                    .input('hubId', db.sql.NVarChar(255), hubId)
+                    .query('SELECT Id, Username FROM Users WHERE HubID = @hubId');
+                
+                const match = result.recordset.find(u => u.Username.toLowerCase() === username.toLowerCase());
+                if (match) {
+                    userId = match.Id;
+                } else if (result.recordset.length > 0) {
+                    // Fallback to first user
+                    userId = result.recordset[0].Id;
+                }
+            }
+        } catch (e) {
+            console.error('Error resolving user in middleware:', e);
+        }
+    }
+
     req.userId = userId;
     req.username = username;
     next();

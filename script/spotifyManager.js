@@ -146,6 +146,8 @@ class SpotifyManager {
         if (data.access_token) {
             const tokenExpiration = Date.now() + (data.expires_in * 1000);
             
+            console.log(`[Spotify] Saving token for User ID: ${userId}`);
+
             try {
                 const pool = await db.getPool();
                 await pool.request()

@@ -63,7 +63,14 @@ class _HubLoginScreenState extends State<HubLoginScreen> {
     // But Cloud Login is /api/auth/login. Hub Login is /api/login.
     // So we call /api/login on the Cloud Server with x-hub-id header.
     
-    final url = Uri.parse('https://${widget.hubIp}:${widget.hubPort}/api/login');
+    String baseUrl;
+    if (widget.hubIp.startsWith('http://') || widget.hubIp.startsWith('https://')) {
+      baseUrl = widget.hubIp;
+    } else {
+      baseUrl = 'https://${widget.hubIp}:${widget.hubPort}';
+    }
+    
+    final url = Uri.parse('$baseUrl/api/login');
     
     try {
       final client = HttpClient();

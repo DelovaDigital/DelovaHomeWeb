@@ -57,7 +57,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     // Use HTTPS and allow self-signed certificates
-    final url = Uri.parse('https://${widget.hubIp}:${widget.hubPort}/api/login');
+    String baseUrl;
+    if (widget.hubIp.startsWith('http://') || widget.hubIp.startsWith('https://')) {
+      baseUrl = widget.hubIp;
+    } else {
+      baseUrl = 'https://${widget.hubIp}:${widget.hubPort}';
+    }
+    final url = Uri.parse('$baseUrl/api/login');
     
     try {
       // Create a custom HttpClient that accepts self-signed certificates

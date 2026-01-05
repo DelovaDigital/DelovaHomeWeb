@@ -88,9 +88,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
         if (hubId != null) {
           request.headers.set('x-hub-id', hubId);
         }
-        if (username != null) {
-          request.headers.set('x-delova-username', username);
-        }
+        // x-delova-username is injected by Cloud Proxy if needed
 
         final response = await request.close();
         
@@ -422,11 +420,14 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                         // BUT we still need to login to the Hub itself!
                         // So we navigate to HubLoginScreen
                         
+                        // Construct Proxy URL for Cloud Connection
+                        final proxyUrl = '$baseUrl/api/proxy/${hubs[0]['id']}';
+
                         if (mounted) {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => HubLoginScreen(
-                                hubIp: baseUrl,
+                                hubIp: proxyUrl,
                                 hubPort: '',
                                 hubId: hubs[0]['id'],
                                 hubName: hubs[0]['name'],
@@ -570,10 +571,14 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                   if (cloudUrl != null && cloudToken != null) {
                       // Cloud Flow: Go to Hub Login
                       Navigator.pop(context);
+                      
+                      // Construct Proxy URL for Cloud Connection
+                      final proxyUrl = '$cloudUrl/api/proxy/${hub['id']}';
+
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => HubLoginScreen(
-                            hubIp: cloudUrl,
+                            hubIp: proxyUrl,
                             hubPort: '',
                             hubId: hub['id'],
                             hubName: hub['name'],

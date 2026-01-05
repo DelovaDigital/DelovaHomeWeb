@@ -663,6 +663,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         } else if (type === 'nas' || type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'mac') {
+            const isWindows = type.includes('pc') || type.includes('computer') || type.includes('workstation') || device.name.toLowerCase().includes('windows') || device.name.toLowerCase().includes('win');
+            
             controlsHtml += `
                 <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
                     <p>Beheer verbindingen en bestanden.</p>
@@ -671,17 +673,46 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                     
                     <div style="display: flex; gap: 10px; width: 100%;">
+            `;
+
+            if (device.wol_configured) {
+                controlsHtml += `
                         <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="controlDevice('${device.id}', 'wake')">
                             <i class="fas fa-power-off"></i> Wake on LAN
                         </button>
+                `;
+            }
+
+            if (isWindows) {
+                controlsHtml += `
+                        <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="window.open('https://remotedesktop.google.com/access/', '_blank')">
+                            <i class="fas fa-desktop"></i> Remote Desktop
+                        </button>
+                `;
+            } else {
+                 // Keep legacy remote for non-windows if needed, or just hide it as per request "only for windows"
+                 // User said "Als hij een windows-pc vind dan moet de optie er zijn voor remote desktop"
+                 // But didn't explicitly say remove it for others. I'll keep launchRemote for non-windows as a fallback if they want VNC
+                 controlsHtml += `
                         <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="launchRemote('${device.ip}', '${type}')">
                             <i class="fas fa-desktop"></i> Remote
                         </button>
-                    </div>
+                 `;
+            }
 
+            controlsHtml += `
+                    </div>
+            `;
+
+            if (type === 'nas' || device.shares_folders) {
+                controlsHtml += `
                     <button class="btn btn-secondary" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px;" onclick="window.location.href='files.html?device=${device.id}'">
                         <i class="fas fa-folder-open"></i> Bestanden Bladeren
                     </button>
+                `;
+            }
+
+            controlsHtml += `
                 </div>
             `;
         } else if (type === 'printer') {

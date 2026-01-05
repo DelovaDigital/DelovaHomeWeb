@@ -7,6 +7,8 @@ class Device {
   final String? model;
   final DeviceStatus status;
   final List<dynamic>? inputs;
+  final bool wolConfigured;
+  final bool sharesFolders;
 
   Device({
     required this.id,
@@ -17,6 +19,8 @@ class Device {
     this.model,
     this.inputs,
     required this.status,
+    this.wolConfigured = false,
+    this.sharesFolders = false,
   });
 
   factory Device.fromJson(Map<String, dynamic> json) {
@@ -29,6 +33,8 @@ class Device {
       model: json['model'],
       inputs: json['inputs'],
       status: DeviceStatus.fromJson(json['state'] ?? json['status'] ?? {}),
+      wolConfigured: json['wol_configured'] ?? false,
+      sharesFolders: json['shares_folders'] ?? false,
     );
   }
 }

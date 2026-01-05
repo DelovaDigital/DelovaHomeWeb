@@ -944,6 +944,10 @@ class DeviceManager extends EventEmitter {
         if (!device.protocols) device.protocols = [];
         if (!device.state) device.state = { on: false };
 
+        // Calculate extended properties
+        device.wol_configured = !!device.mac;
+        device.shares_folders = !!this.sshCredentials[device.ip] || device.type === 'nas';
+
         // Check if device already exists by IP
         let existingId = null;
         let existingDevice = null;

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/device.dart';
 import '../services/api_service.dart';
 import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
+import 'nas_browser_screen.dart';
 
 class DeviceDetailScreen extends StatefulWidget {
   final Device device;
@@ -359,6 +361,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     final isPs5 = widget.device.type.toLowerCase() == 'ps5' || widget.device.type.toLowerCase() == 'console' || widget.device.type.toLowerCase() == 'game' || widget.device.name.toLowerCase().contains('ps5');
     // Determine if this device should be treated like a PC/game console for Wake actions
     final isPc = widget.device.type.toLowerCase().contains('pc') || (widget.device.name.toLowerCase().contains('ps5') && !isPs5) || widget.device.type.toLowerCase().contains('game');
+    final isWindows = widget.device.type.toLowerCase().contains('windows') || (widget.device.model?.toLowerCase().contains('windows') ?? false) || (isPc && widget.device.name.toLowerCase().contains('win'));
+    final isNas = widget.device.type.toLowerCase() == 'nas' || widget.device.sharesFolders;
     
     final isPoweredOn = widget.device.status.isOn;
 
@@ -462,6 +466,42 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 ),
 
               const SizedBox(height: 40),
+
+              // --- PC / NAS Controls ---
+              if (isPc || isNas) ...[
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                   children: [
+                     if (isWindows)
+                       _actionButton("Remote Desktop", Icons.desktop_windows, () async {
+                          final url = Uri.parse('https://remotedesktop.google.com/access/');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url, mode: LaunchMode.externalApplication);
+                          }
+                       }),
+                     
+                     if (isPc && widget.device.wolConfigured)
+                       _actionButton("Wake on LAN", Icons.power, () async {
+                          await _sendCommand('wake');
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Wake requested')));
+                       }),
+
+                     if (isNas || widget.device.sharesFolders)
+                       _actionButton("Browse Files", Icons.folder, () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => NasBrowserScreen(
+                                nasId: widget.device.id,
+                                nasName: widget.device.name,
+                              ),
+                            ),
+                          );
+                       }),
+                   ],
+                 ),
+                 const SizedBox(height: 40),
+              ],
 
               // --- Thermostat Controls ---
               if (isThermostat) ...[

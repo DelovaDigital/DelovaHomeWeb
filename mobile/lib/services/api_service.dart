@@ -615,7 +615,10 @@ class ApiService {
   Future<List<dynamic>> getAutomations() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/automations'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/automations'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -630,7 +633,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/automations'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode(automation),
       );
       if (response.statusCode != 200) {
@@ -646,7 +649,7 @@ class ApiService {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/api/automations/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode(automation),
       );
       if (response.statusCode != 200) {
@@ -660,7 +663,10 @@ class ApiService {
   Future<void> deleteAutomation(String id) async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.delete(Uri.parse('$baseUrl/api/automations/$id'));
+      final response = await http.delete(
+        Uri.parse('$baseUrl/api/automations/$id'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode != 200) {
         throw Exception('Failed to delete automation');
       }

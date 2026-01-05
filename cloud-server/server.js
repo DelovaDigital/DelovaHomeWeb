@@ -7,6 +7,8 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const fs = require('fs');
 
+const path = require('path');
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
@@ -16,6 +18,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'delovahome-secret-key-change-me';
 
 app.use(express.json());
 app.use(cors());
+
+// --- Serve Static Files (Frontend) ---
+const PROJECT_ROOT = path.join(__dirname, '..');
+app.use(express.static(PROJECT_ROOT)); // Serve root files like index.html
+app.use('/style', express.static(path.join(PROJECT_ROOT, 'style')));
+app.use('/script', express.static(path.join(PROJECT_ROOT, 'script')));
+app.use('/pages', express.static(path.join(PROJECT_ROOT, 'pages')));
+app.use('/img', express.static(path.join(PROJECT_ROOT, 'img')));
+app.use('/data', express.static(path.join(PROJECT_ROOT, 'data')));
 
 // --- Data Store (Simple JSON for now) ---
 const DATA_FILE = 'cloud-data.json';
@@ -34,8 +45,20 @@ const connectedHubs = new Map(); // hubId -> WebSocket
 const pendingRequests = new Map(); // requestId -> res
 
 // --- Middleware ---
+const parseCookies = (req) => {
+    const list = {};
+    const rc = req.headers.cookie;
+    rc && rc.split(';').forEach(function(cookie) {
+        const parts = cookie.split('=');
+        list[parts.shift().trim()] = decodeURI(parts.join('='));
+    });
+    return list;
+};
+
 const authenticate = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
+    const cookies = parseCookies(req);
+    const token = req.headers.authorization?.split(' ')[1] || cookies.cloud_token;
+    
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
     
     try {
@@ -74,7 +97,48 @@ app.post('/api/auth/login', async (req, res) => {
     }
     
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+    
+    // Set Cookie
+    res.setHeader('Set-Cookie', `cloud_token=${token}; Path=/; HttpOnly; SameSite=Lax`);
+    
     res.json({ success: true, token, user: { id: user.id, username: user.username, hubs: user.hubs } });
+});
+
+// Alias for frontend compatibility
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    const user = data.users.find(u => u.username === username);
+    
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET);
+    
+    // Set Cookie
+    res.setHeader('Set-Cookie', `cloud_token=${token}; Path=/; HttpOnly; SameSite=Lax`);
+    
+    // Auto-select first hub if available
+    let hubInfo = null;
+    if (user.hubs.length > 0) {
+        const hub = data.hubs.find(h => h.id === user.hubs[0]);
+        if (hub) {
+            hubInfo = { id: hub.id, name: hub.name };
+            // Set active hub cookie
+            res.setHeader('Set-Cookie', [
+                `cloud_token=${token}; Path=/; HttpOnly; SameSite=Lax`,
+                `active_hub=${hub.id}; Path=/; SameSite=Lax`
+            ]);
+        }
+    }
+
+    // Return format expected by script.js
+    res.json({ 
+        ok: true, 
+        username: user.username, 
+        userId: user.id,
+        hubInfo: hubInfo
+    });
 });
 
 // --- Hub Management ---
@@ -125,6 +189,49 @@ app.all('/api/proxy/:hubId/*', authenticate, (req, res) => {
         id: requestId,
         method: req.method,
         path: '/' + path, // e.g. /api/devices
+        body: req.body,
+        query: req.query
+    };
+    
+    // Send to Hub
+    ws.send(JSON.stringify({ type: 'REQUEST', payload: command }));
+    
+    // Wait for response
+    pendingRequests.set(requestId, res);
+    
+    // Timeout after 10s
+    setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+            pendingRequests.get(requestId).status(504).json({ error: 'Hub timeout' });
+            pendingRequests.delete(requestId);
+        }
+    }, 10000);
+});
+
+// Auto-Proxy for standard API calls based on cookie
+app.all('/api/*', authenticate, (req, res) => {
+    const cookies = parseCookies(req);
+    const hubId = cookies.active_hub;
+    
+    if (!hubId) {
+        return res.status(400).json({ error: 'No active hub selected' });
+    }
+    
+    // Reuse proxy logic
+    const path = req.params[0]; // The part after /api/
+    
+    // Verify ownership
+    const user = data.users.find(u => u.id === req.user.id);
+    if (!user.hubs.includes(hubId)) return res.status(403).json({ error: 'Access denied to this hub' });
+    
+    const ws = connectedHubs.get(hubId);
+    if (!ws) return res.status(503).json({ error: 'Hub is offline' });
+    
+    const requestId = uuid.v4();
+    const command = {
+        id: requestId,
+        method: req.method,
+        path: '/api/' + path, // Reconstruct full path
         body: req.body,
         query: req.query
     };

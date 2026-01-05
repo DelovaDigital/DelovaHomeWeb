@@ -615,9 +615,9 @@ try {
 // This endpoint starts the OAuth flow for a specific user.
 app.get('/api/spotify/login', (req, res) => {
     // The user ID must be passed to know who to link the token to.
-    const { userId } = req.query;
-    if (!userId) {
-        return res.status(400).send('User ID is required to link Spotify account.');
+    const { userId, username } = req.query;
+    if (!userId && !username) {
+        return res.status(400).send('User ID or Username is required to link Spotify account.');
     }
     
     // Determine Base URL (Handle Cloud Proxy)
@@ -625,7 +625,7 @@ app.get('/api/spotify/login', (req, res) => {
     const host = req.headers['x-forwarded-host'] || req.get('host');
     const localBaseUrl = `${protocol}://${host}`;
     
-    const url = spotifyManager.getAuthUrl(userId, localBaseUrl);
+    const url = spotifyManager.getAuthUrl(userId, username, localBaseUrl);
     if (url) {
         res.redirect(url);
     } else {
@@ -669,16 +669,19 @@ app.post('/api/spotify/logout', async (req, res) => {
 // A middleware to extract userId for spotify routes
 const requireSpotifyUser = (req, res, next) => {
     const userId = req.query.userId || (req.body && req.body.userId);
-    if (!userId) {
-        return res.status(400).json({ ok: false, message: 'Missing userId for Spotify request' });
+    const username = req.query.username || (req.body && req.body.username);
+    
+    if (!userId && !username) {
+        return res.status(400).json({ ok: false, message: 'Missing userId or username for Spotify request' });
     }
     req.userId = userId;
+    req.username = username;
     next();
 };
 
 app.get('/api/spotify/status', requireSpotifyUser, async (req, res) => {
     try {
-        const state = await spotifyManager.getPlaybackState(req.userId);
+        const state = await spotifyManager.getPlaybackState(req.userId, req.username);
         res.json(state || { is_playing: false });
     } catch (e) {
         console.error('Error getting spotify status:', e);
@@ -689,13 +692,13 @@ app.get('/api/spotify/status', requireSpotifyUser, async (req, res) => {
 // This 'me' is about the Spotify connection, not the hub user. 
 app.get('/api/spotify/me', requireSpotifyUser, async (req, res) => { 
     try {
-        const headers = await spotifyManager.getHeaders(req.userId);
+        const headers = await spotifyManager.getHeaders(req.userId, req.username);
         if (!headers) {
             return res.json({ available: false, device: null, message: 'Spotify not linked' });
         }
         
         // We can optionally fetch the device state here too
-        const state = await spotifyManager.getPlaybackState(req.userId);
+        const state = await spotifyManager.getPlaybackState(req.userId, req.username);
         res.json({ available: true, device: state && state.device ? state.device : null });
 
     } catch (e) {
@@ -800,7 +803,7 @@ app.post('/api/spotify/transfer-or-sonos', requireSpotifyUser, async (req, res) 
         if (deviceId) {
             // Try Spotify transfer first
             try {
-                await spotifyManager.transferPlayback(req.userId, deviceId);
+                await spotifyManager.transferPlayback(req.userId, deviceId, req.username);
                 return res.json({ ok: true, method: 'spotify', message: 'Transferred via Spotify' });
             } catch (e) {
                 console.warn('Spotify transfer failed, will attempt Sonos fallback if provided:', e.message || e);
@@ -813,7 +816,7 @@ app.post('/api/spotify/transfer-or-sonos', requireSpotifyUser, async (req, res) 
             if (uris && Array.isArray(uris) && uris.length > 0) playUri = uris[0];
             if (!playUri) {
                 try {
-                    const state = await spotifyManager.getPlaybackState(req.userId);
+                    const state = await spotifyManager.getPlaybackState(req.userId, req.username);
                     if (state && state.item && state.item.uri) playUri = state.item.uri;
                     else if (state && state.context && state.context.uri) playUri = state.context.uri;
                 } catch (e) {
@@ -841,7 +844,7 @@ app.post('/api/spotify/transfer-or-sonos', requireSpotifyUser, async (req, res) 
 
 app.get('/api/spotify/devices', requireSpotifyUser, async (req, res) => {
     try {
-        const spotifyDevices = await spotifyManager.getDevices(req.userId);
+        const spotifyDevices = await spotifyManager.getDevices(req.userId, req.username);
         
         // Get local Cast devices
         const castDevices = deviceManager.getCastDevices();
@@ -879,7 +882,7 @@ app.get('/api/spotify/devices', requireSpotifyUser, async (req, res) => {
 
 app.get('/api/spotify/playlists', requireSpotifyUser, async (req, res) => {
     try {
-        const playlists = await spotifyManager.getUserPlaylists(req.userId);
+        const playlists = await spotifyManager.getUserPlaylists(req.userId, req.username);
         res.json(playlists);
     } catch (e) {
         if (e.message === 'SPOTIFY_NOT_REGISTERED') {
@@ -892,7 +895,7 @@ app.get('/api/spotify/playlists', requireSpotifyUser, async (req, res) => {
 
 app.get('/api/spotify/albums', requireSpotifyUser, async (req, res) => {
     try {
-        const albums = await spotifyManager.getUserAlbums(req.userId);
+        const albums = await spotifyManager.getUserAlbums(req.userId, req.username);
         res.json(albums);
     } catch (e) {
         console.error('Error getting spotify albums:', e);
@@ -903,7 +906,7 @@ app.get('/api/spotify/albums', requireSpotifyUser, async (req, res) => {
 app.get('/api/spotify/search', requireSpotifyUser, async (req, res) => {
     const q = req.query.q || '';
     try {
-        const results = await spotifyManager.search(req.userId, q);
+        const results = await spotifyManager.search(req.userId, q, req.username);
         res.json(results);
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });

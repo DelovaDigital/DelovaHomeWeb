@@ -17,7 +17,7 @@ class SpotifyManager {
         ];
     }
 
-    getAuthUrl(userId, localBaseUrl) {
+    getAuthUrl(userId, username, localBaseUrl) {
         if (!this.clientId) return null;
         
         // Determine dynamic redirect URI if localBaseUrl is provided
@@ -30,7 +30,7 @@ class SpotifyManager {
         console.log(`[Spotify] Generating Auth URL. Redirect URI: ${currentRedirectUri}`);
 
         // Use the 'state' parameter to pass the userId and localBaseUrl back to the callback
-        const stateObj = { userId, redirectUri: currentRedirectUri };
+        const stateObj = { userId, username, redirectUri: currentRedirectUri };
         if (localBaseUrl) {
             stateObj.localBaseUrl = localBaseUrl;
         }
@@ -47,11 +47,13 @@ class SpotifyManager {
 
     async handleCallback(code, state) {
         let userId;
+        let username;
         let redirectUri = this.redirectUri;
 
         try {
             const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
             userId = stateObj.userId;
+            username = stateObj.username;
             if (stateObj.redirectUri) {
                 redirectUri = stateObj.redirectUri;
             }
@@ -60,8 +62,30 @@ class SpotifyManager {
             return false;
         }
 
-        if (!userId) {
-            console.error('No userId found in Spotify callback state');
+        // Resolve User ID if it's missing or a UUID (Cloud ID)
+        if (!userId || !/^\d+$/.test(userId)) {
+            if (username) {
+                console.log(`[Spotify] Resolving local User ID for username: ${username}`);
+                try {
+                    const pool = await db.getPool();
+                    const res = await pool.request()
+                        .input('username', db.sql.NVarChar(255), username)
+                        .query('SELECT Id FROM Users WHERE Username = @username');
+                    
+                    if (res.recordset.length > 0) {
+                        userId = res.recordset[0].Id;
+                        console.log(`[Spotify] Resolved User ID: ${userId}`);
+                    } else {
+                        console.error(`[Spotify] User not found locally: ${username}`);
+                    }
+                } catch (e) {
+                    console.error('[Spotify] Error resolving user by username:', e);
+                }
+            }
+        }
+
+        if (!userId || !/^\d+$/.test(userId)) {
+            console.error(`[Spotify] Invalid or missing userId: ${userId}. Cannot save token.`);
             return false;
         }
         
@@ -179,7 +203,25 @@ class SpotifyManager {
         return null;
     }
 
-    async getHeaders(userId) {
+    async getHeaders(userId, username) {
+        // Resolve User ID if it's a UUID (Cloud ID)
+        if (userId && !/^\d+$/.test(userId)) {
+             if (username) {
+                 try {
+                    const pool = await db.getPool();
+                    const res = await pool.request()
+                        .input('username', db.sql.NVarChar(255), username)
+                        .query('SELECT Id FROM Users WHERE Username = @username');
+                    
+                    if (res.recordset.length > 0) {
+                        userId = res.recordset[0].Id;
+                    }
+                 } catch (e) {
+                     console.error('[Spotify] Error resolving user by username in getHeaders:', e);
+                 }
+             }
+        }
+
         if (!userId) return null;
 
         // Handle non-integer userId (e.g. Cloud UUID)
@@ -211,8 +253,8 @@ class SpotifyManager {
         return { 'Authorization': `Bearer ${user.SpotifyAccessToken}` };
     }
 
-    async getPlaybackState(userId) {
-        const headers = await this.getHeaders(userId);
+    async getPlaybackState(userId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) return null;
         try {
             const response = await fetch('https://api.spotify.com/v1/me/player', { headers });
@@ -225,8 +267,8 @@ class SpotifyManager {
         }
     }
 
-    async play(userId, uris, deviceId) {
-        const headers = await this.getHeaders(userId);
+    async play(userId, uris, deviceId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const body = uris ? JSON.stringify({ uris }) : undefined;
         
@@ -251,29 +293,29 @@ class SpotifyManager {
         }
     }
 
-    async pause(userId) {
-        const headers = await this.getHeaders(userId);
+    async pause(userId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/pause', { method: 'PUT', headers });
         if (!resp.ok) throw new Error(`Spotify pause failed: ${resp.status}`);
     }
 
-    async next(userId) {
-        const headers = await this.getHeaders(userId);
+    async next(userId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/next', { method: 'POST', headers });
         if (!resp.ok) throw new Error(`Spotify next failed: ${resp.status}`);
     }
 
-    async previous(userId) {
-        const headers = await this.getHeaders(userId);
+    async previous(userId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/previous', { method: 'POST', headers });
         if (!resp.ok) throw new Error(`Spotify previous failed: ${resp.status}`);
     }
 
-    async setVolume(userId, volume) {
-        const headers = await this.getHeaders(userId);
+    async setVolume(userId, volume, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const url = `https://api.spotify.com/v1/me/player/volume?volume_percent=${parseInt(volume, 10)}`;
         const resp = await fetch(url, { method: 'PUT', headers });
@@ -286,8 +328,8 @@ class SpotifyManager {
         }
     }
 
-    async getDevices(userId) {
-        const headers = await this.getHeaders(userId);
+    async getDevices(userId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) {
             console.warn(`[Spotify] No headers for user ${userId} (not linked?)`);
             return [];
@@ -307,8 +349,8 @@ class SpotifyManager {
         }
     }
 
-    async transferPlayback(userId, deviceId) {
-        const headers = await this.getHeaders(userId);
+    async transferPlayback(userId, deviceId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
 
         // Accept either a string deviceId or an object { deviceId, uris }
@@ -330,7 +372,7 @@ class SpotifyManager {
 
         // If transfer failed, attempt to fetch current playback and explicitly start playback on the target device
         try {
-            const state = await this.getPlaybackState(userId);
+            const state = await this.getPlaybackState(userId, username);
             let playBody = null;
             if (uris && Array.isArray(uris) && uris.length > 0) {
                 playBody = { uris };
@@ -368,8 +410,8 @@ class SpotifyManager {
         throw new Error(`Spotify transferPlayback failed: ${resp.status}`);
     }
 
-    async getUserPlaylists(userId) {
-        const headers = await this.getHeaders(userId);
+    async getUserPlaylists(userId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) return [];
         
         const playlists = [];
@@ -431,8 +473,8 @@ class SpotifyManager {
         }
     }
 
-    async getUserAlbums(userId) {
-        const headers = await this.getHeaders(userId);
+    async getUserAlbums(userId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) return [];
         try {
             const response = await fetch('https://api.spotify.com/v1/me/albums?limit=20', { headers });
@@ -444,8 +486,8 @@ class SpotifyManager {
         }
     }
 
-    async playContext(userId, contextUri, deviceId) {
-        const headers = await this.getHeaders(userId);
+    async playContext(userId, contextUri, deviceId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         
         // Handle "Liked Songs" special case
@@ -457,7 +499,7 @@ class SpotifyManager {
                     const data = await tracksResp.json();
                     const uris = data.items.map(item => item.track.uri);
                     if (uris.length > 0) {
-                        return this.playUris(userId, uris, deviceId);
+                        return this.playUris(userId, uris, deviceId, username);
                     }
                 }
             } catch (e) {
@@ -487,8 +529,8 @@ class SpotifyManager {
         }
     }
 
-    async playUris(userId, uris, deviceId) {
-        const headers = await this.getHeaders(userId);
+    async playUris(userId, uris, deviceId, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         
         let url = 'https://api.spotify.com/v1/me/player/play';
@@ -512,8 +554,8 @@ class SpotifyManager {
         }
     }
 
-    async search(userId, q) {
-        const headers = await this.getHeaders(userId);
+    async search(userId, q, username) {
+        const headers = await this.getHeaders(userId, username);
         if (!headers) return { tracks: [], artists: [] };
         try {
             const params = new URLSearchParams({ q: q, type: 'track,artist', limit: '20' });

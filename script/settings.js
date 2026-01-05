@@ -217,11 +217,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const spotifyStatusText = document.getElementById('spotify-status-text');
     const btnSpotifyAction = document.getElementById('btn-spotify-action');
     const userId = localStorage.getItem('userId');
+    const username = localStorage.getItem('username');
 
-    if (btnSpotifyAction && userId) {
+    if (btnSpotifyAction && (userId || username)) {
         async function checkSpotifyStatus() {
             try {
-                const res = await fetch(`/api/spotify/me?userId=${userId}`);
+                let query = '';
+                if (userId && /^\d+$/.test(userId)) {
+                    query = `userId=${userId}`;
+                } else if (username) {
+                    query = `username=${username}`;
+                } else {
+                    // Fallback for UUID userId if username is missing (shouldn't happen)
+                    query = `userId=${userId}`;
+                }
+
+                const res = await fetch(`/api/spotify/me?${query}`);
                 const data = await res.json();
                 
                 if (data.available) {
@@ -243,7 +254,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function connectSpotify() {
-            window.location.href = `/api/spotify/login?userId=${userId}`;
+            let params = new URLSearchParams();
+            if (userId) params.append('userId', userId);
+            if (username) params.append('username', username);
+            window.location.href = `/api/spotify/login?${params.toString()}`;
         }
 
         async function disconnectSpotify() {
@@ -253,7 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/spotify/logout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
+                    body: JSON.stringify({ userId, username })
                 });
                 
                 if (res.ok) {

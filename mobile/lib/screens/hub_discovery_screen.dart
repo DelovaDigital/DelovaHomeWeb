@@ -443,7 +443,6 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
 
   void _connectToCloudHub() {
     // Hardcoded connection to Cloud Hub
-    // Hidden from user view/edit
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => LoginScreen(
@@ -451,6 +450,68 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
           hubPort: '',
           hubName: 'DelovaHome Cloud',
         ),
+      ),
+    );
+  }
+
+  void _showManualConnectDialog() {
+    final ipController = TextEditingController();
+    final portController = TextEditingController(text: '3000');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A237E),
+        title: Text(t('manual_connect'), style: const TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ipController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: t('ip_address'),
+                hintText: 'e.g. 192.168.1.10',
+                labelStyle: const TextStyle(color: Colors.white70),
+                hintStyle: const TextStyle(color: Colors.white30),
+                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              ),
+            ),
+            TextField(
+              controller: portController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Port',
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
+            onPressed: () {
+              if (ipController.text.isNotEmpty) {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => LoginScreen(
+                      hubIp: ipController.text,
+                      hubPort: portController.text,
+                    ),
+                  ),
+                );
+              }
+            },
+            child: Text(t('connect'), style: const TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -528,6 +589,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
     final subTextColor = isDark ? Colors.white70 : Colors.black54;
@@ -536,161 +598,169 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
 
     return Scaffold(
       body: GradientBackground(
-        child: Column(
-          children: [
-            const SizedBox(height: 60),
-            // Animated Logo / Icon
-            ScaleTransition(
-              scale: _pulseAnimation,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: iconBgColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.cyan.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      spreadRadius: 5,
-                    )
-                  ],
-                ),
-                child: Icon(
-                  Icons.home_rounded,
-                  size: 60,
-                  color: iconColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'DelovaHome',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-                letterSpacing: 1.5,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              _isScanning ? t('searching_hubs') : 'Scan complete',
-              style: TextStyle(
-                color: subTextColor,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 40),
-            
-            // Hub List
-            Expanded(
-              child: _hubs.isEmpty
-                  ? Center(
-                      child: _isScanning
-                          ? const CircularProgressIndicator(color: Colors.cyan)
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.wifi_off, color: subTextColor, size: 48),
-                                const SizedBox(height: 16),
-                                Text(
-                                  t('no_results'),
-                                  style: TextStyle(color: subTextColor),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Check "Local Network" permission in Settings',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: subTextColor, fontSize: 12),
-                                ),
-                                TextButton(
-                                  onPressed: () => Geolocator.openAppSettings(),
-                                  child: const Text('Open Settings'),
-                                ),
-                                TextButton(
-                                  onPressed: _startDiscovery,
-                                  child: Text(t('retry'), style: const TextStyle(color: Colors.cyan)),
-                                ),
-                              ],
-                            ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: _hubs.length,
-                      itemBuilder: (context, index) {
-                        final hub = _hubs[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: GlassCard(
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16),
-                              leading: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.cyan.withValues(alpha: 0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.router, color: Colors.white),
-                              ),
-                              title: Text(
-                                hub.name,
-                                style: TextStyle(
-                                  color: textColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${hub.ip}:${hub.port}',
-                                style: TextStyle(color: subTextColor),
-                              ),
-                              trailing: Icon(Icons.arrow_forward_ios, color: subTextColor),
-                              onTap: () => _connectToHub(hub),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-            
-            // Manual Connect Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: Column(
                 children: [
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyan.withValues(alpha: 0.2),
-                      foregroundColor: textColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    ),
-                    onPressed: _connectToCloudHub,
-                    icon: const Icon(Icons.home),
-                    label: const Text(
-                      'Connect to Home',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple.withValues(alpha: 0.2),
-                      foregroundColor: textColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    ),
-                    onPressed: _showCloudLoginDialog,
-                    icon: const Icon(Icons.cloud),
-                    label: const Text(
-                      'Cloud Login',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  SizedBox(height: size.height * 0.08), // Dynamic top spacing
+                  // Animated Logo / Icon
+                  ScaleTransition(
+                    scale: _pulseAnimation,
+                    child: Container(
+                      padding: EdgeInsets.all(size.height * 0.025), // Dynamic padding
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: iconBgColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.cyan.withValues(alpha: 0.3),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          )
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.home_rounded,
+                        size: size.height * 0.08, // Dynamic icon size
+                        color: iconColor,
+                      ),
                     ),
                   ),
+                  SizedBox(height: size.height * 0.03),
+                  Text(
+                    'DelovaHome',
+                    style: TextStyle(
+                      fontSize: size.height * 0.04, // Dynamic font size
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _isScanning ? t('searching_hubs') : 'Scan complete',
+                    style: TextStyle(
+                      color: subTextColor,
+                      fontSize: size.height * 0.02,
+                    ),
+                  ),
+                  SizedBox(height: size.height * 0.05),
+                  
+                  // Hub List
+                  Expanded(
+                    child: _hubs.isEmpty
+                        ? Center(
+                            child: _isScanning
+                                ? const CircularProgressIndicator(color: Colors.cyan)
+                                : Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.wifi_off, color: subTextColor, size: 48),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        t('no_results'),
+                                        style: TextStyle(color: subTextColor),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        'Check "Local Network" permission in Settings',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(color: subTextColor, fontSize: 12),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Geolocator.openAppSettings(),
+                                        child: const Text('Open Settings'),
+                                      ),
+                                      TextButton(
+                                        onPressed: _startDiscovery,
+                                        child: Text(t('retry'), style: const TextStyle(color: Colors.cyan)),
+                                      ),
+                                    ],
+                                  ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: _hubs.length,
+                            itemBuilder: (context, index) {
+                              final hub = _hubs[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: GlassCard(
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.all(16),
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.cyan.withValues(alpha: 0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.router, color: Colors.white),
+                                    ),
+                                    title: Text(
+                                      hub.name,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '${hub.ip}:${hub.port}',
+                                      style: TextStyle(color: subTextColor),
+                                    ),
+                                    trailing: Icon(Icons.arrow_forward_ios, color: subTextColor),
+                                    onTap: () => _connectToHub(hub),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  
+                  // Manual Connect Button
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.cyan.withValues(alpha: 0.2),
+                            foregroundColor: textColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          ),
+                          onPressed: _connectToCloudHub,
+                          icon: const Icon(Icons.cloud),
+                          label: const Text(
+                            'Connect to Cloud',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.withValues(alpha: 0.2),
+                            foregroundColor: textColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          ),
+                          onPressed: _showManualConnectDialog,
+                          icon: const Icon(Icons.lan),
+                          label: const Text(
+                            'Connect Locally',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );

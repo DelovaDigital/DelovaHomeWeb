@@ -1602,7 +1602,7 @@ window.showPairingModal = (arg1, arg2) => {
 
     const { ip, name, type } = currentPairingDevice;
 
-    console.log('showPairingModal called for:', deviceId, ip, name, type);
+    console.log('showPairingModal called for:', arg1, ip, name, type);
     const modal = document.getElementById('pairingModal');
     const title = document.getElementById('pairingTitle');
     const desc = document.getElementById('pairingDesc');

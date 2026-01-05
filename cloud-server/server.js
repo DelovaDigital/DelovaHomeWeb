@@ -230,7 +230,9 @@ app.all('/api/proxy/:hubId/*', authenticate, (req, res) => {
             'x-forwarded-proto': req.protocol,
             'x-forwarded-host': req.get('host'),
             'cookie': req.headers.cookie,
-            'user-agent': req.headers['user-agent']
+            'user-agent': req.headers['user-agent'],
+            'x-delova-user-id': req.user.id,
+            'x-delova-username': req.user.username
         }
     };
     
@@ -277,7 +279,9 @@ app.all('/api/*', authenticate, (req, res) => {
         query: req.query,
         headers: {
             'x-forwarded-host': req.get('host'),
-            'x-forwarded-proto': req.protocol
+            'x-forwarded-proto': req.protocol,
+            'x-delova-username': req.user.username,
+            'x-delova-user-id': req.user.id
         }
     };
     

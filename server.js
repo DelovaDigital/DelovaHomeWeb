@@ -615,7 +615,13 @@ try {
 // This endpoint starts the OAuth flow for a specific user.
 app.get('/api/spotify/login', (req, res) => {
     // The user ID must be passed to know who to link the token to.
-    const { userId, username } = req.query;
+    let { userId, username } = req.query;
+    
+    // Fallback to Cloud Headers if missing
+    if (!username && req.headers['x-delova-username']) {
+        username = req.headers['x-delova-username'];
+    }
+
     if (!userId && !username) {
         return res.status(400).send('User ID or Username is required to link Spotify account.');
     }
@@ -668,9 +674,14 @@ app.post('/api/spotify/logout', async (req, res) => {
 
 // A middleware to extract userId for spotify routes
 const requireSpotifyUser = (req, res, next) => {
-    const userId = req.query.userId || (req.body && req.body.userId);
-    const username = req.query.username || (req.body && req.body.username);
+    let userId = req.query.userId || (req.body && req.body.userId);
+    let username = req.query.username || (req.body && req.body.username);
     
+    // Fallback to Cloud Headers
+    if (!username && req.headers['x-delova-username']) {
+        username = req.headers['x-delova-username'];
+    }
+
     if (!userId && !username) {
         return res.status(400).json({ ok: false, message: 'Missing userId or username for Spotify request' });
     }

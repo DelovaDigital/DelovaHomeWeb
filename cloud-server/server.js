@@ -225,7 +225,13 @@ app.all('/api/proxy/:hubId/*', authenticate, (req, res) => {
         method: req.method,
         path: '/' + path, // e.g. /api/devices
         body: req.body,
-        query: req.query
+        query: req.query,
+        headers: {
+            'x-forwarded-proto': req.protocol,
+            'x-forwarded-host': req.get('host'),
+            'cookie': req.headers.cookie,
+            'user-agent': req.headers['user-agent']
+        }
     };
     
     // Send to Hub

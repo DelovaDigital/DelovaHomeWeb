@@ -81,6 +81,17 @@ class SpotifyManager {
         });
 
         const data = await response.json();
+        
+        if (data.error) {
+            console.error('[Spotify] Token exchange failed:', data);
+            console.error('[Spotify] Sent params:', {
+                grant_type: 'authorization_code',
+                code: '***',
+                redirect_uri: redirectUri,
+                clientId: this.clientId ? 'Set' : 'Unset'
+            });
+        }
+
         if (data.access_token) {
             const tokenExpiration = Date.now() + (data.expires_in * 1000);
             

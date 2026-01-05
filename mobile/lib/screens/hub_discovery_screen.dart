@@ -60,6 +60,8 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     final hubIp = prefs.getString('hub_ip');
     final hubPort = prefs.getString('hub_port');
     final userId = prefs.getString('userId');
+    final hubId = prefs.getString('hub_id');
+    final cloudToken = prefs.getString('cloud_token');
 
     if (hubIp != null && hubPort != null && userId != null) {
       debugPrint('Found stored credentials. Verifying session...');
@@ -68,8 +70,24 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
         client.badCertificateCallback = (cert, host, port) => true;
         client.connectionTimeout = const Duration(seconds: 5);
         
-        final url = Uri.parse('https://$hubIp:$hubPort/api/me?userId=$userId');
+        String baseUrl;
+        if (hubIp.startsWith('http://') || hubIp.startsWith('https://')) {
+          baseUrl = hubIp;
+        } else {
+          baseUrl = 'https://$hubIp:$hubPort';
+        }
+
+        final url = Uri.parse('$baseUrl/api/me?userId=$userId');
         final request = await client.getUrl(url);
+        
+        // Add Cloud Headers if available
+        if (cloudToken != null) {
+          request.headers.set('Authorization', 'Bearer $cloudToken');
+        }
+        if (hubId != null) {
+          request.headers.set('x-hub-id', hubId);
+        }
+
         final response = await request.close();
         
         if (response.statusCode == 200) {
@@ -268,7 +286,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
   }
 
   void _showCloudLoginDialog() {
-    final urlController = TextEditingController(text: 'https://cloud.delovahome.com');
+    final urlController = TextEditingController(text: 'https://91.177.155.129:4000');
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
     bool isLoading = false;
@@ -282,15 +300,18 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: urlController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Cloud URL',
-                  hintText: 'https://cloud.delovahome.com',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  hintStyle: TextStyle(color: Colors.white30),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+              Visibility(
+                visible: false,
+                child: TextField(
+                  controller: urlController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Cloud URL',
+                    hintText: 'https://cloud.delovahome.com',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    hintStyle: TextStyle(color: Colors.white30),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                  ),
                 ),
               ),
               TextField(
@@ -335,8 +356,8 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 
                 try {
                   // Construct URL
-                  String baseUrl = urlController.text;
-                  if (!baseUrl.startsWith('http')) {
+                  String baseUrl = urlController.text.trim();
+                  if (!baseUrl.toLowerCase().startsWith('http')) {
                     baseUrl = 'https://$baseUrl';
                   }
                   // Remove trailing slash
@@ -442,16 +463,8 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
   }
 
   void _connectToCloudHub() {
-    // Hardcoded connection to Cloud Hub
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => LoginScreen(
-          hubIp: 'https://91.177.155.129:4000',
-          hubPort: '',
-          hubName: 'DelovaHome Cloud',
-        ),
-      ),
-    );
+    // Use the existing Cloud Login Dialog which handles Email/Password -> Hub Selection -> Hub Login
+    _showCloudLoginDialog();
   }
 
   void _showManualConnectDialog() {

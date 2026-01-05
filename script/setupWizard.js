@@ -79,61 +79,6 @@ function startSetupWizard() {
                     <label style="display:block; margin-bottom:5px;">Cloud URL</label>
                     <input type="text" id="setup-cloud-url" value="https://cloud.delovahome.com" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
                     
-                    <label style="display:block; margin-bottom:5px;">Username</label>
-                    <input type="text" id="setup-cloud-user" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                    
-                    <label style="display:block; margin-bottom:5px;">Password</label>
-                    <input type="password" id="setup-cloud-pass" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                </div>
-
-                <div class="setup-actions">
-                    <button class="btn-secondary" onclick="nextStep(3)" data-i18n="back">Back</button>
-                    <button class="btn-primary" onclick="linkCloud()" data-i18n="link_finish">Link & Finish</button>
-                    <button class="btn-secondary" onclick="finishSetup()" style="margin-left: 10px;" data-i18n="skip">Skip</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(overlay);
-    
-    // ... existing functions ...
-    
-
-
-    window.nextStep = (step) => {
-            <div class="setup-step" id="step3">
-                <div class="setup-icon"><i class="fas fa-palette"></i></div>
-                <h2 class="setup-title" data-i18n="choose_theme">Choose your Theme</h2>
-                <p class="setup-desc" data-i18n="choose_theme_desc">Select the look that fits your style.</p>
-                
-                <div style="display: flex; gap: 20px; justify-content: center; margin-bottom: 30px;">
-                    <div class="theme-option" onclick="setTheme('light')" style="cursor: pointer; padding: 15px; border: 2px solid transparent; border-radius: 10px; background: #f8fafc; color: #333;">
-                        <i class="fas fa-sun" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                        <div data-i18n="light">Light</div>
-                    </div>
-                    <div class="theme-option" onclick="setTheme('dark')" style="cursor: pointer; padding: 15px; border: 2px solid transparent; border-radius: 10px; background: #1e293b; color: white;">
-                        <i class="fas fa-moon" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                        <div data-i18n="dark">Dark</div>
-                    </div>
-                </div>
-
-                <div class="setup-actions">
-                    <button class="btn-secondary" onclick="nextStep(2)" data-i18n="back">Back</button>
-                    <button class="btn-primary" onclick="nextStep(4)" data-i18n="next">Next</button>
-                </div>
-            </div>
-
-            <!-- Step 4: Cloud Link -->
-            <div class="setup-step" id="step4">
-                <div class="setup-icon"><i class="fas fa-cloud"></i></div>
-                <h2 class="setup-title" data-i18n="link_cloud">Link to Cloud</h2>
-                <p class="setup-desc" data-i18n="link_cloud_desc">Access your home from anywhere without port forwarding.</p>
-                
-                <div style="max-width: 300px; margin: 0 auto 20px auto; text-align: left;">
-                    <label style="display:block; margin-bottom:5px;">Cloud URL</label>
-                    <input type="text" id="setup-cloud-url" value="https://cloud.delovahome.com" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                    
                     <div style="display:flex; gap:10px; margin-bottom:15px;">
                         <button type="button" id="tab-login" class="btn-secondary active" onclick="toggleCloudTab('login')" style="flex:1;">Login</button>
                         <button type="button" id="tab-register" class="btn-secondary" onclick="toggleCloudTab('register')" style="flex:1;">Register</button>

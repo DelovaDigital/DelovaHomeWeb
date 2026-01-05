@@ -33,6 +33,9 @@
                     <div class="settings-nav-item" data-target="integrations">
                         <i class="fas fa-plug"></i> <span data-i18n="integrations">Integraties</span>
                     </div>
+                    <div class="settings-nav-item" data-target="cloud">
+                        <i class="fas fa-cloud"></i> <span data-i18n="cloud">Cloud & Remote</span>
+                    </div>
                     <div class="settings-nav-item" data-target="energy">
                         <i class="fas fa-bolt"></i> <span data-i18n="energy">Energie</span>
                     </div>
@@ -276,6 +279,56 @@
                                     <button id="btn-pair-ssh" class="btn btn-primary" data-i18n="connect">Verbinden</button>
                                 </form>
                                 <div id="ssh-status" style="margin-top: 10px; font-weight: bold;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cloud Section -->
+                    <div id="cloud" class="settings-section">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-cloud"></i>
+                                <h3 data-i18n="cloud_settings">Cloud & Remote Access</h3>
+                            </div>
+                            <div class="card-body">
+                                <p style="margin-bottom: 20px; color: var(--text-muted);" data-i18n="cloud_desc">
+                                    Link your hub to a DelovaHome Cloud Server to access it remotely without port forwarding.
+                                </p>
+
+                                <div id="cloud-status-container" style="margin-bottom: 20px; padding: 15px; background: rgba(0,123,255,0.1); border-radius: 8px; display: none;">
+                                    <strong>Status:</strong> <span id="cloud-status-text" style="color: var(--primary);">Linked</span>
+                                    <br>
+                                    <small id="cloud-hub-id" style="color: var(--text-muted);"></small>
+                                </div>
+
+                                <form id="cloud-form" onsubmit="event.preventDefault();">
+                                    <div class="form-group">
+                                        <label for="cloud-url">Cloud Server URL</label>
+                                        <input type="text" id="cloud-url" value="https://cloud.delovahome.com" placeholder="https://your-cloud-server.com">
+                                    </div>
+
+                                    <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                                        <button type="button" class="btn btn-secondary active" id="tab-cloud-login" onclick="toggleCloudSettingsTab('login')">Login</button>
+                                        <button type="button" class="btn btn-secondary" id="tab-cloud-register" onclick="toggleCloudSettingsTab('register')">Register</button>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="cloud-user">Username</label>
+                                        <input type="text" id="cloud-user" placeholder="Username">
+                                    </div>
+
+                                    <div class="form-group" id="cloud-email-group" style="display: none;">
+                                        <label for="cloud-email">Email</label>
+                                        <input type="email" id="cloud-email" placeholder="user@example.com">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="cloud-pass">Password</label>
+                                        <input type="password" id="cloud-pass" placeholder="Password">
+                                    </div>
+
+                                    <button id="btn-link-cloud" class="btn btn-primary" onclick="linkCloudSettings()">Link Hub</button>
+                                </form>
                             </div>
                         </div>
                     </div>

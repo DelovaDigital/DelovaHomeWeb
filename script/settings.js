@@ -270,4 +270,82 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check status on load
         checkSpotifyStatus();
     }
+
+    // --- Cloud Settings Logic ---
+    window.toggleCloudSettingsTab = (tab) => {
+        const loginBtn = document.getElementById('tab-cloud-login');
+        const regBtn = document.getElementById('tab-cloud-register');
+        const emailGroup = document.getElementById('cloud-email-group');
+        
+        if (tab === 'login') {
+            loginBtn.classList.add('active');
+            loginBtn.style.background = 'var(--primary)';
+            loginBtn.style.color = 'white';
+            regBtn.classList.remove('active');
+            regBtn.style.background = '';
+            regBtn.style.color = '';
+            emailGroup.style.display = 'none';
+        } else {
+            regBtn.classList.add('active');
+            regBtn.style.background = 'var(--primary)';
+            regBtn.style.color = 'white';
+            loginBtn.classList.remove('active');
+            loginBtn.style.background = '';
+            loginBtn.style.color = '';
+            emailGroup.style.display = 'block';
+        }
+    };
+    
+    // Init tab
+    if (document.getElementById('tab-cloud-login')) {
+        window.toggleCloudSettingsTab('login');
+    }
+
+    window.linkCloudSettings = async () => {
+        const cloudUrl = document.getElementById('cloud-url').value;
+        const username = document.getElementById('cloud-user').value;
+        const password = document.getElementById('cloud-pass').value;
+        const email = document.getElementById('cloud-email').value;
+        const isRegister = document.getElementById('tab-cloud-register').classList.contains('active');
+        
+        const btn = document.getElementById('btn-link-cloud');
+        
+        if (!username || !password) return alert('Please enter username and password');
+        if (isRegister && !email) return alert('Please enter email');
+        
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = isRegister ? 'Registering & Linking...' : 'Linking...';
+        
+        try {
+            const payload = { 
+                cloudUrl, 
+                username, 
+                password, 
+                hubName: 'My Home Hub', // Could make this editable
+                email: isRegister ? email : null
+            };
+
+            const res = await fetch('/api/setup/link-cloud', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                alert('Successfully linked!');
+                // Update UI to show linked status
+                document.getElementById('cloud-status-container').style.display = 'block';
+                document.getElementById('cloud-status-text').textContent = 'Linked to ' + cloudUrl;
+            } else {
+                alert('Failed: ' + data.error);
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    };
 });

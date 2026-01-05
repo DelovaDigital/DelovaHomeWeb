@@ -1,3 +1,5 @@
+let allDevices = []; // Store devices globally for modal access
+
 document.addEventListener('DOMContentLoaded', () => {
     const devicesContainer = document.querySelector('.content-area');
     
@@ -100,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    let allDevices = []; // Store devices globally for modal access
+    // let allDevices = []; // Moved to global scope
     const activeStreams = new Map(); // deviceId -> JSMpeg player
 
     // Scan Button Logic

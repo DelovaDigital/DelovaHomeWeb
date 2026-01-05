@@ -28,7 +28,21 @@ class CloudClient {
         fs.writeFileSync('cloud-config.json', JSON.stringify(config, null, 2));
     }
 
-    async linkHub(cloudUrl, username, password, hubName) {
+    async linkHub(cloudUrl, username, password, hubName, email = null) {
+        // 0. Register if email is provided
+        if (email) {
+            console.log('[Cloud] Registering new user...');
+            const regRes = await fetch(`${cloudUrl}/api/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, email })
+            });
+            const regData = await regRes.json();
+            if (!regData.success && regData.error !== 'Username taken') {
+                 throw new Error(regData.error || 'Registration failed');
+            }
+        }
+
         // 1. Login to Cloud to get User Token
         const loginRes = await fetch(`${cloudUrl}/api/auth/login`, {
             method: 'POST',
@@ -40,7 +54,13 @@ class CloudClient {
         if (!loginData.success) throw new Error(loginData.error || 'Login failed');
         
         // 2. Link Hub
-        const hubId = require('uuid').v4(); // Generate a new ID for this hub if not exists
+        // Check if we already have a hubId in config to preserve it
+        let hubId;
+        if (this.loadConfig() && this.config.hubId) {
+            hubId = this.config.hubId;
+        } else {
+            hubId = require('uuid').v4();
+        }
         
         const linkRes = await fetch(`${cloudUrl}/api/hub/link`, {
             method: 'POST',

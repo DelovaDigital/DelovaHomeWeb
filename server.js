@@ -1882,9 +1882,9 @@ udpServer.on('error', (err) => {
 
 // --- Cloud Setup API ---
 app.post('/api/setup/link-cloud', async (req, res) => {
-    const { cloudUrl, username, password, hubName } = req.body;
+    const { cloudUrl, username, password, hubName, email } = req.body;
     try {
-        await cloudClient.linkHub(cloudUrl, username, password, hubName);
+        await cloudClient.linkHub(cloudUrl, username, password, hubName, email);
         res.json({ success: true });
     } catch (e) {
         res.status(400).json({ success: false, error: e.message });

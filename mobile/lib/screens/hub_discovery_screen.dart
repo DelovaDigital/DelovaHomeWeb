@@ -441,64 +441,16 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     );
   }
 
-  void _showManualConnectDialog() {
-    final ipController = TextEditingController();
-    final portController = TextEditingController(text: '3000');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A237E),
-        title: Text(t('manual_connect'), style: const TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ipController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: t('ip_address'),
-                hintText: 'e.g. 192.168.1.10 or https://cloud.com',
-                labelStyle: const TextStyle(color: Colors.white70),
-                hintStyle: const TextStyle(color: Colors.white30),
-                enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-              ),
-            ),
-            TextField(
-              controller: portController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Port (Optional if URL used)',
-                labelStyle: TextStyle(color: Colors.white70),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
+  void _connectToCloudHub() {
+    // Hardcoded connection to Cloud Hub
+    // Hidden from user view/edit
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => LoginScreen(
+          hubIp: 'https://91.177.155.129:4000',
+          hubPort: '',
+          hubName: 'DelovaHome Cloud',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.cyan),
-            onPressed: () {
-              if (ipController.text.isNotEmpty) {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => LoginScreen(
-                      hubIp: ipController.text,
-                      hubPort: portController.text,
-                    ),
-                  ),
-                );
-              }
-            },
-            child: Text(t('connect'), style: const TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -713,11 +665,11 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                       foregroundColor: textColor,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
-                    onPressed: _showManualConnectDialog,
-                    icon: const Icon(Icons.add_link),
-                    label: Text(
-                      t('manual_connect'),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    onPressed: _connectToCloudHub,
+                    icon: const Icon(Icons.home),
+                    label: const Text(
+                      'Connect to Home',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(width: 10),

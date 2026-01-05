@@ -1534,10 +1534,25 @@ app.post('/api/presence/user', (req, res) => {
 });
 
 app.post('/api/presence/location', (req, res) => {
-    const { userId, latitude, longitude, timestamp } = req.body;
+    let { userId, latitude, longitude, timestamp } = req.body;
     if (!userId || !latitude || !longitude) {
         return res.status(400).json({ ok: false, message: 'Missing required fields' });
     }
+
+    // Resolve Cloud UUID to Local ID if needed
+    if (userId.length > 10 && isNaN(userId)) {
+         const username = req.headers['x-delova-username'];
+         if (username) {
+             for (const [uid, person] of presenceManager.people.entries()) {
+                 if (person.name && person.name.toLowerCase() === username.toLowerCase()) {
+                     console.log(`[Presence] Resolved Cloud UUID ${userId} to Local User ${person.name} (${uid})`);
+                     userId = uid;
+                     break;
+                 }
+             }
+         }
+    }
+
     presenceManager.updateUserLocation(userId, latitude, longitude, timestamp);
     res.json({ ok: true });
 });

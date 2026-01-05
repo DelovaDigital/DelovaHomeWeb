@@ -128,7 +128,17 @@ import '../utils/app_translations.dart';
         final baseUrl = await _apiService.getBaseUrl();
         final prefs = await SharedPreferences.getInstance();
         final userId = prefs.getString('userId');
-        final uriString = userId != null ? '$baseUrl/api/spotify/login?userId=$userId' : '$baseUrl/api/spotify/login';
+        final username = prefs.getString('username');
+        
+        String uriString = '$baseUrl/api/spotify/login';
+        final params = <String>[];
+        if (userId != null) params.add('userId=$userId');
+        if (username != null) params.add('username=$username');
+        
+        if (params.isNotEmpty) {
+          uriString += '?${params.join('&')}';
+        }
+
         final url = Uri.parse(uriString);
         if (await canLaunchUrl(url)) {
           await launchUrl(url, mode: LaunchMode.externalApplication);

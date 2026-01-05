@@ -132,7 +132,11 @@ app.post('/api/auth/select-hub', authenticate, (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     // Allow login by username OR email
-    const user = data.users.find(u => u.username === username || u.email === username);
+    // Case-insensitive check for email
+    const user = data.users.find(u => 
+        u.username === username || 
+        (u.email && u.email.toLowerCase() === username.toLowerCase())
+    );
     
     if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ error: 'Invalid credentials' });

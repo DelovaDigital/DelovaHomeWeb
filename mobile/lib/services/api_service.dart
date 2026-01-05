@@ -31,6 +31,7 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('cloud_token');
     final hubId = prefs.getString('hub_id');
+    final username = prefs.getString('username');
     
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -40,6 +41,9 @@ class ApiService {
     }
     if (hubId != null) {
       headers['x-hub-id'] = hubId;
+    }
+    if (username != null) {
+      headers['x-delova-username'] = username;
     }
     return headers;
   }

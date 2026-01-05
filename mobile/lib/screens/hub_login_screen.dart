@@ -6,26 +6,28 @@ import '../widgets/gradient_background.dart';
 import '../widgets/glass_card.dart';
 import '../utils/app_translations.dart';
 import 'main_screen.dart';
-import 'register_screen.dart';
-import 'hub_login_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class HubLoginScreen extends StatefulWidget {
   final String hubIp;
   final String hubPort;
-  final String? hubName;
+  final String hubId;
+  final String hubName;
+  final String cloudToken;
 
-  const LoginScreen({
+  const HubLoginScreen({
     super.key,
     required this.hubIp,
     required this.hubPort,
-    this.hubName,
+    required this.hubId,
+    required this.hubName,
+    required this.cloudToken,
   });
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<HubLoginScreen> createState() => _HubLoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _HubLoginScreenState extends State<HubLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -56,16 +58,22 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    // Use HTTPS and allow self-signed certificates
+    // We are connecting via Cloud Proxy to the Hub's login endpoint
+    // The Cloud Server proxies /api/* to the Hub if x-hub-id is present
+    // But Cloud Login is /api/auth/login. Hub Login is /api/login.
+    // So we call /api/login on the Cloud Server with x-hub-id header.
+    
     final url = Uri.parse('https://${widget.hubIp}:${widget.hubPort}/api/login');
     
     try {
-      // Create a custom HttpClient that accepts self-signed certificates
       final client = HttpClient();
       client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
       
       final request = await client.postUrl(url);
       request.headers.set('Content-Type', 'application/json');
+      request.headers.set('Authorization', 'Bearer ${widget.cloudToken}');
+      request.headers.set('x-hub-id', widget.hubId);
+      
       request.add(utf8.encode(jsonEncode({
         'username': _usernameController.text,
         'password': _passwordController.text,
@@ -76,31 +84,25 @@ class _LoginScreenState extends State<LoginScreen> {
       final data = jsonDecode(responseBody);
 
       if (response.statusCode == 200 && data['ok'] == true) {
-        // Login Success
+        // Hub Login Success
         final prefs = await SharedPreferences.getInstance();
+        
+        // Save Hub Connection Info
         await prefs.setString('hub_ip', widget.hubIp);
         await prefs.setString('hub_port', widget.hubPort);
+        await prefs.setString('hub_id', widget.hubId);
+        await prefs.setString('hub_name', widget.hubName);
+        await prefs.setString('cloud_token', widget.cloudToken);
+        
+        // Save Local User Info (This is what identifies us on the Hub)
         await prefs.setString('username', data['username']);
         if (data['userId'] != null) {
           await prefs.setString('userId', data['userId'].toString());
         }
-        if (data['token'] != null) {
-          await prefs.setString('cloud_token', data['token']);
-        }
         
-        // Check for multiple hubs
-        if (data['hubs'] != null && (data['hubs'] as List).isNotEmpty) {
-             if (mounted) {
-                 _showHubSelectionDialog(data['hubs'], data['token']);
-             }
-             return;
-        }
-        
-        // Save Hub Info if returned
-        if (data['hubInfo'] != null) {
-           await prefs.setString('hub_id', data['hubInfo']['id']);
-           await prefs.setString('hub_name', data['hubInfo']['name']);
-        }
+        // We don't need to save the Hub Token because we use Cloud Token + x-delova-username header
+        // But if the Hub returned a token, we could save it if we wanted to support direct connection later.
+        // For now, we rely on the Cloud Proxy trust.
 
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
@@ -119,80 +121,6 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _showHubSelectionDialog(List<dynamic> hubs, String? token) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Select Hub'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: hubs.length,
-            itemBuilder: (context, index) {
-              final hub = hubs[index];
-              return ListTile(
-                title: Text(hub['name'] ?? 'Hub ${index + 1}'),
-                subtitle: Text(hub['id'] ?? ''),
-                onTap: () => _selectHub(hub, token),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _selectHub(Map<String, dynamic> hub, String? token) async {
-    Navigator.of(context).pop(); // Close dialog
-    setState(() => _isLoading = true);
-
-    final url = Uri.parse('https://${widget.hubIp}:${widget.hubPort}/api/auth/select-hub');
-    
-    try {
-      final client = HttpClient();
-      client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
-      
-      final request = await client.postUrl(url);
-      request.headers.set('Content-Type', 'application/json');
-      if (token != null) {
-        request.headers.set('Authorization', 'Bearer $token');
-      }
-      
-      request.add(utf8.encode(jsonEncode({
-        'hubId': hub['id']
-      })));
-      
-      final response = await request.close();
-      
-      if (response.statusCode == 200) {
-         // Instead of saving and going to MainScreen, we go to HubLoginScreen
-         // to authenticate with the specific Hub User.
-         
-         if (mounted) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => HubLoginScreen(
-                hubIp: widget.hubIp,
-                hubPort: widget.hubPort,
-                hubId: hub['id'],
-                hubName: hub['name'] ?? 'Unknown Hub',
-                cloudToken: token!,
-              ),
-            ),
-          );
-        }
-      } else {
-         setState(() => _errorMessage = 'Failed to select hub');
-      }
-    } catch (e) {
-       setState(() => _errorMessage = 'Connection error: $e');
-    } finally {
-       if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -234,14 +162,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   child: const Icon(
-                    Icons.home_rounded,
+                    Icons.security,
                     size: 48,
                     color: Color(0xFF3B82F6),
                   ),
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  t('welcome_back'),
+                  'Hub Authentication',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: textColor,
                     fontWeight: FontWeight.bold,
@@ -249,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Login to ${widget.hubName ?? "Hub"}',
+                  'Login to ${widget.hubName}',
                   style: TextStyle(color: mutedColor, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
@@ -282,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _usernameController,
                             style: TextStyle(color: textColor),
                             decoration: InputDecoration(
-                              labelText: t('username_or_email'),
+                              labelText: t('username'), // Local Hub Username
                               labelStyle: TextStyle(color: mutedColor),
                               prefixIcon: Icon(Icons.person_outline, color: mutedColor),
                               enabledBorder: OutlineInputBorder(
@@ -354,21 +282,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RegisterScreen(
-                                    hubIp: widget.hubIp,
-                                    hubPort: widget.hubPort,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Text(t('create_account')),
                           ),
                         ],
                       ),

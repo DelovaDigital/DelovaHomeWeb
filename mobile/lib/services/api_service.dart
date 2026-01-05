@@ -163,6 +163,13 @@ class ApiService {
         return;
     }
 
+    // Prevent sending Cloud UUIDs as location updates. 
+    // We must wait for Hub Login to get the Local User ID.
+    if (userId.length > 10 && int.tryParse(userId) == null) {
+        debugPrint('Skipping location update: userId is Cloud UUID ($userId). Waiting for Hub Login.');
+        return;
+    }
+
     try {
       await http.post(
         Uri.parse('$baseUrl/api/presence/location'),

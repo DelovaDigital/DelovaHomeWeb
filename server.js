@@ -536,6 +536,23 @@ app.get('/api/me', async (req, res) => {
     }
 });
 
+// Check if setup is needed (i.e., no users exist)
+app.get('/api/setup/status', async (req, res) => {
+    try {
+        const pool = await db.getPool();
+        const result = await pool.request()
+            .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+            .query("SELECT COUNT(*) as count FROM Users WHERE HubID = @hubId");
+        
+        res.json({ 
+            ok: true, 
+            setupNeeded: result.recordset[0].count === 0 
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
 // List Users Endpoint
 app.get('/api/users', async (req, res) => {
     try {
@@ -574,6 +591,58 @@ app.delete('/api/users/:id', async (req, res) => {
         } else {
             res.status(404).json({ ok: false, message: 'User not found or not authorized' });
         }
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+// Create User Endpoint
+app.post('/api/users', async (req, res) => {
+    const { username, password, role } = req.body;
+    if (!username || !password) return res.status(400).json({ ok: false, message: 'Username and password required' });
+
+    try {
+        const pool = await db.getPool();
+        
+        // Check if username exists on this hub
+        const check = await pool.request()
+            .input('username', db.sql.NVarChar(255), username)
+            .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+            .query("SELECT Id FROM Users WHERE Username = @username AND HubID = @hubId");
+            
+        if (check.recordset.length > 0) {
+            return res.status(400).json({ ok: false, message: 'Username already exists on this Hub' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        await pool.request()
+            .input('username', db.sql.NVarChar(255), username)
+            .input('passwordHash', db.sql.NVarChar(255), hashedPassword)
+            .input('role', db.sql.NVarChar(50), role || 'User')
+            .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+            .query("INSERT INTO Users (Username, PasswordHash, Role, HubID, CreatedAt) VALUES (@username, @passwordHash, @role, @hubId, GETDATE())");
+            
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
+// Update User Role Endpoint
+app.put('/api/users/:id', async (req, res) => {
+    const userId = req.params.id;
+    const { role } = req.body;
+    
+    try {
+        const pool = await db.getPool();
+        await pool.request()
+            .input('id', db.sql.Int, userId)
+            .input('role', db.sql.NVarChar(50), role)
+            .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+            .query("UPDATE Users SET Role = @role WHERE Id = @id AND HubID = @hubId");
+            
+        res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });
     }

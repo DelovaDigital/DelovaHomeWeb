@@ -382,4 +382,135 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.textContent = originalText;
         }
     };
+
+    // --- User Management Logic ---
+    const usersTableBody = document.querySelector('#usersTable tbody');
+    const addUserModal = document.getElementById('addUserModal');
+    const btnAddUser = document.getElementById('btnAddUser');
+    const closeAddUserModal = document.getElementById('closeAddUserModal');
+    const addUserForm = document.getElementById('addUserForm');
+
+    async function loadUsers() {
+        if (!usersTableBody) return;
+        usersTableBody.innerHTML = '<tr><td colspan="4">Laden...</td></tr>';
+        try {
+            const res = await fetch('/api/users');
+            const data = await res.json();
+            if (data.ok) {
+                usersTableBody.innerHTML = '';
+                data.users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid var(--border)';
+                    
+                    // Role Dropdown
+                    const roleSelect = document.createElement('select');
+                    roleSelect.className = 'form-control';
+                    roleSelect.style.padding = '5px';
+                    roleSelect.style.background = 'var(--bg)';
+                    roleSelect.style.color = 'var(--text)';
+                    roleSelect.style.border = '1px solid var(--border)';
+                    roleSelect.style.borderRadius = '4px';
+                    
+                    ['User', 'Admin', 'Guest'].forEach(role => {
+                        const opt = document.createElement('option');
+                        opt.value = role;
+                        opt.textContent = role === 'User' ? 'Bewoner' : (role === 'Admin' ? 'Beheerder' : 'Gast');
+                        if (user.Role === role || (role === 'User' && !user.Role)) opt.selected = true;
+                        roleSelect.appendChild(opt);
+                    });
+                    
+                    roleSelect.onchange = async () => {
+                        try {
+                            await fetch(`/api/users/${user.Id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ role: roleSelect.value })
+                            });
+                        } catch (e) {
+                            alert('Fout bij updaten rol');
+                        }
+                    };
+
+                    // Delete Button
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-danger btn-sm';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    deleteBtn.onclick = async () => {
+                        if (confirm(`Weet je zeker dat je gebruiker "${user.Username}" wilt verwijderen?`)) {
+                            try {
+                                const delRes = await fetch(`/api/users/${user.Id}`, { method: 'DELETE' });
+                                if (delRes.ok) loadUsers();
+                                else alert('Fout bij verwijderen');
+                            } catch (e) {
+                                alert('Netwerkfout');
+                            }
+                        }
+                    };
+
+                    tr.innerHTML = `
+                        <td style="padding: 10px;">${user.Username}</td>
+                        <td style="padding: 10px;"></td>
+                        <td style="padding: 10px;">${new Date(user.CreatedAt).toLocaleDateString()}</td>
+                        <td style="padding: 10px;"></td>
+                    `;
+                    
+                    tr.children[1].appendChild(roleSelect);
+                    tr.children[3].appendChild(deleteBtn);
+                    
+                    usersTableBody.appendChild(tr);
+                });
+            } else {
+                usersTableBody.innerHTML = '<tr><td colspan="4">Fout bij laden gebruikers</td></tr>';
+            }
+        } catch (e) {
+            console.error(e);
+            usersTableBody.innerHTML = '<tr><td colspan="4">Netwerkfout</td></tr>';
+        }
+    }
+
+    // Hook into tab switching to load users
+    const originalTabClick = document.querySelectorAll('.settings-nav-item');
+    originalTabClick.forEach(item => {
+        item.addEventListener('click', () => {
+            if (item.dataset.target === 'users') {
+                loadUsers();
+            }
+        });
+    });
+
+    // Modal Logic
+    if (btnAddUser) {
+        btnAddUser.onclick = () => { addUserModal.style.display = 'block'; };
+        closeAddUserModal.onclick = () => { addUserModal.style.display = 'none'; };
+        window.onclick = (event) => {
+            if (event.target == addUserModal) {
+                addUserModal.style.display = 'none';
+            }
+        };
+        
+        addUserForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('newUsername').value;
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newRole').value;
+            
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    addUserModal.style.display = 'none';
+                    addUserForm.reset();
+                    loadUsers();
+                } else {
+                    alert('Fout: ' + data.message);
+                }
+            } catch (e) {
+                alert('Netwerkfout: ' + e.message);
+            }
+        };
+    }
 });

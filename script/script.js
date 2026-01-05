@@ -22,6 +22,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeStylesheet = document.getElementById('theme-stylesheet');
     const btnCreateAccount = document.getElementById('btnCreateAccount');
  
+    // Check if we are on the login page and if setup is needed
+    if (document.getElementById('btnLogin')) {
+        fetch('/api/setup/status')
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    if (!data.setupNeeded) {
+                        // Users exist, hide "Create Account" button
+                        if (btnCreateAccount) btnCreateAccount.style.display = 'none';
+                    } else {
+                        // No users, show "Create Account" button
+                        if (btnCreateAccount) btnCreateAccount.style.display = 'block';
+                    }
+                }
+            })
+            .catch(e => console.error('Failed to check setup status:', e));
+    }
     
     if (btnCreateAccount) {
         btnCreateAccount.addEventListener('click', (e) => {

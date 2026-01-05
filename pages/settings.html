@@ -30,6 +30,9 @@
                     <div class="settings-nav-item" data-target="profile">
                         <i class="fas fa-user-circle"></i> <span data-i18n="profile">Profiel</span>
                     </div>
+                    <div class="settings-nav-item" data-target="users">
+                        <i class="fas fa-users"></i> <span data-i18n="users">Gebruikers</span>
+                    </div>
                     <div class="settings-nav-item" data-target="integrations">
                         <i class="fas fa-plug"></i> <span data-i18n="integrations">Integraties</span>
                     </div>
@@ -156,6 +159,36 @@
                                     </div>
                                     <button type="submit" class="btn btn-primary" data-i18n="update_password">Wachtwoord Bijwerken</button>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Section -->
+                    <div id="users" class="settings-section">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-users-cog"></i>
+                                <h3 data-i18n="user_management">Gebruikersbeheer</h3>
+                                <button class="btn btn-primary btn-sm" id="btnAddUser" style="margin-left: auto;">
+                                    <i class="fas fa-plus"></i> <span data-i18n="add_user">Gebruiker toevoegen</span>
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table" id="usersTable" style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                                                <th style="padding: 10px;" data-i18n="username">Gebruikersnaam</th>
+                                                <th style="padding: 10px;" data-i18n="role">Rol</th>
+                                                <th style="padding: 10px;" data-i18n="created_at">Aangemaakt</th>
+                                                <th style="padding: 10px;" data-i18n="actions">Acties</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Users loaded via JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -394,7 +427,38 @@
     <script src="../script/script.js"></script>
     <script src="../script/i18n.js"></script>
     <script src="../script/script2.js"></script>
-    <script src="../script/settings.js"></script>
+    <script src="../script/settings.js"></script>    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+        <div class="modal-content" style="background-color: var(--card); margin: 15% auto; padding: 20px; border: 1px solid var(--border); width: 80%; max-width: 500px; border-radius: 10px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 data-i18n="add_user">Gebruiker toevoegen</h3>
+                <span class="close" id="closeAddUserModal" style="cursor: pointer; font-size: 24px;">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="newUsername" style="display: block; margin-bottom: 5px;" data-i18n="username">Gebruikersnaam</label>
+                        <input type="text" id="newUsername" class="form-control" required style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="newPassword" style="display: block; margin-bottom: 5px;" data-i18n="password">Wachtwoord</label>
+                        <input type="password" id="newPassword" class="form-control" required style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="newRole" style="display: block; margin-bottom: 5px;" data-i18n="role">Rol</label>
+                        <select id="newRole" class="form-control" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+                            <option value="User">Bewoner (User)</option>
+                            <option value="Admin">Beheerder (Admin)</option>
+                            <option value="Guest">Gast (Guest)</option>
+                        </select>
+                    </div>
+                    <div style="text-align: right;">
+                        <button type="submit" class="btn btn-primary" data-i18n="save">Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <script src="../script/animations.js"></script>
 </body>
 </html>

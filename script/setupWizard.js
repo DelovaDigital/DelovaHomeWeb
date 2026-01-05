@@ -69,37 +69,46 @@ function startSetupWizard() {
                 </div>
             </div>
 
-            <!-- Step 4: Cloud Link -->
+            <!-- Step 4: Create Account -->
             <div class="setup-step" id="step4">
-                <div class="setup-icon"><i class="fas fa-cloud"></i></div>
-                <h2 class="setup-title" data-i18n="link_cloud">Link to Cloud</h2>
-                <p class="setup-desc" data-i18n="link_cloud_desc">Access your home from anywhere without port forwarding.</p>
+                <div class="setup-icon"><i class="fas fa-user-shield"></i></div>
+                <h2 class="setup-title" data-i18n="create_account">Create Admin Account</h2>
+                <p class="setup-desc" data-i18n="create_account_desc">Create your local administrator account. You can also link it to the cloud for remote access.</p>
                 
-                <div style="max-width: 300px; margin: 0 auto 20px auto; text-align: left;">
-                    <label style="display:block; margin-bottom:5px;">Cloud URL</label>
-                    <input type="text" id="setup-cloud-url" value="https://cloud.delovahome.com" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                    
-                    <div style="display:flex; gap:10px; margin-bottom:15px;">
-                        <button type="button" id="tab-login" class="btn-secondary active" onclick="toggleCloudTab('login')" style="flex:1;">Login</button>
-                        <button type="button" id="tab-register" class="btn-secondary" onclick="toggleCloudTab('register')" style="flex:1;">Register</button>
-                    </div>
-
+                <div style="max-width: 350px; margin: 0 auto 20px auto; text-align: left;">
                     <label style="display:block; margin-bottom:5px;">Username</label>
-                    <input type="text" id="setup-cloud-user" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
+                    <input type="text" id="setup-user" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
                     
-                    <div id="email-group" style="display:none;">
-                        <label style="display:block; margin-bottom:5px;">Email</label>
-                        <input type="email" id="setup-cloud-email" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                    </div>
-
                     <label style="display:block; margin-bottom:5px;">Password</label>
-                    <input type="password" id="setup-cloud-pass" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
+                    <input type="password" id="setup-pass" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
+
+                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
+                            <label style="margin:0; font-weight:bold;">Enable Remote Access (Cloud)</label>
+                            <input type="checkbox" id="setup-cloud-enable" checked onchange="toggleCloudFields()" style="width:20px; height:20px;">
+                        </div>
+                        
+                        <div id="cloud-fields">
+                            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                                <button type="button" id="tab-login" class="btn-secondary active" onclick="toggleCloudTab('login')" style="flex:1;">Login</button>
+                                <button type="button" id="tab-register" class="btn-secondary" onclick="toggleCloudTab('register')" style="flex:1;">Register</button>
+                            </div>
+
+                            <label style="display:block; margin-bottom:5px;">Cloud URL</label>
+                            <input type="text" id="setup-cloud-url" value="https://cloud.delovahome.com" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
+                            
+                            <div id="email-group" style="display:none;">
+                                <label style="display:block; margin-bottom:5px;">Email</label>
+                                <input type="email" id="setup-cloud-email" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
+                            </div>
+                            <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;">We will use your local username/password for the cloud account.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="setup-actions">
                     <button class="btn-secondary" onclick="nextStep(3)" data-i18n="back">Back</button>
-                    <button class="btn-primary" onclick="linkCloud()" data-i18n="link_finish">Link & Finish</button>
-                    <button class="btn-secondary" onclick="finishSetup()" style="margin-left: 10px;" data-i18n="skip">Skip</button>
+                    <button class="btn-primary" onclick="createAccount()" data-i18n="create_finish">Create & Finish</button>
                 </div>
             </div>
 
@@ -147,49 +156,88 @@ function startSetupWizard() {
     // Set initial state
     setTimeout(() => window.toggleCloudTab('login'), 100);
 
-    window.linkCloud = async () => {
-        const cloudUrl = document.getElementById('setup-cloud-url').value;
-        const username = document.getElementById('setup-cloud-user').value;
-        const password = document.getElementById('setup-cloud-pass').value;
-        const email = document.getElementById('setup-cloud-email').value;
-        const isRegister = document.getElementById('tab-register').classList.contains('active');
+    window.toggleCloudFields = () => {
+        const enabled = document.getElementById('setup-cloud-enable').checked;
+        const fields = document.getElementById('cloud-fields');
+        fields.style.display = enabled ? 'block' : 'none';
+    };
+
+    window.createAccount = async () => {
+        const username = document.getElementById('setup-user').value;
+        const password = document.getElementById('setup-pass').value;
+        const cloudEnabled = document.getElementById('setup-cloud-enable').checked;
         
         const btn = document.querySelector('#step4 .btn-primary');
         
         if (!username || !password) return alert('Please enter username and password');
-        if (isRegister && !email) return alert('Please enter email');
         
         btn.disabled = true;
-        btn.textContent = isRegister ? 'Registering & Linking...' : 'Linking...';
+        btn.textContent = 'Creating Account...';
         
         try {
-            const payload = { 
-                cloudUrl, 
-                username, 
-                password, 
-                hubName: 'My Home Hub',
-                email: isRegister ? email : null
-            };
+            if (cloudEnabled) {
+                // Cloud + Local
+                const cloudUrl = document.getElementById('setup-cloud-url').value;
+                const email = document.getElementById('setup-cloud-email').value;
+                const isRegister = document.getElementById('tab-register').classList.contains('active');
+                
+                if (isRegister && !email) {
+                    btn.disabled = false;
+                    btn.textContent = 'Create & Finish';
+                    return alert('Please enter email for cloud registration');
+                }
 
-            const res = await fetch('/api/setup/link-cloud', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            
-            if (data.success) {
-                alert('Successfully linked!');
-                nextStep(5);
+                const payload = { 
+                    cloudUrl, 
+                    username, 
+                    password, 
+                    hubName: 'My Home Hub',
+                    email: isRegister ? email : null
+                };
+
+                const res = await fetch('/api/setup/link-cloud', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    alert('Account created and Cloud linked successfully!');
+                    nextStep(5);
+                } else {
+                    alert('Failed: ' + data.error);
+                    btn.disabled = false;
+                    btn.textContent = 'Create & Finish';
+                }
             } else {
-                alert('Failed: ' + data.error);
-                btn.disabled = false;
-                btn.textContent = 'Link & Finish';
+                // Local Only
+                const payload = { 
+                    username, 
+                    password, 
+                    role: 'Admin'
+                };
+
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (data.ok) {
+                    alert('Local Admin Account created successfully!');
+                    nextStep(5);
+                } else {
+                    alert('Failed: ' + data.message);
+                    btn.disabled = false;
+                    btn.textContent = 'Create & Finish';
+                }
             }
         } catch (e) {
             alert('Error: ' + e.message);
             btn.disabled = false;
-            btn.textContent = 'Link & Finish';
+            btn.textContent = 'Create & Finish';
         }
     };
 

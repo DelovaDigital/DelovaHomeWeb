@@ -2042,7 +2042,38 @@ udpServer.on('error', (err) => {
 app.post('/api/setup/link-cloud', async (req, res) => {
     const { cloudUrl, username, password, hubName, email } = req.body;
     try {
+        // 1. Link Hub to Cloud
         await cloudClient.linkHub(cloudUrl, username, password, hubName, email);
+
+        // 2. Create Local User (if not exists)
+        // This ensures the user created/used for Cloud is also the Local Admin
+        const pool = await db.getPool();
+        
+        // Check if user exists
+        const check = await pool.request()
+            .input('username', db.sql.NVarChar(255), username)
+            .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+            .query("SELECT Id FROM Users WHERE Username = @username AND HubID = @hubId");
+            
+        if (check.recordset.length === 0) {
+            console.log(`[Setup] Creating local admin user '${username}' from Cloud Setup...`);
+            const hashedPassword = await bcrypt.hash(password, 10);
+            
+            const insertResult = await pool.request()
+                .input('username', db.sql.NVarChar(255), username)
+                .input('passwordHash', db.sql.NVarChar(255), hashedPassword)
+                .input('role', db.sql.NVarChar(50), 'Admin') // First user is Admin
+                .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
+                .query("INSERT INTO Users (Username, PasswordHash, Role, HubID, CreatedAt) VALUES (@username, @passwordHash, @role, @hubId, GETDATE()); SELECT SCOPE_IDENTITY() AS Id;");
+            
+            const newUserId = insertResult.recordset[0].Id;
+            
+            // Add to Presence
+            presenceManager.addPerson(newUserId, username, 'mobile-app');
+        } else {
+            console.log(`[Setup] Local user '${username}' already exists. Skipping creation.`);
+        }
+
         res.json({ success: true });
     } catch (e) {
         res.status(400).json({ success: false, error: e.message });

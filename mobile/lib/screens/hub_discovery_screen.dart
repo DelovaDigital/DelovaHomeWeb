@@ -267,7 +267,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
   }
 
   void _showCloudLoginDialog() {
-    final urlController = TextEditingController();
+    final urlController = TextEditingController(text: 'https://cloud.delovahome.com');
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
     bool isLoading = false;
@@ -286,7 +286,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: 'Cloud URL',
-                  hintText: 'e.g. http://192.168.1.50:4000',
+                  hintText: 'https://cloud.delovahome.com',
                   labelStyle: TextStyle(color: Colors.white70),
                   hintStyle: TextStyle(color: Colors.white30),
                   enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
@@ -336,12 +336,13 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                   // Construct URL
                   String baseUrl = urlController.text;
                   if (!baseUrl.startsWith('http')) {
-                    baseUrl = 'http://$baseUrl';
+                    baseUrl = 'https://$baseUrl';
                   }
                   // Remove trailing slash
                   if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
 
-                  final url = Uri.parse('$baseUrl/api/login');
+                  // Use Cloud Auth Endpoint
+                  final url = Uri.parse('$baseUrl/api/auth/login');
                   
                   final client = HttpClient();
                   client.badCertificateCallback = (cert, host, port) => true;
@@ -357,23 +358,30 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                   final responseBody = await response.transform(utf8.decoder).join();
                   final data = jsonDecode(responseBody);
 
-                  if (response.statusCode == 200 && data['ok'] == true) {
+                  // Check for success (Cloud API uses 'success', Hub uses 'ok')
+                  if (response.statusCode == 200 && (data['success'] == true || data['ok'] == true)) {
                     // Login Success
                     final prefs = await SharedPreferences.getInstance();
-                    await prefs.setString('hub_ip', baseUrl); // Store full URL as IP
-                    await prefs.setString('hub_port', ''); // Clear port as it's in URL
-                    await prefs.setString('username', data['username']);
-                    if (data['userId'] != null) {
-                      await prefs.setString('userId', data['userId'].toString());
-                    }
+                    
+                    // Store Cloud Token
                     if (data['token'] != null) {
                       await prefs.setString('cloud_token', data['token']);
                     }
                     
+                    // Store User Info
+                    if (data['user'] != null) {
+                        await prefs.setString('username', data['user']['username'] ?? emailController.text);
+                        if (data['user']['id'] != null) {
+                            await prefs.setString('userId', data['user']['id'].toString());
+                        }
+                    }
+
                     // Handle Hub Selection
                     List<dynamic> hubs = [];
                     if (data['user'] != null && data['user']['hubs'] != null) {
                       hubs = data['user']['hubs'];
+                    } else if (data['hubs'] != null) {
+                        hubs = data['hubs'];
                     }
 
                     if (mounted) {
@@ -387,6 +395,10 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                         // Auto-select single hub
                         await prefs.setString('hub_id', hubs[0]['id']);
                         await prefs.setString('hub_name', hubs[0]['name']);
+                        // Set Base URL to Cloud URL
+                        await prefs.setString('hub_ip', baseUrl); 
+                        await prefs.setString('hub_port', ''); 
+
                         if (mounted) {
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -395,13 +407,14 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                         }
                       } else {
                         // Show Hub Selection Dialog
-                        _showHubSelectionDialog(hubs);
+                        // We need to pass baseUrl to the dialog so it can save it
+                        _showHubSelectionDialog(hubs, cloudUrl: baseUrl);
                       }
                     }
                   } else {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(data['error'] ?? 'Login failed')),
+                        SnackBar(content: Text(data['error'] ?? data['message'] ?? 'Login failed')),
                       );
                     }
                   }
@@ -500,7 +513,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     }
   }
 
-  void _showHubSelectionDialog(List<dynamic> hubs) {
+  void _showHubSelectionDialog(List<dynamic> hubs, {String? cloudUrl}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -522,6 +535,11 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setString('hub_id', hub['id']);
                   await prefs.setString('hub_name', hub['name']);
+                  
+                  if (cloudUrl != null) {
+                      await prefs.setString('hub_ip', cloudUrl);
+                      await prefs.setString('hub_port', '');
+                  }
                   
                   if (mounted) {
                     Navigator.pop(context);

@@ -251,6 +251,49 @@ app.all('/api/proxy/:hubId/*', authenticate, (req, res) => {
     }, 10000);
 });
 
+// Special handling for Spotify Callback (Public, routes via 'state')
+app.get('/api/spotify/callback', (req, res) => {
+    const { state } = req.query;
+    if (!state) return res.status(400).send('Missing state');
+
+    let hubId;
+    try {
+        const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+        hubId = stateObj.hubId;
+    } catch (e) {
+        return res.status(400).send('Invalid state');
+    }
+
+    if (!hubId) return res.status(400).send('Missing hubId in state');
+
+    const ws = connectedHubs.get(hubId);
+    if (!ws) return res.status(503).send('Hub is offline');
+
+    const requestId = uuid.v4();
+    const command = {
+        id: requestId,
+        method: 'GET',
+        path: req.path, // Pass path only, query is handled separately
+        body: {},
+        query: req.query,
+        headers: {
+            'x-forwarded-host': req.get('host'),
+            'x-forwarded-proto': req.protocol
+        }
+    };
+    
+    ws.send(JSON.stringify({ type: 'REQUEST', payload: command }));
+    
+    pendingRequests.set(requestId, res);
+    
+    setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+            pendingRequests.get(requestId).status(504).send('Hub timeout');
+            pendingRequests.delete(requestId);
+        }
+    }, 10000);
+});
+
 // Auto-Proxy for standard API calls based on cookie or header
 app.all('/api/*', authenticate, (req, res) => {
     const cookies = parseCookies(req);

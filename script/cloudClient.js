@@ -146,8 +146,11 @@ class CloudClient {
             // Replace localhost with 127.0.0.1 to avoid socket hang up on some systems
             url = url.replace('localhost', '127.0.0.1');
 
+            // If query params are provided in the payload, append them
+            // Note: If path already contains query params (from req.url), we should be careful not to duplicate
             if (query && Object.keys(query).length > 0) {
-                url += '?' + new URLSearchParams(query).toString();
+                const separator = url.includes('?') ? '&' : '?';
+                url += separator + new URLSearchParams(query).toString();
             }
 
             // Create a custom agent to handle potential self-signed certs if using HTTPS

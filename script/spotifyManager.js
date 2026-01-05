@@ -17,7 +17,7 @@ class SpotifyManager {
         ];
     }
 
-    getAuthUrl(userId, username, localBaseUrl) {
+    getAuthUrl(userId, username, localBaseUrl, hubId) {
         if (!this.clientId) return null;
         
         // Determine dynamic redirect URI if localBaseUrl is provided
@@ -30,7 +30,7 @@ class SpotifyManager {
         console.log(`[Spotify] Generating Auth URL. Redirect URI: ${currentRedirectUri}`);
 
         // Use the 'state' parameter to pass the userId and localBaseUrl back to the callback
-        const stateObj = { userId, username, redirectUri: currentRedirectUri };
+        const stateObj = { userId, username, redirectUri: currentRedirectUri, hubId };
         if (localBaseUrl) {
             stateObj.localBaseUrl = localBaseUrl;
         }

@@ -631,7 +631,7 @@ app.get('/api/spotify/login', (req, res) => {
     const host = req.headers['x-forwarded-host'] || req.get('host');
     const localBaseUrl = `${protocol}://${host}`;
     
-    const url = spotifyManager.getAuthUrl(userId, username, localBaseUrl);
+    const url = spotifyManager.getAuthUrl(userId, username, localBaseUrl, hubConfig.hubId);
     if (url) {
         res.redirect(url);
     } else {

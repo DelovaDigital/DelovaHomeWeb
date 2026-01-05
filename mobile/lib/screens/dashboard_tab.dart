@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'spotify_login_screen.dart';
 import '../services/api_service.dart';
 import '../models/device.dart';
 import '../widgets/glass_card.dart';
@@ -129,27 +130,30 @@ import '../utils/app_translations.dart';
         final prefs = await SharedPreferences.getInstance();
         final userId = prefs.getString('userId');
         final username = prefs.getString('username');
-        final token = prefs.getString('cloud_token');
-        final hubId = prefs.getString('hub_id');
         
         String uriString = '$baseUrl/api/spotify/login';
         final params = <String>[];
         if (userId != null) params.add('userId=$userId');
         if (username != null) params.add('username=$username');
-        if (token != null) params.add('token=$token');
-        if (hubId != null) params.add('x-hub-id=$hubId');
         
         if (params.isNotEmpty) {
           uriString += '?${params.join('&')}';
         }
 
-        final url = Uri.parse(uriString);
-        if (await canLaunchUrl(url)) {
-          await launchUrl(url, mode: LaunchMode.externalApplication);
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cannot open browser')));
-          }
+        final headers = await _apiService.getHeaders();
+
+        if (mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SpotifyLoginScreen(
+                url: uriString,
+                headers: headers,
+              ),
+            ),
+          );
+          // Refresh status after return
+          _fetchSpotifyStatus();
         }
       } catch (e) {
         debugPrint('Open spotify login error: $e');

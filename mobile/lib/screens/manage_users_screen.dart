@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'spotify_login_screen.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
 import '../widgets/gradient_background.dart';
@@ -292,29 +293,37 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       }
     } else {
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('cloud_token');
-        final hubId = prefs.getString('hub_id');
-
         final baseUrl = await _apiService.getBaseUrl();
-        String url = '$baseUrl/api/spotify/login?userId=$userId';
-        
-        // If connected via Cloud, we need to pass auth token and hub ID
-        // because the browser request won't have the headers
-        if (token != null) {
-          url += '&token=$token';
-        }
-        if (hubId != null) {
-          url += '&x-hub-id=$hubId';
-        }
+        final url = '$baseUrl/api/spotify/login?userId=$userId';
+        final headers = await _apiService.getHeaders();
 
-        if (await canLaunchUrl(Uri.parse(url))) {
-          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-          // We can't easily know when they come back, but we can reload users when they return to the app
-          // For now, just reload after a delay or let them refresh manually
+        if (mounted) {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SpotifyLoginScreen(
+                url: url,
+                headers: headers,
+              ),
+            ),
+          );
+
+          if (result == true) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Spotify connected successfully')),
+              );
+              _loadUsers();
+            }
+          }
         }
       } catch (e) {
-        debugPrint('Error launching URL: $e');
+        debugPrint('Error launching Spotify login: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
       }
     }
   }

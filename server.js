@@ -616,13 +616,18 @@ app.post('/api/users', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         
-        await pool.request()
+        const insertResult = await pool.request()
             .input('username', db.sql.NVarChar(255), username)
             .input('passwordHash', db.sql.NVarChar(255), hashedPassword)
             .input('role', db.sql.NVarChar(50), role || 'User')
             .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
-            .query("INSERT INTO Users (Username, PasswordHash, Role, HubID, CreatedAt) VALUES (@username, @passwordHash, @role, @hubId, GETDATE())");
+            .query("INSERT INTO Users (Username, PasswordHash, Role, HubID, CreatedAt) VALUES (@username, @passwordHash, @role, @hubId, GETDATE()); SELECT SCOPE_IDENTITY() AS Id;");
             
+        const newUserId = insertResult.recordset[0].Id;
+
+        // Add to Presence Manager immediately
+        presenceManager.addPerson(newUserId, username, 'mobile-app');
+
         // Sync with Cloud if connected
         if (cloudClient.isConnected()) {
              try {

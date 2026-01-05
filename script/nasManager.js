@@ -559,8 +559,22 @@ class NasManager {
     }
 
     async getFileDetails(id, filePath) {
-         const config = this.config.find(c => c.id === id);
+         let config = this.config.find(c => c.id === id);
          if (!config) throw new Error('NAS not found');
+         
+         let smbPath = filePath.replace(/\//g, '\\');
+
+         // Handle Root Listing logic for details too
+         if (!config.share) {
+             const normalizedPath = filePath.replace(/\\/g, '/');
+             const parts = normalizedPath.split('/').filter(p => p);
+             if (parts.length > 0) {
+                 const shareName = parts[0];
+                 const relativePath = parts.slice(1).join('\\');
+                 config = { ...config, share: `\\\\${config.host}\\${shareName}` };
+                 smbPath = relativePath;
+             }
+         }
          
          if (config.mode === 'native') {
              // Not implemented for native yet, but we can just return basic info
@@ -585,11 +599,33 @@ class NasManager {
     }
 
     async getFileStream(id, filePath) {
-        const config = this.config.find(c => c.id === id);
+        let config = this.config.find(c => c.id === id);
         if (!config) throw new Error('NAS not found');
 
-        // Normalize path
-        const smbPath = filePath.replace(/\//g, '\\');
+        // Handle Root Listing (No specific share configured)
+        // If config.share is null, we must extract the share name from the path.
+        let smbPath = filePath.replace(/\//g, '\\');
+        
+        if (!config.share) {
+            // Path should be "ShareName/Folder/File"
+            const normalizedPath = filePath.replace(/\\/g, '/');
+            const parts = normalizedPath.split('/').filter(p => p);
+            
+            if (parts.length > 0) {
+                const shareName = parts[0];
+                const relativePath = parts.slice(1).join('\\');
+                
+                // Create temporary config with the specific share
+                config = {
+                    ...config,
+                    share: `\\\\${config.host}\\${shareName}`
+                };
+                smbPath = relativePath;
+                // Note: file path for stream methods should be relative to the share
+            } else {
+               throw new Error('Invalid path for NAS root access');
+            }
+        }
 
         if (config.mode === 'native') {
              const localPath = await this.getLocalFilePath(id, filePath);

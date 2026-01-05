@@ -9,7 +9,11 @@ function generate() {
     console.log('Generating certificates for cloud.delovahome.com...');
     const selfsigned = require('selfsigned');
     const attrs = [{ name: 'commonName', value: 'cloud.delovahome.com' }];
-    const pems = selfsigned.generate(attrs, { days: 365, algorithm: 'sha256' });
+    const pems = selfsigned.generate(attrs, { days: 365, keySize: 2048, algorithm: 'sha256' });
+
+    if (!pems.cert) {
+        console.error('Error: pems.cert is undefined. Keys:', Object.keys(pems));
+    }
 
     fs.writeFileSync(CERT_FILE, pems.cert);
     fs.writeFileSync(KEY_FILE, pems.private);

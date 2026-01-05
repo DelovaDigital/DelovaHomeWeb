@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadUsers() {
         if (!usersTableBody) return;
-        usersTableBody.innerHTML = '<tr><td colspan="4">Laden...</td></tr>';
+        usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('loading') : 'Laden...'}</td></tr>`;
         try {
             const res = await fetch('/api/users');
             const data = await res.json();
@@ -414,7 +414,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     ['User', 'Admin', 'Guest'].forEach(role => {
                         const opt = document.createElement('option');
                         opt.value = role;
-                        opt.textContent = role === 'User' ? 'Bewoner' : (role === 'Admin' ? 'Beheerder' : 'Gast');
+                        let label = role;
+                        if (window.t) {
+                            if (role === 'User') label = window.t('user_role_user');
+                            else if (role === 'Admin') label = window.t('user_role_admin');
+                            else if (role === 'Guest') label = window.t('user_role_guest');
+                        } else {
+                            if (role === 'User') label = 'Bewoner';
+                            else if (role === 'Admin') label = 'Beheerder';
+                            else if (role === 'Guest') label = 'Gast';
+                        }
+                        opt.textContent = label;
                         if (user.Role === role || (role === 'User' && !user.Role)) opt.selected = true;
                         roleSelect.appendChild(opt);
                     });
@@ -427,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 body: JSON.stringify({ role: roleSelect.value })
                             });
                         } catch (e) {
-                            alert('Fout bij updaten rol');
+                            alert(window.t ? window.t('error_updating_role') : 'Fout bij updaten rol');
                         }
                     };
 
@@ -436,13 +446,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     deleteBtn.className = 'btn btn-danger btn-sm';
                     deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
                     deleteBtn.onclick = async () => {
-                        if (confirm(`Weet je zeker dat je gebruiker "${user.Username}" wilt verwijderen?`)) {
+                        const confirmMsg = window.t ? window.t('delete_user_confirm').replace('{name}', user.Username) : `Weet je zeker dat je gebruiker "${user.Username}" wilt verwijderen?`;
+                        if (confirm(confirmMsg)) {
                             try {
                                 const delRes = await fetch(`/api/users/${user.Id}`, { method: 'DELETE' });
                                 if (delRes.ok) loadUsers();
-                                else alert('Fout bij verwijderen');
+                                else alert(window.t ? window.t('error_deleting_user') : 'Fout bij verwijderen');
                             } catch (e) {
-                                alert('Netwerkfout');
+                                alert(window.t ? window.t('network_error') : 'Netwerkfout');
                             }
                         }
                     };
@@ -460,11 +471,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     usersTableBody.appendChild(tr);
                 });
             } else {
-                usersTableBody.innerHTML = '<tr><td colspan="4">Fout bij laden gebruikers</td></tr>';
+                usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('error') : 'Fout'}</td></tr>`;
             }
         } catch (e) {
             console.error(e);
-            usersTableBody.innerHTML = '<tr><td colspan="4">Netwerkfout</td></tr>';
+            usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('network_error') : 'Netwerkfout'}</td></tr>`;
         }
     }
 
@@ -505,11 +516,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     addUserModal.style.display = 'none';
                     addUserForm.reset();
                     loadUsers();
+                    alert(window.t ? window.t('add_user_success') : 'Gebruiker succesvol toegevoegd');
                 } else {
-                    alert('Fout: ' + data.message);
+                    alert((window.t ? window.t('add_user_error') : 'Fout') + ': ' + data.message);
                 }
             } catch (e) {
-                alert('Netwerkfout: ' + e.message);
+                alert((window.t ? window.t('network_error') : 'Netwerkfout') + ': ' + e.message);
             }
         };
     }

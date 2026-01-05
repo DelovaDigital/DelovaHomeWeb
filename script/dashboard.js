@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     roomsList.innerHTML = '';
     if(rooms.length === 0){
-      roomsList.innerHTML = '<div class="empty">Geen kamers. Maak er één aan.</div>';
+      roomsList.innerHTML = `<div class="empty">${window.t ? window.t('no_rooms') : 'Geen kamers. Maak er één aan.'}</div>`;
       return;
     }
 
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
         <div class="room-devices">
-          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fas fa-cube'}"></i> ${d.name} <button data-device="${d.id}" class="unassign">Verwijder</button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
+          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fas fa-cube'}"></i> ${d.name} <button data-device="${d.id}" class="unassign">${window.t ? window.t('unassign') : 'Verwijder'}</button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
         </div>
       `;
 
@@ -68,14 +68,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.delete-room').forEach(btn => btn.addEventListener('click', async ()=>{
       const id = btn.getAttribute('data-id');
-      if(!confirm('Kamer verwijderen?')) return;
+      if(!confirm(window.t ? window.t('delete_room_confirm') : 'Kamer verwijderen?')) return;
       await fetch(`/api/rooms/${id}`, { method: 'DELETE' });
       render();
     }));
 
     document.querySelectorAll('.rename-room').forEach(btn => btn.addEventListener('click', async ()=>{
       const id = btn.getAttribute('data-id');
-      const name = prompt('Nieuwe naam voor kamer');
+      const name = prompt(window.t ? window.t('new_room_name_prompt') : 'Nieuwe naam voor kamer');
       if(name) {
         await fetch(`/api/rooms/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
         render();
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (createRoomBtn) {
     createRoomBtn.addEventListener('click', async ()=>{
       const name = newRoomName && newRoomName.value && newRoomName.value.trim();
-      if(!name) return alert('Vul een naam in');
+      if(!name) return alert(window.t ? window.t('enter_name') : 'Vul een naam in');
       await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
       if(newRoomName) newRoomName.value = '';
       render();
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
           alert(data.message); // Or show a nice toast
           aiInput.value = '';
         } else {
-          alert('AI Error: ' + data.message);
+          alert((window.t ? window.t('ai_error') : 'AI Error') + ': ' + data.message);
         }
       } catch (e) {
         console.error(e);
@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       
       if (data.people.length === 0) {
-        el.innerHTML = '<div class="empty">No people tracked</div>';
+        el.innerHTML = `<div class="empty">${window.t ? window.t('no_people_tracked') : 'No people tracked'}</div>`;
         return;
       }
 
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('')}
       </div>`;
     } catch (e) {
-      el.innerHTML = 'Error loading presence';
+      el.innerHTML = window.t ? window.t('error_loading_presence') : 'Error loading presence';
     }
   }
 
@@ -176,22 +176,22 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="energy-item">
             <i class="fas fa-home"></i>
             <div class="energy-val pos">${Math.round(usage)} W</div>
-            <div style="font-size:0.8em">Usage</div>
+            <div style="font-size:0.8em">${window.t ? window.t('usage') : 'Usage'}</div>
           </div>
           <div class="energy-item">
             <i class="fas fa-solar-panel"></i>
             <div class="energy-val neg">${Math.round(solarPower)} W</div>
-            <div style="font-size:0.8em">Solar</div>
+            <div style="font-size:0.8em">${window.t ? window.t('solar') : 'Solar'}</div>
           </div>
           <div class="energy-item" style="grid-column: span 2">
             <i class="fas fa-bolt"></i>
             <div class="energy-val ${gridPower > 0 ? 'pos' : 'neg'}">${Math.round(gridPower)} W</div>
-            <div style="font-size:0.8em">Grid (${gridPower > 0 ? 'Import' : 'Export'})</div>
+            <div style="font-size:0.8em">${gridPower > 0 ? (window.t ? window.t('grid_import') : 'Grid (Import)') : (window.t ? window.t('grid_export') : 'Grid (Export)')}</div>
           </div>
         </div>
       `;
     } catch (e) {
-      el.innerHTML = 'Error loading energy';
+      el.innerHTML = window.t ? window.t('error_loading_energy') : 'Error loading energy';
     }
   }
 
@@ -333,21 +333,21 @@ document.addEventListener('DOMContentLoaded', () => {
             
             statusContent.innerHTML = `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span><i class="fas fa-clock"></i> Uptime:</span>
+                    <span><i class="fas fa-clock"></i> ${window.t ? window.t('uptime') : 'Uptime'}:</span>
                     <strong>${uptimeHours} uur</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                    <span><i class="fas fa-memory"></i> Geheugen:</span>
+                    <span><i class="fas fa-memory"></i> ${window.t ? window.t('memory') : 'Geheugen'}:</span>
                     <strong>${memUsed} MB</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span><i class="fas fa-server"></i> Status:</span>
-                    <strong style="color: #2ecc71;">Online</strong>
+                    <span><i class="fas fa-server"></i> ${window.t ? window.t('status') : 'Status'}:</span>
+                    <strong style="color: #2ecc71;">${window.t ? window.t('status_online') : 'Online'}</strong>
                 </div>
             `;
         }
     } catch (e) {
-        statusContent.innerHTML = '<span style="color: red;">Offline</span>';
+        statusContent.innerHTML = `<span style="color: red;">${window.t ? window.t('status_offline') : 'Offline'}</span>`;
     }
   }
 
@@ -384,10 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
                   } else {
                     let colorCode = '#000';
                     let label = ink.color;
-                    if (ink.color === 'C') { colorCode = '#00FFFF'; label = 'Cyaan'; }
-                    else if (ink.color === 'M') { colorCode = '#FF00FF'; label = 'Magenta'; }
-                    else if (ink.color === 'Y') { colorCode = '#FFFF00'; label = 'Geel'; }
-                    else if (ink.color === 'K') { colorCode = '#000000'; label = 'Zwart'; }
+                    if (ink.color === 'C') { colorCode = '#00FFFF'; label = window.t ? window.t('ink_cyan') : 'Cyaan'; }
+                    else if (ink.color === 'M') { colorCode = '#FF00FF'; label = window.t ? window.t('ink_magenta') : 'Magenta'; }
+                    else if (ink.color === 'Y') { colorCode = '#FFFF00'; label = window.t ? window.t('ink_yellow') : 'Geel'; }
+                    else if (ink.color === 'K') { colorCode = '#000000'; label = window.t ? window.t('ink_black') : 'Zwart'; }
                         
                     inkHtml += `
                       <div class="ink-row">
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 inkHtml += '</div>';
                 printerContent.innerHTML = inkHtml;
             } else {
-                printerContent.innerHTML = '<div style="text-align: center; padding: 10px;">Inktstatus ophalen...</div>';
+                printerContent.innerHTML = `<div style="text-align: center; padding: 10px;">${window.t ? window.t('fetching_ink') : 'Inktstatus ophalen...'}</div>`;
             }
         } else {
             printerWidget.style.display = 'none';
@@ -446,11 +446,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getSpeedEvaluation(mbps) {
       const speed = parseFloat(mbps);
-      if (speed > 500) return { text: 'Uitstekend (Fiber)', color: '#2ecc71' };
-      if (speed > 100) return { text: 'Zeer Goed', color: '#27ae60' };
-      if (speed > 50) return { text: 'Goed', color: '#f1c40f' };
-      if (speed > 20) return { text: 'Redelijk', color: '#e67e22' };
-      return { text: 'Traag', color: '#e74c3c' };
+      if (speed > 500) return { text: window.t ? window.t('speed_excellent') : 'Uitstekend (Fiber)', color: '#2ecc71' };
+      if (speed > 100) return { text: window.t ? window.t('speed_very_good') : 'Zeer Goed', color: '#27ae60' };
+      if (speed > 50) return { text: window.t ? window.t('speed_good') : 'Goed', color: '#f1c40f' };
+      if (speed > 20) return { text: window.t ? window.t('speed_fair') : 'Redelijk', color: '#e67e22' };
+      return { text: window.t ? window.t('speed_slow') : 'Traag', color: '#e74c3c' };
   }
 
   function renderSpeedResult(ping, mbps, dateStr) {
@@ -461,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <div style="font-size: 2.5em; font-weight: bold; color: var(--text);">${mbps} <span style="font-size: 0.4em; color: var(--muted);">Mbps</span></div>
               <div style="color: ${eval.color}; font-weight: bold; margin-bottom: 5px;">${eval.text}</div>
               <div style="font-size: 0.9em; color: var(--muted);">Ping: ${ping} ms</div>
-              ${dateStr ? `<div style="font-size: 0.8em; color: var(--muted); margin-top: 5px;">Laatste test: ${dateStr}</div>` : ''}
+              ${dateStr ? `<div style="font-size: 0.8em; color: var(--muted); margin-top: 5px;">${window.t ? window.t('last_test') : 'Laatste test'}: ${dateStr}</div>` : ''}
           </div>
         `;
   }
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     runSpeedtest.addEventListener('click', async ()=>{
-      if (speedtestResults) speedtestResults.innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 2em; color: var(--accent-color);"></i><div style="margin-top: 10px;">Internet snelheid testen...</div></div>';
+      if (speedtestResults) speedtestResults.innerHTML = `<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin" style="font-size: 2em; color: var(--accent-color);"></i><div style="margin-top: 10px;">${window.t ? window.t('testing_speed') : 'Internet snelheid testen...'}</div></div>`;
       try{
         const dl = await runDownloadTest();
         
@@ -487,11 +487,11 @@ document.addEventListener('DOMContentLoaded', () => {
             ts: Date.now()
         };
         localStorage.setItem('last_speedtest', JSON.stringify(result));
-        renderSpeedResult(dl.ping, dl.mbps, 'Zojuist');
+        renderSpeedResult(dl.ping, dl.mbps, window.t ? window.t('just_now') : 'Zojuist');
         
       }catch(e){ 
           console.error(e);
-          if (speedtestResults) speedtestResults.innerText = 'Speedtest mislukt (Check internet)'; 
+          if (speedtestResults) speedtestResults.innerText = window.t ? window.t('speedtest_failed') : 'Speedtest mislukt (Check internet)'; 
       }
     });
   }

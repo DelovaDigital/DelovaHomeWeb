@@ -230,6 +230,25 @@ class CloudClient {
         }
     }
 
+    async registerUser(username, password) {
+        if (!this.config) return;
+        const { cloudUrl, hubId, hubSecret } = this.config;
+        
+        const https = require('https');
+        const agent = new https.Agent({ rejectUnauthorized: false });
+        const fetch = require('node-fetch');
+
+        const res = await fetch(`${cloudUrl}/api/hub/register-user`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ hubId, hubSecret, username, password }),
+            agent: cloudUrl.startsWith('https') ? agent : undefined
+        });
+        
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+    }
+
     isConnected() {
         return this.ws && this.ws.readyState === WebSocket.OPEN;
     }

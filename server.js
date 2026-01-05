@@ -623,6 +623,18 @@ app.post('/api/users', async (req, res) => {
             .input('hubId', db.sql.NVarChar(255), hubConfig.hubId)
             .query("INSERT INTO Users (Username, PasswordHash, Role, HubID, CreatedAt) VALUES (@username, @passwordHash, @role, @hubId, GETDATE())");
             
+        // Sync with Cloud if connected
+        if (cloudClient.isConnected()) {
+             try {
+                 console.log(`[Cloud] Syncing new user '${username}' to Cloud...`);
+                 await cloudClient.registerUser(username, password);
+                 console.log(`[Cloud] User '${username}' synced successfully.`);
+             } catch (e) {
+                 console.error('[Cloud] Failed to sync user to cloud:', e.message);
+                 // Don't fail the request, just log it.
+             }
+        }
+
         res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });

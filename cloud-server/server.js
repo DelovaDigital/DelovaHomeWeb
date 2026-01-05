@@ -231,6 +231,43 @@ app.post('/api/hub/link', authenticate, (req, res) => {
     res.json({ success: true, hubId: hub.id, hubSecret: hub.secret });
 });
 
+// Allow a Hub to register a user and link to itself
+app.post('/api/hub/register-user', async (req, res) => {
+    const { hubId, hubSecret, username, password } = req.body;
+
+    // Verify Hub
+    const hub = data.hubs.find(h => h.id === hubId);
+    if (!hub || hub.secret !== hubSecret) {
+        return res.status(403).json({ error: 'Invalid Hub Credentials' });
+    }
+
+    // Check if user exists
+    let user = data.users.find(u => u.username === username);
+    if (user) {
+        // User exists. Link them to this hub if not already linked.
+        if (!user.hubs.includes(hubId)) {
+            user.hubs.push(hubId);
+            saveData();
+        }
+        return res.json({ success: true, message: 'User linked to Hub' });
+    }
+
+    // Create new user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user = { 
+        id: uuid.v4(), 
+        username, 
+        password: hashedPassword, 
+        email: null,
+        hubs: [hubId] 
+    };
+    
+    data.users.push(user);
+    saveData();
+    
+    res.json({ success: true, message: 'User registered and linked' });
+});
+
 // --- Proxy Logic ---
 
 // Client sends command to Cloud -> Cloud forwards to Hub

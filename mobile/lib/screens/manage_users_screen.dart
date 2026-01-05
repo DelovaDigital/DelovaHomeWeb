@@ -43,9 +43,15 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     setState(() => _isLoading = true);
     try {
       final baseUrl = await _apiService.getBaseUrl();
+      final headers = await _apiService.getHeaders();
       final client = HttpClient();
       client.badCertificateCallback = (cert, host, port) => true;
+      
       final request = await client.getUrl(Uri.parse('$baseUrl/api/users'));
+      headers.forEach((key, value) {
+        request.headers.set(key, value);
+      });
+      
       final response = await request.close();
       
       if (response.statusCode == 200) {
@@ -147,24 +153,31 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Future<void> _performAddUser(String username, String password) async {
     try {
       final baseUrl = await _apiService.getBaseUrl();
+      final headers = await _apiService.getHeaders();
       final client = HttpClient();
       client.badCertificateCallback = (cert, host, port) => true;
       
-      final request = await client.postUrl(Uri.parse('$baseUrl/api/register'));
+      // Use /api/users instead of /api/register for admin creation
+      final request = await client.postUrl(Uri.parse('$baseUrl/api/users'));
+      headers.forEach((key, value) {
+        request.headers.set(key, value);
+      });
       request.headers.set('Content-Type', 'application/json');
+      
       request.add(utf8.encode(jsonEncode({
         'username': username,
         'password': password,
+        'role': 'User'
       })));
       
       final response = await request.close();
       final body = await response.transform(utf8.decoder).join();
       final data = jsonDecode(body);
 
-      if (data['ok'] == true) {
+      if (response.statusCode == 200 && data['ok'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t('user_added'))),
+            SnackBar(content: Text(t('user_added') ?? 'User added')),
           );
         }
         _loadUsers();

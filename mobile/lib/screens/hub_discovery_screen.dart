@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart' hide ServiceStatus; // For openAppSettings
 import 'login_screen.dart';
 import 'main_screen.dart';
+import 'hub_login_screen.dart';
 import '../utils/app_translations.dart';
 
 import '../widgets/gradient_background.dart';
@@ -393,22 +394,26 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                         );
                       } else if (hubs.length == 1) {
                         // Auto-select single hub
-                        await prefs.setString('hub_id', hubs[0]['id']);
-                        await prefs.setString('hub_name', hubs[0]['name']);
-                        // Set Base URL to Cloud URL
-                        await prefs.setString('hub_ip', baseUrl); 
-                        await prefs.setString('hub_port', ''); 
-
+                        // BUT we still need to login to the Hub itself!
+                        // So we navigate to HubLoginScreen
+                        
                         if (mounted) {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (context) => const MainScreen()),
-                            (route) => false,
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => HubLoginScreen(
+                                hubIp: baseUrl,
+                                hubPort: '',
+                                hubId: hubs[0]['id'],
+                                hubName: hubs[0]['name'],
+                                cloudToken: data['token'],
+                              ),
+                            ),
                           );
                         }
                       } else {
                         // Show Hub Selection Dialog
                         // We need to pass baseUrl to the dialog so it can save it
-                        _showHubSelectionDialog(hubs, cloudUrl: baseUrl);
+                        _showHubSelectionDialog(hubs, cloudUrl: baseUrl, cloudToken: data['token']);
                       }
                     }
                   } else {
@@ -513,7 +518,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     }
   }
 
-  void _showHubSelectionDialog(List<dynamic> hubs, {String? cloudUrl}) {
+  void _showHubSelectionDialog(List<dynamic> hubs, {String? cloudUrl, String? cloudToken}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -532,21 +537,33 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 title: Text(hub['name'] ?? 'Unknown Hub', style: const TextStyle(color: Colors.white)),
                 subtitle: Text(hub['id'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                 onTap: () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('hub_id', hub['id']);
-                  await prefs.setString('hub_name', hub['name']);
-                  
-                  if (cloudUrl != null) {
-                      await prefs.setString('hub_ip', cloudUrl);
-                      await prefs.setString('hub_port', '');
-                  }
-                  
-                  if (mounted) {
-                    Navigator.pop(context);
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const MainScreen()),
-                      (route) => false,
-                    );
+                  if (cloudUrl != null && cloudToken != null) {
+                      // Cloud Flow: Go to Hub Login
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => HubLoginScreen(
+                            hubIp: cloudUrl,
+                            hubPort: '',
+                            hubId: hub['id'],
+                            hubName: hub['name'],
+                            cloudToken: cloudToken,
+                          ),
+                        ),
+                      );
+                  } else {
+                      // Local Flow (Should not happen here usually, but fallback)
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('hub_id', hub['id']);
+                      await prefs.setString('hub_name', hub['name']);
+                      
+                      if (mounted) {
+                        Navigator.pop(context);
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const MainScreen()),
+                          (route) => false,
+                        );
+                      }
                   }
                 },
               );

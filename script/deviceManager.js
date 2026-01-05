@@ -3782,6 +3782,40 @@ class DeviceManager extends EventEmitter {
         return { ok: false, error: 'Unsupported device type for pairing' };
     }
 
+    unpairDevice(ip) {
+        console.log(`[Unpairing] Removing credentials for ${ip}`);
+        
+        let changed = false;
+
+        if (this.sshCredentials[ip]) {
+            delete this.sshCredentials[ip];
+            this.saveSshCredentials();
+            changed = true;
+            
+            // Remove from NAS Manager
+            const nasIndex = nasManager.config.findIndex(c => c.host === ip);
+            if (nasIndex !== -1) {
+                nasManager.config.splice(nasIndex, 1);
+                nasManager.saveConfig();
+            }
+        }
+        
+        if (this.cameraCredentials[ip]) {
+            delete this.cameraCredentials[ip];
+            fs.writeFileSync('camera-credentials.json', JSON.stringify(this.cameraCredentials, null, 2));
+            changed = true;
+        }
+
+        if (changed) {
+            // Update device state
+            const device = Array.from(this.devices.values()).find(d => d.ip === ip);
+            if (device) {
+                device.isPaired = false;
+                this.emit('device-updated', device);
+            }
+        }
+    }
+
     async scanForWindowsDevices() {
         console.log('[Discovery] Scanning for Windows/SMB devices (Port 445)...');
         const subnet = this.localIp.split('.').slice(0, 3).join('.');

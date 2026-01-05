@@ -670,6 +670,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn btn-secondary" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px;" onclick="window.location.href='files.html?device=${device.id}'">
                         <i class="fas fa-folder-open"></i> Naar bestanden
                     </button>
+                    <button class="btn btn-danger" style="width: 100%; padding: 12px; margin-top: 10px;" onclick="unpairDevice('${device.id}')">
+                        <i class="fas fa-trash"></i> Verwijder credentials
+                    </button>
                 `;
             } else {
                 controlsHtml += `
@@ -694,6 +697,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 controlsHtml += `
                     <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.id}')">
                         <i class="fas fa-key"></i> Inloggen / Koppelen
+                    </button>
+                `;
+            } else {
+                controlsHtml += `
+                    <button class="btn btn-danger" style="width: 100%; padding: 12px;" onclick="unpairDevice('${device.id}')">
+                        <i class="fas fa-trash"></i> Verwijder credentials
                     </button>
                 `;
             }
@@ -1579,65 +1588,106 @@ window.authenticatePSN = async function(deviceId) {
 // --- Generic Pairing Logic ---
 let currentPairingDevice = null;
 
-window.showPairingModal = (arg1, arg2) => {
-    let device = allDevices.find(d => d.id === arg1);
+window.unpairDevice = async (deviceId) => {
+    if (!confirm('Weet je zeker dat je de inloggegevens wilt verwijderen?')) return;
     
-    if (device) {
-        currentPairingDevice = { ip: device.ip, name: device.name, type: device.type };
-    } else {
-        // Fallback: Check if arg1 is an IP or if arg2 is provided (legacy call)
-        if (arg1 && arg1.includes('.')) {
-             currentPairingDevice = { ip: arg1, name: arg2 || 'Device', type: 'unknown' };
+    const device = allDevices.find(d => d.id === deviceId);
+    if (!device) {
+        alert('Apparaat niet gevonden');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/devices/unpair', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: device.ip })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            alert('Gegevens verwijderd');
+            fetchDevices(); // Refresh list
+            closeDeviceDetail();
         } else {
-             console.error('Device not found for pairing and invalid IP:', arg1);
-             // Try to find by IP if arg1 happens to be an IP but didn't match ID
-             const devByIp = allDevices.find(d => d.ip === arg1);
-             if (devByIp) {
-                 currentPairingDevice = { ip: devByIp.ip, name: devByIp.name, type: devByIp.type };
-             } else {
-                 return;
-             }
+            alert('Fout bij verwijderen: ' + data.error);
         }
-    }
-
-    const { ip, name, type } = currentPairingDevice;
-
-    console.log('showPairingModal called for:', arg1, ip, name, type);
-    const modal = document.getElementById('pairingModal');
-    const title = document.getElementById('pairingTitle');
-    const desc = document.getElementById('pairingDesc');
-    
-    title.textContent = `Koppelen met ${name}`;
-    desc.textContent = `Voer gegevens in voor ${type ? type.toUpperCase() : 'apparaat'} (${ip})`;
-    
-    document.getElementById('pair-username').value = '';
-    document.getElementById('pair-password').value = '';
-    document.getElementById('pair-pin').value = '';
-    
-    // Toggle fields based on type
-    const userGroup = document.getElementById('pair-username').closest('.control-group');
-    const passGroup = document.getElementById('pair-password').closest('.control-group');
-    const pinGroup = document.getElementById('pair-pin-group');
-    
-    if (type === 'tv' || type === 'samsung' || type === 'lg') {
-        if (userGroup) userGroup.style.display = 'none';
-        if (passGroup) passGroup.style.display = 'none';
-        if (pinGroup) pinGroup.style.display = 'block';
-        desc.textContent = `Voer de PIN code in die op ${name || 'je TV'} verschijnt:`;
-    } else {
-        if (userGroup) userGroup.style.display = 'block';
-        if (passGroup) passGroup.style.display = 'block';
-        if (pinGroup) pinGroup.style.display = 'none';
-    }
-    
-    modal.style.display = 'block';
-    
-    if (type === 'tv' || type === 'samsung' || type === 'lg') {
-        document.getElementById('pair-pin').focus();
-    } else {
-        document.getElementById('pair-username').focus();
+    } catch (e) {
+        alert('Netwerkfout: ' + e.message);
     }
 };
+
+window.showPairingModal = (arg1, arg2) => {
+    try {
+        let device = allDevices.find(d => d.id === arg1);
+        
+        if (device) {
+            currentPairingDevice = { ip: device.ip, name: device.name, type: device.type };
+        } else {
+            // Fallback: Check if arg1 is an IP or if arg2 is provided (legacy call)
+            if (arg1 && arg1.includes('.')) {
+                 currentPairingDevice = { ip: arg1, name: arg2 || 'Device', type: 'unknown' };
+            } else {
+                 console.error('Device not found for pairing and invalid IP:', arg1);
+                 // Try to find by IP if arg1 happens to be an IP but didn't match ID
+                 const devByIp = allDevices.find(d => d.ip === arg1);
+                 if (devByIp) {
+                     currentPairingDevice = { ip: devByIp.ip, name: devByIp.name, type: devByIp.type };
+                 } else {
+                     alert('Apparaat niet gevonden: ' + arg1);
+                     return;
+                 }
+            }
+        }
+
+        const { ip, name, type } = currentPairingDevice;
+
+        console.log('showPairingModal called for:', arg1, ip, name, type);
+        const modal = document.getElementById('pairingModal');
+        if (!modal) {
+            alert('Pairing modal element not found!');
+            return;
+        }
+        const title = document.getElementById('pairingTitle');
+        const desc = document.getElementById('pairingDesc');
+        
+        title.textContent = `Koppelen met ${name}`;
+        desc.textContent = `Voer gegevens in voor ${type ? type.toUpperCase() : 'apparaat'} (${ip})`;
+        
+        document.getElementById('pair-username').value = '';
+        document.getElementById('pair-password').value = '';
+        document.getElementById('pair-pin').value = '';
+        
+        // Toggle fields based on type
+        const userGroup = document.getElementById('pair-username').closest('.control-group');
+        const passGroup = document.getElementById('pair-password').closest('.control-group');
+        const pinGroup = document.getElementById('pair-pin-group');
+        
+        if (type === 'tv' || type === 'samsung' || type === 'lg') {
+            if (userGroup) userGroup.style.display = 'none';
+            if (passGroup) passGroup.style.display = 'none';
+            if (pinGroup) pinGroup.style.display = 'block';
+            desc.textContent = `Voer de PIN code in die op ${name || 'je TV'} verschijnt:`;
+        } else {
+            if (userGroup) userGroup.style.display = 'block';
+            if (passGroup) passGroup.style.display = 'block';
+            if (pinGroup) pinGroup.style.display = 'none';
+        }
+        
+        modal.style.display = 'flex';
+        
+        if (type === 'tv' || type === 'samsung' || type === 'lg') {
+            const pinInput = document.getElementById('pair-pin');
+            if (pinInput) pinInput.focus();
+        } else {
+            const userInput = document.getElementById('pair-username');
+            if (userInput) userInput.focus();
+        }
+    } catch (e) {
+        console.error('Error in showPairingModal:', e);
+        alert('Error opening pairing modal: ' + e.message);
+    }
+};
+
 
 window.submitPairing = async () => {
     console.log('submitPairing called for:', currentPairingDevice);

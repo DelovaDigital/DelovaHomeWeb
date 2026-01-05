@@ -1167,6 +1167,14 @@ app.post('/api/devices/pair', async (req, res) => {
     }
 });
 
+app.post('/api/devices/unpair', (req, res) => {
+    const { ip } = req.body;
+    if (!ip) return res.status(400).json({ ok: false, error: 'Missing IP' });
+    
+    deviceManager.unpairDevice(ip);
+    res.json({ ok: true, message: 'Device unpaired' });
+});
+
 // --- PS5 Control ---
 app.get('/api/ps5/devices', async (req, res) => {
     const devices = await ps5Manager.getDevices();

@@ -550,14 +550,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let controlsHtml = '';
 
-        // Power Button (except for sensors/locks/cameras)
-        if (type !== 'sensor' && type !== 'lock' && type !== 'camera') {
+        // Power Button (except for sensors/locks/cameras/nas)
+        if (type !== 'sensor' && type !== 'lock' && type !== 'camera' && type !== 'nas') {
             // For PS5, use specific commands 'wake' and 'standby'
             // For others, use 'toggle' or 'turn_on'/'turn_off'
             let cmd = 'toggle';
             if (type === 'ps5' || type === 'console') {
                 cmd = isOn ? 'standby' : 'wake';
-            } else if ((type === 'pc' || type === 'rpi' || type === 'nas' || type === 'computer' || type === 'workstation' || type === 'mac') && !isOn) {
+            } else if ((type === 'pc' || type === 'rpi' || type === 'computer' || type === 'workstation' || type === 'mac') && !isOn) {
                 cmd = 'wake';
             }
             

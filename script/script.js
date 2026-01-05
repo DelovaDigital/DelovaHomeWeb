@@ -110,22 +110,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.addEventListener('click', closeDropdown);
 
-    function showPairingModal(ip, name) {
-        const modal = document.getElementById('pairingModal');
-        const msg = document.getElementById('pairingMessage');
-        const ipInput = document.getElementById('pairingIp');
-        const pinInput = document.getElementById('pairingPin');
+    // function showPairingModal(ip, name) {
+    //     const modal = document.getElementById('pairingModal');
+    //     const msg = document.getElementById('pairingMessage');
+    //     const ipInput = document.getElementById('pairingIp');
+    //     const pinInput = document.getElementById('pairingPin');
         
-        if (modal && msg && ipInput) {
-            msg.textContent = `Voer de PIN code in die op ${name || ip} verschijnt:`;
-            ipInput.value = ip;
-            pinInput.value = '';
-            modal.style.display = 'block';
+    //     if (modal && msg && ipInput) {
+    //         msg.textContent = `Voer de PIN code in die op ${name || ip} verschijnt:`;
+    //         ipInput.value = ip;
+    //         pinInput.value = '';
+    //         modal.style.display = 'block';
             
-            // Focus input
-            setTimeout(() => pinInput.focus(), 100);
-        }
-    }
+    //         // Focus input
+    //         if (pinInput) pinInput.focus();
+    //     }
+    // }
 
     // Pairing Modal Logic
     const pairingModal = document.getElementById('pairingModal');

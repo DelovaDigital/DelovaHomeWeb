@@ -3,7 +3,11 @@ const fetch = require('node-fetch'); // Ensure node-fetch is available in your p
 
 class CloudClient {
     constructor(localApiUrl) {
-        this.localApiUrl = localApiUrl || 'http://localhost:3000';
+        // Default to HTTPS if not specified, as server.js prefers HTTPS
+        // But we need to handle the case where SSL is missing.
+        // Ideally, server.js should pass the correct URL.
+        // For now, let's default to https://127.0.0.1:3000 to match server.js default
+        this.localApiUrl = localApiUrl || 'https://127.0.0.1:3000';
         this.ws = null;
         this.config = null;
         this.reconnectInterval = 5000;
@@ -131,15 +135,31 @@ class CloudClient {
 
         try {
             // Forward request to local Express server
-            // We can use fetch to call our own local API
+            // Use 127.0.0.1 instead of localhost to avoid IPv6 issues
+            // Also check if we should use HTTP port (3001) or HTTPS port (3000)
+            // Based on server.js, HTTP is on port + 1 (3001) if SSL is active, or port (3000) if not.
+            // To be safe, let's try to detect or just use the HTTP port if we know it.
+            // But cloudClient doesn't know if SSL is active.
+            // Let's try 127.0.0.1:3000 first.
+            
             let url = `${this.localApiUrl}${path}`;
+            // Replace localhost with 127.0.0.1 to avoid socket hang up on some systems
+            url = url.replace('localhost', '127.0.0.1');
+
             if (query && Object.keys(query).length > 0) {
                 url += '?' + new URLSearchParams(query).toString();
             }
 
+            // Create a custom agent to handle potential self-signed certs if using HTTPS
+            const https = require('https');
+            const agent = new https.Agent({
+                rejectUnauthorized: false
+            });
+
             const options = {
                 method,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                agent: url.startsWith('https') ? agent : undefined
             };
             
             if (body && (method === 'POST' || method === 'PUT')) {
@@ -147,7 +167,20 @@ class CloudClient {
             }
 
             const res = await fetch(url, options);
-            const data = await res.json(); // Assuming JSON response for now
+            
+            // Handle non-JSON responses (like 404 html)
+            const contentType = res.headers.get('content-type');
+            let data;
+            if (contentType && contentType.includes('application/json')) {
+                data = await res.json();
+            } else {
+                const text = await res.text();
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = { error: res.statusText, text: text.substring(0, 100) };
+                }
+            }
 
             // Send response back to Cloud
             this.ws.send(JSON.stringify({
@@ -161,14 +194,16 @@ class CloudClient {
 
         } catch (e) {
             console.error('[Cloud] Local request failed:', e);
-            this.ws.send(JSON.stringify({
-                type: 'RESPONSE',
-                payload: {
-                    id,
-                    status: 500,
-                    data: { error: 'Local Hub Error: ' + e.message }
-                }
-            }));
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    type: 'RESPONSE',
+                    payload: {
+                        id,
+                        status: 500,
+                        data: { error: 'Local Hub Error: ' + e.message }
+                    }
+                }));
+            }
         }
     }
 }

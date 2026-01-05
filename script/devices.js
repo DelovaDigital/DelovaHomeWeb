@@ -1584,19 +1584,25 @@ window.showPairingModal = (deviceId) => {
     const device = allDevices.find(d => d.id === deviceId);
     if (!device) {
         console.error('Device not found for pairing:', deviceId);
-        return;
+        // Fallback: if deviceId looks like an IP or we can't find it, try to handle it gracefully
+        // This might happen if startPairing(ip, name) was called directly
+        if (deviceId.includes('.')) {
+             // It's an IP
+             currentPairingDevice = { ip: deviceId, name: 'Device', type: 'unknown' };
+             // Continue...
+        } else {
+             return;
+        }
+    } else {
+        currentPairingDevice = { ip: device.ip, name: device.name, type: device.type };
     }
 
-    const ip = device.ip;
-    const name = device.name;
-    const type = device.type;
+    const { ip, name, type } = currentPairingDevice;
 
     console.log('showPairingModal called for:', deviceId, ip, name, type);
     const modal = document.getElementById('pairingModal');
     const title = document.getElementById('pairingTitle');
     const desc = document.getElementById('pairingDesc');
-    
-    currentPairingDevice = { ip, name, type };
     
     title.textContent = `Koppelen met ${name}`;
     desc.textContent = `Voer gegevens in voor ${type ? type.toUpperCase() : 'apparaat'} (${ip})`;

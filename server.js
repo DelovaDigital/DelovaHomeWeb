@@ -587,6 +587,9 @@ app.delete('/api/users/:id', async (req, res) => {
             .query("DELETE FROM Users WHERE Id = @id AND HubID = @hubId");
             
         if (result.rowsAffected[0] > 0) {
+            // Remove from Presence Manager
+            presenceManager.removePerson(userId);
+            
             res.json({ ok: true });
         } else {
             res.status(404).json({ ok: false, message: 'User not found or not authorized' });

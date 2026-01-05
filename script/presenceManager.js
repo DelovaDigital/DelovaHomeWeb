@@ -83,6 +83,16 @@ class PresenceManager extends EventEmitter {
         console.log(`[Presence] Tracking ${name} via device ${trackingDeviceId} (ID: ${uid})`);
     }
 
+    removePerson(userId) {
+        const uid = String(userId);
+        if (this.people.has(uid)) {
+            const person = this.people.get(uid);
+            this.people.delete(uid);
+            console.log(`[Presence] Stopped tracking ${person.name} (ID: ${uid})`);
+            this.updateHomeState();
+        }
+    }
+
     updateUserLocation(userId, lat, lon, timestamp) {
         // Ensure userId is treated as a string for map lookup
         const uid = String(userId);

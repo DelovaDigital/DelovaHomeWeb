@@ -62,6 +62,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     final userId = prefs.getString('userId');
     final hubId = prefs.getString('hub_id');
     final cloudToken = prefs.getString('cloud_token');
+    final username = prefs.getString('username');
 
     if (hubIp != null && hubPort != null && userId != null) {
       debugPrint('Found stored credentials. Verifying session...');
@@ -86,6 +87,9 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
         }
         if (hubId != null) {
           request.headers.set('x-hub-id', hubId);
+        }
+        if (username != null) {
+          request.headers.set('x-delova-username', username);
         }
 
         final response = await request.close();

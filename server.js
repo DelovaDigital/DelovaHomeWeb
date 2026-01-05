@@ -1990,6 +1990,18 @@ udpServer.bind(8888, () => {
     });
 
     // Start Cloud Client
+    // Sync Hub ID with Cloud Config if available to ensure Spotify callbacks route correctly
+    if (cloudClient.loadConfig()) {
+        if (cloudClient.config.hubId && cloudClient.config.hubId !== hubConfig.hubId) {
+            console.log(`[Hub] Syncing Hub ID with Cloud Config: ${hubConfig.hubId} -> ${cloudClient.config.hubId}`);
+            hubConfig.hubId = cloudClient.config.hubId;
+            try {
+                fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
+            } catch (e) {
+                console.error('[Hub] Failed to save synced config:', e);
+            }
+        }
+    }
     cloudClient.connect();
 
   } catch (err) {

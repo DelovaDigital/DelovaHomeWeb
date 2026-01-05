@@ -518,7 +518,10 @@ class ApiService {
   Future<List<dynamic>> getNasDevices() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/nas'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/nas'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
@@ -535,7 +538,10 @@ class ApiService {
     final baseUrl = await getBaseUrl();
     try {
       final encodedPath = Uri.encodeComponent(path);
-      final response = await http.get(Uri.parse('$baseUrl/api/nas/$nasId/files?path=$encodedPath'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/nas/$nasId/files?path=$encodedPath'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;

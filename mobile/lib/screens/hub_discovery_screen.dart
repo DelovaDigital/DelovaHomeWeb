@@ -62,7 +62,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     final userId = prefs.getString('userId');
     final hubId = prefs.getString('hub_id');
     final cloudToken = prefs.getString('cloud_token');
-    final username = prefs.getString('username');
+    // final username = prefs.getString('username'); // Unused
 
     if (hubIp != null && hubPort != null && userId != null) {
       debugPrint('Found stored credentials. Verifying session...');
@@ -132,6 +132,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     try {
       // Search for specific service type first (more reliable)
       _discovery = await startDiscovery('_delovahome._tcp');
+      if (!mounted) return;
       _discovery!.addServiceListener((service, status) {
         if (status == ServiceStatus.found) {
            _addServiceToHubs(service);
@@ -140,6 +141,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
 
       // Also search for _http._tcp as fallback
       final httpDiscovery = await startDiscovery('_http._tcp');
+      if (!mounted) return;
       httpDiscovery.addServiceListener((service, status) {
         if (status == ServiceStatus.found) {
           bool isMatch = false;
@@ -408,7 +410,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                         hubs = data['hubs'];
                     }
 
-                    if (mounted) {
+                    if (context.mounted) {
                       Navigator.pop(context); // Close login dialog
                       
                       if (hubs.isEmpty) {
@@ -423,7 +425,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                         // Construct Proxy URL for Cloud Connection
                         final proxyUrl = '$baseUrl/api/proxy/${hubs[0]['id']}';
 
-                        if (mounted) {
+                        if (context.mounted) {
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) => HubLoginScreen(
@@ -443,14 +445,14 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                       }
                     }
                   } else {
-                    if (mounted) {
+                    if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(data['error'] ?? data['message'] ?? 'Login failed')),
                       );
                     }
                   }
                 } catch (e) {
-                  if (mounted) {
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('${t('connection_error')}: $e')),
                     );
@@ -592,7 +594,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                       await prefs.setString('hub_id', hub['id']);
                       await prefs.setString('hub_name', hub['name']);
                       
-                      if (mounted) {
+                      if (context.mounted) {
                         Navigator.pop(context);
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => const MainScreen()),

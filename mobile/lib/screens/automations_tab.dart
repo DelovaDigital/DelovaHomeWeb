@@ -125,21 +125,22 @@ class _AutomationsTabState extends State<AutomationsTab> {
                                     automation,
                                   );
                                 } catch (e) {
+                                  if (!context.mounted) return;
                                   setState(() {
                                     automation['enabled'] = oldVal;
                                   });
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Failed to update: $e'),
-                                      ),
-                                    );
-                                  }
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to update: $e'),
+                                    ),
+                                  );
                                 }
                               },
                             ),
                             onTap: () {
-                              // TODO: Edit automation
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Edit not implemented yet')),
+                              );
                             },
                           ),
                         );

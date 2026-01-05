@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'spotify_login_screen.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
@@ -178,7 +177,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       if (response.statusCode == 200 && data['ok'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(t('user_added') ?? 'User added')),
+            SnackBar(content: Text(t('user_added'))),
           );
         }
         _loadUsers();

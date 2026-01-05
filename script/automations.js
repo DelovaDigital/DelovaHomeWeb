@@ -261,12 +261,18 @@ window.saveAutomation = async () => {
         else if (!isNaN(trigger.value)) trigger.value = Number(trigger.value);
     }
 
+    // Ensure actions have 'type' set correctly if added via new interface
+    const sanitizedActions = currentActions.map(a => ({
+        ...a,
+        type: a.type || (a.duration ? 'delay' : 'device') 
+    }));
+
     const payload = {
         id: id || undefined,
         name,
         enabled: true,
         trigger,
-        actions: currentActions
+        actions: sanitizedActions
     };
 
     try {

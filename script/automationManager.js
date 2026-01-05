@@ -206,14 +206,20 @@ class AutomationManager extends EventEmitter {
         console.log(`[Automation] Processing ${actions.length} actions.`);
 
         for (const action of actions) {
+            // Fix missing type if legacy automation
+            const type = action.type || (action.deviceId ? 'device' : (action.duration ? 'delay' : 'unknown'));
+
             try {
-                console.log(`[Automation] Action: ${action.type} -> ${action.deviceId || action.sceneName} : ${action.command}`);
-                if (action.type === 'device') {
+                console.log(`[Automation] Action: ${type} -> ${action.deviceId || action.sceneName} : ${action.command}`);
+                
+                if (type === 'device') {
                     await deviceManager.controlDevice(action.deviceId, action.command, action.value);
-                } else if (action.type === 'scene') {
+                } else if (type === 'scene') {
                     await deviceManager.activateScene(action.sceneName);
-                } else if (action.type === 'delay') {
+                } else if (type === 'delay') {
                     await new Promise(resolve => setTimeout(resolve, action.duration));
+                } else {
+                    console.warn(`[Automation] Unknown action type: ${type}`, action);
                 }
             } catch (e) {
                 console.error('[Automation] Action failed:', e);

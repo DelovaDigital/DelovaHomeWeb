@@ -100,14 +100,18 @@ class AutomationManager extends EventEmitter {
     // --- Execution Logic ---
 
     registerAutomation(automation) {
-        if (!automation.enabled) return;
+        console.log(`[Automation] Registering: ${automation.name} (${automation.id}) - Enabled: ${automation.enabled}, Type: ${automation.trigger?.type}`);
+        
+        if (!automation.enabled) {
+            console.log(`[Automation] Skipped ${automation.name} (Disabled)`);
+            return;
+        }
 
         // Time-based triggers
         if (automation.trigger.type === 'time' && automation.trigger.cron) {
             if (!cron.validate(automation.trigger.cron)) {
                 console.error(`[Automation] Invalid cron expression for '${automation.name}': ${automation.trigger.cron}`);
-                retuconsole.log(`[Automation] Actions to execute:`, JSON.stringify(automation.actions));
-                    rn;
+                return;
             }
 
             try {

@@ -162,27 +162,21 @@ window.deleteAutomation = async (id) => {
 
 // --- Action Logic ---
 
-window.addAction = () => {
-    // Simple prompt for now, could be a sub-modal
-    const type = prompt('Actie Type (device, delay):', 'device');
-    if (!type) return;
+window.addDeviceAction = () => {
+    currentActions.push({
+        type: 'device',
+        deviceId: devices[0]?.id || '',
+        command: 'turn_on',
+        value: null
+    });
+    renderActions();
+};
 
-    if (type === 'device') {
-        // Add a placeholder, user needs to edit it in the UI? 
-        // For simplicity, let's just add a default one and let them edit it in the list if we make it editable.
-        // Or better, just add a default one.
-        currentActions.push({
-            type: 'device',
-            deviceId: devices[0]?.id || '',
-            command: 'turn_off',
-            value: null
-        });
-    } else if (type === 'delay') {
-        currentActions.push({
-            type: 'delay',
-            duration: 1000
-        });
-    }
+window.addDelayAction = () => {
+    currentActions.push({
+        type: 'delay',
+        duration: 1000
+    });
     renderActions();
 };
 
@@ -209,6 +203,9 @@ function renderActions() {
                             <option value="turn_off" ${action.command === 'turn_off' ? 'selected' : ''}>Uit</option>
                             <option value="toggle" ${action.command === 'toggle' ? 'selected' : ''}>Schakelen</option>
                             <option value="set_brightness" ${action.command === 'set_brightness' ? 'selected' : ''}>Helderheid</option>
+                            <option value="set_color" ${action.command === 'set_color' ? 'selected' : ''}>Kleur</option>
+                            <option value="play" ${action.command === 'play' ? 'selected' : ''}>Afspelen</option>
+                            <option value="pause" ${action.command === 'pause' ? 'selected' : ''}>Pauzeren</option>
                         </select>
                         <input type="text" placeholder="Waarde (opt)" value="${action.value || ''}" onchange="updateAction(${index}, 'value', this.value)" style="width: 80px;">
                     </div>

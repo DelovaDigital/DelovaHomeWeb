@@ -83,6 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
         if (data['userId'] != null) {
           await prefs.setString('userId', data['userId'].toString());
         }
+        if (data['token'] != null) {
+          await prefs.setString('cloud_token', data['token']);
+        }
         
         // Save Hub Info if returned
         if (data['hubInfo'] != null) {

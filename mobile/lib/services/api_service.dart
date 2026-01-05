@@ -15,12 +15,41 @@ class ApiService {
     if (ip == null) {
       throw Exception('Hub not connected');
     }
+
+    // Smart URL handling:
+    // 1. If input starts with http/https, use it as is (ignoring port setting)
+    if (ip.startsWith('http://') || ip.startsWith('https://')) {
+      // Remove trailing slash if present
+      return ip.endsWith('/') ? ip.substring(0, ip.length - 1) : ip;
+    }
+
+    // 2. Default behavior: Assume it's an IP/Hostname and force HTTPS + Port
     return 'https://$ip:$port';
+  }
+
+  Future<Map<String, String>> getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('cloud_token');
+    final hubId = prefs.getString('hub_id');
+    
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (hubId != null) {
+      headers['x-hub-id'] = hubId;
+    }
+    return headers;
   }
 
   Future<Map<String, dynamic>> getSystemInfo() async {
     final baseUrl = await getBaseUrl();
-    final response = await http.get(Uri.parse('$baseUrl/api/system/info'));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/system/info'),
+      headers: await getHeaders(),
+    );
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
@@ -36,7 +65,10 @@ class ApiService {
   Future<List<Device>> getDevices() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/devices'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/devices'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((json) => Device.fromJson(json)).toList();
@@ -62,7 +94,7 @@ class ApiService {
     try {
       await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode(body),
       );
     } catch (e) {
@@ -74,7 +106,10 @@ class ApiService {
     final baseUrl = await getBaseUrl();
     final url = Uri.parse('$baseUrl/api/scenes/$sceneName');
     try {
-      await http.post(url);
+      await http.post(
+        url,
+        headers: await getHeaders(),
+      );
     } catch (e) {
       debugPrint('Error activating scene: $e');
     }
@@ -83,7 +118,10 @@ class ApiService {
   Future<Map<String, dynamic>> checkUpdate() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/system/check-update'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/system/check-update'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -97,7 +135,10 @@ class ApiService {
   Future<Map<String, dynamic>> updateSystem() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.post(Uri.parse('$baseUrl/api/system/update'));
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/system/update'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -121,7 +162,7 @@ class ApiService {
     try {
       await http.post(
         Uri.parse('$baseUrl/api/presence/location'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode({
           'userId': userId,
           'latitude': latitude,
@@ -139,7 +180,7 @@ class ApiService {
     try {
       await http.post(
         Uri.parse('$baseUrl/api/presence/home-location'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode({
           'latitude': latitude,
           'longitude': longitude,
@@ -155,7 +196,10 @@ class ApiService {
   Future<Map<String, dynamic>> getEnergyData() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/energy'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/energy'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -168,7 +212,10 @@ class ApiService {
   Future<Map<String, dynamic>> getPresenceData() async {
     final baseUrl = await getBaseUrl();
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/presence'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/presence'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -183,7 +230,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/api/ai/command'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode({'text': text}),
       );
       if (response.statusCode == 200) {
@@ -201,7 +248,10 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final url = userId != null ? '$baseUrl/api/spotify/devices?userId=$userId' : '$baseUrl/api/spotify/devices';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
@@ -218,7 +268,10 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final url = userId != null ? '$baseUrl/api/spotify/status?userId=$userId' : '$baseUrl/api/spotify/status';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -234,7 +287,10 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final url = userId != null ? '$baseUrl/api/spotify/playlists?userId=$userId' : '$baseUrl/api/spotify/playlists';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -250,7 +306,10 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final url = userId != null ? '$baseUrl/api/spotify/albums?userId=$userId' : '$baseUrl/api/spotify/albums';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -266,7 +325,10 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final userPart = userId != null ? '&userId=$userId' : '';
-      final response = await http.get(Uri.parse('$baseUrl/api/spotify/search?q=${Uri.encodeComponent(q)}$userPart'));
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/spotify/search?q=${Uri.encodeComponent(q)}$userPart'),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }
@@ -282,7 +344,10 @@ class ApiService {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       final url = userId != null ? '$baseUrl/api/spotify/me?userId=$userId' : '$baseUrl/api/spotify/me';
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
       if (response.statusCode == 200) {
         return json.decode(response.body);
       }

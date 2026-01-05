@@ -159,7 +159,8 @@ class CloudClient {
             const options = {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                agent: url.startsWith('https') ? agent : undefined
+                agent: url.startsWith('https') ? agent : undefined,
+                redirect: 'manual'
             };
             
             if (body && (method === 'POST' || method === 'PUT')) {
@@ -168,17 +169,23 @@ class CloudClient {
 
             const res = await fetch(url, options);
             
+            // Capture headers to support redirects and other metadata
+            const responseHeaders = {};
+            res.headers.forEach((val, key) => { responseHeaders[key] = val; });
+
             // Handle non-JSON responses (like 404 html)
             const contentType = res.headers.get('content-type');
             let data;
             if (contentType && contentType.includes('application/json')) {
                 data = await res.json();
             } else {
-                const text = await res.text();
+                // For redirects or HTML, get text
+                data = await res.text();
+                // Try to parse as JSON just in case, but keep as string if not
                 try {
-                    data = JSON.parse(text);
+                    data = JSON.parse(data);
                 } catch {
-                    data = { error: res.statusText, text: text.substring(0, 100) };
+                    // Keep as string
                 }
             }
 
@@ -188,6 +195,7 @@ class CloudClient {
                 payload: {
                     id,
                     status: res.status,
+                    headers: responseHeaders,
                     data
                 }
             }));

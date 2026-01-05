@@ -266,6 +266,163 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
     if (mounted) setState(() => _isScanning = false);
   }
 
+  void _showCloudLoginDialog() {
+    final urlController = TextEditingController();
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF1A237E),
+          title: const Text('Cloud Login', style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: urlController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Cloud URL',
+                  hintText: 'e.g. http://192.168.1.50:4000',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  hintStyle: TextStyle(color: Colors.white30),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                ),
+              ),
+              TextField(
+                controller: emailController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Email or Username',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                ),
+              ),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                ),
+              ),
+              if (isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 16.0),
+                  child: CircularProgressIndicator(color: Colors.cyan),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(t('cancel'), style: const TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+              onPressed: isLoading ? null : () async {
+                if (urlController.text.isEmpty || emailController.text.isEmpty || passwordController.text.isEmpty) {
+                  return;
+                }
+                
+                setState(() => isLoading = true);
+                
+                try {
+                  // Construct URL
+                  String baseUrl = urlController.text;
+                  if (!baseUrl.startsWith('http')) {
+                    baseUrl = 'http://$baseUrl';
+                  }
+                  // Remove trailing slash
+                  if (baseUrl.endsWith('/')) baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+
+                  final url = Uri.parse('$baseUrl/api/login');
+                  
+                  final client = HttpClient();
+                  client.badCertificateCallback = (cert, host, port) => true;
+                  
+                  final request = await client.postUrl(url);
+                  request.headers.set('Content-Type', 'application/json');
+                  request.add(utf8.encode(jsonEncode({
+                    'username': emailController.text,
+                    'password': passwordController.text,
+                  })));
+                  
+                  final response = await request.close();
+                  final responseBody = await response.transform(utf8.decoder).join();
+                  final data = jsonDecode(responseBody);
+
+                  if (response.statusCode == 200 && data['ok'] == true) {
+                    // Login Success
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setString('hub_ip', baseUrl); // Store full URL as IP
+                    await prefs.setString('hub_port', ''); // Clear port as it's in URL
+                    await prefs.setString('username', data['username']);
+                    if (data['userId'] != null) {
+                      await prefs.setString('userId', data['userId'].toString());
+                    }
+                    if (data['token'] != null) {
+                      await prefs.setString('cloud_token', data['token']);
+                    }
+                    
+                    // Handle Hub Selection
+                    List<dynamic> hubs = [];
+                    if (data['user'] != null && data['user']['hubs'] != null) {
+                      hubs = data['user']['hubs'];
+                    }
+
+                    if (mounted) {
+                      Navigator.pop(context); // Close login dialog
+                      
+                      if (hubs.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('No hubs linked to this account')),
+                        );
+                      } else if (hubs.length == 1) {
+                        // Auto-select single hub
+                        await prefs.setString('hub_id', hubs[0]['id']);
+                        await prefs.setString('hub_name', hubs[0]['name']);
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (context) => const MainScreen()),
+                            (route) => false,
+                          );
+                        }
+                      } else {
+                        // Show Hub Selection Dialog
+                        _showHubSelectionDialog(hubs);
+                      }
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(data['error'] ?? 'Login failed')),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Connection error: $e')),
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => isLoading = false);
+                }
+              },
+              child: const Text('Login', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showManualConnectDialog() {
     final ipController = TextEditingController();
     final portController = TextEditingController(text: '3000');
@@ -283,7 +440,9 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 labelText: t('ip_address'),
+                hintText: 'e.g. 192.168.1.10 or https://cloud.com',
                 labelStyle: const TextStyle(color: Colors.white70),
+                hintStyle: const TextStyle(color: Colors.white30),
                 enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
               ),
             ),
@@ -291,7 +450,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
               controller: portController,
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
-                labelText: 'Port',
+                labelText: 'Port (Optional if URL used)',
                 labelStyle: TextStyle(color: Colors.white70),
                 enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
               ),
@@ -339,6 +498,45 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
         ),
       );
     }
+  }
+
+  void _showHubSelectionDialog(List<dynamic> hubs) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A237E),
+        title: const Text('Select Hub', style: TextStyle(color: Colors.white)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: hubs.length,
+            itemBuilder: (context, index) {
+              final hub = hubs[index];
+              return ListTile(
+                leading: const Icon(Icons.router, color: Colors.cyan),
+                title: Text(hub['name'] ?? 'Unknown Hub', style: const TextStyle(color: Colors.white)),
+                subtitle: Text(hub['id'] ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                onTap: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('hub_id', hub['id']);
+                  await prefs.setString('hub_name', hub['name']);
+                  
+                  if (mounted) {
+                    Navigator.pop(context);
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MainScreen()),
+                      (route) => false,
+                    );
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -470,21 +668,41 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
             
             // Manual Connect Button
             Padding(
-              padding: const EdgeInsets.all(20),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyan.withValues(alpha: 0.2),
-                  foregroundColor: textColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                ),
-                onPressed: _showManualConnectDialog,
-                icon: const Icon(Icons.add_link),
-                label: Text(
-                  t('manual_connect'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.cyan.withValues(alpha: 0.2),
+                      foregroundColor: textColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                    onPressed: _showManualConnectDialog,
+                    icon: const Icon(Icons.add_link),
+                    label: Text(
+                      t('manual_connect'),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple.withValues(alpha: 0.2),
+                      foregroundColor: textColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                    onPressed: _showCloudLoginDialog,
+                    icon: const Icon(Icons.cloud),
+                    label: const Text(
+                      'Cloud Login',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

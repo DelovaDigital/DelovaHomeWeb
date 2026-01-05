@@ -90,7 +90,8 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
-    const user = data.users.find(u => u.username === username);
+    // Allow login by username OR email
+    const user = data.users.find(u => u.username === username || u.email === username);
     
     if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ error: 'Invalid credentials' });
@@ -101,13 +102,28 @@ app.post('/api/auth/login', async (req, res) => {
     // Set Cookie
     res.setHeader('Set-Cookie', `cloud_token=${token}; Path=/; HttpOnly; SameSite=Lax`);
     
-    res.json({ success: true, token, user: { id: user.id, username: user.username, hubs: user.hubs } });
+    // Resolve Hub Names
+    const userHubs = user.hubs.map(hubId => {
+        const hub = data.hubs.find(h => h.id === hubId);
+        return hub ? { id: hub.id, name: hub.name } : null;
+    }).filter(h => h !== null);
+
+    res.json({ 
+        success: true, 
+        token, 
+        user: { 
+            id: user.id, 
+            username: user.username, 
+            hubs: userHubs 
+        } 
+    });
 });
 
 // Alias for frontend compatibility
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    const user = data.users.find(u => u.username === username);
+    // Allow login by username OR email
+    const user = data.users.find(u => u.username === username || u.email === username);
     
     if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.status(401).json({ error: 'Invalid credentials' });
@@ -132,12 +148,13 @@ app.post('/api/login', async (req, res) => {
         }
     }
 
-    // Return format expected by script.js
+    // Return format expected by script.js, plus token for mobile app
     res.json({ 
         ok: true, 
         username: user.username, 
         userId: user.id,
-        hubInfo: hubInfo
+        hubInfo: hubInfo,
+        token: token // Explicitly return token for non-cookie clients (Mobile App)
     });
 });
 
@@ -208,10 +225,10 @@ app.all('/api/proxy/:hubId/*', authenticate, (req, res) => {
     }, 10000);
 });
 
-// Auto-Proxy for standard API calls based on cookie
+// Auto-Proxy for standard API calls based on cookie or header
 app.all('/api/*', authenticate, (req, res) => {
     const cookies = parseCookies(req);
-    const hubId = cookies.active_hub;
+    const hubId = req.headers['x-hub-id'] || cookies.active_hub;
     
     if (!hubId) {
         return res.status(400).json({ error: 'No active hub selected' });
@@ -275,10 +292,29 @@ wss.on('connection', (ws, req) => {
             const msg = JSON.parse(message);
             
             if (msg.type === 'RESPONSE') {
-                const { id, status, data } = msg.payload;
+                const { id, status, headers, data } = msg.payload;
                 if (pendingRequests.has(id)) {
                     const res = pendingRequests.get(id);
-                    res.status(status).json(data);
+                    
+                    // Forward headers (excluding some hop-by-hop)
+                    if (headers) {
+                        Object.keys(headers).forEach(key => {
+                            // Skip content-length/encoding as express handles it
+                            if (!['content-length', 'content-encoding', 'transfer-encoding'].includes(key.toLowerCase())) {
+                                res.setHeader(key, headers[key]);
+                            }
+                        });
+                    }
+
+                    res.status(status);
+                    
+                    // If data is an object, send as JSON, otherwise send as body
+                    if (typeof data === 'object' && data !== null) {
+                        res.json(data);
+                    } else {
+                        res.send(data);
+                    }
+                    
                     pendingRequests.delete(id);
                 }
             }

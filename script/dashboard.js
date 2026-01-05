@@ -14,16 +14,22 @@ document.addEventListener('DOMContentLoaded', () => {
   async function fetchRooms(){
     try{
       const rooms = await apiGet('/api/rooms');
-      return rooms;
+      return Array.isArray(rooms) ? rooms : [];
     }catch(e){return []}
   }
 
   async function fetchMap(){
-    try{ return await apiGet('/api/room-mapping'); }catch(e){ return {}; }
+    try{ 
+        const map = await apiGet('/api/room-mapping');
+        return map || {}; 
+    }catch(e){ return {}; }
   }
 
   async function fetchDevices(){
-    try{ return await apiGet('/api/devices'); }catch(e){ return []; }
+    try{ 
+        const devices = await apiGet('/api/devices');
+        return Array.isArray(devices) ? devices : []; 
+    }catch(e){ return []; }
   }
 
   async function render(){

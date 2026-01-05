@@ -87,6 +87,14 @@ class _LoginScreenState extends State<LoginScreen> {
           await prefs.setString('cloud_token', data['token']);
         }
         
+        // Check for multiple hubs
+        if (data['hubs'] != null && (data['hubs'] as List).isNotEmpty) {
+             if (mounted) {
+                 _showHubSelectionDialog(data['hubs'], data['token']);
+             }
+             return;
+        }
+        
         // Save Hub Info if returned
         if (data['hubInfo'] != null) {
            await prefs.setString('hub_id', data['hubInfo']['id']);
@@ -110,6 +118,74 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showHubSelectionDialog(List<dynamic> hubs, String? token) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Hub'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: hubs.length,
+            itemBuilder: (context, index) {
+              final hub = hubs[index];
+              return ListTile(
+                title: Text(hub['name'] ?? 'Hub ${index + 1}'),
+                subtitle: Text(hub['id'] ?? ''),
+                onTap: () => _selectHub(hub, token),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectHub(Map<String, dynamic> hub, String? token) async {
+    Navigator.of(context).pop(); // Close dialog
+    setState(() => _isLoading = true);
+
+    final url = Uri.parse('https://${widget.hubIp}:${widget.hubPort}/api/auth/select-hub');
+    
+    try {
+      final client = HttpClient();
+      client.badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+      
+      final request = await client.postUrl(url);
+      request.headers.set('Content-Type', 'application/json');
+      if (token != null) {
+        request.headers.set('Authorization', 'Bearer $token');
+      }
+      
+      request.add(utf8.encode(jsonEncode({
+        'hubId': hub['id']
+      })));
+      
+      final response = await request.close();
+      
+      if (response.statusCode == 200) {
+         final prefs = await SharedPreferences.getInstance();
+         await prefs.setString('hub_id', hub['id']);
+         await prefs.setString('hub_name', hub['name'] ?? 'Unknown Hub');
+         
+         if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+            (route) => false,
+          );
+        }
+      } else {
+         setState(() => _errorMessage = 'Failed to select hub');
+      }
+    } catch (e) {
+       setState(() => _errorMessage = 'Connection error: $e');
+    } finally {
+       if (mounted) setState(() => _isLoading = false);
     }
   }
 

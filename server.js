@@ -348,6 +348,16 @@ app.get('/api/system/sync-db', async (req, res) => {
     }
 });
 
+app.get('/api/cloud/status', (req, res) => {
+    const isConnected = cloudClient.isConnected();
+    const config = cloudClient.config || {};
+    res.json({ 
+        connected: isConnected, 
+        cloudUrl: config.cloudUrl,
+        hubId: hubConfig.hubId 
+    });
+});
+
 // Start mDNS Advertisement
 let bonjour;
 try {
@@ -609,7 +619,12 @@ app.get('/api/spotify/login', (req, res) => {
     if (!userId) {
         return res.status(400).send('User ID is required to link Spotify account.');
     }
-    const localBaseUrl = `${req.protocol}://${req.get('host')}`;
+    
+    // Determine Base URL (Handle Cloud Proxy)
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    const localBaseUrl = `${protocol}://${host}`;
+    
     const url = spotifyManager.getAuthUrl(userId, localBaseUrl);
     if (url) {
         res.redirect(url);

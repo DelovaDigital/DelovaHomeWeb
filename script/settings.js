@@ -272,6 +272,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Cloud Settings Logic ---
+    async function checkCloudStatus() {
+        try {
+            const res = await fetch('/api/cloud/status');
+            const data = await res.json();
+            
+            if (data.connected) {
+                document.getElementById('cloud-status-container').style.display = 'block';
+                document.getElementById('cloud-status-text').textContent = 'Connected to ' + (data.cloudUrl || 'Cloud');
+                document.getElementById('cloud-hub-id').textContent = 'Hub ID: ' + data.hubId;
+                document.getElementById('cloud-form').style.display = 'none';
+            } else {
+                document.getElementById('cloud-status-container').style.display = 'none';
+                document.getElementById('cloud-form').style.display = 'block';
+            }
+        } catch (e) {
+            console.error('Failed to check cloud status:', e);
+        }
+    }
+
+    // Check on load
+    checkCloudStatus();
+
     window.toggleCloudSettingsTab = (tab) => {
         const loginBtn = document.getElementById('tab-cloud-login');
         const regBtn = document.getElementById('tab-cloud-register');
@@ -336,8 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 alert('Successfully linked!');
                 // Update UI to show linked status
-                document.getElementById('cloud-status-container').style.display = 'block';
-                document.getElementById('cloud-status-text').textContent = 'Linked to ' + cloudUrl;
+                checkCloudStatus();
             } else {
                 alert('Failed: ' + data.error);
             }

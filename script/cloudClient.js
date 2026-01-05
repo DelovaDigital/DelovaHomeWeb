@@ -130,7 +130,7 @@ class CloudClient {
     }
 
     async handleRequest(payload) {
-        const { id, method, path, body, query } = payload;
+        const { id, method, path, body, query, headers } = payload;
         console.log(`[Cloud] Proxy Request: ${method} ${path}`);
 
         try {
@@ -156,9 +156,14 @@ class CloudClient {
                 rejectUnauthorized: false
             });
 
+            const requestHeaders = { 'Content-Type': 'application/json' };
+            if (headers) {
+                Object.assign(requestHeaders, headers);
+            }
+
             const options = {
                 method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: requestHeaders,
                 agent: url.startsWith('https') ? agent : undefined,
                 redirect: 'manual'
             };
@@ -213,6 +218,10 @@ class CloudClient {
                 }));
             }
         }
+    }
+
+    isConnected() {
+        return this.ws && this.ws.readyState === WebSocket.OPEN;
     }
 }
 

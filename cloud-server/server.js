@@ -268,7 +268,11 @@ app.all('/api/*', authenticate, (req, res) => {
         method: req.method,
         path: '/api/' + path, // Reconstruct full path
         body: req.body,
-        query: req.query
+        query: req.query,
+        headers: {
+            'x-forwarded-host': req.get('host'),
+            'x-forwarded-proto': req.protocol
+        }
     };
     
     // Send to Hub

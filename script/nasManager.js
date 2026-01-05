@@ -580,8 +580,6 @@ class NasManager {
              // Not implemented for native yet, but we can just return basic info
              return { size: 0, created: new Date(), modified: new Date() };
          }
-
-         const smbPath = filePath.replace(/\//g, '\\');
          
          return new Promise((resolve, reject) => {
             const client = new SMB2({

@@ -1579,22 +1579,25 @@ window.authenticatePSN = async function(deviceId) {
 // --- Generic Pairing Logic ---
 let currentPairingDevice = null;
 
-window.showPairingModal = (deviceId) => {
-    // Look up device by ID to avoid escaping issues
-    const device = allDevices.find(d => d.id === deviceId);
-    if (!device) {
-        console.error('Device not found for pairing:', deviceId);
-        // Fallback: if deviceId looks like an IP or we can't find it, try to handle it gracefully
-        // This might happen if startPairing(ip, name) was called directly
-        if (deviceId.includes('.')) {
-             // It's an IP
-             currentPairingDevice = { ip: deviceId, name: 'Device', type: 'unknown' };
-             // Continue...
-        } else {
-             return;
-        }
-    } else {
+window.showPairingModal = (arg1, arg2) => {
+    let device = allDevices.find(d => d.id === arg1);
+    
+    if (device) {
         currentPairingDevice = { ip: device.ip, name: device.name, type: device.type };
+    } else {
+        // Fallback: Check if arg1 is an IP or if arg2 is provided (legacy call)
+        if (arg1 && arg1.includes('.')) {
+             currentPairingDevice = { ip: arg1, name: arg2 || 'Device', type: 'unknown' };
+        } else {
+             console.error('Device not found for pairing and invalid IP:', arg1);
+             // Try to find by IP if arg1 happens to be an IP but didn't match ID
+             const devByIp = allDevices.find(d => d.ip === arg1);
+             if (devByIp) {
+                 currentPairingDevice = { ip: devByIp.ip, name: devByIp.name, type: devByIp.type };
+             } else {
+                 return;
+             }
+        }
     }
 
     const { ip, name, type } = currentPairingDevice;

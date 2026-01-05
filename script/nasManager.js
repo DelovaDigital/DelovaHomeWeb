@@ -631,7 +631,7 @@ class NasManager {
         }
 
         if (config.mode === 'legacy') {
-            return this.getSmbClientStream(config, filePath);
+            return this.getSmbClientStream(config, smbPath);
         }
 
         // Try SMB2 lib first
@@ -659,7 +659,7 @@ class NasManager {
                  } else {
                      console.log('[NAS] Falling back to smbclient stream');
                  }
-                 return this.getSmbClientStream(config, filePath);
+                 return this.getSmbClientStream(config, smbPath);
              }
              
              if (isLogonFailure) {

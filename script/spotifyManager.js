@@ -48,12 +48,14 @@ class SpotifyManager {
     async handleCallback(code, state) {
         let userId;
         let username;
+        let hubId;
         let redirectUri = this.redirectUri;
 
         try {
             const stateObj = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
             userId = stateObj.userId;
             username = stateObj.username;
+            hubId = stateObj.hubId;
             if (stateObj.redirectUri) {
                 redirectUri = stateObj.redirectUri;
             }
@@ -68,13 +70,35 @@ class SpotifyManager {
                 console.log(`[Spotify] Resolving local User ID for username: ${username}`);
                 try {
                     const pool = await db.getPool();
-                    const res = await pool.request()
+                    // 1. Try Exact Username Match
+                    let res = await pool.request()
                         .input('username', db.sql.NVarChar(255), username)
                         .query('SELECT Id FROM Users WHERE Username = @username');
                     
                     if (res.recordset.length > 0) {
                         userId = res.recordset[0].Id;
                         console.log(`[Spotify] Resolved User ID: ${userId}`);
+                    } else if (hubId) {
+                        // 2. Fallback: Check users on this Hub
+                        console.log(`[Spotify] Username not found. Checking Hub: ${hubId}`);
+                        res = await pool.request()
+                            .input('hubId', db.sql.NVarChar(255), hubId)
+                            .query('SELECT Id, Username FROM Users WHERE HubID = @hubId');
+                        
+                        if (res.recordset.length > 0) {
+                            // Try case-insensitive match
+                            const match = res.recordset.find(u => u.Username.toLowerCase() === username.toLowerCase());
+                            if (match) {
+                                userId = match.Id;
+                                console.log(`[Spotify] Case-insensitive match found: ${userId}`);
+                            } else {
+                                // Default to first user on Hub
+                                userId = res.recordset[0].Id;
+                                console.log(`[Spotify] Defaulting to first user on Hub: ${userId} (${res.recordset[0].Username})`);
+                            }
+                        } else {
+                            console.error(`[Spotify] No users found for Hub: ${hubId}`);
+                        }
                     } else {
                         console.error(`[Spotify] User not found locally: ${username}`);
                     }

@@ -27,6 +27,22 @@ class DiscoveryService extends EventEmitter {
 
     startMDNS() {
         console.log('[Discovery] Starting mDNS...');
+
+        // Advertise DelovaHome Service
+        try {
+            this.bonjour.publish({
+                name: 'DelovaHome Hub',
+                type: 'delovahome',
+                port: 3000,
+                txt: {
+                    type: 'delovahome',
+                    version: '1.0.0'
+                }
+            });
+            console.log('[Discovery] Published mDNS service: DelovaHome Hub');
+        } catch (e) {
+            console.error('[Discovery] Failed to publish mDNS service:', e);
+        }
         
         // Browse for common services
         const services = [

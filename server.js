@@ -32,6 +32,7 @@ const psnManager = require('./script/psnManager');
 const presenceManager = require('./script/presenceManager');
 const aiManager = require('./script/aiManager');
 const hueManager = require('./script/hueManager');
+const discoveryService = require('./script/discoveryService');
 const cloudClient = require('./script/cloudClient');
 const WebSocket = require('ws');
 const url = require('url');
@@ -2178,6 +2179,9 @@ udpServer.bind(8888, () => {
         }
     }
     cloudClient.connect();
+
+    // Start Discovery Service (mDNS)
+    discoveryService.start();
 
   } catch (err) {
     console.error('Database connection: FAILED');

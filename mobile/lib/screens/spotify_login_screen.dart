@@ -18,6 +18,7 @@ class SpotifyLoginScreen extends StatefulWidget {
 class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
+  int _progress = 0;
 
   @override
   void initState() {
@@ -27,14 +28,27 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() {
-              _isLoading = true;
-            });
+            debugPrint('WebView Page started: $url');
+            if (mounted) {
+              setState(() {
+                _isLoading = true;
+              });
+            }
+          },
+          onProgress: (int progress) {
+            if (mounted) {
+              setState(() {
+                _progress = progress;
+              });
+            }
           },
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
+            debugPrint('WebView Page finished: $url');
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
             // Check if we have reached the callback URL and it finished loading
             if (url.contains('/api/spotify/callback')) {
               // Give the user a moment to see the "Success" message if the server sends one
@@ -47,6 +61,11 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
           },
           onWebResourceError: (WebResourceError error) {
             debugPrint('WebView error: ${error.description}');
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
           },
         ),
       )
@@ -63,11 +82,17 @@ class _SpotifyLoginScreenState extends State<SpotifyLoginScreen> {
           onPressed: () => Navigator.of(context).pop(false),
         ),
       ),
-      body: Stack(
+      body: Column(
         children: [
-          WebViewWidget(controller: _controller),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator()),
+          if (_isLoading || _progress < 100)
+            LinearProgressIndicator(
+              value: _progress > 0 ? _progress / 100.0 : null,
+              backgroundColor: Colors.grey[200],
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
+            ),
+          Expanded(
+            child: WebViewWidget(controller: _controller),
+          ),
         ],
       ),
     );

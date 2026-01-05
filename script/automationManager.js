@@ -115,12 +115,22 @@ class AutomationManager extends EventEmitter {
             }
 
             try {
+                // Check if a timezone is configured in global config or environment
+                const timezone = process.env.TZ || 'Europe/Brussels'; // Default to CET if not set
+                
                 const task = cron.schedule(automation.trigger.cron, () => {
                     console.log(`[Automation] Executing time-based automation: ${automation.name}`);
                     this.executeActions(automation.actions);
+                }, {
+                    timezone: timezone
                 });
+                
                 this.tasks.set(automation.id, task);
-                console.log(`[Automation] Scheduled '${automation.name}' with cron: ${automation.trigger.cron}`);
+                
+                // Log next execution time to help debug timezone issues
+                // node-cron tasks don't always expose nextDate() easily depending on version, 
+                // but we can log the config.
+                console.log(`[Automation] Scheduled '${automation.name}' with cron: ${automation.trigger.cron} (TZ: ${timezone})`);
             } catch (e) {
                 console.error(`[Automation] Error scheduling ${automation.name}:`, e);
             }

@@ -32,6 +32,7 @@ const psnManager = require('./script/psnManager');
 const presenceManager = require('./script/presenceManager');
 const aiManager = require('./script/aiManager');
 const hueManager = require('./script/hueManager');
+const cloudClient = require('./script/cloudClient');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -1879,6 +1880,17 @@ udpServer.on('error', (err) => {
   udpServer.close();
 });
 
+// --- Cloud Setup API ---
+app.post('/api/setup/link-cloud', async (req, res) => {
+    const { cloudUrl, username, password, hubName } = req.body;
+    try {
+        await cloudClient.linkHub(cloudUrl, username, password, hubName);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(400).json({ success: false, error: e.message });
+    }
+});
+
 udpServer.on('message', (msg, rinfo) => {
   const message = msg.toString();
   console.log(`[UDP Discovery] Packet received from ${rinfo.address}:${rinfo.port} - Content: ${message}`);
@@ -1947,6 +1959,9 @@ udpServer.bind(8888, () => {
             }
         });
     });
+
+    // Start Cloud Client
+    cloudClient.connect();
 
   } catch (err) {
     console.error('Database connection: FAILED');

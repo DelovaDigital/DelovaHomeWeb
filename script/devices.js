@@ -662,16 +662,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
-        } else if (type === 'nas' || type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'mac') {
+        } else if (type === 'nas') {
+            controlsHtml += `<div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">`;
+            
+            if (device.isPaired) {
+                controlsHtml += `
+                    <button class="btn btn-secondary" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px;" onclick="window.location.href='files.html?device=${device.id}'">
+                        <i class="fas fa-folder-open"></i> Naar bestanden
+                    </button>
+                `;
+            } else {
+                controlsHtml += `
+                    <p>Voeg dit apparaat toe aan mijn bestanden.</p>
+                    <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.id}')">
+                        <i class="fas fa-key"></i> Inloggen / Koppelen
+                    </button>
+                `;
+            }
+            
+            controlsHtml += `</div>`;
+
+        } else if (type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'mac') {
             const isWindows = type.includes('pc') || type.includes('computer') || type.includes('workstation') || device.name.toLowerCase().includes('windows') || device.name.toLowerCase().includes('win');
             
             controlsHtml += `
                 <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
                     <p>Beheer verbindingen en bestanden.</p>
+            `;
+
+            if (!device.isPaired) {
+                controlsHtml += `
                     <button class="btn btn-primary" style="width: 100%; padding: 12px;" onclick="showPairingModal('${device.id}')">
                         <i class="fas fa-key"></i> Inloggen / Koppelen
                     </button>
-                    
+                `;
+            }
+            
+            controlsHtml += `
                     <div style="display: flex; gap: 10px; width: 100%;">
             `;
 
@@ -690,9 +717,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         </button>
                 `;
             } else {
-                 // Keep legacy remote for non-windows if needed, or just hide it as per request "only for windows"
-                 // User said "Als hij een windows-pc vind dan moet de optie er zijn voor remote desktop"
-                 // But didn't explicitly say remove it for others. I'll keep launchRemote for non-windows as a fallback if they want VNC
                  controlsHtml += `
                         <button class="btn btn-secondary" style="flex: 1; padding: 12px;" onclick="launchRemote('${device.ip}', '${type}')">
                             <i class="fas fa-desktop"></i> Remote
@@ -704,10 +728,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
             `;
 
-            if (type === 'nas' || device.shares_folders) {
+            if (device.shares_folders && device.isPaired) {
                 controlsHtml += `
                     <button class="btn btn-secondary" style="width: 100%; padding: 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px;" onclick="window.location.href='files.html?device=${device.id}'">
-                        <i class="fas fa-folder-open"></i> Bestanden Bladeren
+                        <i class="fas fa-folder-open"></i> Naar bestanden
                     </button>
                 `;
             }

@@ -850,7 +850,7 @@ class DeviceManager extends EventEmitter {
             type = 'receiver';
         } else if (lowerName.includes('pioneer') || model.toLowerCase().includes('pioneer')) {
             type = 'receiver';
-        } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation') || lowerName.includes('openmediavault') || (lowerName.includes('raspberrypi') && lowerName.includes('web control panel'))) {
+        } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation') || lowerName.includes('openmediavault') || lowerName.includes('personalcloud') || lowerName.includes('tvheadend') || (lowerName.includes('raspberrypi') && lowerName.includes('web control panel'))) {
             type = 'nas';
         } else if (sourceType === 'pc' || service.type === 'ssh' || service.type === 'rfb' || service.type === 'device-info' || lowerName.includes('windows') || lowerName.includes('pc') || lowerName.includes('desktop') || lowerName.includes('laptop') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
             type = 'pc';
@@ -950,6 +950,7 @@ class DeviceManager extends EventEmitter {
         // Calculate extended properties
         device.wol_configured = !!device.mac;
         device.shares_folders = !!this.sshCredentials[device.ip] || device.type === 'nas';
+        device.isPaired = !!this.sshCredentials[device.ip];
 
         // Check if device already exists by IP
         let existingId = null;

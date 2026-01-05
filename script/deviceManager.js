@@ -850,7 +850,7 @@ class DeviceManager extends EventEmitter {
             type = 'receiver';
         } else if (lowerName.includes('pioneer') || model.toLowerCase().includes('pioneer')) {
             type = 'receiver';
-        } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation')) {
+        } else if (lowerName.includes('nas') || lowerName.includes('synology') || lowerName.includes('qnap') || lowerName.includes('diskstation') || lowerName.includes('openmediavault') || (lowerName.includes('raspberrypi') && lowerName.includes('web control panel'))) {
             type = 'nas';
         } else if (sourceType === 'pc' || service.type === 'ssh' || service.type === 'rfb' || service.type === 'device-info' || lowerName.includes('windows') || lowerName.includes('pc') || lowerName.includes('desktop') || lowerName.includes('laptop') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
             type = 'pc';
@@ -887,6 +887,9 @@ class DeviceManager extends EventEmitter {
             } else if (type === 'printer') {
                 initialState = { on: true };
             } else if (type === 'nas') {
+                initialState = { on: true };
+            } else if (type === 'rpi' || type === 'raspberrypi') {
+                // If it's an RPi found via mDNS, it's likely on
                 initialState = { on: true };
             }
             let protocol = `mdns-${sourceType}`;

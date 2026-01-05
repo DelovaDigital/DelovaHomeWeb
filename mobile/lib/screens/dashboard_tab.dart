@@ -129,11 +129,15 @@ import '../utils/app_translations.dart';
         final prefs = await SharedPreferences.getInstance();
         final userId = prefs.getString('userId');
         final username = prefs.getString('username');
+        final token = prefs.getString('cloud_token');
+        final hubId = prefs.getString('hub_id');
         
         String uriString = '$baseUrl/api/spotify/login';
         final params = <String>[];
         if (userId != null) params.add('userId=$userId');
         if (username != null) params.add('username=$username');
+        if (token != null) params.add('token=$token');
+        if (hubId != null) params.add('x-hub-id=$hubId');
         
         if (params.isNotEmpty) {
           uriString += '?${params.join('&')}';

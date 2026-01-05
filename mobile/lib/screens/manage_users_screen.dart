@@ -292,8 +292,22 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       }
     } else {
       try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('cloud_token');
+        final hubId = prefs.getString('hub_id');
+
         final baseUrl = await _apiService.getBaseUrl();
-        final url = '$baseUrl/api/spotify/login?userId=$userId';
+        String url = '$baseUrl/api/spotify/login?userId=$userId';
+        
+        // If connected via Cloud, we need to pass auth token and hub ID
+        // because the browser request won't have the headers
+        if (token != null) {
+          url += '&token=$token';
+        }
+        if (hubId != null) {
+          url += '&x-hub-id=$hubId';
+        }
+
         if (await canLaunchUrl(Uri.parse(url))) {
           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
           // We can't easily know when they come back, but we can reload users when they return to the app

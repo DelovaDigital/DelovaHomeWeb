@@ -83,7 +83,7 @@ const parseCookies = (req) => {
 
 const authenticate = (req, res, next) => {
     const cookies = parseCookies(req);
-    const token = req.headers.authorization?.split(' ')[1] || cookies.cloud_token;
+    const token = req.headers.authorization?.split(' ')[1] || cookies.cloud_token || req.query.token;
     
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
     
@@ -364,7 +364,7 @@ app.get('/api/spotify/callback', (req, res) => {
 // Auto-Proxy for standard API calls based on cookie or header
 app.all('/api/*', authenticate, (req, res) => {
     const cookies = parseCookies(req);
-    const hubId = req.headers['x-hub-id'] || cookies.active_hub;
+    const hubId = req.headers['x-hub-id'] || cookies.active_hub || req.query['x-hub-id'];
     
     if (!hubId) {
         return res.status(400).json({ error: 'No active hub selected' });

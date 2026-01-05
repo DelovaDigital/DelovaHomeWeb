@@ -151,9 +151,11 @@ class _HubLoginScreenState extends State<HubLoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 // Logo
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -176,7 +178,7 @@ class _HubLoginScreenState extends State<HubLoginScreen> {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Hub Authentication',
+                  t('hub_auth'),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: textColor,
                     fontWeight: FontWeight.bold,
@@ -184,7 +186,7 @@ class _HubLoginScreenState extends State<HubLoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Login to ${widget.hubName}',
+                  '${t('login_to')} ${widget.hubName}',
                   style: TextStyle(color: mutedColor, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
@@ -296,6 +298,7 @@ class _HubLoginScreenState extends State<HubLoginScreen> {
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),

@@ -298,7 +298,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           backgroundColor: const Color(0xFF1A237E),
-          title: const Text('Cloud Login', style: TextStyle(color: Colors.white)),
+          title: Text(t('cloud_login'), style: const TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -307,32 +307,32 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 child: TextField(
                   controller: urlController,
                   style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: 'Cloud URL',
+                  decoration: InputDecoration(
+                    labelText: t('cloud_url'),
                     hintText: 'https://cloud.delovahome.com',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    hintStyle: TextStyle(color: Colors.white30),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    hintStyle: const TextStyle(color: Colors.white30),
+                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
                   ),
                 ),
               ),
               TextField(
                 controller: emailController,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Email or Username',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                decoration: InputDecoration(
+                  labelText: t('email_or_username'),
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
                 ),
               ),
               TextField(
                 controller: passwordController,
                 obscureText: true,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
+                decoration: InputDecoration(
+                  labelText: t('password'),
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
                 ),
               ),
               if (isLoading)
@@ -413,7 +413,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                       
                       if (hubs.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('No hubs linked to this account')),
+                          SnackBar(content: Text(t('no_hubs_linked'))),
                         );
                       } else if (hubs.length == 1) {
                         // Auto-select single hub
@@ -452,7 +452,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Connection error: $e')),
+                      SnackBar(content: Text('${t('connection_error')}: $e')),
                     );
                   }
                 } finally {
@@ -662,7 +662,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    _isScanning ? t('searching_hubs') : 'Scan complete',
+                    _isScanning ? t('searching_hubs') : t('scan_complete'),
                     style: TextStyle(
                       color: subTextColor,
                       fontSize: size.height * 0.02,
@@ -687,13 +687,13 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                                       ),
                                       const SizedBox(height: 10),
                                       Text(
-                                        'Check "Local Network" permission in Settings',
+                                        t('check_permission'),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(color: subTextColor, fontSize: 12),
                                       ),
                                       TextButton(
                                         onPressed: () => Geolocator.openAppSettings(),
-                                        child: const Text('Open Settings'),
+                                        child: Text(t('open_settings')),
                                       ),
                                       TextButton(
                                         onPressed: _startDiscovery,

@@ -222,9 +222,11 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 // Logo
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -255,7 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Login to ${widget.hubName ?? "Hub"}',
+                  '${t('login_to')} ${widget.hubName ?? "Hub"}',
                   style: TextStyle(color: mutedColor, fontSize: 16),
                 ),
                 const SizedBox(height: 40),
@@ -382,6 +384,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),

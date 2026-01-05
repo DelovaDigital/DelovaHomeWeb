@@ -1019,6 +1019,57 @@ input:checked + .slider:before {
     gap: 20px;
 }
 
+/* Responsive Design */
+@media (max-width: 768px) {
+    .app-container {
+        padding: 10px;
+        gap: 15px;
+    }
+
+    .main-nav {
+        flex-direction: column;
+        gap: 15px;
+        padding: 1rem;
+    }
+
+    .main-nav ul {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .main-nav a {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.8rem;
+    }
+
+    .page-header h2 {
+        font-size: 1.8rem;
+    }
+
+    .dashboard-grid, .rooms-grid {
+        grid-template-columns: 1fr; /* Single column on mobile */
+    }
+
+    .device-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Smaller cards */
+        gap: 15px;
+    }
+    
+    /* Auth Pages */
+    .auth-card {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 20px;
+        border: none;
+    }
+}
+
 .auth-form label {
     display: block;
     text-align: left;

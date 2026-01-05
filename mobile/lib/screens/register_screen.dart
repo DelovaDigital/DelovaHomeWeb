@@ -48,7 +48,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_passwordController.text != _confirmController.text) {
-      setState(() => _errorMessage = t('password_mismatch')); // Add this key if missing
+      setState(() => _errorMessage = t('passwords_do_not_match'));
       return;
     }
 
@@ -116,9 +116,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 GlassCard(
                   child: Padding(
                     padding: const EdgeInsets.all(32.0),
@@ -264,6 +266,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),

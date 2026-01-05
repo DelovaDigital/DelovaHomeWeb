@@ -94,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Hub Settings (Timezone) ---
+    fetchHubSettings();
+
     // --- Energy Settings ---
     const energyForm = document.getElementById('energy-form');
     const solarCapacityInput = document.getElementById('solar-capacity');
@@ -524,5 +527,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert((window.t ? window.t('network_error') : 'Netwerkfout') + ': ' + e.message);
             }
         };
+    } // End of if(usersTable)
+}); // End of DOMContentLoaded
+
+async function fetchHubSettings() {
+    try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+            const settings = await res.json();
+            const elName = document.getElementById('hubName');
+            if (elName) elName.textContent = settings.name;
+            const elId = document.getElementById('hubId');
+            if (elId) elId.textContent = settings.hubId;
+            const elVer = document.getElementById('hubVersion');
+            if (elVer) elVer.textContent = settings.version;
+            
+            const tzSelect = document.getElementById('timezoneSelect');
+            if (tzSelect && settings.timezone) {
+                tzSelect.value = settings.timezone;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load settings:', e);
+    }
+}
+
+window.updateTimezone = async (tz) => {
+    try {
+        await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timezone: tz })
+        });
+    } catch (e) {
+        console.error('Failed to save timezone:', e);
+        alert('Failed to save timezone');
+    }
+};
     }
 });

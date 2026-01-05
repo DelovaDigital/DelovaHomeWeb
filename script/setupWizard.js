@@ -42,7 +42,29 @@ function startSetupWizard() {
 
                 <div class="setup-actions">
                     <button class="btn-secondary" onclick="nextStep(1)" data-i18n="back">Back</button>
-                    <button class="btn-primary" onclick="nextStep(3)" data-i18n="next">Next</button>
+                    <button class="btn-primary" onclick="nextStep(25)" data-i18n="next">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 2.5: Timezone -->
+            <div class="setup-step" id="step25">
+                <div class="setup-icon"><i class="fas fa-globe"></i></div>
+                <h2 class="setup-title" data-i18n="choose_timezone">Choose your Timezone</h2>
+                <p class="setup-desc" data-i18n="choose_timezone_desc">Select the timezone for your home.</p>
+                
+                <div style="max-width:300px; margin:0 auto 30px auto;">
+                     <select id="setup-timezone" style="width:100%; padding:15px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,0.05); color:var(--text); font-size:1.1rem; cursor:pointer;">
+                        <option value="Europe/Brussels">Brussels (CET/CEST)</option>
+                        <option value="Europe/London">London (GMT/BST)</option>
+                        <option value="America/New_York">New York (EST/EDT)</option>
+                        <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                        <option value="Asia/Tokyo">Tokyo (JST)</option>
+                        <option value="UTC">UTC</option>
+                    </select>
+                </div>
+                <div class="setup-actions">
+                    <button class="btn-secondary" onclick="nextStep(2)" data-i18n="back">Back</button>
+                    <button class="btn-primary" onclick="saveTimezoneAndNext()" data-i18n="next">Next</button>
                 </div>
             </div>
 
@@ -64,7 +86,7 @@ function startSetupWizard() {
                 </div>
 
                 <div class="setup-actions">
-                    <button class="btn-secondary" onclick="nextStep(2)" data-i18n="back">Back</button>
+                    <button class="btn-secondary" onclick="nextStep(25)" data-i18n="back">Back</button>
                     <button class="btn-primary" onclick="nextStep(4)" data-i18n="next">Next</button>
                 </div>
             </div>
@@ -244,9 +266,22 @@ function startSetupWizard() {
     // Expose functions to global scope for onclick handlers
     window.nextStep = (stepNum) => {
         document.querySelectorAll('.setup-step').forEach(el => el.classList.remove('active'));
-        document.getElementById(`step${stepNum}`).classList.add('active');
+        const step = document.getElementById(`step${stepNum}`);
+        if(step) step.classList.add('active');
     };
     
+    window.saveTimezoneAndNext = async () => {
+        const tz = document.getElementById('setup-timezone').value;
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ timezone: tz })
+            });
+        } catch(e) {}
+        window.nextStep(3);
+    };
+
     window.setLanguage = (lang) => {
         localStorage.setItem('language', lang);
         if (window.applyTranslations) window.applyTranslations();

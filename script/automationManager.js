@@ -12,6 +12,7 @@ class AutomationManager extends EventEmitter {
         super();
         this.automations = [];
         this.tasks = new Map(); // Map of automationId -> cronTask
+        this.timezone = process.env.TZ || 'Europe/Brussels';
         
         // Listen for device updates to trigger state-based automations
         deviceManager.on('device-updated', (device) => {
@@ -26,6 +27,7 @@ class AutomationManager extends EventEmitter {
 
     init() {
         console.log(`[Automation] Manager initialized. Server time: ${new Date().toString()}`);
+        console.log(`[Automation] Using Timezone: ${this.timezone}`);
         
         // Debug: Heartbeat to verify cron is running
         cron.schedule('* * * * *', () => {
@@ -55,6 +57,24 @@ class AutomationManager extends EventEmitter {
         } catch (e) {
             console.error('[Automation] Failed to save automations:', e);
         }
+    }
+
+    // --- Configuration ---
+
+    setTimezone(tz) {
+        if (!tz) return;
+        this.timezone = tz;
+        console.log(`[Automation] Timezone updated to: ${tz}. Rescheduling tasks...`);
+        this.reload();
+    }
+
+    reload() {
+        // Stop all existing tasks
+        for (const id of this.tasks.keys()) {
+            this.unregisterAutomation(id);
+        }
+        // Re-register all
+        this.automations.forEach(a => this.registerAutomation(a));
     }
 
     // --- CRUD Operations ---
@@ -116,7 +136,7 @@ class AutomationManager extends EventEmitter {
 
             try {
                 // Check if a timezone is configured in global config or environment
-                const timezone = process.env.TZ || 'Europe/Brussels'; // Default to CET if not set
+                const timezone = this.timezone; 
                 
                 const task = cron.schedule(automation.trigger.cron, () => {
                     console.log(`[Automation] Executing time-based automation: ${automation.name}`);

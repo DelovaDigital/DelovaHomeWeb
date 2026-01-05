@@ -501,6 +501,44 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// --- General Settings API ---
+app.get('/api/settings', (req, res) => {
+    // Return safe subset of hubConfig
+    res.json({
+        hubId: hubConfig.hubId,
+        name: hubConfig.name,
+        version: hubConfig.version,
+        timezone: hubConfig.timezone || 'Europe/Brussels'
+    });
+});
+
+app.post('/api/settings', express.json(), (req, res) => {
+    const { timezone, name } = req.body || {};
+    let changed = false;
+
+    if (timezone) {
+        hubConfig.timezone = timezone;
+        automationManager.setTimezone(timezone);
+        changed = true;
+    }
+    
+    if (name) {
+        hubConfig.name = name;
+        changed = true;
+    }
+
+    if (changed) {
+        try {
+            fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
+            res.json({ ok: true, settings: hubConfig });
+        } catch (e) {
+            res.status(500).json({ ok: false, message: 'Failed to save settings' });
+        }
+    } else {
+        res.json({ ok: true });
+    }
+});
+
 // Validate Session Endpoint
 app.get('/api/me', async (req, res) => {
     const userId = req.query.userId;
@@ -2131,6 +2169,9 @@ udpServer.bind(8888, () => {
     // Initialize Managers
     initHubConfigFromDB();
     automationManager.init();
+    if (hubConfig.timezone) {
+        automationManager.setTimezone(hubConfig.timezone);
+    }
 
     // Start PS5 Discovery
     ps5Manager.discover().then(devices => {

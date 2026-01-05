@@ -1640,6 +1640,16 @@ class DeviceManager extends EventEmitter {
             return null;
         }
 
+        // Compatibility Fix for Mobile App "Quick Actions"
+        // The mobile app sends 'set_power' with value 'on'/'off', but most devices expect 'turn_on'/'turn_off'.
+        if (command === 'set_power') {
+            const val = String(value).toLowerCase();
+            if (val === 'on' || val === 'true' || val === '1') command = 'turn_on';
+            else if (val === 'off' || val === 'false' || val === '0') command = 'turn_off';
+            else if (val === 'toggle') command = 'toggle';
+            console.log(`[DeviceManager] Normalized 'set_power' to '${command}' for ${device.name}`);
+        }
+
         console.log(`Controlling ${device.name} (${device.protocol}): ${command} = ${value}`);
 
         if (device.protocol === 'hue') {

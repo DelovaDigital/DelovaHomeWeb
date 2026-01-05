@@ -98,6 +98,20 @@
                                 
                                 <div class="setting-item">
                                     <div class="setting-info">
+                                        <span class="setting-label" data-i18n="timezone">Tijdzone</span>
+                                        <span class="setting-desc" data-i18n="timezone_desc">Selecteer de tijdzone van je locatie</span>
+                                    </div>
+                                    <select id="timezoneSelect" class="form-input" style="width: auto;" onchange="updateTimezone(this.value)">
+                                        <option value="Europe/Brussels">Brussels (CET/CEST)</option>
+                                        <option value="Europe/London">London (GMT/BST)</option>
+                                        <option value="America/New_York">New York (EST/EDT)</option>
+                                        <option value="America/Los_Angeles">Los Angeles (PST/PDT)</option>
+                                        <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                        <option value="UTC">UTC</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
                                         <span class="setting-label" data-i18n="language">Taal</span>
                                         <span class="setting-desc" data-i18n="language_desc">Selecteer de taal van de interface</span>
                                     </div>
@@ -119,7 +133,7 @@
                                 <p>DelovaHub Versie 1.0.0</p>
                                 <p>Beta</p>
                                 <button type="submit" class="btn btn-primary" id="btnCheckForUpdates" data-i18n="check_updates">Check for updates</button>
-                                <p style="margin-top: 10px; font-size: 0.8em; color: #888;">© 2025 DelovaHub. Alle rechten voorbehouden.</p>
+                                <p style="margin-top: 10px; font-size: 0.8em; color: #888;">© 2026 DelovaHub. Alle rechten voorbehouden.</p>
                             </div>
                         </div>
                     </div>

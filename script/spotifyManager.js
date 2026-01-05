@@ -171,6 +171,16 @@ class SpotifyManager {
     async getHeaders(userId) {
         if (!userId) return null;
 
+        // Handle non-integer userId (e.g. Cloud UUID)
+        // If userId is not a number, we can't query the local DB by Int Id.
+        // We need to resolve the UUID to a local ID or handle it gracefully.
+        // For now, if it's not a number, return null to avoid DB crash.
+        // Use strict regex to ensure it's only digits
+        if (!/^\d+$/.test(userId)) {
+            console.warn(`[Spotify] Invalid userId format: ${userId}. Expected integer.`);
+            return null;
+        }
+
         const pool = await db.getPool();
         const result = await pool.request()
             .input('userId', db.sql.Int, userId)

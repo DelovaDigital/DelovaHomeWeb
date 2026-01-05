@@ -8,8 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if we are on a protected page (anything inside /pages/)
     if (window.location.pathname.includes('/pages/')) {
         const userId = localStorage.getItem('userId');
-        if (!userId) {
-            // Not logged in, redirect to login page
+        // Check if userId exists AND is a valid integer (Local ID)
+        // Cloud IDs are UUIDs, Local IDs are Ints.
+        if (!userId || !/^\d+$/.test(userId)) {
+            // Not logged in or invalid ID type (e.g. Cloud UUID), redirect to login page
+            if (userId && !/^\d+$/.test(userId)) {
+                console.warn('Clearing invalid/cloud userId:', userId);
+                localStorage.removeItem('userId');
+            }
             window.location.href = '../index.html';
             return; // Stop execution
         }

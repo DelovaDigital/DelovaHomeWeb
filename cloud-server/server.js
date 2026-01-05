@@ -88,6 +88,21 @@ app.post('/api/auth/register', async (req, res) => {
     res.json({ success: true, message: 'User registered' });
 });
 
+app.post('/api/auth/select-hub', authenticate, (req, res) => {
+    const { hubId } = req.body;
+    const user = data.users.find(u => u.id === req.user.id);
+    
+    if (!user.hubs.includes(hubId)) {
+        return res.status(403).json({ error: 'Access denied to this hub' });
+    }
+    
+    // Update active_hub cookie
+    // We need to preserve the cloud_token cookie too, but we can't read it easily to set it again unless we parse it.
+    // Actually, we can just set the active_hub cookie.
+    res.setHeader('Set-Cookie', `active_hub=${hubId}; Path=/; SameSite=Lax`);
+    res.json({ success: true });
+});
+
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     // Allow login by username OR email
@@ -136,16 +151,18 @@ app.post('/api/login', async (req, res) => {
     
     // Auto-select first hub if available
     let hubInfo = null;
-    if (user.hubs.length > 0) {
-        const hub = data.hubs.find(h => h.id === user.hubs[0]);
-        if (hub) {
-            hubInfo = { id: hub.id, name: hub.name };
-            // Set active hub cookie
-            res.setHeader('Set-Cookie', [
-                `cloud_token=${token}; Path=/; HttpOnly; SameSite=Lax`,
-                `active_hub=${hub.id}; Path=/; SameSite=Lax`
-            ]);
-        }
+    const userHubs = user.hubs.map(hubId => {
+        const hub = data.hubs.find(h => h.id === hubId);
+        return hub ? { id: hub.id, name: hub.name } : null;
+    }).filter(h => h !== null);
+
+    if (userHubs.length > 0) {
+        hubInfo = userHubs[0];
+        // Set active hub cookie for the default one
+        res.setHeader('Set-Cookie', [
+            `cloud_token=${token}; Path=/; HttpOnly; SameSite=Lax`,
+            `active_hub=${hubInfo.id}; Path=/; SameSite=Lax`
+        ]);
     }
 
     // Return format expected by script.js, plus token for mobile app
@@ -154,6 +171,7 @@ app.post('/api/login', async (req, res) => {
         username: user.username, 
         userId: user.id,
         hubInfo: hubInfo,
+        hubs: userHubs, // Return all hubs
         token: token // Explicitly return token for non-cookie clients (Mobile App)
     });
 });

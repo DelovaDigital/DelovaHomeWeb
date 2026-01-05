@@ -8,14 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if we are on a protected page (anything inside /pages/)
     if (window.location.pathname.includes('/pages/')) {
         const userId = localStorage.getItem('userId');
-        // Check if userId exists AND is a valid integer (Local ID)
-        // Cloud IDs are UUIDs, Local IDs are Ints.
-        if (!userId || !/^\d+$/.test(userId)) {
-            // Not logged in or invalid ID type (e.g. Cloud UUID), redirect to login page
-            if (userId && !/^\d+$/.test(userId)) {
-                console.warn('Clearing invalid/cloud userId:', userId);
-                localStorage.removeItem('userId');
-            }
+        
+        if (!userId) {
+            // Not logged in, redirect to login page
             window.location.href = '../index.html';
             return; // Stop execution
         }
@@ -200,6 +195,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('username', data.username);
                 localStorage.setItem('userId', data.userId);
                 
+                // Check for multiple hubs (Cloud Login)
+                if (data.hubs && data.hubs.length > 1) {
+                    const form = document.querySelector('.auth-form');
+                    if (form) {
+                        form.innerHTML = '<h3 style="margin-bottom:15px;">Select Hub</h3><div class="hub-list" style="display:flex;flex-direction:column;gap:10px;"></div>';
+                        const list = form.querySelector('.hub-list');
+                        
+                        data.hubs.forEach(hub => {
+                            const btn = document.createElement('button');
+                            btn.className = 'buttonLogin'; // Reuse existing class
+                            btn.textContent = hub.name;
+                            btn.style.width = '100%';
+                            btn.style.padding = '12px';
+                            btn.style.cursor = 'pointer';
+                            btn.onclick = async (ev) => {
+                                ev.preventDefault();
+                                try {
+                                    // Call select-hub API
+                                    await fetch('/api/auth/select-hub', {
+                                        method: 'POST',
+                                        headers: { 
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${data.token}`
+                                        },
+                                        body: JSON.stringify({ hubId: hub.id })
+                                    });
+                                    
+                                    localStorage.setItem('hubId', hub.id);
+                                    localStorage.setItem('hubName', hub.name);
+                                    window.location.href = '../pages/dashboard.html';
+                                } catch (err) {
+                                    console.error('Failed to select hub', err);
+                                    alert('Failed to select hub');
+                                }
+                            };
+                            list.appendChild(btn);
+                        });
+                        return; // Stop auto-redirect
+                    }
+                }
+
                 if (data.hubInfo) {
                     localStorage.setItem('hubId', data.hubInfo.id);
                     localStorage.setItem('hubName', data.hubInfo.name);

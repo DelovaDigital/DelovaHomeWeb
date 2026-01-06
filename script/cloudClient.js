@@ -11,6 +11,12 @@ class CloudClient {
         this.ws = null;
         this.config = null;
         this.reconnectInterval = 5000;
+        this.maxReconnectInterval = 60000; // Max 60 seconds between retries
+        this.reconnectAttempts = 0;
+        this.reconnectTimer = null;
+        this.pingInterval = null;
+        this.pingTimeout = null;
+        this.isReconnecting = false;
     }
 
     loadConfig() {
@@ -103,37 +109,174 @@ class CloudClient {
             return;
         }
 
+        // Prevent multiple simultaneous connection attempts
+        if (this.isReconnecting) {
+            console.log('[Cloud] Connection attempt already in progress, skipping...');
+            return;
+        }
+
+        this.isReconnecting = true;
+
+        // Clean up any existing connection
+        this.cleanup();
+
         const { cloudUrl, hubId, hubSecret } = this.config;
         // Convert http/https to ws/wss
         const wsUrl = cloudUrl.replace(/^http/, 'ws') + `?id=${hubId}&secret=${hubSecret}`;
 
-        console.log(`[Cloud] Connecting to ${wsUrl}...`);
-        // Allow self-signed certs for internal/dev setups
-        this.ws = new WebSocket(wsUrl, { rejectUnauthorized: false });
+        console.log(`[Cloud] Connecting to ${wsUrl}... (attempt ${this.reconnectAttempts + 1})`);
+        
+        try {
+            // Allow self-signed certs for internal/dev setups
+            this.ws = new WebSocket(wsUrl, { 
+                rejectUnauthorized: false,
+                handshakeTimeout: 10000 // 10 second timeout for connection
+            });
 
-        this.ws.on('open', () => {
-            console.log('[Cloud] Connected to Cloud Server');
-        });
+            this.ws.on('open', () => {
+                console.log('[Cloud] Connected to Cloud Server');
+                this.reconnectAttempts = 0; // Reset attempts on successful connection
+                this.isReconnecting = false;
+                this.startHeartbeat();
+            });
 
-        this.ws.on('message', async (data) => {
+            this.ws.on('message', async (data) => {
+                try {
+                    const msg = JSON.parse(data);
+                    
+                    // Handle pong response
+                    if (msg.type === 'PONG') {
+                        if (this.pingTimeout) {
+                            clearTimeout(this.pingTimeout);
+                            this.pingTimeout = null;
+                        }
+                        return;
+                    }
+                    
+                    if (msg.type === 'REQUEST') {
+                        this.handleRequest(msg.payload);
+                    }
+                } catch (e) {
+                    console.error('[Cloud] Error handling message:', e);
+                }
+            });
+
+            this.ws.on('close', (code, reason) => {
+                console.log(`[Cloud] Disconnected (code: ${code}, reason: ${reason || 'none'})`);
+                this.isReconnecting = false;
+                this.stopHeartbeat();
+                this.scheduleReconnect();
+            });
+
+            this.ws.on('error', (err) => {
+                console.error('[Cloud] Connection error:', err.message);
+                this.isReconnecting = false;
+                // Don't call cleanup here as 'close' will be fired after 'error'
+            });
+
+            this.ws.on('ping', () => {
+                // Respond to server pings
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.pong();
+                }
+            });
+
+        } catch (err) {
+            console.error('[Cloud] Failed to create WebSocket:', err.message);
+            this.isReconnecting = false;
+            this.scheduleReconnect();
+        }
+    }
+
+    cleanup() {
+        // Clear any pending reconnect timers
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+
+        // Stop heartbeat
+        this.stopHeartbeat();
+
+        // Close existing WebSocket connection
+        if (this.ws) {
             try {
-                const msg = JSON.parse(data);
-                if (msg.type === 'REQUEST') {
-                    this.handleRequest(msg.payload);
+                this.ws.removeAllListeners();
+                if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+                    this.ws.terminate();
                 }
             } catch (e) {
-                console.error('[Cloud] Error handling message:', e);
+                console.error('[Cloud] Error cleaning up WebSocket:', e.message);
             }
-        });
+            this.ws = null;
+        }
+    }
 
-        this.ws.on('close', () => {
-            console.log('[Cloud] Disconnected. Reconnecting in 5s...');
-            setTimeout(() => this.connect(), this.reconnectInterval);
-        });
+    scheduleReconnect() {
+        // Don't schedule if already scheduled
+        if (this.reconnectTimer) {
+            return;
+        }
 
-        this.ws.on('error', (err) => {
-            console.error('[Cloud] Connection error:', err.message);
-        });
+        // Calculate reconnect delay with exponential backoff
+        const delay = Math.min(
+            this.reconnectInterval * Math.pow(1.5, this.reconnectAttempts),
+            this.maxReconnectInterval
+        );
+        
+        this.reconnectAttempts++;
+        console.log(`[Cloud] Reconnecting in ${Math.round(delay/1000)}s... (attempt ${this.reconnectAttempts})`);
+        
+        this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
+            this.connect();
+        }, delay);
+    }
+
+    startHeartbeat() {
+        // Stop any existing heartbeat
+        this.stopHeartbeat();
+
+        // Send ping every 30 seconds
+        this.pingInterval = setInterval(() => {
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                // Set a timeout to detect if pong is not received
+                this.pingTimeout = setTimeout(() => {
+                    console.log('[Cloud] Ping timeout - connection appears dead');
+                    this.ws.terminate(); // This will trigger 'close' event
+                }, 10000); // 10 second timeout for pong response
+
+                try {
+                    this.ws.send(JSON.stringify({ type: 'PING', timestamp: Date.now() }));
+                } catch (e) {
+                    console.error('[Cloud] Failed to send ping:', e.message);
+                    clearTimeout(this.pingTimeout);
+                    this.pingTimeout = null;
+                }
+            }
+        }, 30000);
+    }
+
+    stopHeartbeat() {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
+        if (this.pingTimeout) {
+            clearTimeout(this.pingTimeout);
+            this.pingTimeout = null;
+        }
+    }
+
+    disconnect() {
+        console.log('[Cloud] Manually disconnecting...');
+        this.reconnectAttempts = 0; // Reset so we don't keep trying to reconnect
+        // Clear scheduled reconnects
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        this.cleanup();
     }
 
     async handleRequest(payload) {
@@ -250,7 +393,31 @@ class CloudClient {
     }
 
     isConnected() {
-        return this.ws && this.ws.readyState === WebSocket.OPEN;
+        return this.ws && this.ws.readyState === WebSocket.OPEN && !this.isReconnecting;
+    }
+
+    getConnectionStatus() {
+        if (!this.config) {
+            return { connected: false, status: 'not_configured', attempts: 0 };
+        }
+        
+        if (!this.ws) {
+            return { connected: false, status: 'disconnected', attempts: this.reconnectAttempts };
+        }
+
+        const stateMap = {
+            [WebSocket.CONNECTING]: 'connecting',
+            [WebSocket.OPEN]: 'connected',
+            [WebSocket.CLOSING]: 'closing',
+            [WebSocket.CLOSED]: 'closed'
+        };
+
+        return {
+            connected: this.ws.readyState === WebSocket.OPEN,
+            status: stateMap[this.ws.readyState] || 'unknown',
+            attempts: this.reconnectAttempts,
+            isReconnecting: this.isReconnecting
+        };
     }
 }
 

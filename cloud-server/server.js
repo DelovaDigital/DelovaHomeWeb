@@ -429,9 +429,22 @@ wss.on('connection', (ws, req) => {
     console.log(`Hub connected: ${hubId}`);
     connectedHubs.set(hubId, ws);
 
+    // Add heartbeat monitoring
+    ws.isAlive = true;
+    
+    ws.on('pong', () => {
+        ws.isAlive = true;
+    });
+
     ws.on('message', (message) => {
         try {
             const msg = JSON.parse(message);
+            
+            // Handle PING from hub
+            if (msg.type === 'PING') {
+                ws.send(JSON.stringify({ type: 'PONG', timestamp: Date.now() }));
+                return;
+            }
             
             if (msg.type === 'RESPONSE') {
                 const { id, status, headers, data } = msg.payload;
@@ -469,12 +482,33 @@ wss.on('connection', (ws, req) => {
         console.log(`Hub disconnected: ${hubId}`);
         connectedHubs.delete(hubId);
     });
+
+    ws.on('error', (err) => {
+        console.error(`Hub ${hubId} connection error:`, err.message);
+    });
 });
 
 // Debug endpoint to list connected hubs
 app.get('/api/debug/hubs', (req, res) => {
     const hubs = Array.from(connectedHubs.keys());
     res.json({ count: hubs.length, hubs });
+});
+
+// Server-side heartbeat to detect stale connections
+const heartbeatInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) {
+            console.log('Terminating stale connection');
+            return ws.terminate();
+        }
+        
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 45000); // Check every 45 seconds
+
+wss.on('close', () => {
+    clearInterval(heartbeatInterval);
 });
 
 server.listen(PORT, () => {

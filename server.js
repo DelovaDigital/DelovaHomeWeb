@@ -350,13 +350,26 @@ app.get('/api/system/sync-db', async (req, res) => {
 });
 
 app.get('/api/cloud/status', (req, res) => {
-    const isConnected = cloudClient.isConnected();
+    const status = cloudClient.getConnectionStatus();
     const config = cloudClient.config || {};
     res.json({ 
-        connected: isConnected, 
+        ...status,
         cloudUrl: config.cloudUrl,
         hubId: hubConfig.hubId 
     });
+});
+
+app.post('/api/cloud/reconnect', (req, res) => {
+    try {
+        console.log('[API] Manual cloud reconnect requested');
+        cloudClient.disconnect(); // Clean disconnect
+        setTimeout(() => {
+            cloudClient.connect(); // Reconnect after a short delay
+        }, 1000);
+        res.json({ success: true, message: 'Reconnect initiated' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
 });
 
 // Start mDNS Advertisement

@@ -903,55 +903,64 @@ app.get('/api/spotify/me', requireSpotifyUser, async (req, res) => {
 
 // Helper to resolve Cast Device ID to Spotify Device ID
 async function resolveSpotifyDeviceId(userId, deviceId) {
-    if (typeof deviceId === 'string' && deviceId.startsWith('cast:')) {
-        const ip = deviceId.split('cast:')[1];
-        console.log(`[Spotify] Launching on Cast device: ${ip}`);
+    // Handle special local device IDs (cast:IP or sonos:UUID)
+    if (typeof deviceId === 'string' && (deviceId.startsWith('cast:') || deviceId.startsWith('sonos:'))) {
+        const isCast = deviceId.startsWith('cast:');
+        const id = deviceId.split(':')[1]; // IP or UUID
+        let localDevice = null;
         
-        try {
-            await deviceManager.launchSpotifyOnCastDevice(ip);
-        } catch (e) {
-            console.error('Failed to launch Spotify on Cast device:', e);
+        if (isCast) {
+             const d = deviceManager.getCastDevices().find(d => d.ip === id);
+             if (d) localDevice = { name: d.name, type: 'cast' };
+        } else {
+             // Sonos
+             const devices = sonosManager.getDiscoveredDevices();
+             const d = devices.find(d => d.uuid === id);
+             if (d) localDevice = { name: d.name, type: 'sonos' };
         }
+
+        if (!localDevice) {
+            console.warn(`[Spotify] Could not find local device details for ${deviceId}`);
+            return deviceId; 
+        }
+
+        console.log(`[Spotify] Resolving Spotify Connect ID for '${localDevice.name}' (${localDevice.type})...`);
         
-        const castDev = deviceManager.getCastDevices().find(d => d.ip === ip);
-        if (castDev) {
-            console.log(`[Spotify] Waiting for ${castDev.name} to appear in Spotify Connect...`);
-            
-            // Check if we have a valid token first
+        if (isCast) {
             try {
-                const devices = await spotifyManager.getDevices(userId);
-                if (devices.length === 0) {
-                    console.warn('[Spotify] Warning: No devices found initially. Ensure you are logged in to Spotify on the target device with the SAME account.');
-                }
-            } catch (e) {}
-
-            for (let i = 0; i < 20; i++) {
-                await new Promise(r => setTimeout(r, 1000));
-                const devices = await spotifyManager.getDevices(userId);
-                
-                // Debug: Print available devices every 5 seconds
-                if (i % 5 === 0) {
-                     console.log(`[Spotify] Available devices: ${devices.map(d => d.name).join(', ')}`);
-                }
-
-                const match = devices.find(d => 
-                    d.name === castDev.name || 
-                    d.name.toLowerCase().includes(castDev.name.toLowerCase()) ||
-                    castDev.name.toLowerCase().includes(d.name.toLowerCase())
-                );
-
-                if (match) {
-                    console.log(`[Spotify] Found device ID: ${match.id} (matched ${match.name})`);
-                    return match.id;
-                }
+                // Only Cast needs explicit launch
+                await deviceManager.launchSpotifyOnCastDevice(id);
+            } catch (e) {
+                console.warn('Failed to launch Spotify on Cast device:', e);
             }
-            console.warn(`[Spotify] Timeout waiting for ${castDev.name}.`);
-            const finalDevices = await spotifyManager.getDevices(userId);
-            console.warn(`[Spotify] Final available devices: ${finalDevices.map(d => d.name).join(', ')}`);
-            
-            throw new Error(`Device did not appear in Spotify Connect. Please ensure the Spotify app on '${castDev.name}' is logged into YOUR account.`);
         }
-        throw new Error('Cast device did not appear in Spotify Connect list');
+        
+        // Polling loop to wait for device to appear in Spotify Connect
+        for (let i = 0; i < 20; i++) {
+            // Check cache first if possible, but here we call API
+            // Add slight delay before first check if launching
+            if (i > 0) await new Promise(r => setTimeout(r, 1000));
+            
+            const devices = await spotifyManager.getDevices(userId);
+            
+            // Loose matching for device names
+            // Sonos names often match exactly, but might have encoding diffs or extra spaces
+            const match = devices.find(d => 
+                d.name === localDevice.name || 
+                d.name.toLowerCase().includes(localDevice.name.toLowerCase()) ||
+                localDevice.name.toLowerCase().includes(d.name.toLowerCase())
+            );
+
+            if (match) {
+                console.log(`[Spotify] Found resolved ID: ${match.id} (matched ${match.name})`);
+                return match.id;
+            }
+        }
+        
+        console.warn(`[Spotify] Timeout waiting for '${localDevice.name}' to appear.`);
+        // If we can't find it, we return the original ID, which will likely fail in Spotify API,
+        // but it allows the 'transfer-or-sonos' endpoint to catch it later if using that flow.
+        return deviceId;
     }
     return deviceId;
 }
@@ -967,14 +976,14 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
             targetDeviceId = await resolveSpotifyDeviceId(req.userId, targetDeviceId);
         }
 
-        if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined, targetDeviceId);
-        else if (command === 'pause') await spotifyManager.pause(req.userId);
-        else if (command === 'next') await spotifyManager.next(req.userId);
-        else if (command === 'previous') await spotifyManager.previous(req.userId);
-        else if (command === 'set_volume') await spotifyManager.setVolume(req.userId, value);
-        else if (command === 'transfer') await spotifyManager.transferPlayback(req.userId, targetDeviceId);
-        else if (command === 'play_context') await spotifyManager.playContext(req.userId, value, targetDeviceId);
-        else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value, targetDeviceId);
+        if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined, targetDeviceId, req.username);
+        else if (command === 'pause') await spotifyManager.pause(req.userId, req.username);
+        else if (command === 'next') await spotifyManager.next(req.userId, req.username);
+        else if (command === 'previous') await spotifyManager.previous(req.userId, req.username);
+        else if (command === 'set_volume') await spotifyManager.setVolume(req.userId, value, req.username);
+        else if (command === 'transfer') await spotifyManager.transferPlayback(req.userId, targetDeviceId, req.username);
+        else if (command === 'play_context') await spotifyManager.playContext(req.userId, value, targetDeviceId, req.username);
+        else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value, targetDeviceId, req.username);
         else return res.status(400).json({ ok: false, message: `Invalid command: ${command}`});
 
         res.json({ ok: true });
@@ -1040,27 +1049,42 @@ app.get('/api/spotify/devices', requireSpotifyUser, async (req, res) => {
         
         // Get local Cast devices
         const castDevices = deviceManager.getCastDevices();
-        
-        // Merge Cast devices if they aren't already in the Spotify list
-        // Spotify devices usually have a name. We match by name or IP if possible (but Spotify API doesn't give IP).
-        // So we just check by name.
+        // Get local Sonos devices
+        const sonosDevices = sonosManager.getDiscoveredDevices();
         
         const mergedDevices = [...spotifyDevices];
         
+        // Merge Cast Devices
         castDevices.forEach(cast => {
-            // Check if this cast device is already in the spotify list (by name)
             const exists = spotifyDevices.some(d => d.name === cast.name);
             if (!exists) {
                 mergedDevices.push({
-                    id: `cast:${cast.ip}`, // Special ID to trigger launch
+                    id: `cast:${cast.ip}`,
                     is_active: false,
                     is_private_session: false,
                     is_restricted: false,
                     name: cast.name,
-                    type: 'CastAudio', // Or 'CastVideo'
+                    type: 'CastAudio',
                     volume_percent: cast.state.volume || 100,
-                    is_cast: true, // Custom flag
-                    ip: cast.ip
+                    is_cast: true
+                });
+            }
+        });
+
+        // Merge Sonos Devices
+        sonosDevices.forEach(sonos => {
+            // Check if already in list (Spotify Connect often finds them)
+            const exists = spotifyDevices.some(d => d.name === sonos.name || d.name.includes(sonos.name));
+            if (!exists) {
+                mergedDevices.push({
+                    id: `sonos:${sonos.uuid}`,
+                    is_active: false,
+                    is_private_session: false,
+                    is_restricted: false,
+                    name: sonos.name, // Use local name
+                    type: 'Speaker', // Standard Spotify type
+                    volume_percent: 50, // Default as we might not know it easily without querying
+                    is_sonos: true // Custom flag
                 });
             }
         });

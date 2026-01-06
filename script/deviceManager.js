@@ -402,9 +402,15 @@ class DeviceManager extends EventEmitter {
             this.processMdnsService(service, 'homekit');
         });
 
+        /*
+        // Disable Spotify Connect mDNS discovery to prevent duplicate devices.
+        // Spotify devices are handled via the Spotify Web API.
         this.bonjour.find({ type: 'spotify-connect' }, (service) => {
-            this.processMdnsService(service, 'spotify');
+            if (process.env.ENABLE_SPOTIFY_MDNS) {
+                this.processMdnsService(service, 'spotify');
+            }
         });
+        */
 
         // Samsung TV (AirPlay)
         this.bonjour.find({ type: 'airplay' }, (service) => {

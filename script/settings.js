@@ -564,5 +564,3 @@ window.updateTimezone = async (tz) => {
         alert('Failed to save timezone');
     }
 };
-    }
-});

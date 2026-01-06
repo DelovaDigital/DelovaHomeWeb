@@ -2223,6 +2223,7 @@ class DeviceManager extends EventEmitter {
 
         if (pythonPath === 'python3' || pythonPath === 'python') {
              console.warn(`[DeviceManager] Virtual env python not found, falling back to '${pythonPath}'`);
+             console.debug(`[DeviceManager] Checked paths: ${JSON.stringify(candidates)}`);
         }
 
         const scriptPath = path.join(__dirname, 'atv_service.py');

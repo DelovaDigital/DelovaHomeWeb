@@ -657,7 +657,10 @@ import '../utils/app_translations.dart';
                         children: [
                           IconButton(
                             icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 36),
-                            onPressed: () => _apiService.spotifyControl('previous'),
+                            onPressed: () async {
+                              await _apiService.spotifyControl('previous');
+                              await _fetchSpotifyStatus();
+                            },
                           ),
                           Container(
                             decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
@@ -668,12 +671,18 @@ import '../utils/app_translations.dart';
                                 size: 32,
                               ),
                               padding: const EdgeInsets.all(12),
-                              onPressed: () => _apiService.spotifyControl(_spotifyStatus!['is_playing'] ? 'pause' : 'play'),
+                              onPressed: () async {
+                                await _apiService.spotifyControl(_spotifyStatus!['is_playing'] ? 'pause' : 'play');
+                                await _fetchSpotifyStatus();
+                              },
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 36),
-                            onPressed: () => _apiService.spotifyControl('next'),
+                            onPressed: () async {
+                              await _apiService.spotifyControl('next');
+                              await _fetchSpotifyStatus();
+                            },
                           ),
                         ],
                       ),
@@ -730,10 +739,14 @@ import '../utils/app_translations.dart';
                 ],
               ),
               const SizedBox(height: 24),
+              /*
               Text('Spotify', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
               const SizedBox(height: 12),
+              */
+              /*
               _buildSpotifyCard(),
               const SizedBox(height: 24),
+              */
               if (_favoriteDevices.isNotEmpty) ...[
                 Text('Favorieten', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
                 const SizedBox(height: 12),

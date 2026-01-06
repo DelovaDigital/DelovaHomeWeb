@@ -373,14 +373,16 @@ class ApiService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
+      final username = prefs.getString('username');
       final body = {
         'command': command,
         'value': value,
         if (userId != null) 'userId': userId,
+        if (username != null) 'username': username,
       };
       await http.post(
         Uri.parse('$baseUrl/api/spotify/control'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode(body),
       );
     } catch (e) {
@@ -393,13 +395,15 @@ class ApiService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
+      final username = prefs.getString('username');
       final body = {
         'deviceId': deviceId,
         if (userId != null) 'userId': userId,
+        if (username != null) 'username': username,
       };
       await http.post(
         Uri.parse('$baseUrl/api/spotify/transfer-or-sonos'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
         body: json.encode(body),
       );
     } catch (e) {

@@ -5,6 +5,8 @@ import '../widgets/device_card.dart';
 import '../widgets/gradient_background.dart';
 import '../utils/app_translations.dart';
 
+import '../services/api_service.dart';
+
 class RoomDetailScreen extends StatefulWidget {
   final String roomName;
   final List<Device> devices;
@@ -22,7 +24,17 @@ class RoomDetailScreen extends StatefulWidget {
 }
 
 class _RoomDetailScreenState extends State<RoomDetailScreen> {
+  final ApiService _apiService = ApiService();
   String _lang = 'nl';
+
+  Future<void> _turnOffRoom() async {
+    for (var device in widget.devices) {
+      if (device.status.isOn) {
+        await _apiService.sendCommand(device.id, 'set_power', {'value': 'off'});
+      }
+    }
+    widget.onRefresh();
+  }
 
   @override
   void initState() {
@@ -55,6 +67,13 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: textColor),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.power_settings_new),
+            tooltip: 'Turn off room',
+            onPressed: _turnOffRoom,
+          ),
+        ],
       ),
       body: GradientBackground(
         child: SafeArea(

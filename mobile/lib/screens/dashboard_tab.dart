@@ -560,53 +560,63 @@ import '../utils/app_translations.dart';
               if (_spotifyStatus != null && _spotifyStatus!['is_playing'] == true)
                 Container(
                   margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.green.shade900.withValues(alpha: 0.8), Colors.green.shade700.withValues(alpha: 0.8)],
+                      colors: [Colors.green.shade800, Colors.black],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.music_note, color: Colors.white),
-                          const SizedBox(width: 8),
-                          Text(t('now_playing'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(12)),
+                            child: const Icon(Icons.music_note, color: Colors.greenAccent, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('Now Playing', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 14)),
                           const Spacer(),
                           IconButton(
-                            icon: const Icon(Icons.devices, color: Colors.white),
+                            icon: const Icon(Icons.speaker_group_outlined, color: Colors.white70),
                             onPressed: _showSpotifyDevicesDialog,
+                            tooltip: 'Connect Device',
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Row(
                         children: [
-                          if (_spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null && _spotifyStatus!['item']['album']['images'].isNotEmpty)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                _spotifyStatus!['item']['album']['images'][0]['url'],
-                                width: 64,
-                                height: 64,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          else
-                            Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.music_note, color: Colors.white54),
+                          Hero(
+                            tag: 'spotify_art',
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: _spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null && _spotifyStatus!['item']['album']['images'].isNotEmpty
+                                  ? Image.network(
+                                      _spotifyStatus!['item']['album']['images'][0]['url'],
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Container(
+                                      width: 80,
+                                      height: 80,
+                                      color: Colors.white10,
+                                      child: const Icon(Icons.music_note, color: Colors.white54, size: 40),
+                                    ),
                             ),
+                          ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
@@ -614,14 +624,14 @@ import '../utils/app_translations.dart';
                               children: [
                                 Text(
                                   _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : t('unknown_title'),
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 6),
                                 Text(
                                   _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['artists'][0]['name'] : t('unknown_artist'),
-                                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                                  style: const TextStyle(color: Colors.white70, fontSize: 15),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -630,24 +640,39 @@ import '../utils/app_translations.dart';
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
+                      // Progress Bar placeholder (visual only for now)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: 0.3, // TODO: Make dynamic
+                          backgroundColor: Colors.white12,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent),
+                          minHeight: 4,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.skip_previous, color: Colors.white, size: 32),
+                            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 36),
                             onPressed: () => _apiService.spotifyControl('previous'),
                           ),
-                          IconButton(
-                            icon: Icon(
-                              _spotifyStatus!['is_playing'] ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                              color: Colors.white,
-                              size: 48,
+                          Container(
+                            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                            child: IconButton(
+                              icon: Icon(
+                                _spotifyStatus!['is_playing'] ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                color: Colors.black,
+                                size: 32,
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              onPressed: () => _apiService.spotifyControl(_spotifyStatus!['is_playing'] ? 'pause' : 'play'),
                             ),
-                            onPressed: () => _apiService.spotifyControl(_spotifyStatus!['is_playing'] ? 'pause' : 'play'),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.skip_next, color: Colors.white, size: 32),
+                            icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 36),
                             onPressed: () => _apiService.spotifyControl('next'),
                           ),
                         ],
@@ -655,6 +680,7 @@ import '../utils/app_translations.dart';
                     ],
                   ),
                 )
+
               else
                 Container(
                   margin: const EdgeInsets.only(bottom: 20),
@@ -766,48 +792,80 @@ import '../utils/app_translations.dart';
       }
     }
     Widget _buildStatusCard({required IconData icon, required String title, required String subtitle, required Color color}) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final textColor = isDark ? Colors.white : Colors.black87;
-      final subTextColor = isDark ? Colors.white70 : Colors.black54;
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+    final cardColor = theme.colorScheme.surfaceContainer;
 
-      return Card(
+    return AspectRatio(
+      aspectRatio: 1, // Square shape
+      child: Card(
+        color: cardColor,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), // More rounded
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 12),
-            Text(title, style: TextStyle(color: subTextColor, fontSize: 14)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold))
-          ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, 
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(10),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ),
+            ],
+          ),
         ),
-      );
-    }
+      ),
+    );
+  }
 
     Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final textColor = isDark ? Colors.white70 : Colors.black54;
-      final iconColor = isDark ? Colors.white : Colors.black87;
-
-      return GestureDetector(
-        onTap: onTap,
-        child: Column(
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Container(
-                width: 64,
-                height: 64,
-                alignment: Alignment.center,
-                child: Icon(icon, color: iconColor, size: 28),
+      final theme = Theme.of(context);
+      
+      return Expanded(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Column(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(icon, color: theme.colorScheme.onSurfaceVariant, size: 26),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(label, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w500))
-          ],
+              const SizedBox(height: 8),
+              Text(
+                label, 
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface, 
+                  fontSize: 12, 
+                  fontWeight: FontWeight.w500
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+            ],
+          ),
         ),
       );
     }
+
     IconData _getWeatherIcon(int? code) {
       if (code == null) {
         return Icons.cloud;

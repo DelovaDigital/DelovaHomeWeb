@@ -26,6 +26,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   final ApiService _apiService = ApiService();
   late double _currentBrightness;
   late double _currentVolume;
+  int _colorTemp = 300; // Default mireds
   WebViewController? _webViewController;
   String _lang = 'nl';
 
@@ -304,6 +305,120 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
+  }
+
+  Widget _buildSlider(double value, double min, double max, Function(double) onChanged, Function(double) onChangeEnd, {IconData? icon, Color? activeColor}) {
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          if (icon != null) ...[Icon(icon, color: Theme.of(context).colorScheme.onSurfaceVariant), const SizedBox(width: 12)],
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 6,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+                activeTrackColor: activeColor ?? Theme.of(context).colorScheme.primary,
+                inactiveTrackColor: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.2),
+                thumbColor: Colors.white,
+              ),
+              child: Slider(
+                value: value.clamp(min, max),
+                min: min,
+                max: max,
+                onChanged: onChanged,
+                onChangeEnd: onChangeEnd,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  Widget _buildLightControls() {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        
+        // Brightness Slider
+        _buildSlider(
+          _currentBrightness, 0, 100,
+          (v) => setState(() => _currentBrightness = v),
+          (v) => _sendCommand('set_brightness', {'value': v.toInt()}),
+          icon: Icons.brightness_6,
+          activeColor: Colors.amber,
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Color Temp or Color
+        if (widget.device.type.toLowerCase().contains('hue')) ...[
+          _buildSlider(
+             _colorTemp.toDouble(), 153, 500,
+             (v) => setState(() => _colorTemp = v.toInt()),
+             (v) => _sendCommand('set_color_temp', {'value': v.toInt()}),
+             icon: Icons.thermostat,
+             activeColor: Colors.orangeAccent,
+          ),
+          const SizedBox(height: 20),
+        ],
+
+        // Color Palette
+        if (widget.device.type.toLowerCase() == 'hue' || widget.device.type.toLowerCase().contains('light'))
+          SizedBox(
+            height: 60,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _colorButton(Colors.white),
+                _colorButton(Colors.red),
+                _colorButton(Colors.orange),
+                _colorButton(Colors.amber),
+                _colorButton(Colors.yellow),
+                _colorButton(Colors.green),
+                _colorButton(Colors.teal),
+                _colorButton(Colors.blue),
+                _colorButton(Colors.indigo),
+                _colorButton(Colors.purple),
+                _colorButton(Colors.pink),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _colorButton(Color color) {
+    return GestureDetector(
+      onTap: () {
+        _sendCommand('set_color', {
+            'value': {
+              'r': (color.r * 255).round(),
+              'g': (color.g * 255).round(),
+              'b': (color.b * 255).round()
+            }
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 12),
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white24, width: 2),
+        ),
+      ),
+    );
   }
 
   @override
@@ -806,27 +921,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
               // --- Light Controls ---
               if (isLight && isPoweredOn) ...[
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Brightness', style: TextStyle(color: subTextColor)),
-                ),
-                Slider(
-                  value: _currentBrightness.clamp(0, 100),
-                  min: 0,
-                  max: 100,
-                  activeColor: Colors.cyanAccent,
-                  onChanged: (val) {
-                    setState(() => _currentBrightness = val);
-                  },
-                  onChangeEnd: (val) => _sendCommand('set_brightness', {'value': val.toInt()}),
-                ),
-                const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Color', style: TextStyle(color: subTextColor)),
-                ),
-                const SizedBox(height: 10),
-                _buildColorPalette(),
+                _buildLightControls(),
               ],
 
               // --- Media/Volume Controls ---
@@ -1090,52 +1185,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     );
   }
 
-  Widget _buildColorPalette() {
-    final colors = [
-      Colors.white,
-      Colors.red,
-      Colors.green,
-      Colors.blue,
-      Colors.purple,
-      Colors.orange,
-      Colors.teal,
-    ];
 
-    return SizedBox(
-      height: 60,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: colors.length,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () {
-              // Convert color to hex or RGB and send
-              // For now, just sending a dummy 'set_color' command
-              // You'd need to implement color conversion logic here
-              final color = colors[index];
-              _sendCommand('set_color', {
-                'value': {
-                  'r': (color.r * 255).round(), 
-                  'g': (color.g * 255).round(), 
-                  'b': (color.b * 255).round()
-                }
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 16),
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: colors[index],
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24, width: 2),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildRemoteControl() {
     final isDark = Theme.of(context).brightness == Brightness.dark;

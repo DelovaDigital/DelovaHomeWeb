@@ -84,6 +84,17 @@ class _RoomsTabState extends State<RoomsTab> {
     }
   }
 
+  Future<void> _turnOffRoom(List<Device> devices) async {
+    for (var device in devices) {
+      if (device.status.isOn) {
+        // Try both set_power and turn_off depending on what usually works, 
+        // but set_power: off is the standard for this project based on api_service.
+        await _apiService.sendCommand(device.id, 'set_power', {'value': 'off'});
+      }
+    }
+    _fetchDevices(silent: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -140,59 +151,84 @@ class _RoomsTabState extends State<RoomsTab> {
                           final devices = _rooms[roomName]!;
                           final displayRoomName = roomName == 'Unassigned' ? t('unassigned') : roomName;
                           final theme = Theme.of(context);
+                          final activeCount = devices.where((d) => d.status.isOn).length;
+                          final hasActive = activeCount > 0;
                           
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RoomDetailScreen(
-                                    roomName: roomName,
-                                    devices: devices,
-                                    onRefresh: () => _fetchDevices(),
+                          return Card(
+                            elevation: hasActive ? 2 : 0,
+                            clipBehavior: Clip.antiAlias,
+                            color: hasActive ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3) : theme.colorScheme.surfaceContainer,
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RoomDetailScreen(
+                                      roomName: roomName,
+                                      devices: devices,
+                                      onRefresh: () => _fetchDevices(),
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                            child: Card(
-                              elevation: 0,
-                              color: theme.colorScheme.surfaceContainer,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
+                                );
+                              },
+                              child: Stack(
+                                children: [
+                                  Center(
+                                    child: Padding(
                                       padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.primaryContainer,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        _getRoomIcon(roomName),
-                                        size: 32,
-                                        color: theme.colorScheme.onPrimaryContainer,
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: hasActive ? theme.colorScheme.primary : theme.colorScheme.primaryContainer,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              _getRoomIcon(roomName),
+                                              size: 32,
+                                              color: hasActive ? theme.colorScheme.onPrimary : theme.colorScheme.onPrimaryContainer,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            displayRoomName,
+                                            style: theme.textTheme.titleMedium?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: hasActive ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            hasActive ? '$activeCount Active' : '${devices.length} ${t('devices_count')}',
+                                            style: theme.textTheme.bodyMedium?.copyWith(
+                                              color: hasActive ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                                              fontWeight: hasActive ? FontWeight.bold : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      displayRoomName,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${devices.length} ${t('devices_count')}',
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  if (hasActive)
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: IconButton.filled(
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                          foregroundColor: theme.colorScheme.primary,
+                                        ),
+                                        icon: const Icon(Icons.power_settings_new, size: 20),
+                                        onPressed: () => _turnOffRoom(devices),
+                                        tooltip: 'Turn off room',
                                       ),
                                     ),
-                                  ],
-                                ),
+                                ],
                               ),
                             ),
                           );

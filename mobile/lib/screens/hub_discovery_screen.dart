@@ -296,7 +296,6 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          final theme = Theme.of(context);
           return AlertDialog(
             title: Text(t('cloud_login')),
             content: Column(

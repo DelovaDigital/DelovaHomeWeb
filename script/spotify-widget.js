@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!container) return;
 
     const getUserId = () => localStorage.getItem('userId');
+    const getUsername = () => localStorage.getItem('username');
 
     function renderWidget(state) {
         // Handle case where Spotify is not linked
@@ -97,11 +98,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.linkSpotifyAccount = () => {
         const userId = getUserId();
+        const username = getUsername();
         if (!userId) {
             alert('Log in om je Spotify account te koppelen.');
             return;
         }
-        const popup = window.open(`/api/spotify/login?userId=${userId}`, 'SpotifyLogin', 'width=600,height=700');
+        const popup = window.open(`/api/spotify/login?userId=${userId}&username=${username}`, 'SpotifyLogin', 'width=600,height=700');
         
         // Poll to check if the popup is closed
         const interval = setInterval(() => {
@@ -115,12 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.controlSpotify = (command, value, deviceId) => {
         const userId = getUserId();
+        const username = getUsername();
         if (!userId) return;
 
-        const body = { command, value, userId };
+        const body = { command, value, userId, username };
         if (deviceId) body.deviceId = deviceId;
 
-        fetch(`/api/spotify/control?userId=${userId}`, {
+        fetch(`/api/spotify/control?userId=${userId}&username=${username}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -144,10 +147,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.toggleSpotifyDevices = async (pendingCommand = null) => {
         const userId = getUserId();
+        const username = getUsername();
         if (!userId) return;
 
         try {
-            const res = await fetch(`/api/spotify/devices?userId=${userId}`);
+            const res = await fetch(`/api/spotify/devices?userId=${userId}&username=${username}`);
             const devices = await res.json();
             
             if (!Array.isArray(devices)) {

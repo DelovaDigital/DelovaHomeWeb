@@ -258,7 +258,14 @@ class ApiService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
-      final url = userId != null ? '$baseUrl/api/spotify/devices?userId=$userId' : '$baseUrl/api/spotify/devices';
+      final username = prefs.getString('username');
+      
+      String url = '$baseUrl/api/spotify/devices';
+      final params = <String>[];
+      if (userId != null) params.add('userId=$userId');
+      if (username != null) params.add('username=$username');
+      if (params.isNotEmpty) url += '?${params.join('&')}';
+
       final response = await http.get(
         Uri.parse(url),
         headers: await getHeaders(),

@@ -304,96 +304,64 @@ import '../utils/app_translations.dart';
         if (!mounted) return;
         showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: Colors.grey[900],
-            title: Text(t('select_device'), style: const TextStyle(color: Colors.white)),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: devices.length,
-                itemBuilder: (context, index) {
-                  final d = devices[index];
-                  return ListTile(
-                    title: Text(d['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
-                    subtitle: Text(d['type'] ?? '', style: const TextStyle(color: Colors.grey)),
-                      onTap: () async {
-                        await _apiService.transferSpotifyPlayback(d['id']);
-                        if (!context.mounted) return;
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
-                      },
-                      trailing: IconButton(
-                        icon: const Icon(Icons.speaker, color: Colors.white),
-                        onPressed: () async {
-                          // Play current Spotify track on a Sonos device
-                          try {
-                            final messenger = ScaffoldMessenger.of(context);
-                            var status = _spotifyStatus;
-                            if (status == null) {
-                              status = await _apiService.getSpotifyStatus();
-                              if (!mounted) return;
-                              setState(() => _spotifyStatus = status);
-                            }
-
-                            String? playUri;
-                            playUri = status['item'] != null ? status['item']['uri'] : null;
-                            playUri ??= status['context'] != null ? status['context']['uri'] : null;
-                          
-                            if (playUri == null) {
-                              messenger.showSnackBar(const SnackBar(content: Text('No current Spotify track to play on Sonos')));
-                              return;
-                            }
-
-                            final sonos = await _apiService.getSonosDevices();
-                            if (sonos.isEmpty) {
-                              messenger.showSnackBar(const SnackBar(content: Text('No Sonos devices found')));
-                              return;
-                            }
-
-                            if (!context.mounted) return;
-                            final chosen = await showDialog<Map<String, dynamic>?>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                backgroundColor: Colors.grey[900],
-                                title: const Text('Choose Sonos Device', style: TextStyle(color: Colors.white)),
-                                content: SizedBox(
-                                  width: double.maxFinite,
-                                  child: ListView.builder(
-                                    shrinkWrap: true,
-                                    itemCount: sonos.length,
-                                    itemBuilder: (c, i) {
-                                      final s = sonos[i];
-                                      return ListTile(
-                                        title: Text(s['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
-                                        onTap: () => Navigator.of(ctx).pop(s),
-                                      );
-                                    },
-                                  ),
+          builder: (context) {
+             return StatefulBuilder(
+               builder: (context, setState) {
+                  return AlertDialog(
+                    backgroundColor: Colors.grey[900],
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(t('select_device'), style: const TextStyle(color: Colors.white)),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.white),
+                          onPressed: () async {
+                              Navigator.pop(context);
+                              _showSpotifyDevicesDialog();
+                          },
+                        )
+                      ],
+                    ),
+                    content: SizedBox(
+                      width: double.maxFinite,
+                      child: devices.isEmpty 
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Text('No devices found.', style: TextStyle(color: Colors.white70), textAlign: TextAlign.center),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: devices.length,
+                            itemBuilder: (context, index) {
+                              final d = devices[index];
+                              final isActive = d['is_active'] == true;
+                              return ListTile(
+                                leading: Icon(
+                                  d['type'] == 'Computer' ? Icons.computer : 
+                                  d['type'] == 'Smartphone' ? Icons.smartphone : 
+                                  d['type'] == 'CastAudio' || d['is_cast'] == true ? Icons.cast :
+                                  d['type'] == 'sonos' ? Icons.speaker : Icons.speaker_group,
+                                  color: isActive ? Colors.green : Colors.white54
                                 ),
-                              ),
-                            );
-
-                            if (chosen == null) return;
-
-                            final ok = await _apiService.playOnSonos(chosen['uuid'] ?? chosen['uuid'], playUri);
-                            if (!context.mounted) return;
-                            if (ok) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Started playing on ${chosen['name']}')));
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to start Sonos playback')));
+                                title: Text(d['name'] ?? 'Unknown', style: TextStyle(color: isActive ? Colors.green : Colors.white, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
+                                subtitle: Text(d['type'] ?? '', style: const TextStyle(color: Colors.grey)),
+                                  onTap: () async {
+                                    await _apiService.transferSpotifyPlayback(d['id']);
+                                    if (!context.mounted) return;
+                                    Navigator.of(context).pop();
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
+                                    // small delay to let transfer happen then refresh
+                                    await Future.delayed(const Duration(milliseconds: 500));
+                                    await _fetchSpotifyStatus();
+                                  },
+                              );
                             }
-                          } catch (e) {
-                            debugPrint('Error playing on Sonos: $e');
-                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error starting Sonos playback')));
-                          }
-                        },
-                      ),
+                          ),
+                    ),
                   );
-                },
-              ),
-            ),
-          ),
+               }
+             );
+          }
         );
       } catch (e) {
         debugPrint('Error fetching devices: $e');

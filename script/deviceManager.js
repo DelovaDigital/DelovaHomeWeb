@@ -2190,9 +2190,13 @@ class DeviceManager extends EventEmitter {
         } else {
             candidates = [
                 path.join(__dirname, '../.venv/bin/python'),
+                path.join(__dirname, '../.venv/bin/python3'),
                 path.join(__dirname, '../../.venv/bin/python'),
+                path.join(__dirname, '../../.venv/bin/python3'),
                 path.join(process.cwd(), '.venv/bin/python'),
-                '/home/pi/DelovaHome/.venv/bin/python'
+                path.join(process.cwd(), '.venv/bin/python3'),
+                '/home/pi/DelovaHome/.venv/bin/python',
+                '/home/pi/DelovaHome/.venv/bin/python3'
             ];
         }
 

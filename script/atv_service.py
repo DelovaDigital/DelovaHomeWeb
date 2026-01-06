@@ -21,8 +21,21 @@ def suppress_stderr():
         finally:
             sys.stderr = old_stderr
 
-from pyatv import connect, scan
-from pyatv.const import Protocol, PowerState, DeviceState
+try:
+    from pyatv import connect, scan
+    from pyatv.const import Protocol, PowerState, DeviceState
+except ImportError:
+    import subprocess
+    print("pyatv module not found. Attempting to install...", file=sys.stderr)
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "pyatv", "--break-system-packages" if sys.version_info >= (3, 11) else ""])
+        from pyatv import connect, scan
+        from pyatv.const import Protocol, PowerState, DeviceState
+        print("pyatv installed successfully.", file=sys.stderr)
+    except Exception as e:
+        print(f"Failed to automatically install pyatv: {e}", file=sys.stderr)
+        print("Please install it manually: pip3 install pyatv", file=sys.stderr)
+        sys.exit(1)
 
 CREDENTIALS_FILE = os.path.join(os.path.dirname(__file__), '../appletv-credentials.json')
 

@@ -246,6 +246,58 @@ import '../utils/app_translations.dart';
       );
     }
 
+    Future<void> _showSpotifyLibraryDialog(String type) async {
+      try {
+        final items = type == 'playlists' ? await _apiService.getSpotifyPlaylists() : await _apiService.getSpotifyAlbums();
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.grey[900],
+            title: Text(type == 'playlists' ? 'Your Playlists' : 'Your Albums', style: const TextStyle(color: Colors.white)),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  // Handle different structure for playlists vs albums
+                  final images = item['images'] as List?;
+                  final name = item['name'] as String?;
+                  String subtitle = '';
+                  
+                  if (type == 'playlists') {
+                     subtitle = '${item['tracks']['total']} tracks';
+                  } else if (item['artists'] != null && (item['artists'] as List).isNotEmpty) {
+                     subtitle = item['artists'][0]['name'];
+                  }
+
+                  return ListTile(
+                    leading: (images != null && images.isNotEmpty)
+                      ? Image.network(images[0]['url'], width: 48, height: 48, fit: BoxFit.cover)
+                      : const SizedBox(width: 48, height: 48),
+                    title: Text(name ?? 'Unknown', style: const TextStyle(color: Colors.white)),
+                    subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                    onTap: () async {
+                      final uri = item['uri'];
+                      await _apiService.spotifyControl('play_context', uri);
+                      if (!context.mounted) return;
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${name ?? 'Music'}'))); 
+                      await _fetchSpotifyStatus();
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      } catch (e) {
+        debugPrint('Library error: $e');
+      }
+    }
+
     Future<void> _showSpotifyDevicesDialog() async {
       try {
         final devices = await _apiService.getSpotifyDevices();
@@ -596,7 +648,48 @@ import '../utils/app_translations.dart';
                         ],
                       ),
                       const SizedBox(height: 20),
-                      Row(
+                      GestureDetector(
+                        onTap: () {
+                           showModalBottomSheet(
+                             context: context,
+                             backgroundColor: Colors.grey[900],
+                             builder: (context) {
+                               return Wrap(
+                                 children: [
+                                   ListTile(
+                                     leading: const Icon(Icons.search, color: Colors.white),
+                                     title: const Text('Search Music', style: TextStyle(color: Colors.white)),
+                                     onTap: () async {
+                                        Navigator.pop(context);
+                                        final q = await _showSpotifySearchDialog();
+                                        if (q != null && q.isNotEmpty) {
+                                          final res = await _apiService.searchSpotify(q);
+                                          if (mounted) _showSpotifySearchResults(res);
+                                        }
+                                     },
+                                   ),
+                                   ListTile(
+                                     leading: const Icon(Icons.playlist_play, color: Colors.white),
+                                     title: const Text('Your Playlists', style: TextStyle(color: Colors.white)),
+                                     onTap: () {
+                                       Navigator.pop(context);
+                                       _showSpotifyLibraryDialog('playlists');
+                                     },
+                                   ),
+                                   ListTile(
+                                      leading: const Icon(Icons.album, color: Colors.white),
+                                      title: const Text('Your Albums', style: TextStyle(color: Colors.white)),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        _showSpotifyLibraryDialog('albums');
+                                      },
+                                   ),
+                                 ]
+                               );
+                             }
+                           );
+                        },
+                        child: Row(
                         children: [
                           Hero(
                             tag: 'spotify_art',
@@ -638,7 +731,9 @@ import '../utils/app_translations.dart';
                               ],
                             ),
                           ),
+                          const Icon(Icons.expand_more, color: Colors.white54),
                         ],
+                      ),
                       ),
                       const SizedBox(height: 24),
                       // Progress Bar placeholder (visual only for now)
@@ -697,9 +792,53 @@ import '../utils/app_translations.dart';
                     child: ListTile(
                       leading: const Icon(Icons.music_note, color: Colors.green),
                       title: Text('Spotify', style: TextStyle(color: textColor)),
-                      subtitle: Text(_spotifyAvailable ? 'Ready to play on $_spotifyDeviceName' : 'Tap to connect Spotify', style: TextStyle(color: subTextColor)),
+                      subtitle: Text(_spotifyAvailable ? 'Ready to play on $_spotifyDeviceName\nTap to search' : 'Tap to connect Spotify', style: TextStyle(color: subTextColor)),
                       trailing: Icon(Icons.chevron_right, color: subTextColor),
-                      onTap: _spotifyAvailable ? _openSpotifyLogin : _openSpotifyLogin,
+                      onTap: () async {
+                        if (_spotifyAvailable) {
+                          // Show options to Search or Pick Playlist
+                           showModalBottomSheet(
+                             context: context,
+                             backgroundColor: Colors.grey[900],
+                             builder: (context) {
+                               return Wrap(
+                                 children: [
+                                   ListTile(
+                                     leading: const Icon(Icons.search, color: Colors.white),
+                                     title: const Text('Search Music', style: TextStyle(color: Colors.white)),
+                                     onTap: () async {
+                                        Navigator.pop(context);
+                                        final q = await _showSpotifySearchDialog();
+                                        if (q != null && q.isNotEmpty) {
+                                          final res = await _apiService.searchSpotify(q);
+                                          if (mounted) _showSpotifySearchResults(res);
+                                        }
+                                     },
+                                   ),
+                                   ListTile(
+                                     leading: const Icon(Icons.playlist_play, color: Colors.white),
+                                     title: const Text('Your Playlists', style: TextStyle(color: Colors.white)),
+                                     onTap: () {
+                                       Navigator.pop(context);
+                                       _showSpotifyLibraryDialog('playlists');
+                                     },
+                                   ),
+                                   ListTile(
+                                      leading: const Icon(Icons.album, color: Colors.white),
+                                      title: const Text('Your Albums', style: TextStyle(color: Colors.white)),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        _showSpotifyLibraryDialog('albums');
+                                      },
+                                   ),
+                                 ]
+                               );
+                             }
+                           );
+                        } else {
+                          _openSpotifyLogin();
+                        }
+                      },
                     ),
                   ),
                 ),

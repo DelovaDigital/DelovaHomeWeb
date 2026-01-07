@@ -31,9 +31,13 @@ import '../utils/app_translations.dart';
     Map<String, dynamic>? _presenceData;
     bool _spotifyAvailable = false;
     String? _spotifyDeviceName;
+    List<dynamic> _sonosDevices = [];
+    Map<String, dynamic> _sonosStates = {};
+    String? _activeSonosUuid;
     Timer? _spotifyTimer;
     Timer? _energyTimer;
     Timer? _presenceTimer;
+    Timer? _sonosTimer;
     String _lang = 'nl';
 
     @override
@@ -46,12 +50,14 @@ import '../utils/app_translations.dart';
       _fetchSpotifyMe();
       _fetchEnergyData();
       _fetchPresenceData();
+      _fetchSonosDevices();
       _spotifyTimer = Timer.periodic(const Duration(seconds: 5), (_) {
         _fetchSpotifyStatus();
         _fetchSpotifyMe();
       });
       _energyTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchEnergyData());
       _presenceTimer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchPresenceData());
+      _sonosTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchSonosStates());
     }
 
     Future<void> _loadLanguage() async {
@@ -71,7 +77,52 @@ import '../utils/app_translations.dart';
       _spotifyTimer?.cancel();
       _energyTimer?.cancel();
       _presenceTimer?.cancel();
+      _sonosTimer?.cancel();
       super.dispose();
+    }
+
+    Future<void> _fetchSonosDevices() async {
+      try {
+        final devices = await _apiService.getSonosDevices();
+        if (mounted) {
+          setState(() {
+            _sonosDevices = devices;
+            if (_activeSonosUuid == null && _sonosDevices.isNotEmpty) {
+              _activeSonosUuid = _sonosDevices.first['uuid'];
+            }
+          });
+          _fetchSonosStates();
+        }
+      } catch (e) {
+        debugPrint('Sonos devices error: $e');
+      }
+    }
+
+    Future<void> _fetchSonosStates() async {
+      if (_sonosDevices.isEmpty) return;
+      
+      // Fetch state for active Sonos or all if detailed view needed
+      // To save bandwidth, maybe only active one? But we might want to see which one is playing to auto-select.
+      // Let's iterate all implementation for now.
+      for (final device in _sonosDevices) {
+        try {
+          final state = await _apiService.getSonosPlaybackState(device['uuid']);
+          if (mounted) {
+             setState(() {
+               _sonosStates[device['uuid']] = state;
+               // Auto-switch active sonos if playing and current is stopped
+               if (_activeSonosUuid != device['uuid'] && state['status'] == 'PLAYING') {
+                  final activeState = _sonosStates[_activeSonosUuid];
+                  if (activeState == null || activeState['status'] != 'PLAYING') {
+                     _activeSonosUuid = device['uuid'];
+                  }
+               }
+             });
+          }
+        } catch (e) {
+             // ignore
+        }
+      }
     }
 
     Future<void> _fetchEnergyData() async {
@@ -571,7 +622,15 @@ import '../utils/app_translations.dart';
               SliverToBoxAdapter(
                 child: Padding(
                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                   child: _buildSpotifySection()
+                   child: Column(
+                     children: [
+                        _buildSpotifySection(),
+                        if (_sonosDevices.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          _buildSonosSection(),
+                        ]
+                     ],
+                   )
                 ),
               ),
 
@@ -886,5 +945,174 @@ import '../utils/app_translations.dart';
           ),
         ),
       );
+    }
+
+    Widget _buildSonosSection() {
+      // Logic for active device
+      final activeDevice = _activeSonosUuid != null && _sonosDevices.isNotEmpty
+          ? _sonosDevices.firstWhere((d) => d['uuid'] == _activeSonosUuid, orElse: () => null) 
+          : null;
+      
+      final state = (_activeSonosUuid != null ? _sonosStates[_activeSonosUuid] : null) ?? {};
+      final isPlaying = state['status'] == 'PLAYING' || state['status'] == 'TRANSITIONING';
+      final track = state['track']?['title'];
+      final artist = state['track']?['artist'];
+      
+      // If activeDevice provided name but track title is missing, likely not playing music or radio
+      
+      return Card(
+        margin: const EdgeInsets.only(bottom: 20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.speaker, color: Colors.orange, size: 24),
+                      const SizedBox(width: 8),
+                      Text('Sonos', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.speaker_group),
+                    tooltip: 'Select Sonos Device',
+                    onPressed: _showSonosDevicesDialog,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Key Content
+              if (activeDevice != null) ...[
+                 Row(
+                  children: [
+                    Container(
+                      width: 64, 
+                      height: 64, 
+                      decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.music_note, color: Colors.orange),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(track ?? 'Ready', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          Text(artist ?? activeDevice['name'] ?? 'Unknown', style: const TextStyle(fontSize: 14, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Controls
+                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                     IconButton(
+                       icon: const Icon(Icons.skip_previous_rounded, size: 32),
+                       onPressed: () => _apiService.sonosControl(activeDevice['uuid'], 'previous'),
+                     ),
+                     Container(
+                       decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+                       child: IconButton(
+                         icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 32, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                         onPressed: () async {
+                              final cmd = isPlaying ? 'pause' : 'play';
+                              await _apiService.sonosControl(activeDevice['uuid'], cmd);
+                              // Optimistic update
+                              setState(() {
+                                 _sonosStates[activeDevice['uuid']] = { ...state, 'status': isPlaying ? 'STOPPED' : 'PLAYING' };
+                              });
+                         },
+                       ),
+                     ),
+                     IconButton(
+                       icon: const Icon(Icons.skip_next_rounded, size: 32),
+                       onPressed: () => _apiService.sonosControl(activeDevice['uuid'], 'next'),
+                     ),
+                  ],
+                ),
+                
+                // Volume Slider (Simple)
+                if (state.containsKey('volume') || true) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                        children: [
+                            const Icon(Icons.volume_down, size: 20, color: Colors.grey),
+                            Expanded(child: Slider(
+                                value: (state['volume'] ?? 20).toDouble(),
+                                min: 0,
+                                max: 100,
+                                onChanged: (val) {
+                                    // Debounce or just set
+                                    _apiService.sonosControl(activeDevice['uuid'], 'set_volume', val.toInt());
+                                    setState(() {
+                                         _sonosStates[activeDevice['uuid']] = { ...state, 'volume': val.toInt() };
+                                    });
+                                }
+                            )),
+                            const Icon(Icons.volume_up, size: 20, color: Colors.grey),
+                        ]
+                    )
+                ]
+                
+              ] else 
+                 const Center(child: Padding(
+                   padding: EdgeInsets.all(16.0),
+                   child: Text('No Sonos device selected'),
+                 )),
+              
+            ],
+          ),
+        ),
+      );
+    }
+    
+    Future<void> _showSonosDevicesDialog() async {
+        if (_sonosDevices.isEmpty) {
+            await _fetchSonosDevices();
+        }
+        if (!mounted) return;
+        
+        showDialog(
+          context: context,
+          builder: (context) {
+             return AlertDialog(
+                backgroundColor: Colors.grey[900],
+                title: const Text('Select Sonos Device', style: TextStyle(color: Colors.white)),
+                content: SizedBox(
+                   width: double.maxFinite,
+                   child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _sonosDevices.length,
+                      itemBuilder: (context, index) {
+                         final d = _sonosDevices[index];
+                         final isSelected = d['uuid'] == _activeSonosUuid;
+                         return ListTile(
+                            leading: Icon(Icons.speaker, color: isSelected ? Colors.orange : Colors.white54),
+                            title: Text(d['name'] ?? 'Unknown', style: TextStyle(color: isSelected ? Colors.orange : Colors.white)),
+                            onTap: () {
+                               setState(() {
+                                  _activeSonosUuid = d['uuid'];
+                               });
+                               Navigator.pop(context);
+                               _fetchSonosStates();
+                            },
+                         );
+                      }
+                   ),
+                ),
+             );
+          }
+        );
     }
   }

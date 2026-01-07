@@ -237,6 +237,12 @@ class SonosManagerModule {
             const transportState = await device.AVTransportService.GetTransportInfo({ InstanceID: 0 });
             const mediaInfo = await device.AVTransportService.GetMediaInfo({ InstanceID: 0 });
             const positionInfo = await device.AVTransportService.GetPositionInfo({ InstanceID: 0 });
+            
+            let volume = 0;
+            try {
+                const volInfo = await device.RenderingControlService.GetVolume({ InstanceID: 0, Channel: 'Master' });
+                volume = parseInt(volInfo.CurrentVolume, 10);
+            } catch (e) { /* ignore volume error */ }
 
             // The metadata is often an XML string that needs parsing.
             // For now, we'll return what the library gives us.
@@ -244,6 +250,7 @@ class SonosManagerModule {
 
             return {
                 status: transportState.CurrentTransportState, // e.g., 'PLAYING', 'PAUSED_PLAYBACK', 'STOPPED'
+                volume: volume,
                 track: {
                     title: trackData.Title,
                     artist: trackData.Creator,

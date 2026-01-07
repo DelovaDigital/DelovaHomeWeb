@@ -437,6 +437,33 @@ class ApiService {
     return [];
   }
 
+  Future<Map<String, dynamic>> getSonosPlaybackState(String uuid) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/sonos/$uuid/state'));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+    } catch (e) {
+      debugPrint('Error fetching Sonos state for $uuid: $e');
+    }
+    return {'status': 'UNKNOWN'};
+  }
+
+  Future<void> sonosControl(String uuid, String command, [dynamic value]) async {
+    final baseUrl = await getBaseUrl();
+    try {
+      final body = {'command': command, 'value': value};
+      await http.post(
+        Uri.parse('$baseUrl/api/sonos/$uuid/command'),
+        headers: await getHeaders(),
+        body: json.encode(body),
+      );
+    } catch (e) {
+      debugPrint('Error sending Sonos command: $e');
+    }
+  }
+
   Future<bool> playOnSonos(String uuid, String spotifyUri, {String? metadata}) async {
     final baseUrl = await getBaseUrl();
     try {

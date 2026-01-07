@@ -1644,7 +1644,31 @@ class DeviceManager extends EventEmitter {
     }
 
     async controlDevice(id, command, value) {
-        const device = this.devices.get(id);
+        let device = this.devices.get(id);
+        
+        // If ID not found, try name lookup (fuzzy) to handle generic scene setups
+        if (!device) {
+             const nameQuery = id.toLowerCase().replace('_', ' ');
+             // Exact name match
+             for (const [_, d] of this.devices) {
+                 if (d.name && d.name.toLowerCase() === nameQuery) {
+                     device = d;
+                     console.log(`[DeviceManager] Resolved ID '${id}' to Device '${d.name}'`);
+                     break;
+                 }
+             }
+             // Partial name match if exact fails
+             if (!device) {
+                for (const [_, d] of this.devices) {
+                    if (d.name && d.name.toLowerCase().includes(nameQuery)) {
+                        device = d;
+                        console.log(`[DeviceManager] Resolved ID '${id}' to Device '${d.name}' (Partial Match)`);
+                        break;
+                    }
+                }
+             }
+        }
+
         if (!device) {
             console.error(`[DeviceManager] Control failed: Device with ID '${id}' not found.`);
             return null;

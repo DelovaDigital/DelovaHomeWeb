@@ -74,10 +74,22 @@ class SceneManager extends EventEmitter {
                 icon: 'fas fa-film',
                 color: '#ef4444',
                 actions: [
+                    // Use generic search terms that match likely real device names
+                    { type: 'device', command: 'turn_off', deviceId: 'living_main' }, // Searches "living main" or "living"
                     { type: 'device', command: 'set_brightness', deviceId: 'living_spots', value: 20 },
-                    { type: 'device', command: 'turn_off', deviceId: 'living_main' },
-                    { type: 'device', command: 'turn_on', deviceId: 'tv_backlight' },
-                    { type: 'device', command: 'close', deviceId: 'living_blinds' }
+                    // { type: 'device', command: 'close', deviceId: 'living_blinds' },
+                    { type: 'device', command: 'turn_on', deviceId: 'tv_backlight' }
+                ]
+            },
+            {
+                id: 'mode_party',
+                name: 'Party',
+                icon: 'fas fa-glass-cheers',
+                color: '#ec4899',
+                actions: [
+                    { type: 'device', command: 'turn_on', deviceId: 'living_main' },
+                    { type: 'device', command: 'set_color', deviceId: 'living_spots', value: '#ff00ff' }, 
+                    { type: 'device', command: 'turn_on', deviceId: 'kitchen_main' }
                 ]
             },
             {

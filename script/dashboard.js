@@ -563,48 +563,34 @@ document.addEventListener('DOMContentLoaded', () => {
   if (scenesBar) {
       async function loadScenes() {
           try {
-                // Default Hardcoded Scenes (Fallback)
-                const defaultScenes = [
-                    { id: 'mode_home', name: 'Home', icon: 'fas fa-home', color: '#3b82f6' },
-                    { id: 'mode_away', name: 'Away', icon: 'fas fa-sign-out-alt', color: '#64748b' },
-                    { id: 'mode_cinema', name: 'Cinema', icon: 'fas fa-film', color: '#ef4444' },
-                    { id: 'mode_night', name: 'Night', icon: 'fas fa-moon', color: '#8b5cf6' },
-                    { id: 'mode_morning', name: 'Morning', icon: 'fas fa-coffee', color: '#f59e0b' }
-                ];
+                let scenes = [];
+                try {
+                    scenes = await apiGet('/api/scenes');
+                } catch(e) { console.warn('Using default scenes'); }
+
+                if (!scenes || scenes.length === 0) {
+                     scenes = [
+                        { id: 'mode_home', name: 'Home', icon: 'fas fa-home', color: '#3b82f6' },
+                        { id: 'mode_away', name: 'Away', icon: 'fas fa-sign-out-alt', color: '#64748b' },
+                        { id: 'mode_cinema', name: 'Cinema', icon: 'fas fa-video', color: '#ef4444' },
+                        { id: 'mode_night', name: 'Night', icon: 'fas fa-moon', color: '#8b5cf6' },
+                        { id: 'mode_morning', name: 'Morning', icon: 'fas fa-coffee', color: '#f59e0b' }
+                    ];
+                }
                 
                 scenesBar.innerHTML = '';
-                scenesBar.className = 'scenes-container';
+                scenesBar.classList.add('scenes-scroll-container');
                 
-                defaultScenes.forEach(scene => {
-                    const btn = document.createElement('button');
+                scenes.forEach(scene => {
+                    const btn = document.createElement('div');
                     btn.className = 'scene-chip';
-                    // Inline styles for chips
-                    btn.style.cssText = `
-                        border: none;
-                        background: rgba(255,255,255,0.1);
-                        padding: 10px 20px;
-                        border-radius: 20px;
-                        display: flex;
-                        align-items: center;
-                        gap: 8px;
-                        cursor: pointer;
-                        font-family: inherit;
-                        color: inherit;
-                        transition: all 0.2s;
-                    `;
-                    btn.innerHTML = `<i class="${scene.icon}" style="color: ${scene.color}"></i> <span>${scene.name}</span>`;
-                    
-                    btn.onmouseover = () => btn.style.background = 'rgba(255,255,255,0.2)';
-                    btn.onmouseout = () => btn.style.background = 'rgba(255,255,255,0.1)';
+                    const iconColor = scene.color || '#fff';
+                    btn.innerHTML = `<i class="${scene.icon}" style="color: ${iconColor}"></i> <span>${scene.name}</span>`;
                     
                     btn.onclick = async () => {
-                         // Visual feedback
-                         btn.style.transform = 'scale(0.95)';
-                         setTimeout(() => btn.style.transform = 'scale(1)', 100);
-                         
+                         btn.classList.add('active');
+                         setTimeout(() => btn.classList.remove('active'), 300);
                          try {
-                            // Backend uses :name parameter that can accept ID too if handled, 
-                            // but currently defined as :name. We send the ID.
                             await fetch(`/api/scenes/${scene.id}`, { method: 'POST' });
                          } catch (e) { console.error('Scene activation failed'); }
                     };

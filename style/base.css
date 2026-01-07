@@ -1597,3 +1597,115 @@ input:checked + .slider:before {
     margin-left: 8px;
     font-weight: bold;
 }
+
+/* Settings Layout */
+.settings-container {
+    display: flex;
+    gap: 20px;
+    min-height: 600px;
+}
+
+.settings-sidebar {
+    width: 250px;
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.settings-nav-item {
+    padding: 12px 15px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background 0.2s;
+    font-weight: 500;
+}
+
+.settings-content {
+    flex: 1;
+}
+
+.settings-section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.settings-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive Settings */
+@media (max-width: 768px) {
+    .settings-container {
+        flex-direction: column;
+    }
+    .settings-sidebar {
+        width: 100%;
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 10px;
+    }
+    .settings-nav-item {
+        white-space: nowrap;
+    }
+}
+
+/* Scenes Bar */
+.scenes-scroll-container {
+    overflow-x: auto;
+    padding-bottom: 5px;
+    margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+}
+.scenes-scroll-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+.scenes-bar {
+    display: flex;
+    gap: 12px;
+    padding: 2px;
+}
+
+.scene-chip {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.scene-chip:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.scene-chip.active {
+    background: var(--primary, #007BFF);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+    border-color: transparent;
+}
+
+.scene-chip i {
+    font-size: 1rem;
+    opacity: 0.9;
+}

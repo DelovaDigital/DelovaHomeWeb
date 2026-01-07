@@ -10,10 +10,9 @@ class SonosManagerModule {
     async _initialize() {
         try {
             console.log('Initializing Sonos discovery...');
-            // Initialize will start discovery and find all devices.
-            // Catch errors specifically from discovery to avoid crashing
+            // Reduce discovery time to 3 seconds to unblock UI faster.
             try {
-                await this.manager.InitializeWithDiscovery(10); 
+                await this.manager.InitializeWithDiscovery(3); 
                 this.isInitialized = true;
                 console.log(`Sonos discovery complete. Found ${this.manager.Devices.length} devices.`);
             } catch (discoveryErr) {
@@ -31,12 +30,8 @@ class SonosManagerModule {
     }
 
     getDiscoveredDevices() {
-        if (!this.isInitialized) {
-            console.warn('Sonos manager not yet fully initialized. Returning devices found so far.');
-        }
-        // Safely access devices without throwing if empty
+        // Return whatever we have, initialized or not.
         try {
-            // The library throws "No Devices available!" if accessing .Devices when empty.
             return (this.manager.Devices || []).map(d => ({ uuid: d.uuid, name: d.Name }));
         } catch (e) {
             return [];

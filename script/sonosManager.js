@@ -62,11 +62,85 @@ class SonosManagerModule {
         const device = await this._getDevice(uuid);
         // To play a stream, you often need to set the AVTransportURI first
         if (uri) {
-            await device.AVTransportService.SetAVTransportURI({
-              InstanceID: 0,
-              CurrentURI: uri,
-              CurrentURIMetaData: metadata || ''
-            });
+            // Special handling for Spotify URIs on Sonos
+            // Sonos requires a specific URI format for Spotify content:
+            // x-rincon-cpcontainer:1006206c{playlist_id}?sid=9&flags=10860&sn=2 for Playlists
+            // x-sonos-spotify:spotify%3atrack%3a{track_id}?sid=9&flags=8224&sn=2 for Tracks
+            
+            let sonosUri = uri;
+            let sonosMeta = metadata || '';
+            const isSpotify = uri.startsWith('spotify:');
+
+            if (isSpotify) {
+                 const region = 3079; // Europe? This varies. 
+                 // Actually, sid=9 is for Spotify. flags vary.
+                 // sid=9, sn=2 seems standard for Spotify Connect logic via UPnP?
+                 // But simpler is to use the dedicated library methods if available, or construct the URI carefully.
+                 // The library 'sonos' has helpers for this ideally, but if not we do it manually.
+
+                 // Manual Construction:
+                 if (uri.includes('playlist')) {
+                     // Spotify Playlist
+                     // Format: x-rincon-cpcontainer:1006206c{hex_playlist_id}?sid=9&flags=10860&sn=1
+                     const playlistId = uri.split(':')[2];
+                     
+                     // Metadata IS required for containers usually.
+                     // If we don't have it, we might fail or play empty.
+                     // Construct minimal DIDL if missing
+                     if (!sonosMeta) {
+                         sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${playlistId}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_</desc></item></DIDL-Lite>`;
+                     }
+                     
+                     // We actually need to use AddURIToQueue and then Play, or SetAVTransportURI if it's a container?
+                     // SetAVTransportURI with x-rincon-cpcontainer works for some, but Queue is safer for playlists.
+                     // Let's try Queue approach for Playlists if regular SetAV fails? 
+                     // Or just try the format:
+                     sonosUri = `x-rincon-cpcontainer:1006206c${playlistId}?sid=9&flags=10860&sn=1`; // flags might need tuning
+                     
+                     // NOTE: Playlists on Sonos via UPnP are notoriously hard without a proper queue.
+                     // Using device.PlayNotification might be easier for single tracks, but for playlists...
+                     
+                     // Alternative: x-sonos-spotify:spotify:playlist:...
+                 } else if (uri.includes('track')) {
+                     // Spotify Track
+                     // Format: x-sonos-spotify:spotify%3atrack%3a{id}?sid=9&flags=8224&sn=1
+                     const trackId = uri.split(':')[2];
+                     sonosUri = `x-sonos-spotify:spotify%3atrack%3a${trackId}?sid=9&flags=8224&sn=1`;
+                     if (!sonosMeta) {
+                          sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="10032020spotify%3atrack%3a${trackId}" parentID="" restricted="true"><dc:title>Spotify Track</dc:title><upnp:class>object.item.audioItem.musicTrack</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_</desc></item></DIDL-Lite>`;
+                     }
+                 }
+            }
+
+            console.log(`[Sonos] Setting URI: ${sonosUri}`);
+            
+            try {
+                await device.AVTransportService.SetAVTransportURI({
+                    InstanceID: 0,
+                    CurrentURI: sonosUri,
+                    CurrentURIMetaData: sonosMeta
+                });
+            } catch (e) {
+                // Illegal MIME-Type often means the format is wrong for SetAVTransportURI.
+                // It might need to be added to Queue first?
+                if (e.message && e.message.includes('Illegal MIME-Type') && isSpotify && uri.includes('playlist')) {
+                    console.warn('[Sonos] SetAVTransportURI failed for playlist, trying AddURIToQueue...');
+                    // Add to Queue logic
+                    // This library might have .addRegionToQueue or similar?
+                    // Fallback to library helper if possible or simple queue add
+                    await device.QueueService.AddURI({
+                         InstanceID: 0,
+                         EnqueuedURI: sonosUri,
+                         EnqueuedURIMetaData: sonosMeta,
+                         DesiredFirstTrackNumberEnqueued: 0,
+                         EnqueueAsNext: true
+                    });
+                    // Then Skip to it? Or user must press play?
+                    // Usually we just Play()
+                } else {
+                    throw e; // Rethrow other errors
+                }
+            }
         }
         return device.Play();
     }

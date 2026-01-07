@@ -74,8 +74,29 @@ class SonosManagerModule {
                 try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
 
                 // 2. Add to Queue using library helper (handles metadata and formatting automatically)
-                // Note: AddUriToQueue(uri, positionInQueue, enqueueAsNext)
-                await device.AddUriToQueue(uri, 1, true);
+                try {
+                    await device.AddUriToQueue(uri, 1, true);
+                } catch (e) {
+                    // Handle UPnP Error 800 (Follower cannot act as coordinator)
+                    const isGroupError = (e.UpnpErrorCode === 800) || (e.message && e.message.includes('coordinator'));
+                    if (isGroupError) {
+                         console.warn(`[Sonos] Error 800: Device ${uuid} is a follower. Attempting to resolve coordinator via topology refresh.`);
+                         try {
+                             const groups = await this.manager.LoadAllGroups();
+                             const myGroup = groups.find(g => g.members.some(m => m.uuid === uuid));
+                             if (myGroup && myGroup.coordinator && myGroup.coordinator.uuid !== uuid) {
+                                 console.log(`[Sonos] Resolved coordinator for ${uuid} -> ${myGroup.coordinator.uuid}. Retrying...`);
+                                 // Recursive retry with the coordinator
+                                 return this.play(myGroup.coordinator.uuid, uri, metadata);
+                             } else {
+                                 console.error('[Sonos] Could not find a different coordinator for this device in topology.');
+                             }
+                         } catch (topologyErr) {
+                             console.error('[Sonos] Failed to refresh topology:', topologyErr);
+                         }
+                    }
+                    throw e; // Rethrow if not handled or resolution failed
+                }
 
                 // 3. Set Transport to Queue
                 const queueUri = `x-rincon-queue:${device.uuid}#0`;

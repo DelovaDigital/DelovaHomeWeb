@@ -121,13 +121,23 @@ class SonosManagerModule {
                     CurrentURIMetaData: sonosMeta
                 });
             } catch (e) {
-                // Illegal MIME-Type often means the format is wrong for SetAVTransportURI.
-                // It might need to be added to Queue first?
-                if (e.message && e.message.includes('Illegal MIME-Type') && isSpotify && uri.includes('playlist')) {
-                    console.warn('[Sonos] SetAVTransportURI failed for playlist, trying AddURIToQueue...');
-                    // Add to Queue logic
-                    // This library might have .addRegionToQueue or similar?
-                    // Fallback to library helper if possible or simple queue add
+                // Illegal MIME-Type (714) or Invalid Args (402) often means the format is wrong for SetAVTransportURI (direct play).
+                // It usually implies this container type must be added to Queue first.
+                const isPlaybackError = e.message && (
+                    e.message.includes('Illegal MIME-Type') || 
+                    e.message.includes('Invalid args') ||
+                    (e.UpnpErrorCode === 714) || 
+                    (e.UpnpErrorCode === 402)
+                );
+
+                if (isPlaybackError && isSpotify && uri.includes('playlist')) {
+                    console.warn('[Sonos] SetAVTransportURI failed for playlist, switching to Queue-based playback...');
+                    
+                    // 1. Clear Queue (optional, but ensures we play what user asked)
+                    try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (ignored) {}
+
+                    // 2. Add to Queue
+                    // Note: EnqueueAsNext might not be supported on all endpoints, but usually works with AddURI
                     await device.QueueService.AddURI({
                          InstanceID: 0,
                          EnqueuedURI: sonosUri,
@@ -135,8 +145,25 @@ class SonosManagerModule {
                          DesiredFirstTrackNumberEnqueued: 0,
                          EnqueueAsNext: true
                     });
-                    // Then Skip to it? Or user must press play?
-                    // Usually we just Play()
+
+                    // 3. Set Transport to Queue
+                    // We need the RINCON_ ID for this. device.uuid usually starts with RINCON_ or contains it.
+                    // If device.uuid is "RINCON_xxxx" -> x-rincon-queue:RINCON_xxxx#0
+                    // If uuid is just standard UUID, we might need device.raw.udn or similar?
+                    // The library usually maps uuid to the RINCON_ id for us somewhere?
+                    // Let's assume device.uuid is sufficient or try to construct it.
+                    let queueUri = `x-rincon-queue:${device.uuid}#0`;
+                    // If uuid doesn't start with RINCON, checks might be needed. 
+                    // Most Sonos UUIDs in this lib show as "RINCON_..." or typical UUIDs.
+                    // If it is a proper UUID (blocks), the queue URI might be x-rincon-queue:RINCON_{mac}01400#0
+                    // But often device.uuid IS that ID in this lib.
+                    
+                    await device.AVTransportService.SetAVTransportURI({
+                        InstanceID: 0,
+                        CurrentURI: queueUri,
+                        CurrentURIMetaData: ''
+                    });
+
                 } else {
                     throw e; // Rethrow other errors
                 }

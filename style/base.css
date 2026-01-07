@@ -1566,3 +1566,34 @@ input:checked + .slider:before {
 .scene-card.active i, .scene-card.active span {
     color: white !important;
 }
+
+/* Scenes Bar */
+.scenes-bar {
+    display: flex;
+    overflow-x: auto;
+    gap: 15px;
+    padding: 10px 0 20px 0;
+    margin-bottom: 20px;
+    scrollbar-width: none;
+}
+.scenes-bar::-webkit-scrollbar { display: none; }
+
+.scene-chip {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.scene-chip:active {
+    background: rgba(255,255,255,0.3) !important;
+}
+
+/* Enhancements for Logic Sensors */
+.sensor-value-badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    margin-left: 8px;
+    font-weight: bold;
+}

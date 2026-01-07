@@ -557,6 +557,64 @@ document.addEventListener('DOMContentLoaded', () => {
   loadWeather();
   loadPrinterStatus();
   loadSystemStatus();
+  
+  // Scenes Bar Initialization
+  const scenesBar = document.getElementById('scenesBar');
+  if (scenesBar) {
+      async function loadScenes() {
+          try {
+                // Default Hardcoded Scenes (Fallback)
+                const defaultScenes = [
+                    { id: 'mode_home', name: 'Home', icon: 'fas fa-home', color: '#3b82f6' },
+                    { id: 'mode_away', name: 'Away', icon: 'fas fa-sign-out-alt', color: '#64748b' },
+                    { id: 'mode_cinema', name: 'Cinema', icon: 'fas fa-film', color: '#ef4444' },
+                    { id: 'mode_night', name: 'Night', icon: 'fas fa-moon', color: '#8b5cf6' },
+                    { id: 'mode_morning', name: 'Morning', icon: 'fas fa-coffee', color: '#f59e0b' }
+                ];
+                
+                scenesBar.innerHTML = '';
+                scenesBar.className = 'scenes-container';
+                
+                defaultScenes.forEach(scene => {
+                    const btn = document.createElement('button');
+                    btn.className = 'scene-chip';
+                    // Inline styles for chips
+                    btn.style.cssText = `
+                        border: none;
+                        background: rgba(255,255,255,0.1);
+                        padding: 10px 20px;
+                        border-radius: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        cursor: pointer;
+                        font-family: inherit;
+                        color: inherit;
+                        transition: all 0.2s;
+                    `;
+                    btn.innerHTML = `<i class="${scene.icon}" style="color: ${scene.color}"></i> <span>${scene.name}</span>`;
+                    
+                    btn.onmouseover = () => btn.style.background = 'rgba(255,255,255,0.2)';
+                    btn.onmouseout = () => btn.style.background = 'rgba(255,255,255,0.1)';
+                    
+                    btn.onclick = async () => {
+                         // Visual feedback
+                         btn.style.transform = 'scale(0.95)';
+                         setTimeout(() => btn.style.transform = 'scale(1)', 100);
+                         
+                         try {
+                            // Backend uses :name parameter that can accept ID too if handled, 
+                            // but currently defined as :name. We send the ID.
+                            await fetch(`/api/scenes/${scene.id}`, { method: 'POST' });
+                         } catch (e) { console.error('Scene activation failed'); }
+                    };
+                    scenesBar.appendChild(btn);
+                });
+          } catch (e) { console.error(e); }
+      }
+      loadScenes();
+  }
+
   setInterval(loadPrinterStatus, 10000); // Poll printer every 10s
   setInterval(loadSystemStatus, 30000); // Poll system status every 30s
   // subscribe to server events to refresh widgets when rooms/mapping change

@@ -98,10 +98,36 @@ class SonosManagerModule {
                      sonosUri = `x-rincon-cpcontainer:1006206c${playlistId}?sid=9&flags=10860&sn=1`; // flags might need tuning
                      
                      // NOTE: Playlists on Sonos via UPnP are notoriously hard without a proper queue.
-                     // Using device.PlayNotification might be easier for single tracks, but for playlists...
+                     // Direct SetAVTransportURI with x-rincon-cpcontainer often fails (402 or 714).
+                     // We will PREFER Queue-based playback for playlists immediately to avoid the error.
                      
-                     // Alternative: x-sonos-spotify:spotify:playlist:...
+                     sonosUri = `x-rincon-cpcontainer:1006206c${playlistId}?sid=9&flags=10860&sn=1`;
+                     
+                     // Force Queue path immediately for playlists
+                     console.log('[Sonos] Spotify Playlist detected. Using Queue-based playback directly.');
+                     
+                     try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (ignored) {}
+
+                     await device.QueueService.AddURI({
+                         InstanceID: 0,
+                         EnqueuedURI: sonosUri,
+                         EnqueuedURIMetaData: sonosMeta,
+                         DesiredFirstTrackNumberEnqueued: 0,
+                         EnqueueAsNext: true
+                     });
+
+                     const queueUri = `x-rincon-queue:${device.uuid}#0`;
+                     await device.AVTransportService.SetAVTransportURI({
+                        InstanceID: 0,
+                        CurrentURI: queueUri,
+                        CurrentURIMetaData: ''
+                     });
+                     
+                     // Skip the standard SetAVTransportURI below
+                     return device.Play();
+
                  } else if (uri.includes('track')) {
+
                      // Spotify Track
                      // Format: x-sonos-spotify:spotify%3atrack%3a{id}?sid=9&flags=8224&sn=1
                      const trackId = uri.split(':')[2];
@@ -113,7 +139,8 @@ class SonosManagerModule {
             }
 
             console.log(`[Sonos] Setting URI: ${sonosUri}`);
-            
+
+            // Only proceed to SetAVTransportURI if we haven't already returned (i.e. not a Playlist which is handled above)
             try {
                 await device.AVTransportService.SetAVTransportURI({
                     InstanceID: 0,
@@ -123,6 +150,7 @@ class SonosManagerModule {
             } catch (e) {
                 // Illegal MIME-Type (714) or Invalid Args (402) often means the format is wrong for SetAVTransportURI (direct play).
                 // It usually implies this container type must be added to Queue first.
+                // NOTE: We now handle playlists explicitly above, but keep this for other cases or tracks if they fail.
                 const isPlaybackError = e.message && (
                     e.message.includes('Illegal MIME-Type') || 
                     e.message.includes('Invalid args') ||

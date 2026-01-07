@@ -52,7 +52,15 @@ class SonosManagerModule {
     }
 
     async play(uuid, uri, metadata) {
-        const device = await this._getDevice(uuid);
+        let device = await this._getDevice(uuid);
+
+        // Check if device is a follower (grouped) and not the coordinator.
+        // Controlling a follower often results in UPnP Error 800.
+        // We check 'coordinator' property which the library sets if grouped.
+        if (device.coordinator && device.coordinator.uuid !== device.uuid) {
+            console.log(`[Sonos] Device ${device.uuid} is a follower. Redirecting command to coordinator ${device.coordinator.uuid}`);
+            device = device.coordinator;
+        }
         
         // To play a stream, you often need to set the AVTransportURI first
         if (uri) {

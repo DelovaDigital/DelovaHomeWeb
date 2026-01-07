@@ -28,8 +28,13 @@ async function main() {
       
       console.log(`Found a device: ${firstDeviceData.host}`);
       const entryDevice = new SonosDevice(firstDeviceData.host);
-      await entryDevice.LoadDeviceData();
-      console.log(`Connected to: ${entryDevice.Name} (${entryDevice.uuid})`);
+      try {
+        await entryDevice.LoadDeviceData();
+        console.log(`Connected to: ${entryDevice.Name} (${entryDevice.uuid})`);
+      } catch (e) {
+        console.log(`Warning: Could not load full device data for ${firstDeviceData.host} (${e.message}). continuing...`);
+        entryDevice.Name = "Unknown Device";
+      }
 
       // Helper function to check a device
       const checkDevice = async (deviceHost, deviceName) => {

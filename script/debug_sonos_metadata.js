@@ -20,17 +20,56 @@ async function main() {
       const { SonosDeviceDiscovery, SonosDevice } = require('@svrooij/sonos');
       const discovery = new SonosDeviceDiscovery();
       
-      console.log('Searching for a Sonos device (5s timeout)...');
-      const deviceData = await discovery.SearchOne(5);
+      console.log('Searching for any Sonos device to fetch network topology (5s timeout)...');
+      const entryDeviceData = await discovery.SearchOne(5);
       
-      console.log(`Found device at IP: ${deviceData.host}`);
-      const device = new SonosDevice(deviceData.host);
+      console.log(`Found entry point: ${entryDeviceData.host}`);
+      const entryDevice = new SonosDevice(entryDeviceData.host);
+      await entryDevice.LoadDeviceData();
+      console.log(`Connected to entry device: ${entryDevice.Name}`);
+
+      // 2. Get full topology from this device to find the real COORDINATOR
+      console.log('Fetching Sonos Topology to find active Group Coordinator...');
+      const groups = await entryDevice.GetAllGroups();
       
-      // Load basic data
-      await device.LoadDeviceData();
-      console.log(`Connected to: ${device.Name} (${device.uuid})`);
+      let playingCoordinator = null;
+
+      for (const group of groups) {
+          // Find the coordinator for this group
+          const coordinatorMember = group.ZoneGroupMember.find(m => m.UUID === group.Coordinator);
+          if (!coordinatorMember) continue;
+
+          // Extract IP from Location URL (http://192.168.1.xxx:1400/xml/device_description.xml)
+          // Some models use different ports, but regex should capture the IP.
+          const match = coordinatorMember.Location.match(/\/\/([^:]+):/);
+          const ip = match ? match[1] : null;
+
+          if (ip) {
+              const coord = new SonosDevice(ip);
+               // We need to check if IT is playing.
+               // Just getting TransportState is quick.
+              try {
+                const state = await coord.AVTransportService.GetTransportInfo({ InstanceID: 0 });
+                if (state.CurrentTransportState === 'PLAYING' || state.CurrentTransportState === 'PAUSED_PLAYBACK') {
+                   console.log(`\n>>> FOUND ACTIVE COORDINATOR: ${coordinatorMember.ZoneName} (${ip}) <<<`);
+                   playingCoordinator = coord;
+                   break;
+                }
+              } catch (e) { /* Warning: device might be offline */ }
+          }
+      }
+
+      if (!playingCoordinator) {
+          // If no coordinator is found playing, maybe the entry device itself is the one we want to check (fallback)
+          // But likely we just didn't find any playing device.
+          console.log('\n⚠️ No PLAYING Group Coordinator found. Using entry device as fallback.');
+          playingCoordinator = entryDevice; 
+      }
+
+      const device = playingCoordinator;
+      await device.LoadDeviceData(); // Ensure name is loaded
+      console.log(`\n--- Inspecting Playback State on ${device.Name} (${device.host}) ---`);
       
-      console.log('\n--- Inspecting Playback State ---');
       const mediaInfo = await device.AVTransportService.GetMediaInfo({ InstanceID: 0 });
       const transportInfo = await device.AVTransportService.GetTransportInfo({ InstanceID: 0 });
 

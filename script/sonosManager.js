@@ -69,17 +69,19 @@ class SonosManagerModule {
             // Special handling for Spotify URIs using the library's native helper
             // Special handling for Spotify URIs on Sonos
             if (uri.startsWith('spotify:')) {
-                console.log('[Sonos] Spotify URI detected. Switching to direct QueueService.AddURI strategy with Lib Flags.');
+                console.log('[Sonos] Spotify URI detected. QueueService strategy with Anonymous Account Metadata.');
                 
                 // 1. Clear Queue
                 try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
 
-                // 2. QueueService.AddURI (Flags: 8300, SN: 7)
-                const encodedSpotifyUri = uri.replace(/:/g, '%3a');
-                const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=8300&sn=7`;
+                // 2. QueueService.AddURI
+                // Format: x-rincon-cpcontainer:1006206c{encoded_uri}?sid=9&flags=10860&sn=1
+                // We use encodeURIComponent to ensure proper encoding (uppercase hex)
+                const encodedSpotifyUri = encodeURIComponent(uri);
+                const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=10860&sn=1`;
                 
-                // Metadata mimicking library helper but without specific account region to avoid Auth errors
-                const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="10fe2664playlists" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class></item></DIDL-Lite>`;
+                // Metadata INCLUDING <desc> with wildcard account
+                const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_</desc></item></DIDL-Lite>`;
 
                 try {
                      await device.QueueService.AddURI({
@@ -90,12 +92,6 @@ class SonosManagerModule {
                          EnqueueAsNext: true
                     });
                 } catch (e) {
-                    // If this fails (e.g. 800), check coordinator again or throw
-                     const isGroupError = (e.UpnpErrorCode === 800) || (e.message && e.message.includes('coordinator'));
-                     if (isGroupError) {
-                         console.warn(`[Sonos] Error 800 in QueueService. Retrying with topology refresh...`);
-                          // ... (Same retry logic as before if needed, but omitted for brevity as we think we are coordinator) ...
-                     }
                      console.error(`[Sonos] QueueService.AddURI failed: ${e.message}`);
                      throw e; 
                 }

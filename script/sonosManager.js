@@ -51,6 +51,37 @@ class SonosManagerModule {
         return device;
     }
 
+    async _getSpotifyCredentials(device) {
+        try {
+            // console.log('[Sonos] Attempting to harvest Spotify credentials from Favorites...');
+            const favorites = await device.GetFavorites();
+            if (!favorites || favorites.length === 0) return null;
+
+            // Find any favorite that looks like it comes from Spotify
+            const spotifyFav = favorites.find(f => 
+                (f.uri && (f.uri.includes('spotify%3a') || f.uri.includes('sid=9'))) || 
+                (f.metaData && f.metaData.includes('spotify'))
+            );
+
+            if (spotifyFav) {
+                // Extract sn
+                const snMatch = spotifyFav.uri.match(/sn=(\d+)/);
+                const sn = snMatch ? parseInt(snMatch[1]) : null;
+
+                // Extract desc (Account ID token) from metadata
+                const descMatch = spotifyFav.metaData.match(/<desc[^>]*>(.*?)<\/desc>/);
+                const desc = descMatch ? descMatch[1] : null;
+
+                if (sn && desc) {
+                    return { sn, desc };
+                }
+            }
+        } catch (e) {
+            console.warn('[Sonos] Failed to harvest credentials:', e.message);
+        }
+        return null;
+    }
+
     async play(uuid, uri, metadata) {
         let device = await this._getDevice(uuid);
 
@@ -120,32 +151,45 @@ class SonosManagerModule {
                 const upnpClass = isAlbum ? 'object.container.album.musicAlbum' : 
                                  (isTrack ? 'object.item.audioItem.musicTrack' : 'object.container.playlistContainer');
                 
-                // For tracks, we typically play them directly via SetAVTransportURI with metadata if available,
-                // BUT if we want to queue them or if SetAVTransportURI fails for spotify:, we use AddURI.
-                // If metadata was provided (e.g. from server.js for a track), we should use it?
-                // The block below overwrites metadata. Let's fix that for tracks if needed. 
-                // But for Playlists/Albums (User Request), we construct it.
+                // Harvest valid credentials from ANY Spotify favorite
+                const creds = await this._getSpotifyCredentials(device);
+                const accountToken = creds ? creds.desc : 'SA_RINCON65535_X_#Svc65535-0-Token';
+                
+                if (creds) {
+                    console.log(`[Sonos] Using harvested credentials (sn=${creds.sn})`);
+                } else {
+                    console.warn('[Sonos] ⚠️ No Spotify credentials found in favorites. Using dummies (high chance of 402 Error).');
+                }
 
                 // FALLBACK: Brute-force the Service Index (sn) and Flags
                 // We typically see sn=1, 3, 7. Flags are usually 8300 or 10860.
-                const attempts = [
+                const attempts = [];
+                
+                if (creds) {
+                    // If we have credentials, try them first!
+                    attempts.push({ sn: creds.sn, flags: 8300 }); // Standard Container
+                    if (isTrack) attempts.push({ sn: creds.sn, flags: 0 }); // Tracks often 0 or 8224
+                }
+
+                attempts.push(
                      { sn: 3, flags: 8300 }, // Seen in user logs
                      { sn: 7, flags: 8300 }, // Library default
                      { sn: 1, flags: 8300 }, // Common, sometimes works for Albums
                      { sn: 3, flags: 10860 },
                      { sn: 7, flags: 10860 }
-                ];
-
+                );
+                
                 const encodedSpotifyUri = encodeURIComponent(uri);
                 let lastError = null;
+                let success = false;
 
                 for (const attempt of attempts) {
                     try {
                         console.log(`[Sonos] Attempting AddURI with sn=${attempt.sn} flags=${attempt.flags} class=${upnpClass}...`);
                         
                         const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=${attempt.flags}&sn=${attempt.sn}`;
-                        // Use Anonymous ID
-                        const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Content</dc:title><upnp:class>${upnpClass}</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_X_#Svc65535-0-Token</desc></item></DIDL-Lite>`;
+                        // Use Harvested or Anonymous ID
+                        const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Content</dc:title><upnp:class>${upnpClass}</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${accountToken}</desc></item></DIDL-Lite>`;
 
                         await device.QueueService.AddURI({
                              InstanceID: 0,
@@ -155,28 +199,27 @@ class SonosManagerModule {
                              EnqueueAsNext: true
                         });
                         
-                        console.log(`[Sonos] ✅ Success using sn=${attempt.sn} flags=${attempt.flags}!`);
-                        
-                        // Set Transport to Queue and Play
-                         await device.AVTransportService.SetAVTransportURI({
+                        // If we queue successfully, try to play the queue
+                        await device.AVTransportService.SetAVTransportURI({
                            InstanceID: 0,
                            CurrentURI: `x-rincon-queue:${device.uuid}#0`,
                            CurrentURIMetaData: ''
                         });
-                        return device.Play();
+
+                        await device.Play();
+                        success = true;
+                        console.log('[Sonos] Success!');
+                        break;
                         
                     } catch (e) {
-                        console.log(`[Sonos] Failed with sn=${attempt.sn}: ${e.message}`);
-                        lastError = e;
-                        if (!e.message.includes('Invalid args') && !e.message.includes('402')) {
-                            // If it's NOT an invalid args error (e.g. network error), stop trying.
-                            // But 402/714 IS what we are trying to fix by changing parameters.
-                        }
+                         lastError = e;
+                         // Continue trying...
                     }
                 }
-                
-                // If all failed
-                console.error('[Sonos] All AddURI attempts failed.');
+
+                if (!success) {
+                     // If all failed
+                    console.error('[Sonos] All AddURI attempts failed.');
                 throw lastError || new Error('Failed to play Spotify URI on Sonos');
             }
 

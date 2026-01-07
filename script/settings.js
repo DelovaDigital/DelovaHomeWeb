@@ -94,8 +94,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Hub Settings (Timezone) ---
+    // --- Hub Settings (Timezone & Features) ---
     fetchHubSettings();
+
+    function setupFeatureToggle(id, featureKey) {
+        const toggle = document.getElementById(id);
+        if (toggle) {
+            toggle.addEventListener('change', async () => {
+                const enabled = toggle.checked;
+                try {
+                    await fetch('/api/settings/features', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ feature: featureKey, enabled })
+                    });
+                } catch (e) {
+                     console.error(`Failed to toggle ${featureKey}`, e);
+                     toggle.checked = !enabled; // Revert on error
+                }
+            });
+        }
+    }
+
+    setupFeatureToggle('featureAdaptiveLighting', 'adaptiveLighting');
+    setupFeatureToggle('featureClimate', 'climateControl');
+    setupFeatureToggle('featureEnergy', 'energySaver');
+    setupFeatureToggle('featureSecurity', 'securitySystem');
 
     // --- Energy Settings ---
     const energyForm = document.getElementById('energy-form');
@@ -545,6 +569,18 @@ async function fetchHubSettings() {
             const tzSelect = document.getElementById('timezoneSelect');
             if (tzSelect && settings.timezone) {
                 tzSelect.value = settings.timezone;
+            }
+
+            // Sync features toggles
+            if (settings.features) {
+                const setToggle = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = val;
+                };
+                setToggle('featureAdaptiveLighting', settings.features.adaptiveLighting);
+                setToggle('featureClimate', settings.features.climateControl);
+                setToggle('featureEnergy', settings.features.energySaver);
+                setToggle('featureSecurity', settings.features.securitySystem);
             }
         }
     } catch (e) {

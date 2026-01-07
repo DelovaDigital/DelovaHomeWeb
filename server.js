@@ -26,13 +26,18 @@ const knxManager = require('./script/knxManager');
 const mqttManager = require('./script/mqttManager');
 const mqttBroker = require('./script/mqttBroker');
 const energyManager = require('./script/energyManager');
+global.energyManager = energyManager;
 const sceneManager = require('./script/sceneManager'); // Scene & Mode Management
 const automationManager = require('./script/automationManager');
 const logicEngine = require('./script/logicEngine'); // Logic & Template Sensors
 const entertainmentManager = require('./script/entertainmentManager'); // Media & Logic
 const securityManager = require('./script/securityManager');
+global.securityManager = securityManager;
 const climateManager = require('./script/climateManager'); // Thermotat & Blinds
+global.climateManager = climateManager; // Expose globally
+
 const adaptiveLighting = require('./script/adaptiveLighting'); // Smart Lighting
+global.adaptiveLighting = adaptiveLighting;
 adaptiveLighting.start();
 
 const espManager = require('./script/espManager'); // Advanced MQTT/ESP32 Management
@@ -525,13 +530,40 @@ app.post('/api/register', async (req, res) => {
 
 // --- General Settings API ---
 app.get('/api/settings', (req, res) => {
-    // Return safe subset of hubConfig
+    // Return safe subset of hubConfig + Feature Flags
     res.json({
         hubId: hubConfig.hubId,
         name: hubConfig.name,
         version: hubConfig.version,
-        timezone: hubConfig.timezone || 'Europe/Brussels'
+        timezone: hubConfig.timezone || 'Europe/Brussels',
+        features: {
+            adaptiveLighting: global.adaptiveLighting ? global.adaptiveLighting.enabled : false,
+            climateControl: global.climateManager ? global.climateManager.mode === 'AUTO' : true,
+            energySaver: global.energyManager ? global.energyManager.enabled : true,
+            securitySystem: global.securityManager ? global.securityManager.enabled : true
+        }
     });
+});
+
+app.post('/api/settings/features', express.json(), (req, res) => {
+    const { feature, enabled } = req.body;
+    
+    if (feature === 'adaptiveLighting' && global.adaptiveLighting) {
+        global.adaptiveLighting.enabled = enabled;
+        if (enabled) global.adaptiveLighting.start(); 
+        else global.adaptiveLighting.stop();
+        console.log(`[Settings] Adaptive Lighting set to ${enabled}`);
+    } else if (feature === 'climateControl' && global.climateManager) {
+        global.climateManager.mode = enabled ? 'AUTO' : 'MANUAL';
+        console.log(`[Settings] Climate Control set to ${enabled ? 'AUTO' : 'MANUAL'}`);
+    } else if (feature === 'energySaver' && global.energyManager) {
+        global.energyManager.enabled = enabled;
+        console.log(`[Settings] Energy Saver set to ${enabled}`);
+    } else if (feature === 'securitySystem' && global.securityManager) {
+        global.securityManager.enabled = enabled;
+    }
+
+    res.json({ ok: true });
 });
 
 app.post('/api/settings', express.json(), (req, res) => {

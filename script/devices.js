@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="modal-tabs" id="modalTabs" style="display:none;">
                         <div class="modal-tab active" data-tab="controls">Bediening</div>
                         <div class="modal-tab" data-tab="info">Info</div>
+                        <div class="modal-tab" data-tab="energy">Energie</div>
                         <div class="modal-tab" data-tab="settings">Instellingen</div>
                     </div>
                     <div id="modalDeviceBody" class="device-modal-body">
@@ -63,6 +64,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="device-modal-body">
                         <p id="pairingDesc" style="text-align: center; color: #aaa; margin-bottom: 20px;">Voer inloggegevens in.</p>
                         
+                        <!-- Manual Add Fields -->
+                        <div id="manual-pair-fields" style="display: none; border-bottom: 1px solid #444; margin-bottom: 15px; padding-bottom: 15px;">
+                            <div class="control-group" style="width: 100%;">
+                                <label>IP Adres</label>
+                                <input type="text" id="pair-ip" class="modal-input" placeholder="192.168.1.x">
+                            </div>
+                            <div class="control-group" style="width: 100%;">
+                                <label>Type</label>
+                                <select id="pair-type" class="modal-input" style="background: var(--bg); color: var(--text);">
+                                    <option value="hue">Philips Hue Bridge</option>
+                                    <option value="sonos">Sonos Speaker</option>
+                                    <option value="camera">IP Camera (RTSP)</option>
+                                    <option value="wled">WLED Strip</option>
+                                    <option value="shelly">Shelly Switch</option>
+                                    <option value="tasmota">Tasmota Device</option>
+                                    <option value="kodi">Kodi Media Center</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="control-group" style="width: 100%;">
                             <label>Gebruikersnaam</label>
                             <input type="text" id="pair-username" class="modal-input" placeholder="admin / pi / user">
@@ -108,6 +129,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Scan Button Logic
     const scanBtn = document.getElementById('scanDevicesBtn');
     if (scanBtn) {
+        // Add "Add Device" button next to scan button
+        const headerActions = scanBtn.parentElement;
+        if (headerActions) {
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-secondary'; // Matches styling
+            addBtn.innerHTML = '<i class="fas fa-plus"></i> Toevoegen';
+            addBtn.style.marginLeft = '10px';
+            addBtn.onclick = () => window.openManualPairing();
+            headerActions.appendChild(addBtn);
+        }
+
         scanBtn.addEventListener('click', async () => {
             const icon = scanBtn.querySelector('i');
             icon.classList.add('fa-spin');
@@ -997,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-        // 2. Info Tab
+        // 3. Info Tab
         const infoContent = `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; text-align: left;">
                 <div style="color: #888;">Naam:</div><div>${device.name}</div>
@@ -1010,7 +1042,37 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        // 3. Settings Tab
+        // 4. Energy Tab (New)
+        const currentPower = (device.state && device.state.power !== undefined) ? device.state.power : (device.currentPower || 0);
+        const energyContent = `
+            <div style="width: 100%; display: flex; flex-direction: column; gap: 20px;">
+                <div class="control-group">
+                    <label>Huidig Verbruik (Realtime)</label>
+                    <div style="font-size: 2.5em; font-weight: bold; color: var(--primary);">${currentPower} W</div>
+                    <p style="color: #888; font-size: 0.9em;">
+                        ${(device.state && device.state.power !== undefined) ? 'Gemeten via slimme stekker' : 'Geschat verbruik (Standaard)'}
+                    </p>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
+                    <h4 style="margin: 0 0 10px 0;">Vandaag</h4>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Verbruik:</span>
+                        <span style="font-weight: bold;">-- kWh</span>
+                    </div>
+                     <div style="display: flex; justify-content: space-between;">
+                        <span>Kosten:</span>
+                        <span style="font-weight: bold;">€ --</span>
+                    </div>
+                </div>
+
+                 <div style="height: 150px; background: rgba(0,0,0,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 1px dashed #666;">
+                    <span style="color: #888;"><i class="fas fa-chart-line"></i> Grafiek beschikbaar in versie 2.0</span>
+                </div>
+            </div>
+        `;
+
+        // 5. Settings Tab
         const settingsContent = `
             <div style="width: 100%; display: flex; flex-direction: column; gap: 20px;">
                 <div class="control-group">
@@ -1023,6 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="control-group">
                     <label style="display: block; margin-bottom: 10px;">Kamer Toewijzen</label>
                     <button class="btn btn-secondary" style="width: 100%;" onclick="assignRoom('${device.id}')">Kies Kamer</button>
+                    <p style="font-size: 0.8em; color: #888; margin-top: 5px;">Configureer dit in het 'Kamers' tabblad.</p>
                 </div>
                 <div class="control-group" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px;">
                     <button class="btn btn-secondary" style="width: 100%; background-color: #dc3545; color: white;" onclick="deleteDevice('${device.id}')">
@@ -1042,6 +1105,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div id="tab-info" class="tab-content ${activeTab === 'info' ? 'active' : ''}">
                 ${infoContent}
+            </div>
+            <div id="tab-energy" class="tab-content ${activeTab === 'energy' ? 'active' : ''}">
+                ${energyContent}
             </div>
             <div id="tab-settings" class="tab-content ${activeTab === 'settings' ? 'active' : ''}">
                 ${settingsContent}
@@ -1707,56 +1773,77 @@ window.showPairingModal = (arg1, arg2) => {
 };
 
 
-window.submitPairing = async () => {
-    console.log('submitPairing called for:', currentPairingDevice);
-    if (!currentPairingDevice) return;
+window.openManualPairing = () => {
+    currentPairingDevice = null;
+    document.getElementById('pairingModal').style.display = 'block';
+    document.getElementById('pairingTitle').textContent = 'Handmatig Toevoegen';
+    document.getElementById('pairingDesc').textContent = 'Voer het IP-adres en type in.';
     
+    // Show manual fields
+    document.getElementById('manual-pair-fields').style.display = 'block';
+    document.getElementById('pair-ip').value = '';
+    document.getElementById('pair-username').value = '';
+    document.getElementById('pair-password').value = '';
+    
+    const btn = document.querySelector('#pairingModal .btn-primary');
+    btn.textContent = 'Toevoegen';
+    btn.disabled = false;
+};
+
+window.submitPairing = async () => {
+    console.log('submitPairing called');
+
     const username = document.getElementById('pair-username').value;
     const password = document.getElementById('pair-password').value;
     const pin = document.getElementById('pair-pin').value;
-    
+
+    let ip, type;
+
+    if (!currentPairingDevice) {
+        ip = document.getElementById('pair-ip').value;
+        type = document.getElementById('pair-type').value;
+        if (!ip) return alert('IP Adres is verplicht');
+    } else {
+        ip = currentPairingDevice.ip;
+        type = currentPairingDevice.type;
+    }
+
     const btn = document.querySelector('#pairingModal .btn-primary');
     const originalText = btn.textContent;
     btn.textContent = 'Verbinden...';
     btn.disabled = true;
-    
+
     try {
         let res;
-        if (currentPairingDevice.type === 'tv' || currentPairingDevice.type === 'samsung' || currentPairingDevice.type === 'lg') {
-             const device = allDevices.find(d => d.ip === currentPairingDevice.ip);
-             if (device) {
-                 res = await fetch(`/api/devices/${device.id}/command`, {
-                     method: 'POST',
-                     headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ command: 'pair', value: pin })
-                 });
-             } else {
-                 throw new Error('Apparaat niet gevonden in lijst.');
-             }
+
+        if (currentPairingDevice && (type === 'tv' || type === 'samsung' || type === 'lg')) {
+            const device = allDevices.find(d => d.ip === ip);
+            if (!device) throw new Error('Apparaat niet gevonden in lijst.');
+
+            res = await fetch(`/api/devices/${device.id}/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: 'pair', value: pin })
+            });
         } else {
             res = await fetch('/api/devices/pair', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ip: currentPairingDevice.ip,
-                    type: currentPairingDevice.type,
-                    username,
-                    password,
-                    pin
-                })
+                body: JSON.stringify({ ip, type, username, password, pin })
             });
         }
-        
+
         const data = await res.json();
+
         if (data.ok) {
             alert('Succesvol gekoppeld!');
             document.getElementById('pairingModal').style.display = 'none';
             if (typeof fetchDevices === 'function') fetchDevices();
         } else {
-            alert('Koppelen mislukt: ' + (data.error || 'Onbekende fout'));
+            alert('Koppelen mislukt: ' + (data.error || data.message || 'Onbekende fout'));
         }
     } catch (e) {
-        alert('Netwerkfout: ' + e.message);
+        alert('Fout: ' + e.message);
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;

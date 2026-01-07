@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div style="font-size: 0.8em; opacity: 0.9; cursor: pointer; display:flex; gap:8px; align-items:center;" >
                         <div onclick="toggleSpotifyDevices()" style="cursor:pointer;"><i class="fas fa-desktop"></i> ${deviceName} <i class="fas fa-chevron-down"></i></div>
-                        <div title="Play on Sonos" style="cursor:pointer;" onclick="openSonosPickerForUri()"><i class="fas fa-volume-up"></i></div>
                     </div>
                 </div>
                 
@@ -167,11 +166,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="modal-body">
                     <div class="list-group">
-                        ${devices.length > 0 ? devices.map(d => `
+                        ${devices.length > 0 ? devices.map(d => {
+                            let clickAction;
+                            if (pendingCommand) {
+                                // Escaping quotes for the value string
+                                const val = pendingCommand.value ? `'${pendingCommand.value.replace(/'/g, "\\'")}'` : 'null';
+                                clickAction = `controlSpotify('${pendingCommand.command}', ${val}, '${d.id}'); closeModal();`;
+                            } else {
+                                clickAction = `controlSpotify('transfer', '${d.id}'); closeModal();`;
+                            }
+                            
+                            return `
                             <div class="list-item ${d.is_active ? 'active' : ''}" style="display:flex; align-items:center;">
-                                <div style="flex:1; cursor:pointer;" onclick="${pendingCommand ? 
-                                    `controlSpotify('${pendingCommand.command}', '${pendingCommand.value}', '${d.id}'); closeModal();` : 
-                                    `controlSpotify('transfer', '${d.id}'); closeModal();`}">
+                                <div style="flex:1; cursor:pointer;" onclick="${clickAction}">
                                     <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
                                     <div style="display:inline-block; margin-left: 10px; vertical-align: middle;">
                                         <div style="font-weight: bold;">${d.name}</div>
@@ -180,10 +187,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                                 <div style="display:flex; gap:8px; align-items:center;">
                                     ${d.is_active ? '<i class="fas fa-check" style="color: #1db954;"></i>' : ''}
-                                    <button class="btn-mini" onclick="event.stopPropagation(); openSonosPickerForUri(); closeModal();" title="Play on Sonos"><i class="fas fa-play-circle"></i></button>
                                 </div>
                             </div>
-                        `).join('') : '<div style="padding:10px; text-align:center; color:#666;">Geen actieve Spotify Connect apparaten gevonden.<br>Open Spotify op een apparaat om het hier te zien.</div>'}
+                        `;
+                        }).join('') : '<div style="padding:10px; text-align:center; color:#666;">Geen actieve Spotify Connect apparaten gevonden.<br>Open Spotify op een apparaat om het hier te zien.</div>'}
                     </div>
                 </div>
             `;

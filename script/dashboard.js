@@ -466,8 +466,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if(!el) return;
       try {
           const res = await apiGet('/api/energy'); 
-          if(!res || !res.data) return;
-          const d = res.data;
+          // Fix: The API returns the data object directly, not wrapped in a 'data' property
+          const d = (res && res.data) ? res.data : res;
+          
+          if(!d || !d.grid || !d.solar) return;
           
           const gridClass = d.grid.currentPower > 0 ? 'pos' : (d.grid.currentPower < 0 ? 'neg' : '');
           

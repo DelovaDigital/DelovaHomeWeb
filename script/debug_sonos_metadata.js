@@ -43,18 +43,36 @@ async function main() {
             const transport = await d.AVTransportService.GetTransportInfo({ InstanceID: 0 });
             if (transport.CurrentTransportState === 'PLAYING' || transport.CurrentTransportState === 'PAUSED_PLAYBACK') {
                 console.log(`\n✅ Device ${deviceName || deviceHost} IS PLAYING!`);
-                const mediaInfo = await d.AVTransportService.GetMediaInfo({ InstanceID: 0 });
                 
-                if (mediaInfo.CurrentURI && (mediaInfo.CurrentURI.includes('spotify') || mediaInfo.CurrentURI.includes('rincon-cpcontainer'))) {
+                const mediaInfo = await d.AVTransportService.GetMediaInfo({ InstanceID: 0 });
+                const positionInfo = await d.AVTransportService.GetPositionInfo({ InstanceID: 0 });
+
+                console.log('---------------------------------------------------');
+                console.log('Media URI:', mediaInfo.CurrentURI);
+                console.log('Track URI:', positionInfo.TrackURI);
+                console.log('Track Metadata:', positionInfo.TrackMetaData);
+                console.log('---------------------------------------------------');
+
+                const fullText = (mediaInfo.CurrentURI || '') + (mediaInfo.CurrentURIMetaData || '') + (positionInfo.TrackURI || '') + (positionInfo.TrackMetaData || '');
+                
+                if (fullText.toLowerCase().includes('spotify')) {
                     console.log('\n>>> ANALYSIS SUCCESSFUL <<<');
-                    const snMatch = mediaInfo.CurrentURI.match(/sn=(\d+)/);
+                    
+                    const snMatch = fullText.match(/sn=(\d+)/);
                     if (snMatch) console.log(`✅ FOUND Service Account Index (sn): ${snMatch[1]}`);
                     
-                    const descMatch = mediaInfo.CurrentURIMetaData ? mediaInfo.CurrentURIMetaData.match(/<desc[^>]*>(.*?)<\/desc>/) : null;
+                    const descMatch = fullText.match(/<desc[^>]*>(.*?)<\/desc>/);
                     if (descMatch) {
                         console.log(`✅ FOUND Metadata Account ID (<desc>): "${descMatch[1]}"`);
                         console.log(`\n!!! COPY THE VALUES ABOVE !!!\n`);
-                        return true; // Found it
+                        return true; 
+                    } else {
+                         console.log('❌ Could not find <desc> tag in Track Metadata either. Please check the log above manually.');
+                         // Verify manually
+                         if (positionInfo.TrackMetaData && positionInfo.TrackMetaData.includes('SA_RINCON')) {
+                             console.log('Wait, I see SA_RINCON in the text, but regex failed. Please copy it manually.');
+                         }
+                         return true; // Stop searching anyway to let user see logs
                     }
                 }
             }

@@ -228,6 +228,10 @@ class PresenceManager extends EventEmitter {
         }
     }
 
+    getHomeState() {
+        return this.homeState;
+    }
+
     getPresenceStatus() {
         return {
             state: this.homeState,

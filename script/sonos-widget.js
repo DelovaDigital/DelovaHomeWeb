@@ -63,7 +63,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function render() {
         if (sonosDevices.length === 0) {
-            container.innerHTML = ''; // Hide if no devices
+             container.innerHTML = `
+                <div class="unified-card widget" id="sonos-main-card">
+                    <div class="unified-card-header">
+                        <h4><i class="fas fa-music" style="color:#f97316;"></i> Sonos</h4>
+                    </div>
+                    <div style="padding: 20px; text-align: center; opacity: 0.7;">
+                        <i class="fas fa-satellite-dish" style="margin-bottom: 10px; font-size: 1.5em;"></i>
+                        <div>Geen Sonos speakers gevonden</div>
+                        <button onclick="location.reload()" class="btn-xs" style="margin-top:10px; padding: 5px 10px; background: rgba(255,255,255,0.1); border:none; border-radius:4px; color:inherit; cursor:pointer;">
+                           <i class="fas fa-sync"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            `;
             return;
         }
 

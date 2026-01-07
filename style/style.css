@@ -36,13 +36,60 @@ body {
     background-attachment: fixed;
 }
 
-/* Components */
+/* Components - Redesigned Card System */
 .main-nav, .card, .device-card, .room-card, .widget, .modal-content, .glass-card, .settings-sidebar {
     background: var(--glass-bg) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid white !important;
-    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    border-radius: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover, .device-card:hover, .room-card:hover, .widget:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.1);
+    border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Specific Card Tweaks */
+.device-card {
+    background: rgba(255, 255, 255, 0.9) !important; /* Slightly more opaque for readability */
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 120px;
+}
+
+.device-card .device-icon-wrapper {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.device-card .device-icon-wrapper.on, .device-card.on .device-icon-wrapper {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.device-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 10px 0 5px 0;
+}
+
+.device-card p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0;
 }
 
 /* Navigation */
@@ -60,24 +107,7 @@ body {
     color: var(--primary);
 }
 
-/* Device Cards */
-.device-card {
-    background: white !important;
-}
-
-.device-card.active, .device-card.on {
-    background: white !important;
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 2px var(--primary);
-}
-
-.device-card i {
-    color: var(--text-muted);
-}
-
-.device-card.active i, .device-card.on i {
-    color: var(--primary);
-}
+/* Device Cards Block Removed - Replaced by Redesigned Card System */
 
 /* Buttons */
 .btn-primary, button {

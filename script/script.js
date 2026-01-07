@@ -486,5 +486,14 @@ function getDeviceIconClass(device) {
     else if (type === 'smartthings') icon = 'fas fa-circle-nodes';
     else if (type === 'chromecast') icon = 'fab fa-chromecast';
     
+    // Appliances
+    else if (type === 'washer' || name.includes('washer') || name.includes('washing')) icon = 'fas fa-tshirt';
+    else if (type === 'dryer' || name.includes('dryer')) icon = 'fas fa-wind';
+    else if (type === 'fridge' || type === 'refrigerator' || name.includes('fridge')) icon = 'fas fa-snowflake';
+    else if (type === 'dishwasher') icon = 'fas fa-utensils';
+    else if (type === 'oven' || type === 'stove') icon = 'fas fa-fire';
+    else if (type === 'coffee' || type === 'coffee_machine') icon = 'fas fa-coffee';
+    else if (type === 'fan' || type === 'bond') icon = 'fas fa-fan';
+    
     return icon;
 }

@@ -502,7 +502,150 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Scenes Logic
+  async function loadScenes() {
+    const scenesBar = document.getElementById('scenesBar');
+    if (!scenesBar) return;
+
+    try {
+      const data = await apiGet('/api/scenes');
+      if (!data || !data.scenes) return;
+
+      scenesBar.innerHTML = '';
+      data.scenes.forEach(scene => {
+        const card = document.createElement('div');
+        card.className = `scene-card${scene.id === data.mode ? ' active' : ''}`;
+        card.onclick = () => activateScene(scene.id);
+        
+        let icon = 'fa-home';
+        if (scene.id === 'AWAY') icon = 'fa-shoe-prints';
+        if (scene.id === 'NIGHT') icon = 'fa-moon';
+        if (scene.id === 'CINEMA') icon = 'fa-film';
+
+        card.innerHTML = `
+            <div style="font-size: 1.5rem; margin-bottom: 5px;"><i class="fas ${icon}"></i></div>
+            <div style="font-weight: 500;">${scene.name}</div>
+        `;
+        scenesBar.appendChild(card);
+      });
+    } catch(e) { console.error('Error loading scenes:', e); }
+  }
+
+  window.activateScene = async function(modeId) {
+    try {
+      await fetch('/api/mode/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: modeId })
+      });
+      loadScenes(); 
+    } catch(e) { console.error('Failed to set scene:', e); }
+  }
+
+  // Presence Logic
+  async function loadPresence() {
+      const el = document.getElementById('presenceContent');
+      if(!el) return;
+      try {
+          const res = await apiGet('/api/presence');
+          if(!res || !res.people) return;
+          
+          if(res.people.length === 0) {
+              el.innerHTML = '<div class="empty">No users tracking</div>';
+              return;
+          }
+
+          el.innerHTML = `<div class="presence-list">
+            ${res.people.map(p => `
+              <div class="person-item">
+                  <div class="person-status ${p.isHome ? 'home' : 'away'}"></div>
+                  <span>${p.name}</span>
+                  <span style="margin-left:auto; font-size:0.8em; opacity:0.7">${p.isHome ? 'Thuis' : 'Afwezig'}</span>
+              </div>
+            `).join('')}
+          </div>`;
+      } catch(e) { console.error('Presence error', e); }
+  }
+
+  // Energy Logic
+  async function loadEnergy() {
+      const el = document.getElementById('energyContent');
+      if(!el) return;
+      try {
+          const res = await apiGet('/api/energy'); 
+          if(!res || !res.data) return;
+          const d = res.data;
+          
+          const gridClass = d.grid.currentPower > 0 ? 'pos' : (d.grid.currentPower < 0 ? 'neg' : '');
+          
+          el.innerHTML = `
+            <div class="energy-grid">
+                <div class="energy-item">
+                    <div style="font-size:0.8em">Solar</div>
+                    <div class="energy-val neg"><i class="fas fa-sun"></i> ${d.solar.currentPower} W</div>
+                </div>
+                <div class="energy-item">
+                    <div style="font-size:0.8em">Grid</div>
+                    <div class="energy-val ${gridClass}"><i class="fas fa-plug"></i> ${d.grid.currentPower} W</div>
+                </div>
+                <div class="energy-item" style="grid-column: span 2">
+                    <div style="font-size:0.8em">Home</div>
+                    <div class="energy-val pos"><i class="fas fa-home"></i> ${d.home.currentUsage} W</div>
+                </div>
+            </div>
+          `;
+      } catch(e) { console.error('Energy error', e); }
+  }
+
   // initial
+  loadScenes();
+  loadPresence();
+  loadEnergy();
+  setInterval(loadEnergy, 5000);
+  setInterval(loadPresence, 60000);
+
+  // AI Assistant
+  const aiInput = document.getElementById('aiInput');
+  const aiSubmit = document.getElementById('aiSubmit');
+  
+  async function submitAI() {
+    const text = aiInput.value.trim();
+    if(!text) return;
+    
+    // Show some loading state
+    const originalIcon = aiSubmit.innerHTML;
+    aiSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const res = await fetch('/api/ai/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }) 
+        });
+        const data = await res.json();
+        if (data.message && typeof showToast === 'function') {
+            showToast(data.message, data.ok ? 'success' : 'error');
+        } else if (data.message) {
+            alert(data.message);
+        }
+
+        if (data.ok) {
+            aiInput.value = '';
+            render(); // Refresh state
+        }
+    } catch(e) {
+        console.error(e);
+    } finally {
+        aiSubmit.innerHTML = originalIcon;
+    }
+  }
+
+  if(aiSubmit) {
+      aiSubmit.addEventListener('click', submitAI);
+      aiInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') submitAI();
+      });
+  }
   if (roomsList) render();
   loadWeather();
   loadPrinterStatus();

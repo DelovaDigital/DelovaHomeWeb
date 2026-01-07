@@ -1493,3 +1493,76 @@ input:checked + .slider:before {
 .weather-icon-snow { color: #E0F7FA; }
 .weather-icon-storm { color: #7E57C2; }
 
+
+/* Scenes Bar */
+.scenes-bar {
+    display: flex;
+    overflow-x: auto;
+    gap: 15px;
+    padding: 2px 5px 20px 5px; /* Extra padding for hover lift/shadow */
+    margin-bottom: 5px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scenes-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.scene-card {
+    min-width: 130px;
+    height: 70px;
+    border-radius: 20px;
+    padding: 12px 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    
+    /* Glass Effect */
+    background: rgba(255, 255, 255, 0.6); /* Light mode default */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+/* Dark Mode override handled by style-dark.css usually, but we inject variables here */
+@media (prefers-color-scheme: dark) {
+    .scene-card {
+        background: rgba(30, 41, 59, 0.6);
+        border-color: rgba(255,255,255,0.1);
+    }
+}
+
+.scene-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 12px 20px rgba(0,0,0,0.1);
+}
+
+.scene-card.active {
+    background: var(--primary) !important;
+    border-color: transparent;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+}
+
+.scene-card i {
+    font-size: 1.4rem;
+    color: var(--primary);
+    transition: color 0.3s;
+}
+
+.scene-card span {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+    transition: color 0.3s;
+}
+
+.scene-card.active i, .scene-card.active span {
+    color: white !important;
+}

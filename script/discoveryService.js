@@ -64,7 +64,19 @@ class DiscoveryService extends EventEmitter {
             'esphomelib',   // ESPhome
             'matter',       // Matter
             '_matter._tcp', // Matter
-            '_matterc._udp' // Matter
+            '_matterc._udp', // Matter
+            'bond',         // Bond Bridge (Ceiling Fans/Fireplaces)
+            'smartthings',  // SmartThings
+            'home-connect', // Bosch/Siemens (Washers/Dryers)
+            'elgato',       // Elgato Key Lights
+            'axis-video',   // Axis Cameras
+            'miio',         // Xiaomi
+            'services',     // Generic DNS-SD
+            'touch-able',   // Apple TV Remote suitable
+            'androidtvremote2', // Android TV
+            'vizio-smart-cast', // Vizio
+            'roku-rcp',     // Roku
+            'sonos'         // Sonos
         ];
 
         services.forEach(type => {
@@ -224,6 +236,58 @@ class DiscoveryService extends EventEmitter {
                 model: service.txt ? service.txt.md : 'HomeKit Device',
                 raw: service
             };
+        }
+        // Bond Bridge (Fans/Fireplaces)
+        else if (service.type === 'bond') {
+             device = {
+                id: `bond-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name,
+                type: 'hub',
+                ip: ip,
+                model: 'Bond Bridge',
+                raw: service
+            };
+        }
+        // Home Connect (Bosch/Siemens Appliances)
+        else if (service.type === 'home-connect') {
+             let type = 'appliance';
+             if (name.toLowerCase().includes('washer') || name.toLowerCase().includes('washing')) type = 'washer';
+             else if (name.toLowerCase().includes('dryer')) type = 'dryer';
+             else if (name.toLowerCase().includes('dishwasher')) type = 'dishwasher';
+             else if (name.toLowerCase().includes('oven')) type = 'oven';
+             else if (name.toLowerCase().includes('fridge') || name.toLowerCase().includes('freezer') || name.toLowerCase().includes('cooler')) type = 'fridge';
+             else if (name.toLowerCase().includes('coffee')) type = 'coffee_machine';
+
+             device = {
+                id: `homeconnect-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                name: name,
+                type: type,
+                ip: ip,
+                model: 'Home Connect Appliance',
+                raw: service
+            };
+        }
+        // Generic Keyword Search (Last Resort)
+        // Check if name contains appliance keywords
+        else {
+             const lowerName = name.toLowerCase();
+             let type = null;
+             
+             if (lowerName.includes('washer') || lowerName.includes('washing')) type = 'washer';
+             else if (lowerName.includes('dryer')) type = 'dryer';
+             else if (lowerName.includes('fridge') || lowerName.includes('refrigerator')) type = 'fridge';
+             else if (lowerName.includes('dishwasher')) type = 'dishwasher';
+             
+             if (type) {
+                 device = {
+                    id: `generic-${name.replace(/[^a-zA-Z0-9]/g, '')}`,
+                    name: name,
+                    type: type,
+                    ip: ip,
+                    model: 'Generic Appliance',
+                    raw: service
+                };
+             }
         }
 
         if (device) {

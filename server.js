@@ -27,6 +27,7 @@ const mqttManager = require('./script/mqttManager');
 const mqttBroker = require('./script/mqttBroker');
 const energyManager = require('./script/energyManager');
 const automationManager = require('./script/automationManager');
+const sceneManager = require('./script/sceneManager'); // Scene & Mode Management
 const ps5Manager = require('./script/ps5Manager');
 const psnManager = require('./script/psnManager');
 const presenceManager = require('./script/presenceManager');
@@ -1736,11 +1737,32 @@ app.get('/api/energy', (req, res) => {
     res.json(energyManager.data);
 });
 
+// --- Scene & Mode API ---
+app.get('/api/scenes', (req, res) => {
+    res.json(sceneManager.getScenes());
+});
+
+app.get('/api/mode', (req, res) => {
+    res.json({ mode: sceneManager.getMode() });
+});
+
+app.post('/api/mode/set', (req, res) => {
+    const { mode } = req.body;
+    if (!mode) return res.status(400).json({ ok: false, message: 'Mode required' });
+    sceneManager.setMode(mode);
+    res.json({ ok: true, mode });
+});
+
 app.post('/api/scenes/:name', async (req, res) => {
     const { name } = req.params;
     try {
-        const result = await deviceManager.activateScene(name);
-        res.json({ ok: true, result });
+        // First try the new SceneManager
+        await sceneManager.activateScene(name);
+        
+        // Fallback or additional logic if deviceManager also handles scenes legacy style
+        // const result = await deviceManager.activateScene(name);
+        
+        res.json({ ok: true });
     } catch (e) {
         res.status(500).json({ ok: false, message: e.message });
     }
@@ -2294,6 +2316,7 @@ udpServer.bind(8888, () => {
     
     // Initialize Managers
     initHubConfigFromDB();
+    sceneManager.init(); // Init Scenes & Modes
     automationManager.init();
     if (hubConfig.timezone) {
         automationManager.setTimezone(hubConfig.timezone);

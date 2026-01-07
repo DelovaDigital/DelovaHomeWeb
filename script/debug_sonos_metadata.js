@@ -12,50 +12,58 @@ const { SonosManager } = require('@svrooij/sonos');
 
 async function main() {
   console.log('Initializing Sonos Discovery...');
-  const manager = new SonosManager();
   
-  // Discover for up to 5 seconds
-  await manager.InitializeWithDiscovery(5);
+  // BYPASS MANAGER: The manager crashes on complex group parsing.
+  // We will simply search for *ONE* device using the lower-level Discovery,
+  // then inspect that device directly.
+  try {
+      const { SonosDeviceDiscovery, SonosDevice } = require('@svrooij/sonos');
+      const discovery = new SonosDeviceDiscovery();
+      
+      console.log('Searching for a Sonos device (5s timeout)...');
+      const deviceData = await discovery.SearchOne(5);
+      
+      console.log(`Found device at IP: ${deviceData.host}`);
+      const device = new SonosDevice(deviceData.host);
+      
+      // Load basic data
+      await device.LoadDeviceData();
+      console.log(`Connected to: ${device.Name} (${device.uuid})`);
+      
+      console.log('\n--- Inspecting Playback State ---');
+      const mediaInfo = await device.AVTransportService.GetMediaInfo({ InstanceID: 0 });
+      const transportInfo = await device.AVTransportService.GetTransportInfo({ InstanceID: 0 });
 
-  if (manager.Devices.length === 0) {
-    console.error('No Sonos devices found on the network.');
-    process.exit(1);
-  }
+      console.log(`Transport State: ${transportInfo.CurrentTransportState}`);
+      console.log('---------------------------------------------------');
+      console.log('Current URI:', mediaInfo.CurrentURI);
+      console.log('---------------------------------------------------');
+      console.log('Current Metadata:', mediaInfo.CurrentURIMetaData);
+      console.log('---------------------------------------------------');
 
-  console.log(`Found ${manager.Devices.length} devices.`);
+      if (mediaInfo.CurrentURI && (mediaInfo.CurrentURI.includes('spotify') || mediaInfo.CurrentURI.includes('rincon-cpcontainer'))) {
+        console.log('\n>>> ANALYSIS <<<');
+        const snMatch = mediaInfo.CurrentURI.match(/sn=(\d+)/);
+        const descMatch = mediaInfo.CurrentURIMetaData.match(/<desc[^>]*>(.*?)<\/desc>/); // Can be self-closing or empty
 
-  // Iterate over all devices to find one that is playing
-  for (const device of manager.Devices) {
-    try {
-      const state = await device.AVTransportService.GetTransportInfo({ InstanceID: 0 });
-      if (state.CurrentTransportState === 'PLAYING' || state.CurrentTransportState === 'PAUSED_PLAYBACK') {
-        console.log(`\nAnalyzing device: ${device.Name} (${device.uuid})`);
-        
-        // Get Media Info (Queue/Container Info)
-        const mediaInfo = await device.AVTransportService.GetMediaInfo({ InstanceID: 0 });
-        console.log('---------------------------------------------------');
-        console.log('CURRENT MEDIA (Container/Queue):');
-        console.log('URI:', mediaInfo.CurrentURI);
-        console.log('Metadata:', mediaInfo.CurrentURIMetaData);
-        
-        // Get Tracking Info (Specific Song)
-        const posInfo = await device.AVTransportService.GetPositionInfo({ InstanceID: 0 });
-        console.log('---------------------------------------------------');
-        console.log('CURRENT TRACK:');
-        console.log('Track URI:', posInfo.TrackURI);
-        console.log('Track Metadata:', posInfo.TrackMetaData);
-        console.log('---------------------------------------------------');
-        
-        console.log('\nLook closely at the Metadata XML above for <desc>SA_RINCON...</desc>');
-        console.log('And look at the URI for ?sn=X');
-        return; // Found one, exit
+        if (snMatch) {
+            console.log(`✅ FOUND Service Account Index (sn): ${snMatch[1]}`);
+        } else {
+            console.log('❌ Could not find "sn" parameter in URI.');
+        }
+
+        if (descMatch) {
+            console.log(`✅ FOUND Metadata Account ID (<desc>): "${descMatch[1]}"`);
+        } else {
+             console.log('❌ Could not find standard <desc> tag. Check raw metadata above for account ID.');
+        }
+      } else {
+        console.log('\n⚠️  Devices is not playing Spotify. Please start a Spotify playlist in the Sonos app and run this script again.');
       }
-    } catch (e) {
-      // Ignore errors (device might be offline or busy)
-    }
-  }
 
-  console.log('No devices correspond to PLAYING state. Please start music via Sonos App first.');
+  } catch (err) {
+      console.error('Error:', err);
+  }
 }
 
-main().catch(console.error);
+main();

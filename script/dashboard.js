@@ -634,4 +634,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   setInterval(updateClock, 1000);
   updateClock();
+
+  // Polling fallback to ensure Dashboard is always up to date
+  setInterval(() => {
+      // Only refresh if user is not interacting with inputs
+      const activeEl = document.activeElement;
+      const inputs = ['INPUT', 'TEXTAREA', 'SELECT'];
+      if (!activeEl || !inputs.includes(activeEl.tagName)) {
+        if (typeof render === 'function') render();
+      }
+  }, 5000);
 });

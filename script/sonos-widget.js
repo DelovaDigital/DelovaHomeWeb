@@ -20,6 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 render();
                 fetchState();
+                
+                // Start polling state every 3 seconds
+                if (!pollTimer) {
+                    pollTimer = setInterval(fetchState, 3000);
+                }
             }
         } catch (e) {
             console.error('Error fetching Sonos devices:', e);

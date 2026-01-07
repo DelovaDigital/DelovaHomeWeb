@@ -32,12 +32,14 @@ import '../utils/app_translations.dart';
     bool _spotifyAvailable = false;
     String? _spotifyDeviceName;
     List<dynamic> _sonosDevices = [];
-    Map<String, dynamic> _sonosStates = {};
+    final Map<String, dynamic> _sonosStates = {};
     String? _activeSonosUuid;
     Timer? _spotifyTimer;
     Timer? _energyTimer;
     Timer? _presenceTimer;
     Timer? _sonosTimer;
+    Timer? _statsTimer;
+    Timer? _weatherTimer;
     String _lang = 'nl';
 
     @override
@@ -58,6 +60,10 @@ import '../utils/app_translations.dart';
       _energyTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchEnergyData());
       _presenceTimer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchPresenceData());
       _sonosTimer = Timer.periodic(const Duration(seconds: 3), (_) => _fetchSonosStates());
+      // Stats refer to active devices count etc.
+      _statsTimer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchStats());
+      // Weather updates less frequently
+      _weatherTimer = Timer.periodic(const Duration(minutes: 10), (_) => _fetchWeather());
     }
 
     Future<void> _loadLanguage() async {
@@ -78,6 +84,8 @@ import '../utils/app_translations.dart';
       _energyTimer?.cancel();
       _presenceTimer?.cancel();
       _sonosTimer?.cancel();
+      _statsTimer?.cancel();
+      _weatherTimer?.cancel();
       super.dispose();
     }
 
@@ -101,27 +109,46 @@ import '../utils/app_translations.dart';
     Future<void> _fetchSonosStates() async {
       if (_sonosDevices.isEmpty) return;
       
-      // Fetch state for active Sonos or all if detailed view needed
-      // To save bandwidth, maybe only active one? But we might want to see which one is playing to auto-select.
-      // Let's iterate all implementation for now.
-      for (final device in _sonosDevices) {
+      // Parallelize fetching to prevent one slow device blocking updates
+      final futures = _sonosDevices.map((device) async {
         try {
-          final state = await _apiService.getSonosPlaybackState(device['uuid']);
-          if (mounted) {
-             setState(() {
-               _sonosStates[device['uuid']] = state;
-               // Auto-switch active sonos if playing and current is stopped
-               if (_activeSonosUuid != device['uuid'] && state['status'] == 'PLAYING') {
-                  final activeState = _sonosStates[_activeSonosUuid];
-                  if (activeState == null || activeState['status'] != 'PLAYING') {
-                     _activeSonosUuid = device['uuid'];
-                  }
-               }
-             });
-          }
+          final uuid = device['uuid'];
+          final state = await _apiService.getSonosPlaybackState(uuid);
+          return MapEntry(uuid, state);
         } catch (e) {
-             // ignore
+          return null;
         }
+      });
+
+      final results = await Future.wait(futures);
+      
+      if (mounted) {
+         setState(() {
+           for (final entry in results) {
+             if (entry != null) {
+               _sonosStates[entry.key] = entry.value;
+             }
+           }
+           
+           // Auto-switch active sonos if playing and current is stopped
+           // Check if we found a new playing device while current one is not playing
+           bool currentPlaying = false;
+           if (_activeSonosUuid != null) {
+              final activeState = _sonosStates[_activeSonosUuid];
+              if (activeState != null && activeState['status'] == 'PLAYING') {
+                currentPlaying = true;
+              }
+           }
+           
+           if (!currentPlaying) {
+              for (final entry in results) {
+                 if (entry != null && entry.value['status'] == 'PLAYING') {
+                    _activeSonosUuid = entry.key; // Switch to the playing device
+                    break;
+                 }
+              }
+           }
+         });
       }
     }
 

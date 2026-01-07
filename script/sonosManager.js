@@ -7,6 +7,29 @@ class SonosManagerModule {
         this.manager = new SonosManager();
         this.isInitialized = false;
         this._initialize();
+        this._startAutoDiscovery();
+    }
+
+    _startAutoDiscovery() {
+        // Run a background scan every 60 seconds to find new or restarted devices
+        setInterval(async () => {
+            try {
+                const prevCount = (this.manager.Devices || []).length;
+                // Short 2s timeout for background scans
+                await this.manager.InitializeWithDiscovery(2);
+                
+                if (this.manager.Devices && this.manager.Devices.length > 0) {
+                    this.isInitialized = true;
+                }
+                
+                const newCount = (this.manager.Devices || []).length;
+                if (newCount !== prevCount) {
+                    console.log(`[Sonos] Auto-discovery update: Found ${newCount} devices.`);
+                }
+            } catch (e) {
+                // Ignore "No players found" or timeout errors during background polling
+            }
+        }, 60000);
     }
 
     async _initialize() {

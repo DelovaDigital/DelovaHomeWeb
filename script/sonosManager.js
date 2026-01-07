@@ -69,19 +69,22 @@ class SonosManagerModule {
             // Special handling for Spotify URIs using the library's native helper
             // Special handling for Spotify URIs on Sonos
             if (uri.startsWith('spotify:')) {
-                console.log('[Sonos] Spotify URI detected. QueueService strategy with Anonymous Account Metadata.');
+                console.log('[Sonos] Spotify URI detected. QueueService strategy.');
+
+                // TODO: Update these with values found using `node script/debug_sonos_metadata.js`
+                const SONOS_SPOTIFY_SN = 1; // Default account index
+                const SONOS_SPOTIFY_MEMBER_ID = 'SA_RINCON65535_X'; // Replace with real ID (e.g. SA_RINCON123123_X) if 402 persists
                 
                 // 1. Clear Queue
                 try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
 
                 // 2. QueueService.AddURI
-                // Format: x-rincon-cpcontainer:1006206c{encoded_uri}?sid=9&flags=10860&sn=1
-                // We use encodeURIComponent to ensure proper encoding (uppercase hex)
                 const encodedSpotifyUri = encodeURIComponent(uri);
-                const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=10860&sn=1`;
                 
-                // Metadata INCLUDING <desc> with wildcard account
-                const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_</desc></item></DIDL-Lite>`;
+                // Note: 1006206c is the prefix for Playlists. 
+                const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=10860&sn=${SONOS_SPOTIFY_SN}`;
+                
+                const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${SONOS_SPOTIFY_MEMBER_ID}</desc></item></DIDL-Lite>`;
 
                 try {
                      await device.QueueService.AddURI({

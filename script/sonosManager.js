@@ -71,10 +71,12 @@ class SonosManagerModule {
             if (uri.startsWith('spotify:')) {
                 console.log('[Sonos] Spotify URI detected. QueueService strategy.');
 
-                // TODO: Update these with values found using `node script/debug_sonos_metadata.js`
-                const SONOS_SPOTIFY_SN = 1; // Default account index
-                const SONOS_SPOTIFY_MEMBER_ID = 'SA_RINCON65535_X'; // Replace with real ID (e.g. SA_RINCON123123_X) if 402 persists
-                
+                // Discovered via debugging
+                const SONOS_SPOTIFY_SN = 3; 
+                // We use Anonymous account since we couldn't extract the exact SA_RINCON ID due to library masking.
+                // However, sn=3 combined with correct sid=9 might work, OR we might need to rely on what works for others.
+                const SONOS_SPOTIFY_MEMBER_ID = 'SA_RINCON65535_X'; 
+
                 // 1. Clear Queue
                 try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
 
@@ -82,6 +84,8 @@ class SonosManagerModule {
                 const encodedSpotifyUri = encodeURIComponent(uri);
                 
                 // Note: 1006206c is the prefix for Playlists. 
+                // Using sid=9 (Spotify) and sn=3 (Found on device)
+                // Flags: 10860 is standard for playlists.
                 const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=10860&sn=${SONOS_SPOTIFY_SN}`;
                 
                 const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${SONOS_SPOTIFY_MEMBER_ID}</desc></item></DIDL-Lite>`;

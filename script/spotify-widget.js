@@ -150,14 +150,65 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!userId) return;
 
         try {
-            const res = await fetch(`/api/spotify/devices?userId=${userId}&username=${username}`);
-            const devices = await res.json();
+            // Fetch both Spotify devices and Sonos devices (for robust fallback)
+            const [spotifyRes, sonosRes] = await Promise.all([
+                fetch(`/api/spotify/devices?userId=${userId}&username=${username}`),
+                fetch('/api/sonos/devices')
+            ]);
             
-            if (!Array.isArray(devices)) {
-                console.error('Invalid devices response:', devices);
+            const spotifyDevices = await spotifyRes.json();
+            const sonosData = await sonosRes.json();
+            const sonosDevices = (sonosData && sonosData.devices) ? sonosData.devices : [];
+
+            if (!Array.isArray(spotifyDevices)) {
+                console.error('Invalid devices response:', spotifyDevices);
                 alert('Kon apparaten niet ophalen.');
                 return;
             }
+
+            // Create a Combined List
+            // We want to avoid duplicates. If a Sonos device (by Name) exists in Spotify list, use the Spotify one?
+            // Actually, Spotify IDs change or get stale. Explicit Sonos entries (managed by us) might be safer if we resolve them server-side.
+            // BUT, users prefer seeing one entry.
+            // Strategy: Show Spotify devices. Show Sonos devices that are NOT in Spotify list?
+            // Or just list Sonos devices with a special icon/tag if we want to force our "Resolve on Server" logic.
+            // Let's list Sonos devices separately to ensure they are clickable even if Spotify list is stale.
+            
+            const combinedDevices = [];
+            
+            // Add Spotify Devices
+            spotifyDevices.forEach(d => {
+                combinedDevices.push({
+                    id: d.id,
+                    name: d.name,
+                    type: d.type,
+                    is_active: d.is_active,
+                    source: 'spotify'
+                });
+            });
+
+            // Add Sonos Devices (if not extremely similar name exists? or just add them)
+            // Let's add them with a distinct source so we can prioritize or dedupe visualy.
+            sonosDevices.forEach(s => {
+                // Check if name roughly matches any existing spotify device
+                const exists = spotifyDevices.some(sd => sd.name.toLowerCase() === s.name.toLowerCase());
+                if (!exists) {
+                     combinedDevices.push({
+                        id: `sonos:${s.uuid}`,
+                        name: s.name,
+                        type: 'Speaker',
+                        is_active: false,
+                        source: 'sonos'
+                    });
+                } else {
+                    // Even if it exists, sometimes the Spotify ID is stale. 
+                    // To be safe, we could overwrite/prefer the Sonos entry? 
+                    // Or we trust the Spotify one. 
+                    // Let's keep the Spotify one BUT if the user reported "nothing happens", maybe the Spotify one is broken.
+                    // Let's add the Sonos one anyway but maybe grouped?
+                    // For now, let's just add it if no exact match, to avoid clutter.
+                }
+            });
 
             const modalHtml = `
                 <div class="modal-header">
@@ -166,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="modal-body">
                     <div class="list-group">
-                        ${devices.length > 0 ? devices.map(d => {
+                        ${combinedDevices.length > 0 ? combinedDevices.map(d => {
                             let clickAction;
                             if (pendingCommand) {
                                 // Escaping quotes for the value string
@@ -176,13 +227,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                 clickAction = `controlSpotify('transfer', '${d.id}'); closeModal();`;
                             }
                             
+                            const iconClass = d.source === 'sonos' ? 'fa-music' : 
+                                             (d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop');
+                            
                             return `
                             <div class="list-item ${d.is_active ? 'active' : ''}" style="display:flex; align-items:center;">
                                 <div style="flex:1; cursor:pointer;" onclick="${clickAction}">
-                                    <i class="fas ${d.type === 'Computer' ? 'fa-laptop' : d.type === 'Smartphone' ? 'fa-mobile-alt' : 'fa-desktop'}"></i>
+                                    <i class="fas ${iconClass}"></i>
                                     <div style="display:inline-block; margin-left: 10px; vertical-align: middle;">
                                         <div style="font-weight: bold;">${d.name}</div>
-                                        <div style="font-size: 0.8em; color: #666;">${d.type}</div>
+                                        <div style="font-size: 0.8em; color: #666;">${d.type} ${d.source === 'sonos' ? '(Sonos)' : ''}</div>
                                     </div>
                                 </div>
                                 <div style="display:flex; gap:8px; align-items:center;">
@@ -190,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             </div>
                         `;
-                        }).join('') : '<div style="padding:10px; text-align:center; color:#666;">Geen actieve Spotify Connect apparaten gevonden.<br>Open Spotify op een apparaat om het hier te zien.</div>'}
+                        }).join('') : '<div style="padding:10px; text-align:center; color:#666;">Geen apparaten gevonden.</div>'}
                     </div>
                 </div>
             `;

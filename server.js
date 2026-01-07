@@ -976,6 +976,48 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
             targetDeviceId = await resolveSpotifyDeviceId(req.userId, targetDeviceId);
         }
 
+        // Handle Sonos explicit ID resolution (if selected from our merged list)
+        if (targetDeviceId && targetDeviceId.startsWith('sonos:')) {
+            const uuid = targetDeviceId.replace('sonos:', '');
+            // Try to resolve to a Spotify Device ID
+            let resolved = await resolveSpotifyDeviceId(req.userId, { name: 'Sonos', id: targetDeviceId }); // Helper usually takes device object, but we'll adapt logic
+            
+            // If resolveSpotifyDeviceId just returns input, it means it failed.
+            // We need a specific logic for Sonos UUID -> Spotify ID resolution
+            // We can try to find a spotify device with same name as sonos device
+            try {
+               const sonosDev = await sonosManager._getDevice(uuid); // This is internal but useful
+               if (sonosDev) {
+                   const spotifyDevices = await spotifyManager.getDevices(req.userId, req.username);
+                   const match = spotifyDevices.find(d => 
+                       d.name.toLowerCase() === sonosDev.Name.toLowerCase() ||
+                       (d.name.toLowerCase().includes(sonosDev.Name.toLowerCase()) && d.type === 'Speaker')
+                   );
+                   if (match) {
+                       console.log(`[Spotify] Resolved Sonos ${uuid} (${sonosDev.Name}) to Spotify ID ${match.id}`);
+                       targetDeviceId = match.id;
+                   } else {
+                       console.warn(`[Spotify] Could not resolve Sonos ${uuid} to a Spotify Device ID. Falling back to explicit Sonos playback if applicable.`);
+                       
+                       // If command is 'play_context' or 'play', we can TRY to force Sonos to play it via UPnP
+                       // But often this fails for Context URIs on Sonos without Queue manipulation.
+                       // Let's rely on sonosManager.play() which does SetAVTransportURI.
+                       if (command === 'play_context' || command === 'play') {
+                           // Extract URI
+                           const uri = command === 'play_context' ? value : (value && value.uris ? value.uris[0] : null);
+                           if (uri) {
+                               console.log(`[Spotify] Fallback: Playing URI directly on Sonos via UPnP: ${uri}`);
+                               await sonosManager.play(uuid, uri, null);
+                               return res.json({ ok: true, method: 'sonos_fallback' });
+                           }
+                       }
+                   }
+               }
+            } catch (e) {
+                console.error('[Spotify] Error resolving Sonos ID:', e);
+            }
+        }
+
         if (command === 'play') await spotifyManager.play(req.userId, value ? value.uris : undefined, targetDeviceId, req.username);
         else if (command === 'pause') await spotifyManager.pause(req.userId, req.username);
         else if (command === 'next') await spotifyManager.next(req.userId, req.username);

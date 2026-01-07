@@ -53,88 +53,38 @@ class SonosManagerModule {
 
     async play(uuid, uri, metadata) {
         const device = await this._getDevice(uuid);
+        
         // To play a stream, you often need to set the AVTransportURI first
         if (uri) {
-            // Special handling for Spotify URIs on Sonos
-            // Sonos requires a specific URI format for Spotify content:
-            // x-rincon-cpcontainer:1006206c{playlist_id}?sid=9&flags=10860&sn=2 for Playlists
-            // x-sonos-spotify:spotify%3atrack%3a{track_id}?sid=9&flags=8224&sn=2 for Tracks
+            console.log(`[Sonos] Play request for URI: ${uri}`);
             
-            let sonosUri = uri;
-            let sonosMeta = metadata || '';
-            const isSpotify = uri.startsWith('spotify:');
+            // Special handling for Spotify URIs using the library's native helper
+            if (uri.startsWith('spotify:')) {
+                console.log('[Sonos] Spotify URI detected. Using library helper to add to Queue.');
+                
+                // 1. Clear Queue to play this content exclusively
+                try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
 
-            if (isSpotify) {
-                 const region = 3079; // Europe? This varies. 
-                 // Actually, sid=9 is for Spotify. flags vary.
-                 // sid=9, sn=2 seems standard for Spotify Connect logic via UPnP?
-                 // But simpler is to use the dedicated library methods if available, or construct the URI carefully.
-                 // The library 'sonos' has helpers for this ideally, but if not we do it manually.
+                // 2. Add to Queue using library helper (handles metadata and formatting automatically)
+                // Note: AddUriToQueue(uri, positionInQueue, enqueueAsNext)
+                await device.AddUriToQueue(uri, 1, true);
 
-                 // Manual Construction:
-                 if (uri.includes('playlist')) {
-                     // Spotify Playlist
-                     // Format: x-rincon-cpcontainer:1006206c{encoded_spotify_uri}?sid=9&flags=10860&sn=1
-                     console.log(`[Sonos] DEBUG: Play request for playlist. Input URI: ${uri}`);
-                     
-                     // Ensure we have the full URI encoded.
-                     // If uri is just the ID, we must reconstruct. But we expect 'spotify:playlist:ID'.
-                     let uriToEncode = uri;
-                     if (!uri.startsWith('spotify:')) {
-                         // Should not happen based on caller, but safe formatting
-                         uriToEncode = `spotify:playlist:${uri}`;
-                     }
-                     
-                     const encodedSpotifyUri = encodeURIComponent(uriToEncode); 
-                     console.log(`[Sonos] DEBUG: Encoded URI Segment: ${encodedSpotifyUri}`);
-
-                     // Metadata IS required for containers.
-                     if (!sonosMeta) {
-                         sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class></item></DIDL-Lite>`;
-                     }
-                     
-                     sonosUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=10860&sn=1`;
-                     
-                     // Force Queue path immediately for playlists
-                     console.log(`[Sonos] Spotify Playlist detected. Using Queue-based playback directly. URI: ${sonosUri}`);
-                     
-                     try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (ignored) {}
-
-                     await device.QueueService.AddURI({
-                         InstanceID: 0,
-                         EnqueuedURI: sonosUri,
-                         EnqueuedURIMetaData: sonosMeta,
-                         DesiredFirstTrackNumberEnqueued: 0,
-                         EnqueueAsNext: true
-                     });
-
-                     const queueUri = `x-rincon-queue:${device.uuid}#0`;
-                     await device.AVTransportService.SetAVTransportURI({
-                        InstanceID: 0,
-                        CurrentURI: queueUri,
-                        CurrentURIMetaData: ''
-                     });
-                     
-                     // Skip the standard SetAVTransportURI below
-                     return device.Play();
-
-                 } else if (uri.includes('track')) {
-
-                     // Spotify Track
-                     // Format: x-sonos-spotify:spotify%3atrack%3a{id}?sid=9&flags=8224&sn=1
-                     const trackId = uri.split(':')[2];
-                     const encodedTrackId = encodeURIComponent(trackId);
-                     sonosUri = `x-sonos-spotify:spotify%3atrack%3a${encodedTrackId}?sid=9&flags=8224&sn=1`;
-                     
-                     if (!sonosMeta) {
-                          sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="10032020spotify%3atrack%3a${encodedTrackId}" parentID="" restricted="true"><dc:title>Spotify Track</dc:title><upnp:class>object.item.audioItem.musicTrack</upnp:class></item></DIDL-Lite>`;
-                     }
-                 }
+                // 3. Set Transport to Queue
+                const queueUri = `x-rincon-queue:${device.uuid}#0`;
+                await device.AVTransportService.SetAVTransportURI({
+                   InstanceID: 0,
+                   CurrentURI: queueUri,
+                   CurrentURIMetaData: ''
+                });
+                
+                return device.Play();
             }
 
-            console.log(`[Sonos] Setting URI: ${sonosUri}`);
-
-            // Only proceed to SetAVTransportURI if we haven't already returned (i.e. not a Playlist which is handled above)
+            // Standard playback for other URIs
+            let sonosUri = uri;
+            let sonosMeta = metadata || '';
+            
+            console.log(`[Sonos] Setting AVTransport URI: ${sonosUri}`);
             try {
                 await device.AVTransportService.SetAVTransportURI({
                     InstanceID: 0,
@@ -142,52 +92,26 @@ class SonosManagerModule {
                     CurrentURIMetaData: sonosMeta
                 });
             } catch (e) {
-                // Illegal MIME-Type (714) or Invalid Args (402) often means the format is wrong for SetAVTransportURI (direct play).
-                // It usually implies this container type must be added to Queue first.
-                // NOTE: We now handle playlists explicitly above, but keep this for other cases or tracks if they fail.
-                const isPlaybackError = e.message && (
+                 // Fallback for failed SetAVTransportURI (e.g. some streams or containers)
+                 // Try adding to queue if it's not a generic playback error
+                 const isPlaybackError = e.message && (
                     e.message.includes('Illegal MIME-Type') || 
                     e.message.includes('Invalid args') ||
                     (e.UpnpErrorCode === 714) || 
                     (e.UpnpErrorCode === 402)
                 );
 
-                if (isPlaybackError && isSpotify && uri.includes('playlist')) {
-                    console.warn('[Sonos] SetAVTransportURI failed for playlist, switching to Queue-based playback...');
-                    
-                    // 1. Clear Queue (optional, but ensures we play what user asked)
-                    try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (ignored) {}
-
-                    // 2. Add to Queue
-                    // Note: EnqueueAsNext might not be supported on all endpoints, but usually works with AddURI
-                    await device.QueueService.AddURI({
-                         InstanceID: 0,
-                         EnqueuedURI: sonosUri,
-                         EnqueuedURIMetaData: sonosMeta,
-                         DesiredFirstTrackNumberEnqueued: 0,
-                         EnqueueAsNext: true
-                    });
-
-                    // 3. Set Transport to Queue
-                    // We need the RINCON_ ID for this. device.uuid usually starts with RINCON_ or contains it.
-                    // If device.uuid is "RINCON_xxxx" -> x-rincon-queue:RINCON_xxxx#0
-                    // If uuid is just standard UUID, we might need device.raw.udn or similar?
-                    // The library usually maps uuid to the RINCON_ id for us somewhere?
-                    // Let's assume device.uuid is sufficient or try to construct it.
-                    let queueUri = `x-rincon-queue:${device.uuid}#0`;
-                    // If uuid doesn't start with RINCON, checks might be needed. 
-                    // Most Sonos UUIDs in this lib show as "RINCON_..." or typical UUIDs.
-                    // If it is a proper UUID (blocks), the queue URI might be x-rincon-queue:RINCON_{mac}01400#0
-                    // But often device.uuid IS that ID in this lib.
-                    
+                if (isPlaybackError) {
+                    console.warn('[Sonos] Direct playback failed, trying Queue...');
+                    await device.AddUriToQueue(uri);
+                    const queueUri = `x-rincon-queue:${device.uuid}#0`;
                     await device.AVTransportService.SetAVTransportURI({
                         InstanceID: 0,
                         CurrentURI: queueUri,
                         CurrentURIMetaData: ''
                     });
-
                 } else {
-                    throw e; // Rethrow other errors
+                    throw e;
                 }
             }
         }

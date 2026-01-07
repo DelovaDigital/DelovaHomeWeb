@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             <!-- Volume -->
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                 <i class="fas fa-volume-down" style="opacity: 0.5;"></i>
                 <input type="range" min="0" max="100" value="${sonosState.volume || 0}" 
                     style="flex: 1; accent-color: #f97316;" 
@@ -157,13 +157,140 @@ document.addEventListener('DOMContentLoaded', () => {
                 >
                 <i class="fas fa-volume-up" style="opacity: 0.5;"></i>
             </div>
+
+            <!-- Browse Music Button -->
+            <div style="text-align: center;">
+                <button onclick="window.browseSonosMusic()" style="background: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 6px 16px; color: inherit; cursor: pointer; font-size: 0.9em; transition: all 0.2s;">
+                    <i class="fab fa-spotify" style="margin-right: 6px; color: #1db954;"></i> Muziek Kiezen
+                </button>
+            </div>
         `;
     }
 
     // Expose control to global scope for onclick handlers
     window.sonosControl = (cmd, val) => control(cmd, val);
+    
+    window.browseSonosMusic = async () => {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+            alert('Log in om muziek te browsen.');
+            return;
+        }
 
-    // Styling injection for specific sonos stuff if needed
+        try {
+            // Re-use Spotify API endpoints since we want to play Spotify music on Sonos
+            const [playlistsRes, albumsRes] = await Promise.all([
+                fetch(`/api/spotify/playlists?userId=${userId}`),
+                fetch(`/api/spotify/albums?userId=${userId}`)
+            ]);
+
+            const playlists = await playlistsRes.json();
+            const albums = await albumsRes.json();
+
+            const modalHtml = `
+                <div class="modal-header">
+                    <h3>Bibliotheek (Spotify op Sonos)</h3>
+                    <button class="close-modal" onclick="closeSonosModal()">&times;</button>
+                </div>
+                <div class="modal-body" style="height: 60vh; overflow-y: auto; padding: 20px; background-color: var(--bg); color: var(--text);">
+                    
+                    <h4 style="margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">Afspeellijsten</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px; margin-bottom: 40px;">
+                        ${Array.isArray(playlists) && playlists.length ? playlists.map(p => `
+                            <div onclick="playSonosSpotify('${p.uri}'); closeSonosModal();" 
+                                 class="spotify-card"
+                                 style="cursor: pointer; transition: transform 0.2s; background: var(--card); padding: 10px; border-radius: 10px;">
+                                <div style="position: relative; margin-bottom: 10px;">
+                                    <img src="${p.images?.[0]?.url || '../img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                                    <div class="spotify-play-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); border-radius: 8px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;">
+                                         <div style="background: #f97316; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+                                            <i class="fas fa-play" style="font-size: 1.2em; margin-left: 3px;"></i>
+                                         </div>
+                                    </div>
+                                </div>
+                                <div style="font-weight: 600; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">${p.name}</div>
+                                <div style="font-size: 0.8em; color: var(--text-muted);">${p.tracks.total} nummers</div>
+                            </div>
+                        `).join('') : '<div style="grid-column: 1/-1; color: var(--text-muted);">Geen afspeellijsten gevonden</div>'}
+                    </div>
+                    
+                    <h4 style="margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">Albums</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px;">
+                        ${Array.isArray(albums) && albums.length ? albums.map(a => `
+                            <div onclick="playSonosSpotify('${a.uri}'); closeSonosModal();"
+                                 class="spotify-card"
+                                 style="cursor: pointer; transition: transform 0.2s; background: var(--card); padding: 10px; border-radius: 10px;">
+                                <div style="position: relative; margin-bottom: 10px;">
+                                    <img src="${a.images?.[0]?.url || '../img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                                    <div class="spotify-play-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); border-radius: 8px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;">
+                                         <div style="background: #f97316; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+                                            <i class="fas fa-play" style="font-size: 1.2em; margin-left: 3px;"></i>
+                                         </div>
+                                    </div>
+                                </div>
+                                <div style="font-weight: 600; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">${a.name}</div>
+                                <div style="font-size: 0.8em; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a.artists.map(art => art.name).join(', ')}</div>
+                            </div>
+                        `).join('') : '<div style="grid-column: 1/-1; color: var(--text-muted);">Geen albums gevonden</div>'}
+                    </div>
+
+                    <style>
+                        .spotify-card:hover { transform: translateY(-5px); background: var(--card-hover) !important; }
+                        .spotify-card:hover .spotify-play-overlay { opacity: 1 !important; }
+                    </style>
+
+                </div>
+            `;
+            showSonosModal(modalHtml);
+        } catch (e) {
+            console.error('Error browsing music:', e);
+            alert('Fout bij laden van muziekbibliotheek.');
+        }
+    };
+
+    window.playSonosSpotify = async (uri) => {
+        if (!activeUuid) {
+            alert('Geen Sonos apparaat geselecteerd.');
+            return;
+        }
+        
+        // Optimistic update
+        sonosState.status = 'TRANSITIONING';
+        sonosState.track = { title: 'Loading...', artist: '' };
+        renderContent();
+
+        try {
+            await fetch(`/api/sonos/${activeUuid}/play-spotify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ spotifyUri: uri })
+            });
+            setTimeout(fetchState, 1000);
+        } catch (e) {
+            console.error('Error playing Spotify on Sonos:', e);
+            alert('Kon niet afspelen.');
+        }
+    };
+
+    function showSonosModal(html) {
+        let modal = document.getElementById('sonos-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'sonos-modal';
+            modal.className = 'modal-overlay';
+            document.body.appendChild(modal);
+        }
+        modal.innerText = ''; // clear
+        // Don't overwrite innerHTML directly or it kills styles? no, className overlay handles style
+        // We need wrapper
+        modal.innerHTML = `<div class="modal-content" style="max-width: 800px; width: 90%;">${html}</div>`;
+        modal.style.display = 'flex';
+    }
+
+    window.closeSonosModal = () => {
+        const modal = document.getElementById('sonos-modal');
+        if (modal) modal.style.display = 'none';
+    };
     const style = document.createElement('style');
     style.innerHTML = `
         .header-select {

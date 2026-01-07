@@ -26,8 +26,16 @@ const knxManager = require('./script/knxManager');
 const mqttManager = require('./script/mqttManager');
 const mqttBroker = require('./script/mqttBroker');
 const energyManager = require('./script/energyManager');
-const automationManager = require('./script/automationManager');
 const sceneManager = require('./script/sceneManager'); // Scene & Mode Management
+const automationManager = require('./script/automationManager');
+const logicEngine = require('./script/logicEngine'); // Logic & Template Sensors
+const entertainmentManager = require('./script/entertainmentManager'); // Media & Logic
+const securityManager = require('./script/securityManager');
+const climateManager = require('./script/climateManager'); // Thermotat & Blinds
+const adaptiveLighting = require('./script/adaptiveLighting'); // Smart Lighting
+adaptiveLighting.start();
+
+const espManager = require('./script/espManager'); // Advanced MQTT/ESP32 Management
 const ps5Manager = require('./script/ps5Manager');
 const psnManager = require('./script/psnManager');
 const presenceManager = require('./script/presenceManager');
@@ -1691,6 +1699,25 @@ app.post('/api/ai/command', async (req, res) => {
 // --- Presence ---
 app.get('/api/presence', (req, res) => {
     res.json(presenceManager.getPresenceStatus());
+});
+
+// --- Security API ---
+app.get('/api/security', (req, res) => {
+    res.json(securityManager.getStatus());
+});
+
+app.post('/api/security/arm', (req, res) => {
+    const { mode, pin } = req.body; // mode: 'armed_home' or 'armed_away'
+    const success = securityManager.setMode(mode, pin);
+    if (success) res.json({ ok: true, status: securityManager.getStatus() });
+    else res.status(401).json({ ok: false, message: 'Invalid PIN' });
+});
+
+app.post('/api/security/disarm', (req, res) => {
+    const { pin } = req.body;
+    const success = securityManager.setMode('disarmed', pin);
+    if (success) res.json({ ok: true, status: securityManager.getStatus() });
+    else res.status(401).json({ ok: false, message: 'Invalid PIN' });
 });
 
 app.post('/api/presence/user', (req, res) => {

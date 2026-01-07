@@ -410,13 +410,25 @@ document.addEventListener('DOMContentLoaded', () => {
         card.className = `scene-card${scene.id === data.mode ? ' active' : ''}`;
         card.onclick = () => activateScene(scene.id);
         
-        let icon = 'fa-home';
-        if (scene.id === 'AWAY') icon = 'fa-shoe-prints';
-        if (scene.id === 'NIGHT') icon = 'fa-moon';
-        if (scene.id === 'CINEMA') icon = 'fa-film';
+        let icon = scene.icon || 'fa-home';
+        // Legacy mapping fallback
+        if (!scene.icon) {
+            if (scene.id === 'AWAY') icon = 'fa-shoe-prints';
+            if (scene.id === 'NIGHT') icon = 'fa-moon';
+            if (scene.id === 'CINEMA') icon = 'fa-film';
+            if (scene.id === 'WORK') icon = 'fa-laptop';
+            if (scene.id === 'VACATION') icon = 'fa-plane';
+        }
+
+        // Color support
+        let style = '';
+        if (scene.color) {
+            // Apply subtle border or icon color
+            style = `color: ${scene.color}`;
+        }
 
         card.innerHTML = `
-            <div style="font-size: 1.5rem; margin-bottom: 5px;"><i class="fas ${icon}"></i></div>
+            <div style="font-size: 1.5rem; margin-bottom: 5px; ${style}"><i class="fas ${icon}"></i></div>
             <div style="font-weight: 500;">${scene.name}</div>
         `;
         scenesBar.appendChild(card);

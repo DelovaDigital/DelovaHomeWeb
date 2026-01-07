@@ -520,10 +520,48 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 widget.device.type.toUpperCase(),
                 style: TextStyle(color: subTextColor, letterSpacing: 1.5),
               ),
+              const SizedBox(height: 10),
+
+              // --- LOGIC ENGINE / SENSOR VALUE ---
+              if (widget.device.status.value != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    "${widget.device.status.value}",
+                    style: TextStyle(
+                      fontSize: 24, 
+                      fontWeight: FontWeight.bold, 
+                      color: textColor
+                    ),
+                  ),
+                ),
+              
+              // --- ENERGY MONITORING ---
+              if (widget.device.status.currentPower != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.bolt, color: Colors.orange, size: 20),
+                      const SizedBox(width: 5),
+                      Text(
+                        "${widget.device.status.currentPower} W",
+                        style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+
               const SizedBox(height: 40),
 
               // Big Power Button (Hide for sensors or always-on devices)
-              if (!isSensor && !isLock && !isCamera && !isPrinter)
+              if (!isSensor && !isLock && !isCamera && !isPrinter && widget.device.status.value == null)
               GestureDetector(
                 onTap: () => _sendCommand('toggle'),
                 child: AnimatedContainer(

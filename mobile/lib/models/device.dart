@@ -61,6 +61,8 @@ class DeviceStatus {
   final int? fanSpeed;
   final List<dynamic>? inks;
   final String? printerStatus;
+  final double? currentPower; // Watts
+  final dynamic value; // Generic sensor value (usually String or Number)
 
   DeviceStatus({
     required this.powerState,
@@ -82,6 +84,8 @@ class DeviceStatus {
     this.fanSpeed,
     this.inks,
     this.printerStatus,
+    this.currentPower,
+    this.value
   });
 
   factory DeviceStatus.fromJson(Map<String, dynamic> json) {
@@ -113,6 +117,8 @@ class DeviceStatus {
       fanSpeed: json['fanSpeed'],
       inks: json['inks'],
       printerStatus: json['printerStatus'],
+      currentPower: json['power']?.toDouble(),
+      value: json['value'],
     );
   }
 }

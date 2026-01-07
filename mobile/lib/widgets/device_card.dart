@@ -218,7 +218,11 @@ class _DeviceCardState extends State<DeviceCard> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      isOn ? 'Aan' : (widget.device.status.powerState == 'standby' ? 'Standby' : 'Uit'),
+                      widget.device.status.value != null 
+                        ? '${widget.device.status.value}'
+                        : (widget.device.status.currentPower != null && widget.device.status.currentPower! > 0)
+                          ? '${widget.device.status.currentPower} W'
+                          : (isOn ? 'Aan' : (widget.device.status.powerState == 'standby' ? 'Standby' : 'Uit')),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: contentColor.withValues(alpha: 0.7),
                         fontWeight: FontWeight.w500,

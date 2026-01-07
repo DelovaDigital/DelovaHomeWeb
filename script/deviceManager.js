@@ -21,6 +21,10 @@ class SpotifyReceiver extends DefaultMediaReceiver {
 const lgtv = require('lgtv2');
 const onvif = require('onvif');
 const mqttManager = require('./mqttManager');
+// Lazy load ESPManager to avoid circular dependency during init
+// const espManager = require('./espManager'); 
+let espManager = null;
+
 const ps5Manager = require('./ps5Manager');
 const nasManager = require('./nasManager');
 const hueManager = require('./hueManager');
@@ -1670,6 +1674,17 @@ class DeviceManager extends EventEmitter {
                 return { success: true };
             } catch (e) {
                 console.error(`[DeviceManager] Hue control error:`, e);
+                return { success: false, error: e.message };
+            }
+        }
+
+        if (device.protocol === 'mqtt') {
+            if (!espManager) espManager = require('./espManager');
+            try {
+                await espManager.controlDevice(device, command, value);
+                return { success: true };
+            } catch (e) {
+                console.error(`[DeviceManager] MQTT/ESP control error:`, e);
                 return { success: false, error: e.message };
             }
         }

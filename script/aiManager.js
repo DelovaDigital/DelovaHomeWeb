@@ -1,5 +1,7 @@
 const deviceManager = require('./deviceManager');
 const spotifyManager = require('./spotifyManager');
+const logicEngine = require('./logicEngine'); // Integration with Logic Engine
+const sceneManager = require('./sceneManager');
 
 class AIManager {
     constructor() {
@@ -19,7 +21,18 @@ class AIManager {
             {
                 regex: /(play|pause|stop|next|previous|skip)\s*(?:music|song|track)?/i,
                 handler: this.handleMedia.bind(this)
-            }
+            },
+            // Logic / Context Queries
+            {
+                regex: /what\s+is\s+the\s+(?:status|state)\s+of\s+(?:the\s+)?(.+)/i,
+                handler: this.handleStatusQuery.bind(this)
+            },
+            {
+                regex: /activate\s+(?:scene|mode)\s+(.+)/i,
+                handler: this.handleSceneActivation.bind(this)
+            },
+            // Fallback for LLM (Simulated)
+            // { regex: /.*/, handler: this.handleLLMFallback.bind(this) }
         ];
     }
 
@@ -33,23 +46,26 @@ class AIManager {
                     return await intent.handler(match);
                 }
             }
+            
+            // If no regex matched, try "Fuzzy Logic" or "LLM"
+            return await this.handleLLMFallback(text);
+
         } catch (e) {
             console.error('[AI] Error processing command:', e);
             return { ok: false, message: "Sorry, I encountered an error processing that command." };
         }
-
-        return { ok: false, message: "I didn't understand that command. Try 'Turn on lights' or 'Play music'." };
     }
 
+    // ... (Existing FindDevice) ...
     findDevice(nameQuery) {
         const query = nameQuery.toLowerCase().trim();
         // Exact match
         for (const [id, device] of deviceManager.devices) {
-            if (device.name.toLowerCase() === query) return device;
+            if (device.name && device.name.toLowerCase() === query) return device;
         }
         // Partial match
         for (const [id, device] of deviceManager.devices) {
-            if (device.name.toLowerCase().includes(query)) return device;
+            if (device.name && device.name.toLowerCase().includes(query)) return device;
         }
         // Type match (e.g. "lights") - returns first found
         if (query.includes('light')) {
@@ -57,7 +73,42 @@ class AIManager {
                 if (device.type === 'light' || device.type === 'hue') return device;
             }
         }
+        // Check Virtual Devices (Template Sensors)
+        if (logicEngine.virtualDevices.has(query)) {
+             // Logic not fully linked yet for direct control, but good for status
+        }
         return null;
+    }
+    
+    async handleStatusQuery(match) {
+        const target = match[1];
+        const device = this.findDevice(target);
+        if (device) {
+            let stateStr = "unknown";
+            if (device.state.on !== undefined) stateStr = device.state.on ? "ON" : "OFF";
+            if (device.state.value !== undefined) stateStr = device.state.value; // For sensors
+            return { ok: true, message: `The ${device.name} is currently ${stateStr}.` };
+        }
+        return { ok: false, message: `I couldn't find a device named "${target}".` };
+    }
+
+    async handleSceneActivation(match) {
+        const sceneName = match[1].toLowerCase();
+        // Convert "cinema mode" -> "CINEMA", "night mode" -> "NIGHT"
+        const mode = sceneName.replace('mode', '').trim().toUpperCase();
+        
+        sceneManager.setMode(mode);
+        return { ok: true, message: `Activated ${sceneName} mode.` };
+    }
+
+    async handleLLMFallback(text) {
+        // Prepare for Local AI Integration (e.g. Ollama)
+        // For now, simple keyword extraction for unhandled cases
+        if (text.includes('temperature') || text.includes('weather')) {
+             // Link to ClimateManager if possible, or just say:
+             return { ok: true, message: "I can't read the weather yet, but I'm learning (ClimateManager integration pending)." };
+        }
+        return { ok: false, message: "I didn't understand that command. Try 'Turn on lights' or 'Play music'." };
     }
 
     async handlePower(match) {

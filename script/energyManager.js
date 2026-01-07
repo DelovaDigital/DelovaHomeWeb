@@ -14,6 +14,20 @@ class EnergyManager extends EventEmitter {
                 solar: 'energy/solar/power',
                 grid: 'energy/grid/power',
                 usage: 'energy/home/usage'
+            },
+            optimization: {
+                enabled: true,
+                exportThreshold: -2000, // If exporting > 2000W, turn stuff ON
+                importLimit: 4500,     // If importing > 4500W, turn stuff OFF
+                priorities: {
+                    // deviceId: priority (1=critical, 10=disposable)
+                    'washing_machine': 5,
+                    'dishwasher': 5,
+                    'ev_charger': 6,
+                    'pool_pump': 8,
+                    'air_conditioner': 7,
+                    'heater_bedroom': 3
+                }
             }
         };
         this.data = {
@@ -41,11 +55,49 @@ class EnergyManager extends EventEmitter {
             if (device.state && device.state.power !== undefined) {
                 this.data.devices[device.name] = { power: device.state.power };
                 this.calculateTotalUsage();
+                this.checkStandby(device);
             }
         });
 
+        this.standbyConfig = {
+            'TV_Plug': { threshold: 20, timeout: 10 * 60 * 1000 },
+            'PC_Monitor': { threshold: 10, timeout: 5 * 60 * 1000 },
+            'Coffee_Machine': { threshold: 5, timeout: 30 * 60 * 1000 }
+        };
+        this.standbyState = new Map();
+
         if (this.config.isConfigured) {
             this.setupMqtt();
+        }
+    }
+
+    checkStandby(device) {
+        // Use device name or ID as key
+        const rule = this.standbyConfig[device.name] || this.standbyConfig[device.id];
+        if (!rule) return;
+
+        const power = device.state.power;
+        const now = Date.now();
+        const key = device.id;
+
+        if (power < rule.threshold && power > 0) { // < threshold but not 0 (already off)
+            if (!this.standbyState.has(key)) {
+                console.log(`[Energy] ${device.name} entered standby zone (${power}W < ${rule.threshold}W). Timer started.`);
+                this.standbyState.set(key, now);
+            } else {
+                const startTime = this.standbyState.get(key);
+                if (now - startTime > rule.timeout) {
+                    console.log(`[Energy] ${device.name} in standby for too long. Turning OFF.`);
+                    deviceManager.controlDevice(device.id, 'turn_off');
+                    this.standbyState.delete(key);
+                }
+            }
+        } else {
+            if (this.standbyState.has(key)) {
+                // Reset timer if power spikes back up OR device turns off (0W)
+                console.log(`[Energy] ${device.name} standby timer reset (Power: ${power}W).`);
+                this.standbyState.delete(key);
+            }
         }
     }
 
@@ -188,8 +240,66 @@ class EnergyManager extends EventEmitter {
         // If Usage > Solar, we import (positive)
         // If Solar > Usage, we export (negative)
         this.data.grid.currentPower = this.data.home.currentUsage - this.data.solar.currentPower;
+        
+        // --- SMART GRID OPTIMIZATION ---
+        if (this.config.optimization && this.config.optimization.enabled) {
+            this.runOptimization(this.data.grid.currentPower);
+        }
 
         this.emit('update', this.data);
+    }
+
+    async runOptimization(gridPower) {
+        // Debounce: Don't switch too often. (Simple implementation: check last switch time)
+        const now = Date.now();
+        if (this.lastOptimization && (now - this.lastOptimization < 30000)) return; // 30s debounce
+
+        const { exportThreshold, importLimit, priorities } = this.config.optimization;
+
+        // SCENARIO 1: HIGH CONSUMPTION (Peak Shaving) - Prevent tripping breaker
+        if (gridPower > importLimit) {
+            console.log(`[Energy] ⚠️ IMPORT PEAK DETECTED (${gridPower}W). Shedding load...`);
+            await this.shedLoad(priorities);
+            this.lastOptimization = now;
+        }
+
+        // SCENARIO 2: HIGH PRODUCTION (Self Consumption) - Use free energy
+        else if (gridPower < exportThreshold) {
+            // gridPower is negative when exporting. e.g. -2500 < -2000
+            console.log(`[Energy] ☀️ EXCESS SOLAR DETECTED (${Math.abs(gridPower)}W). Boosting load...`);
+            await this.boostLoad(priorities);
+            this.lastOptimization = now;
+        }
+    }
+
+    async shedLoad(priorities) {
+        // Find devices that are ON and have low priority (high number = low priority)
+        // Sort by priority DESC (8 -> 7 -> 6...)
+        const candidates = Object.keys(priorities).sort((a,b) => priorities[b] - priorities[a]);
+        
+        for (const deviceId of candidates) {
+            const device = deviceManager.getDevice(deviceId);
+            if (device && device.state && device.state.on) {
+                console.log(`[Energy] Turning OFF ${device.name} to save energy.`);
+                await deviceManager.controlDevice(deviceId, 'turn_off');
+                return; // Turn off one at a time to see effect
+            }
+        }
+    }
+
+    async boostLoad(priorities) {
+        // Find devices that are OFF and can be useful (middle priority)
+        // Sort by priority ASC (5 -> 6 -> 7...)
+        const candidates = Object.keys(priorities).sort((a,b) => priorities[a] - priorities[b]);
+        
+        for (const deviceId of candidates) {
+            const device = deviceManager.getDevice(deviceId);
+            if (device && device.state && !device.state.on) {
+                 console.log(`[Energy] Turning ON ${device.name} to use excess solar.`);
+                 await deviceManager.controlDevice(deviceId, 'turn_on');
+                 return; // Turn on one at a time
+            }
+        }
     }
 }
 

@@ -8,36 +8,64 @@ const SCENES_FILE = path.join(__dirname, '../data/scenes.json');
 class SceneManager extends EventEmitter {
     constructor() {
         super();
-        this.currentMode = 'HOME'; // HOME, AWAY, NIGHT, CINEMA, SLEEP, GUEST
+        this.currentMode = 'HOME'; // HOME, AWAY, NIGHT, CINEMA, SLEEP, GUEST, WORK, VACATION
+        this.isGuestMode = false;
+        this.isVacationMode = false;
+
         this.scenes = [];
         this.defaultScenes = [
             {
                 id: 'mode_home',
-                name: 'Home',
+                name: 'Thuis',
                 icon: 'fas fa-home',
                 color: '#3b82f6',
                 actions: [
-                    { type: 'device', command: 'turn_on', deviceId: 'hallway_light' }
+                    { type: 'device', command: 'turn_on', deviceId: 'hallway_light' },
+                    { type: 'system', command: 'security_disarm' }
                 ]
             },
             {
                 id: 'mode_away',
-                name: 'Away',
+                name: 'Weg',
                 icon: 'fas fa-sign-out-alt',
                 color: '#64748b',
                 actions: [
                     { type: 'device', command: 'turn_off', deviceId: 'all_lights' },
-                    { type: 'device', command: 'turn_off', deviceId: 'tv_living' }
+                    { type: 'device', command: 'turn_off', deviceId: 'tv_living' },
+                    { type: 'system', command: 'security_arm_away' }
                 ]
             },
             {
                 id: 'mode_night',
-                name: 'Night',
+                name: 'Nacht',
                 icon: 'fas fa-moon',
                 color: '#8b5cf6',
                 actions: [
                     { type: 'device', command: 'set_brightness', deviceId: 'hallway_light', value: 10 },
-                    { type: 'device', command: 'turn_off', deviceId: 'kitchen_main' }
+                    { type: 'device', command: 'turn_off', deviceId: 'kitchen_main' },
+                    { type: 'system', command: 'security_arm_home' }
+                ]
+            },
+            {
+                id: 'mode_morning',
+                name: 'Ochtend',
+                icon: 'fas fa-coffee',
+                color: '#f59e0b',
+                actions: [
+                    { type: 'device', command: 'turn_on', deviceId: 'kitchen_counter' },
+                    { type: 'device', command: 'set_brightness', deviceId: 'living_main', value: 50 },
+                    { type: 'device', command: 'open', deviceId: 'all_blinds' }
+                ]
+            },
+            {
+                id: 'mode_work',
+                name: 'Werk',
+                icon: 'fas fa-laptop-code',
+                color: '#10b981',
+                actions: [
+                    { type: 'device', command: 'turn_on', deviceId: 'office_main' },
+                    { type: 'device', command: 'turn_off', deviceId: 'living_tv' }
+                    // Future: Notifications mute
                 ]
             },
             {
@@ -48,7 +76,18 @@ class SceneManager extends EventEmitter {
                 actions: [
                     { type: 'device', command: 'set_brightness', deviceId: 'living_spots', value: 20 },
                     { type: 'device', command: 'turn_off', deviceId: 'living_main' },
-                    { type: 'device', command: 'turn_on', deviceId: 'tv_backlight' }
+                    { type: 'device', command: 'turn_on', deviceId: 'tv_backlight' },
+                    { type: 'device', command: 'close', deviceId: 'living_blinds' }
+                ]
+            },
+            {
+                id: 'mode_vacation',
+                name: 'Vakantie',
+                icon: 'fas fa-plane',
+                color: '#ec4899',
+                actions: [
+                    { type: 'system', command: 'set_vacation_mode', value: true },
+                    { type: 'system', command: 'security_arm_away' }
                 ]
             }
         ];
@@ -130,21 +169,53 @@ class SceneManager extends EventEmitter {
             }
         }
 
+        // Lazy load modules to allow circular dependency resolution
+        if (!this.securityManager) {
+             try { this.securityManager = require('./securityManager'); } catch(e) {}
+        }
+
         for (const action of scene.actions) {
             try {
                 if (action.type === 'device') {
                     if (action.deviceId === 'all_lights') {
                         // Special macro
                         await this.turnOffAllLights();
+                    } else if (action.deviceId === 'all_blinds') {
+                        // TODO: Implement blind control loop
                     } else {
                         await deviceManager.controlDevice(action.deviceId, action.command, action.value);
                     }
+                } else if (action.type === 'system') {
+                    await this.handleSystemAction(action);
                 } else if (action.type === 'delay') {
                     await new Promise(r => setTimeout(r, action.duration || 1000));
                 }
             } catch (e) {
                 console.error(`[SceneManager] Action failed for ${scene.name}:`, e.message);
             }
+        }
+    }
+
+    async handleSystemAction(action) {
+        if (!this.securityManager) this.securityManager = require('./securityManager');
+
+        switch(action.command) {
+            case 'security_arm_away':
+                this.securityManager.setMode('armed_away');
+                break;
+            case 'security_arm_home':
+                this.securityManager.setMode('armed_home');
+                break;
+            case 'security_disarm':
+                this.securityManager.setMode('disarmed');
+                break;
+            case 'set_vacation_mode':
+                this.isVacationMode = !!action.value;
+                this.emit('vacation-mode-changed', this.isVacationMode);
+                break;
+            case 'set_guest_mode':
+                this.isGuestMode = !!action.value;
+                break;
         }
     }
 

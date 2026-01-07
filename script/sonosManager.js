@@ -83,13 +83,24 @@ class SonosManagerModule {
                          console.warn(`[Sonos] Error 800: Device ${uuid} is a follower. Attempting to resolve coordinator via topology refresh.`);
                          try {
                              const groups = await this.manager.LoadAllGroups();
-                             const myGroup = groups.find(g => g.members.some(m => m.uuid === uuid));
-                             if (myGroup && myGroup.coordinator && myGroup.coordinator.uuid !== uuid) {
-                                 console.log(`[Sonos] Resolved coordinator for ${uuid} -> ${myGroup.coordinator.uuid}. Retrying...`);
-                                 // Recursive retry with the coordinator
-                                 return this.play(myGroup.coordinator.uuid, uri, metadata);
+                             console.log(`[Sonos] Topology refresh found ${groups.length} groups.`);
+                             
+                             // Find group containing this device (case insensitive check)
+                             const myGroup = groups.find(g => g.members.some(m => m.uuid.toLowerCase() === uuid.toLowerCase()));
+                             
+                             if (myGroup) {
+                                 const coordinatorUuid = myGroup.coordinator.uuid;
+                                 console.log(`[Sonos] Found group for device. Coordinator: ${coordinatorUuid}`);
+                                 
+                                 if (coordinatorUuid && coordinatorUuid.toLowerCase() !== uuid.toLowerCase()) {
+                                     console.log(`[Sonos] Redirecting to coordinator ${coordinatorUuid}`);
+                                     return this.play(coordinatorUuid, uri, metadata);
+                                 } else {
+                                     console.error(`[Sonos] Device appears to be the coordinator in topology, but refused command. Group: ${myGroup.name}`);
+                                     // Desperate attempt: Try to find ANY other member? No, only coordinator works.
+                                 }
                              } else {
-                                 console.error('[Sonos] Could not find a different coordinator for this device in topology.');
+                                 console.error(`[Sonos] Device ${uuid} not found in any group after topology refresh.`);
                              }
                          } catch (topologyErr) {
                              console.error('[Sonos] Failed to refresh topology:', topologyErr);

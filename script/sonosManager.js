@@ -84,27 +84,19 @@ class SonosManagerModule {
                      // Format: x-rincon-cpcontainer:1006206c{hex_playlist_id}?sid=9&flags=10860&sn=1
                      const playlistId = uri.split(':')[2];
                      
-                     // Metadata IS required for containers usually.
-                     // If we don't have it, we might fail or play empty.
-                     // Construct minimal DIDL if missing
+                     // Metadata IS required for containers.
+                     // The <desc> tag often causes UPnP Error 402 if the Account ID (SA_RINCON...) doesn't match the actual account.
+                     // It is safer to OMIT <desc> when we don't know the exact account ID.
                      if (!sonosMeta) {
-                         sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${playlistId}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_</desc></item></DIDL-Lite>`;
+                         sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${playlistId}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class></item></DIDL-Lite>`;
                      }
                      
-                     // We actually need to use AddURIToQueue and then Play, or SetAVTransportURI if it's a container?
-                     // SetAVTransportURI with x-rincon-cpcontainer works for some, but Queue is safer for playlists.
-                     // Let's try Queue approach for Playlists if regular SetAV fails? 
-                     // Or just try the format:
-                     sonosUri = `x-rincon-cpcontainer:1006206c${playlistId}?sid=9&flags=10860&sn=1`; // flags might need tuning
-                     
-                     // NOTE: Playlists on Sonos via UPnP are notoriously hard without a proper queue.
-                     // Direct SetAVTransportURI with x-rincon-cpcontainer often fails (402 or 714).
-                     // We will PREFER Queue-based playback for playlists immediately to avoid the error.
-                     
-                     sonosUri = `x-rincon-cpcontainer:1006206c${playlistId}?sid=9&flags=10860&sn=1`;
+                     // Try to URLEncode the playlist ID properly just in case
+                     const encodedId = encodeURIComponent(playlistId);
+                     sonosUri = `x-rincon-cpcontainer:1006206c${encodedId}?sid=9&flags=10860&sn=1`;
                      
                      // Force Queue path immediately for playlists
-                     console.log('[Sonos] Spotify Playlist detected. Using Queue-based playback directly.');
+                     console.log(`[Sonos] Spotify Playlist detected. Using Queue-based playback directly. URI: ${sonosUri}`);
                      
                      try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (ignored) {}
 
@@ -131,9 +123,11 @@ class SonosManagerModule {
                      // Spotify Track
                      // Format: x-sonos-spotify:spotify%3atrack%3a{id}?sid=9&flags=8224&sn=1
                      const trackId = uri.split(':')[2];
-                     sonosUri = `x-sonos-spotify:spotify%3atrack%3a${trackId}?sid=9&flags=8224&sn=1`;
+                     const encodedTrackId = encodeURIComponent(trackId);
+                     sonosUri = `x-sonos-spotify:spotify%3atrack%3a${encodedTrackId}?sid=9&flags=8224&sn=1`;
+                     
                      if (!sonosMeta) {
-                          sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="10032020spotify%3atrack%3a${trackId}" parentID="" restricted="true"><dc:title>Spotify Track</dc:title><upnp:class>object.item.audioItem.musicTrack</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_</desc></item></DIDL-Lite>`;
+                          sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="10032020spotify%3atrack%3a${encodedTrackId}" parentID="" restricted="true"><dc:title>Spotify Track</dc:title><upnp:class>object.item.audioItem.musicTrack</upnp:class></item></DIDL-Lite>`;
                      }
                  }
             }

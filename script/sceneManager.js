@@ -4,6 +4,7 @@ const path = require('path');
 const deviceManager = require('./deviceManager');
 
 const SCENES_FILE = path.join(__dirname, '../data/scenes.json');
+const MAPPINGS_FILE = path.join(__dirname, '../data/scene_mappings.json');
 
 class SceneManager extends EventEmitter {
     constructor() {
@@ -13,6 +14,7 @@ class SceneManager extends EventEmitter {
         this.isVacationMode = false;
 
         this.scenes = [];
+        this.mappings = {};
         this.defaultScenes = [
             {
                 id: 'mode_home',
@@ -107,6 +109,7 @@ class SceneManager extends EventEmitter {
 
     init() {
         this.load();
+        this.loadMappings();
         if (this.scenes.length === 0) {
             this.scenes = this.defaultScenes;
             this.save();
@@ -124,6 +127,30 @@ class SceneManager extends EventEmitter {
         }
     }
 
+    loadMappings() {
+        try {
+            if (fs.existsSync(MAPPINGS_FILE)) {
+                this.mappings = JSON.parse(fs.readFileSync(MAPPINGS_FILE, 'utf8'));
+            } else {
+                 // Initialize defaults if missing
+                 this.mappings = {
+                    "living_main": null,
+                    "living_spots": null,
+                    "tv_backlight": null,
+                    "hallway_light": null,
+                    "kitchen_main": null,
+                    "kitchen_counter": null,
+                    "office_main": null,
+                    "tv_living": null,
+                    "living_tv": null
+                };
+                this.saveMappings();
+            }
+        } catch (e) {
+            console.error('[SceneManager] Failed to load mappings:', e);
+        }
+    }
+
     save() {
         try {
             // Ensure data directory exists
@@ -136,14 +163,48 @@ class SceneManager extends EventEmitter {
         }
     }
 
-    getMode() {
-        return this.currentMode;
+    saveMappings() {
+        try {
+            const dir = path.dirname(MAPPINGS_FILE);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(MAPPINGS_FILE, JSON.stringify(this.mappings, null, 2));
+        } catch (e) {
+            console.error('[SceneManager] Failed to save mappings:', e);
+        }
     }
 
-    setMode(mode) {
-        if (this.currentMode === mode) return;
-        
-        console.log(`[SceneManager] Switching mode: ${this.currentMode} -> ${mode}`);
+    getMappings() {
+        return this.mappings;
+    }
+
+    updateMappings(newMappings) {
+        this.mappings = { ...this.mappings, ...newMappings };
+        this.saveMappings();
+        console.log('[SceneManager] Mappings updated via API');
+    }
+
+    resolveDeviceId(abstractId) {
+        if (this.mappings && this.mappings[abstractId]) {
+            return this.mappings[abstractId];
+        }
+        return abstractId;
+    }
+
+    getMode() {
+        return this.const targetId = this.resolveDeviceId(action.deviceId);
+
+                    if (targetId === 'all_lights') {
+                        // Special macro
+                        await this.turnOffAllLights();
+                    } else if (targetId === 'all_blinds') {
+                        // TODO: Implement blind control loop
+                    } else if (targetId) { // Check if mapped/exists
+                        if (targetId !== action.deviceId) {
+                             console.log(`[SceneManager] Mapped ${action.deviceId} -> ${targetId}`);
+                        }
+                        await deviceManager.controlDevice(targetId, action.command, action.value);
+                    } else {
+                        console.warn(`[SceneManager] Check mappings: Device ID '${action.deviceId}' is unmapped or null.`
         this.currentMode = mode;
         this.emit('mode-changed', mode);
 

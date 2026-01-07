@@ -339,45 +339,53 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3>Bibliotheek</h3>
                     <button class="close-modal" onclick="closeModal()">&times;</button>
                 </div>
-                <div class="modal-body" style="max-height: 60vh; overflow-y: auto; padding: 20px;">
+                <div class="modal-body" style="height: 60vh; overflow-y: auto; padding: 20px; background-color: var(--bg); color: var(--text);">
                     
-                    <div style="margin-bottom: 15px; font-weight: bold; font-size: 1.1em; color: #333;">Afspeellijsten</div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                    <h4 style="margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">Afspeellijsten</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px; margin-bottom: 40px;">
                         ${playlists.length ? playlists.map(p => `
                             <div onclick="controlSpotify('play_context', '${p.uri}'); closeModal();" 
-                                 style="cursor: pointer; transition: transform 0.2s;" 
-                                 onmouseover="this.style.transform='scale(1.05)'" 
-                                 onmouseout="this.style.transform='scale(1)'">
-                                <div style="position: relative; margin-bottom: 8px;">
-                                    <img src="${p.images?.[0]?.url || 'img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                                    <div style="position: absolute; bottom: 5px; right: 5px; background: #1db954; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                                        <i class="fas fa-play" style="font-size: 0.8em; margin-left: 2px;"></i>
+                                 class="spotify-card"
+                                 style="cursor: pointer; transition: transform 0.2s; background: var(--card); padding: 10px; border-radius: 10px;">
+                                <div style="position: relative; margin-bottom: 10px;">
+                                    <img src="${p.images?.[0]?.url || 'img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                                    <div class="spotify-play-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); border-radius: 8px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;">
+                                         <div style="background: #1db954; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+                                            <i class="fas fa-play" style="font-size: 1.2em; margin-left: 3px;"></i>
+                                         </div>
                                     </div>
                                 </div>
-                                <div style="font-weight: bold; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${p.name}</div>
-                                <div style="font-size: 0.8em; color: #666;">${p.tracks.total} nummers</div>
+                                <div style="font-weight: 600; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">${p.name}</div>
+                                <div style="font-size: 0.8em; color: var(--text-muted);">${p.tracks.total} nummers</div>
                             </div>
-                        `).join('') : '<div style="grid-column: 1/-1; color: #999;">Geen afspeellijsten gevonden</div>'}
+                        `).join('') : '<div style="grid-column: 1/-1; color: var(--text-muted);">Geen afspeellijsten gevonden</div>'}
                     </div>
                     
-                    <div style="margin-bottom: 15px; font-weight: bold; font-size: 1.1em; color: #333;">Albums</div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px;">
+                    <h4 style="margin-bottom: 15px; border-bottom: 2px solid var(--primary); padding-bottom: 5px;">Albums</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 20px;">
                         ${albums.length ? albums.map(a => `
                             <div onclick="controlSpotify('play_context', '${a.uri}'); closeModal();"
-                                 style="cursor: pointer; transition: transform 0.2s;" 
-                                 onmouseover="this.style.transform='scale(1.05)'" 
-                                 onmouseout="this.style.transform='scale(1)'">
-                                <div style="position: relative; margin-bottom: 8px;">
-                                    <img src="${a.images?.[0]?.url || 'img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                                    <div style="position: absolute; bottom: 5px; right: 5px; background: #1db954; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                                        <i class="fas fa-play" style="font-size: 0.8em; margin-left: 2px;"></i>
+                                 class="spotify-card"
+                                 style="cursor: pointer; transition: transform 0.2s; background: var(--card); padding: 10px; border-radius: 10px;">
+                                <div style="position: relative; margin-bottom: 10px;">
+                                    <img src="${a.images?.[0]?.url || 'img/default-album.png'}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                                    <div class="spotify-play-overlay" style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); border-radius: 8px; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;">
+                                         <div style="background: #1db954; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3);">
+                                            <i class="fas fa-play" style="font-size: 1.2em; margin-left: 3px;"></i>
+                                         </div>
                                     </div>
                                 </div>
-                                <div style="font-weight: bold; font-size: 0.9em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a.name}</div>
-                                <div style="font-size: 0.8em; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a.artists.map(art => art.name).join(', ')}</div>
+                                <div style="font-weight: 600; font-size: 0.95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">${a.name}</div>
+                                <div style="font-size: 0.8em; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a.artists.map(art => art.name).join(', ')}</div>
                             </div>
-                        `).join('') : '<div style="grid-column: 1/-1; color: #999;">Geen albums gevonden</div>'}
+                        `).join('') : '<div style="grid-column: 1/-1; color: var(--text-muted);">Geen albums gevonden</div>'}
                     </div>
+
+                    <style>
+                        .spotify-card:hover { transform: translateY(-5px); background: var(--card-hover) !important; }
+                        .spotify-card:hover .spotify-play-overlay { opacity: 1 !important; }
+                    </style>
+
                 </div>
             `;
             showModal(modalHtml);

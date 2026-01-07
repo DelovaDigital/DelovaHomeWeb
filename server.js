@@ -545,6 +545,19 @@ app.get('/api/settings', (req, res) => {
     });
 });
 
+app.get('/api/scene-mappings', (req, res) => {
+    res.json(sceneManager.getMappings());
+});
+
+app.post('/api/scene-mappings', express.json(), (req, res) => {
+    try {
+        sceneManager.updateMappings(req.body);
+        res.json({ success: true, mappings: sceneManager.getMappings() });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 app.post('/api/settings/features', express.json(), (req, res) => {
     const { feature, enabled } = req.body;
     

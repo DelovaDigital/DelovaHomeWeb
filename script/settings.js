@@ -600,3 +600,140 @@ window.updateTimezone = async (tz) => {
         alert('Failed to save timezone');
     }
 };
+// --- Scene Configuration Logic ---
+async function initSceneSetup() {
+    const container = document.getElementById('scene-mappings-container');
+    if (!container) return; // Not on settings page or element missing
+
+    container.innerHTML = '<div class="loading-spinner"></div>';
+
+    try {
+        const [mappingsRes, devicesRes] = await Promise.all([
+            fetch('/api/scene-mappings'),
+            fetch('/api/devices')
+        ]);
+
+        if (!mappingsRes.ok || !devicesRes.ok) throw new Error('Failed to fetch data');
+
+        const mappings = await mappingsRes.json();
+        const devices = await devicesRes.json();
+        
+        // Filter out useful devices (lights, switches, input_booleans)
+        const usefulDevices = devices.filter(d => 
+            d.type.includes('light') || 
+            d.type === 'switch' || 
+            d.type === 'dimmer'
+        );
+
+        container.innerHTML = ''; // Clear spinner
+
+        // Define friendly names for known abstract IDs
+        const friendlyNames = {
+            "living_main": "Woonkamer Hoofdlicht",
+            "living_spots": "Woonkamer Spots",
+            "tv_backlight": "TV Achtergrondverlichting",
+            "hallway_light": "Gang Licht",
+            "kitchen_main": "Keuken Hoofdlicht",
+            "kitchen_counter": "Keuken Werkblad",
+            "office_main": "Bureau Licht",
+            "tv_living": "TV Woonkamer",
+            "living_tv": "TV Woonkamer (Alt)",
+            "all_lights": "Alle Lampen (Macro)", // Should probably not be mapped
+            "all_blinds": "Alle Gordijnen (Macro)"
+        };
+
+        Object.keys(mappings).forEach(role => {
+            const currentDeviceId = mappings[role];
+            const friendlyName = friendlyNames[role] || role;
+
+            const div = document.createElement('div');
+            div.className = 'form-group mapping-item';
+            div.style.background = 'var(--bg-secondary, rgba(255,255,255,0.05))';
+            div.style.padding = '10px';
+            div.style.borderRadius = '8px';
+            div.style.border = '1px solid var(--border)';
+            
+            let optionsHtml = '<option value="">-- Geen --</option>';
+            usefulDevices.forEach(d => {
+                const selected = d.id === currentDeviceId ? 'selected' : '';
+                optionsHtml += `<option value="${d.id}" ${selected}>${d.name || d.id}</option>`;
+            });
+            
+            // Allow custom value entry if the mapped device is not in discoverable list (e.g. offline)
+            if (currentDeviceId && !usefulDevices.find(d => d.id === currentDeviceId)) {
+                optionsHtml += `<option value="${currentDeviceId}" selected>${currentDeviceId} (Niet gevonden)</option>`;
+            }
+
+            div.innerHTML = `
+                <label style="display:block; margin-bottom:5px; font-weight:600;">${friendlyName}</label>
+                <div style="font-size:0.8em; color:var(--text-muted); margin-bottom: 5px;">ID: ${role}</div>
+                <select class="scene-mapping-select form-control" data-role="${role}" style="width:100%">
+                    ${optionsHtml}
+                </select>
+            `;
+            
+            container.appendChild(div);
+        });
+
+    } catch (e) {
+        console.error('Error initializing scene setup:', e);
+        container.innerHTML = '<p class="error">Fout bij laden van gegevens.</p>';
+    }
+}
+
+// Global expose for button click
+window.saveSceneMappings = async function() {
+    const selects = document.querySelectorAll('.scene-mapping-select');
+    const newMappings = {};
+    const btn = document.querySelector('#btn-save-mappings'); 
+
+    selects.forEach(select => {
+        const role = select.getAttribute('data-role');
+        const val = select.value;
+        if (role) {
+            newMappings[role] = val || null;
+        }
+    });
+    
+    // Add visual feedback
+    if(btn) btn.textContent = 'Opslaan...';
+
+    try {
+        const res = await fetch('/api/scene-mappings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newMappings)
+        });
+        
+        if (res.ok) {
+            alert('Mappings opgeslagen!');
+            // Reload to verify
+            if (btn) btn.textContent = 'Opgeslagen!';
+        } else {
+            alert('Opslaan mislukt.');
+        }
+    } catch (e) {
+        alert('Netwerkfout: ' + e.message);
+    } finally {
+        setTimeout(() => { if(btn) btn.textContent = 'Opslaan'; }, 2000);
+    }
+};
+
+// Hook into the tab switcher
+const scenesTab = document.querySelector('.settings-nav-item[data-target="scenes"]');
+if (scenesTab) {
+    scenesTab.addEventListener('click', () => {
+        initSceneSetup();
+    });
+}
+// Also attach listener on load in case we start on scenes tab
+document.addEventListener('DOMContentLoaded', () => {
+   const btn = document.getElementById('btn-save-mappings');
+   if(btn) btn.addEventListener('click', window.saveSceneMappings);
+   
+    // Check URL params for initial tab again
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'scenes') {
+        initSceneSetup();
+    }
+});

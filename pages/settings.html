@@ -45,6 +45,9 @@
                     <div class="settings-nav-item" data-target="knx">
                         <i class="fas fa-network-wired"></i> <span data-i18n="knx">KNX</span>
                     </div>
+                    <div class="settings-nav-item" data-target="scenes">
+                        <i class="fas fa-magic"></i> <span data-i18n="scenes">Scenes</span>
+                    </div>
                 </aside>
 
                 <!-- Content -->
@@ -479,6 +482,26 @@
                                     </div>
                                     <button id="btn-save-knx" class="btn btn-primary" data-i18n="connect_save">Verbinden & Opslaan</button>
                                 </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenes Section -->
+                    <div id="scenes" class="settings-section">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-magic"></i>
+                                <h3 data-i18n="scenes_device_setup">Scene Apparaten Setup</h3>
+                            </div>
+                            <div class="card-body">
+                                <p style="margin-bottom: 20px; opacity: 0.8;" data-i18n="scenes_desc">Selecteer welk fysiek apparaat overeenkomt met de functie in de scene.</p>
+                                <div id="scene-mappings-container" class="grid-layout" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+                                    <!-- Populated via JS -->
+                                    <div class="loading-spinner"></div>
+                                </div>
+                                <div class="form-actions" style="margin-top: 20px; text-align: right;">
+                                    <button id="btn-save-mappings" class="btn btn-primary" data-i18n="save">Opslaan</button>
+                                </div>
                             </div>
                         </div>
                     </div>

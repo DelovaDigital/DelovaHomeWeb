@@ -1121,7 +1121,17 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
 
 // Try transfer via Spotify Connect, if that fails and a Sonos UUID is provided, attempt Sonos playback.
 app.post('/api/spotify/transfer-or-sonos', requireSpotifyUser, async (req, res) => {
-    const { deviceId, sonosUuid, uris } = req.body || {};
+    let { deviceId, sonosUuid, uris } = req.body || {};
+    
+    // logic to handle prefixed IDs from /devices
+    if (deviceId && typeof deviceId === 'string') {
+        if (deviceId.startsWith('sonos:')) {
+            sonosUuid = deviceId.substring(6); // remove 'sonos:'
+            deviceId = null;
+        }
+        // TODO: Handle cast: prefix if/when cast transfer is supported
+    }
+
     if (!deviceId && !sonosUuid) {
         return res.status(400).json({ ok: false, message: 'deviceId or sonosUuid required' });
     }

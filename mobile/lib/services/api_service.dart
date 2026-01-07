@@ -397,7 +397,7 @@ class ApiService {
     }
   }
 
-  Future<void> transferSpotifyPlayback(String deviceId) async {
+  Future<bool> transferSpotifyPlayback(String deviceId) async {
     final baseUrl = await getBaseUrl();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -408,14 +408,19 @@ class ApiService {
         if (userId != null) 'userId': userId,
         if (username != null) 'username': username,
       };
-      await http.post(
+      final response = await http.post(
         Uri.parse('$baseUrl/api/spotify/transfer-or-sonos'),
         headers: await getHeaders(),
         body: json.encode(body),
       );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['ok'] == true;
+      }
     } catch (e) {
       debugPrint('Error transferring playback (transfer-or-sonos): $e');
     }
+    return false;
   }
 
   Future<List<dynamic>> getSonosDevices() async {

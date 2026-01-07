@@ -346,13 +346,16 @@ import '../utils/app_translations.dart';
                                 title: Text(d['name'] ?? 'Unknown', style: TextStyle(color: isActive ? Colors.green : Colors.white, fontWeight: isActive ? FontWeight.bold : FontWeight.normal)),
                                 subtitle: Text(d['type'] ?? '', style: const TextStyle(color: Colors.grey)),
                                   onTap: () async {
-                                    await _apiService.transferSpotifyPlayback(d['id']);
+                                    final success = await _apiService.transferSpotifyPlayback(d['id']);
                                     if (!context.mounted) return;
                                     Navigator.of(context).pop();
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}')));
-                                    // small delay to let transfer happen then refresh
-                                    await Future.delayed(const Duration(milliseconds: 500));
-                                    await _fetchSpotifyStatus();
+                                    if (success) {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Transferred to ${d['name']}'), backgroundColor: Colors.green));
+                                      await Future.delayed(const Duration(milliseconds: 500));
+                                      await _fetchSpotifyStatus();
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to transfer to ${d['name']}'), backgroundColor: Colors.red));
+                                    }
                                   },
                               );
                             }

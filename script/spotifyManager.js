@@ -315,10 +315,14 @@ class SpotifyManager {
             if (resp.status === 404) {
                 const error = await resp.json().catch(() => ({}));
                 if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
-                    throw new Error('No active Spotify device found. Please start playing on a device first.');
+                    const err = new Error('No active Spotify device found. Please start playing on a device first.');
+                    err.code = 'NO_ACTIVE_DEVICE';
+                    throw err;
                 }
             }
-            throw new Error(`Spotify play failed: ${resp.status}`);
+            const err = new Error(`Spotify play failed: ${resp.status}`);
+            err.code = `SPOTIFY_${resp.status}`;
+            throw err;
         }
     }
 
@@ -551,10 +555,14 @@ class SpotifyManager {
             if (resp.status === 404) {
                 const error = await resp.json().catch(() => ({}));
                 if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
-                    throw new Error('No active Spotify device found. Please start playing on a device first.');
+                    const err = new Error('No active Spotify device found. Please start playing on a device first.');
+                    err.code = 'NO_ACTIVE_DEVICE';
+                    throw err;
                 }
             }
-            throw new Error(`Spotify playContext failed: ${resp.status}`);
+            const err = new Error(`Spotify playContext failed: ${resp.status}`);
+            err.code = `SPOTIFY_${resp.status}`;
+            throw err;
         }
     }
 
@@ -576,10 +584,14 @@ class SpotifyManager {
             if (resp.status === 404) {
                 const error = await resp.json().catch(() => ({}));
                 if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
-                    throw new Error('No active Spotify device found. Please start playing on a device first.');
+                    const err = new Error('No active Spotify device found. Please start playing on a device first.');
+                    err.code = 'NO_ACTIVE_DEVICE';
+                    throw err;
                 }
             }
-            throw new Error(`Spotify playUris failed: ${resp.status}`);
+            const err = new Error(`Spotify playUris failed: ${resp.status}`);
+            err.code = `SPOTIFY_${resp.status}`;
+            throw err;
         }
     }
 

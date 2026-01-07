@@ -1046,6 +1046,30 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
         res.json({ ok: true });
     } catch (err) {
         console.error('Error handling spotify control command:', err);
+        // Provide a clearer response for Spotify 'no active device' errors so callers
+        // can decide whether to prompt the user or attempt a fallback (e.g., Sonos).
+        if (err && err.code === 'NO_ACTIVE_DEVICE') {
+            return res.status(409).json({ ok: false, code: 'NO_ACTIVE_DEVICE', message: err.message });
+        }
+
+        // Map Spotify HTTP errors to structured responses so clients can react.
+        if (err && typeof err.code === 'string' && err.code.startsWith('SPOTIFY_')) {
+            const parts = err.code.split('_');
+            const statusNum = parseInt(parts[1], 10) || 502;
+            return res.status(502).json({ ok: false, code: err.code, status: statusNum, message: err.message });
+        }
+
+        // Sonos UPnP errors include extra fields (Action, FaultCode, UpnpErrorCode, UpnpErrorDescription)
+        if (err && (err.UpnpErrorCode || err.UpnpErrorDescription || err.Action)) {
+            const sonosInfo = {
+                action: err.Action || null,
+                fault: err.Fault || null,
+                upnpCode: err.UpnpErrorCode || null,
+                upnpDesc: err.UpnpErrorDescription || null
+            };
+            return res.status(502).json({ ok: false, code: 'SONOS_UPNP_ERROR', message: err.message || 'Sonos UPnP error', details: sonosInfo });
+        }
+
         res.status(500).json({ ok: false, message: err.message || 'Spotify control error' });
     }
 });

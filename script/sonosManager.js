@@ -1,5 +1,7 @@
 const { SonosManager } = require('@svrooij/sonos');
 
+console.log("--- SONOS MANAGER MODULE RELOADED v2 ---");
+
 class SonosManagerModule {
     constructor() {
         this.manager = new SonosManager();
@@ -72,10 +74,20 @@ class SonosManagerModule {
                  // Manual Construction:
                  if (uri.includes('playlist')) {
                      // Spotify Playlist
-                     // Correct format requires the FULL Spotify URI to be encoded and appended to 1006206c
                      // Format: x-rincon-cpcontainer:1006206c{encoded_spotify_uri}?sid=9&flags=10860&sn=1
-                     const encodedSpotifyUri = encodeURIComponent(uri);
+                     console.log(`[Sonos] DEBUG: Play request for playlist. Input URI: ${uri}`);
                      
+                     // Ensure we have the full URI encoded.
+                     // If uri is just the ID, we must reconstruct. But we expect 'spotify:playlist:ID'.
+                     let uriToEncode = uri;
+                     if (!uri.startsWith('spotify:')) {
+                         // Should not happen based on caller, but safe formatting
+                         uriToEncode = `spotify:playlist:${uri}`;
+                     }
+                     
+                     const encodedSpotifyUri = encodeURIComponent(uriToEncode); 
+                     console.log(`[Sonos] DEBUG: Encoded URI Segment: ${encodedSpotifyUri}`);
+
                      // Metadata IS required for containers.
                      if (!sonosMeta) {
                          sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class></item></DIDL-Lite>`;

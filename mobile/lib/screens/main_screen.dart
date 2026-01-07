@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_translations.dart';
+import '../services/api_service.dart';
 import '../services/location_service.dart';
 import 'dashboard_tab.dart';
 import 'devices_tab.dart';
@@ -32,7 +33,20 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _loadLanguage();
+    _fetchRemoteLocales();
     _locationService.init();
+  }
+
+  Future<void> _fetchRemoteLocales() async {
+    try {
+      final translations = await ApiService().fetchLocales();
+      if (translations != null) {
+        AppTranslations.update(translations);
+        if (mounted) setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error fetching locales: $e');
+    }
   }
 
   @override

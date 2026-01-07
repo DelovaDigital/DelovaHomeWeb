@@ -685,4 +685,23 @@ class ApiService {
       throw Exception('Connection error: $e');
     }
   }
+
+  // --- Localization ---
+  Future<Map<String, dynamic>?> fetchLocales() async {
+    try {
+      final baseUrl = await getBaseUrl();
+      // Directly fetch from 'data/locales.json' served by express.static
+      final url = Uri.parse('$baseUrl/data/locales.json');
+      
+      // Use standard http without custom headers as this is a static file
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error fetching locales: $e');
+    }
+    return null;
+  }
 }

@@ -46,19 +46,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     rooms.forEach(r => {
       const roomEl = document.createElement('div');
-      roomEl.className = 'room-card';
+      roomEl.className = 'unified-card'; // Use new class
       const devs = Object.keys(map).filter(k => map[k] === r.id).map(id => deviceById[id]).filter(Boolean);
 
       roomEl.innerHTML = `
-        <div class="room-header">
+        <div class="unified-card-header">
           <h4>${r.name}</h4>
           <div class="room-actions">
-            <button data-id="${r.id}" class="rename-room">✏️</button>
-            <button data-id="${r.id}" class="delete-room">🗑️</button>
+            <!-- Icons for edit/delete -->
+            <button data-id="${r.id}" class="rename-room btn-icon"><i class="fas fa-edit"></i></button>
+            <button data-id="${r.id}" class="delete-room btn-icon"><i class="fas fa-trash"></i></button>
           </div>
         </div>
-        <div class="room-devices">
-          ${devs.length>0 ? devs.map(d=>`<div class="room-device"><i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fas fa-cube'}"></i> ${d.name} <button data-device="${d.id}" class="unassign">${window.t ? window.t('unassign') : 'Verwijder'}</button></div>`).join('') : '<div class="empty">Geen apparaten</div>'}
+        <div class="room-device-list">
+          ${devs.length > 0 ? devs.map(d => `
+             <div class="room-device-item">
+                <span><i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(d) : 'fas fa-cube'}"></i> ${d.name}</span>
+                <button data-device="${d.id}" class="unassign btn-xs btn-danger"><i class="fas fa-times"></i></button>
+             </div>
+          `).join('') : `<div class="empty" style="opacity:0.6; font-size:0.9em;">${window.t ? window.t('no_devices') : 'Geen apparaten'}</div>`}
         </div>
       `;
 

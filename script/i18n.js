@@ -1,377 +1,66 @@
-const translations = {
-    nl: {
-        "welcome": "Welkom bij DelovaHome",
-        "welcome_desc": "Je slimme huis begint hier. Laten we je in een paar seconden op weg helpen.",
-        "get_started": "Aan de slag",
-        "choose_language": "Kies je taal",
-        "choose_language_desc": "Selecteer de taal die je wilt gebruiken.",
-        "choose_theme": "Kies je thema",
-        "choose_theme_desc": "Selecteer de stijl die bij je past.",
-        "light": "Licht",
-        "dark": "Donker",
-        "back": "Terug",
-        "next": "Volgende",
-        "all_set": "Je bent klaar!",
-        "all_set_desc": "DelovaHome is klaar om je apparaten te beheren. Verken het dashboard om te beginnen.",
-        "go_dashboard": "Ga naar Dashboard",
-        "dashboard": "Dashboard",
-        "dashboard_subtitle": "Overzicht van kamers, apparaten en handige widgets",
-        "rooms": "Kamers",
-        "devices": "Apparaten",
-        "settings": "Instellingen",
-        "files": "Bestanden",
-        "profile": "Profiel",
-        "logout": "Uitloggen",
-        "general": "Algemeen",
-        "integrations": "Integraties",
-        "energy": "Energie",
-        "knx": "KNX",
-        "hub_info": "Hub Informatie",
-        "hub_name": "Hub Naam",
-        "hub_id": "Hub ID",
-        "version": "Versie",
-        "status": "Status",
-        "online": "Online",
-        "preferences": "Voorkeuren",
-        "dark_mode": "Donkere modus",
-        "dark_mode_desc": "Schakel donker thema in",
-        "language": "Taal",
-        "language_desc": "Selecteer de taal van de interface",
-        "system_updates": "Systeem Updates",
-        "check_updates": "Check voor updates",
-        "account_settings": "Account Instellingen",
-        "username": "Gebruikersnaam",
-        "role": "Rol",
-        "change_password": "Wachtwoord Wijzigen",
-        "current_password": "Huidig Wachtwoord",
-        "new_password": "Nieuw Wachtwoord",
-        "confirm_password": "Bevestig Nieuw Wachtwoord",
-        "update_password": "Wachtwoord Bijwerken",
-        "apple_pairing": "Apple Apparaat Koppelen",
-        "apple_pairing_desc": "Koppel een Apple TV of Mac (AirPlay Receiver) om deze te bedienen.",
-        "ip_address": "IP Adres",
-        "start_pairing": "Start Koppelen",
-        "pin_code": "PIN Code",
-        "send_pin": "Verstuur PIN",
-        "nas_pairing": "NAS Koppelen",
-        "host_ip": "Host / IP",
-        "share_name": "Share Naam",
-        "domain": "Domein (Optioneel)",
-        "connect": "Verbinden",
-        "solar_energy": "Zonnepanelen & Energie",
-        "solar_capacity": "Capaciteit Zonnepanelen (W)",
-        "grid_limit": "Netlimiet (W)",
-        "cost_kwh": "Kosten per kWh (€)",
-        "save": "Opslaan",
-        "knx_gateway": "KNX Gateway",
-        "gateway_ip": "Gateway IP Adres",
-        "port": "Poort",
-        "phys_addr": "Fysiek Adres (Client)",
-        "connect_save": "Verbinden & Opslaan",
-        "ask_ai": "Vraag DelovaHome (bijv. 'Doe lichten aan')...",
-        "presence": "Aanwezigheid",
-        "clock": "Klok",
-        "weather": "Weer",
-        "printer_status": "Printer Status",
-        "speedtest": "Snelheidstest",
-        "start_speedtest": "Start Speedtest",
-        "loading": "Laden...",
-        "error": "Fout",
-        "success": "Succes",
-        "saved": "Opgeslagen!",
-        "connected": "Verbonden!",
-        "failed": "Mislukt",
-        "password_mismatch": "Wachtwoorden komen niet overeen",
-        "password_changed": "Wachtwoord succesvol gewijzigd",
-        "update_available": "Er is een nieuwe versie beschikbaar. Wil je nu updaten?",
-        "update_success": "Update geslaagd! De server wordt herstart.",
-        "admin": "Beheerder",
-        "create_account": "Account Aanmaken",
-        "create_account_desc": "Maak je lokale beheerdersaccount aan. Je kunt deze ook koppelen aan de cloud voor toegang op afstand.",
-        "create_finish": "Aanmaken & Voltooien",
-        "join_message": "Word vandaag nog lid van DelovaHome",
-        "back_login": "Terug naar Login",
-        "choose_username": "Kies een gebruikersnaam",
-        "min_chars": "Min. 6 karakters",
-        "repeat_password": "Herhaal wachtwoord",
-        "welcome_back": "Welkom terug",
-        "enter_username": "Vul je gebruikersnaam in",
-        "password": "Wachtwoord",
-        "enter_password": "Vul je wachtwoord in",
-        "login": "Inloggen",
-        "rooms_desc": "Beheer je kamers en voeg apparaten toe aan kamers.",
-        "new_room": "Nieuwe kamer",
-        "devices_desc": "Beheer je apparaten en voorkeuren",
-        "scan": "Scan",
-        "pairing_title": "Apparaat Koppelen",
-        "pairing_message": "Voer de PIN code in die op je TV verschijnt:",
-        "files_desc": "Blader door je netwerkopslag",
-        "sources": "Bronnen",
-        "select_source": "Selecteer een bron",
-        "user_role_user": "Bewoner",
-        "user_role_admin": "Beheerder",
-        "user_role_guest": "Gast",
-        "delete_user_confirm": "Weet je zeker dat je gebruiker \"{name}\" wilt verwijderen?",
-        "error_updating_role": "Fout bij updaten rol",
-        "error_deleting_user": "Fout bij verwijderen gebruiker",
-        "network_error": "Netwerkfout",
-        "add_user_success": "Gebruiker succesvol toegevoegd",
-        "add_user_error": "Fout bij toevoegen gebruiker",
-        "enable_remote_access": "Toegang op afstand inschakelen (Cloud)",
-        "cloud_url": "Cloud URL",
-        "email": "E-mail",
-        "cloud_credentials_note": "We gebruiken je lokale gebruikersnaam/wachtwoord voor het cloudaccount.",
-        "register": "Registreren",
-        "creating_account": "Account aanmaken...",
-        "enter_email": "Vul e-mail in voor cloudregistratie",
-        "account_created_linked": "Account aangemaakt en Cloud succesvol gekoppeld!",
-        "local_account_created": "Lokaal beheerdersaccount succesvol aangemaakt!",
-        "no_rooms": "Geen kamers. Maak er één aan.",
-        "unassign": "Verwijder",
-        "delete_room_confirm": "Kamer verwijderen?",
-        "new_room_name_prompt": "Nieuwe naam voor kamer",
-        "enter_name": "Vul een naam in",
-        "ai_error": "AI Fout",
-        "no_people_tracked": "Geen personen gevolgd",
-        "error_loading_presence": "Fout bij laden aanwezigheid",
-        "usage": "Verbruik",
-        "solar": "Zon",
-        "grid_import": "Net (Import)",
-        "grid_export": "Net (Export)",
-        "error_loading_energy": "Fout bij laden energie",
-        "weather_sunny": "Zonnig",
-        "weather_partly_cloudy": "Licht bewolkt",
-        "weather_cloudy": "Bewolkt",
-        "weather_fog": "Mist",
-        "weather_rain": "Regen",
-        "weather_snow": "Sneeuw",
-        "weather_showers": "Buien",
-        "weather_storm": "Onweer",
-        "weather_unknown": "Onbekend",
-        "weather_unavailable": "Weer informatie niet beschikbaar",
-        "weather_service_error": "Weer service niet bereikbaar",
-        "enter_city": "Voer stad in voor weerbericht:",
-        "location_not_found": "Locatie niet gevonden",
-        "speedtest_running": "Speedtest bezig...",
-        "speedtest_error": "Fout bij speedtest",
-        "speedtest_finished": "Klaar",
-        "uptime": "Uptime",
-        "memory": "Geheugen",
-        "status_online": "Online",
-        "status_offline": "Offline",
-        "fetching_ink": "Inktstatus ophalen...",
-        "ink_cyan": "Cyaan",
-        "ink_magenta": "Magenta",
-        "ink_yellow": "Geel",
-        "ink_black": "Zwart",
-        "speed_excellent": "Uitstekend (Fiber)",
-        "speed_very_good": "Zeer Goed",
-        "speed_good": "Goed",
-        "speed_fair": "Redelijk",
-        "speed_slow": "Traag",
-        "last_test": "Laatste test",
-        "just_now": "Zojuist",
-        "speedtest_failed": "Speedtest mislukt (Check internet)",
-        "testing_speed": "Internet snelheid testen..."
-    },
-    en: {
-        "welcome": "Welcome to DelovaHome",
-        "welcome_desc": "Your smart home journey starts here. Let's get you set up in just a few seconds.",
-        "get_started": "Get Started",
-        "choose_language": "Choose your Language",
-        "choose_language_desc": "Select the language you want to use.",
-        "choose_theme": "Choose your Theme",
-        "choose_theme_desc": "Select the look that fits your style.",
-        "light": "Light",
-        "dark": "Dark",
-        "back": "Back",
-        "next": "Next",
-        "all_set": "You're All Set!",
-        "all_set_desc": "DelovaHome is ready to manage your devices. Explore the dashboard to get started.",
-        "go_dashboard": "Go to Dashboard",
-        "dashboard": "Dashboard",
-        "dashboard_subtitle": "Overview of rooms, devices and useful widgets",
-        "rooms": "Rooms",
-        "devices": "Devices",
-        "settings": "Settings",
-        "files": "Files",
-        "profile": "Profile",
-        "logout": "Logout",
-        "general": "General",
-        "integrations": "Integrations",
-        "energy": "Energy",
-        "knx": "KNX",
-        "hub_info": "Hub Information",
-        "hub_name": "Hub Name",
-        "hub_id": "Hub ID",
-        "version": "Version",
-        "status": "Status",
-        "online": "Online",
-        "preferences": "Preferences",
-        "dark_mode": "Dark Mode",
-        "dark_mode_desc": "Enable dark theme",
-        "language": "Language",
-        "language_desc": "Select interface language",
-        "system_updates": "System Updates",
-        "check_updates": "Check for updates",
-        "account_settings": "Account Settings",
-        "username": "Username",
-        "role": "Role",
-        "change_password": "Change Password",
-        "current_password": "Current Password",
-        "new_password": "New Password",
-        "confirm_password": "Confirm New Password",
-        "update_password": "Update Password",
-        "apple_pairing": "Apple Device Pairing",
-        "apple_pairing_desc": "Pair an Apple TV or Mac (AirPlay Receiver) to control it.",
-        "ip_address": "IP Address",
-        "start_pairing": "Start Pairing",
-        "pin_code": "PIN Code",
-        "send_pin": "Send PIN",
-        "nas_pairing": "NAS Pairing",
-        "host_ip": "Host / IP",
-        "share_name": "Share Name",
-        "domain": "Domain (Optional)",
-        "connect": "Connect",
-        "solar_energy": "Solar Panels & Energy",
-        "solar_capacity": "Solar Capacity (W)",
-        "grid_limit": "Grid Limit (W)",
-        "cost_kwh": "Cost per kWh (€)",
-        "save": "Save",
-        "knx_gateway": "KNX Gateway",
-        "gateway_ip": "Gateway IP Address",
-        "port": "Port",
-        "phys_addr": "Physical Address (Client)",
-        "connect_save": "Connect & Save",
-        "ask_ai": "Ask DelovaHome (e.g. 'Turn on lights')...",
-        "presence": "Presence",
-        "clock": "Clock",
-        "weather": "Weather",
-        "printer_status": "Printer Status",
-        "speedtest": "Speedtest",
-        "start_speedtest": "Start Speedtest",
-        "loading": "Loading...",
-        "error": "Error",
-        "success": "Success",
-        "saved": "Saved!",
-        "connected": "Connected!",
-        "failed": "Failed",
-        "password_mismatch": "Passwords do not match",
-        "password_changed": "Password successfully changed",
-        "update_available": "A new version is available. Do you want to update now?",
-        "update_success": "Update successful! The server is restarting.",
-        "admin": "Admin",
-        "create_account": "Create Account",
-        "create_account_desc": "Create your local administrator account. You can also link it to the cloud for remote access.",
-        "create_finish": "Create & Finish",
-        "join_message": "Join DelovaHome today",
-        "back_login": "Back to Login",
-        "choose_username": "Choose a username",
-        "min_chars": "Min. 6 characters",
-        "repeat_password": "Repeat password",
-        "welcome_back": "Welcome back",
-        "enter_username": "Enter your username",
-        "password": "Password",
-        "enter_password": "Enter your password",
-        "login": "Login",
-        "rooms_desc": "Manage your rooms and add devices to rooms.",
-        "new_room": "New Room",
-        "devices_desc": "Manage your devices and preferences",
-        "scan": "Scan",
-        "pairing_title": "Pair Device",
-        "pairing_message": "Enter the PIN code displayed on your TV:",
-        "files_desc": "Browse your network storage",
-        "sources": "Sources",
-        "select_source": "Select a source",
-        "user_role_user": "Resident",
-        "user_role_admin": "Admin",
-        "user_role_guest": "Guest",
-        "delete_user_confirm": "Are you sure you want to delete user \"{name}\"?",
-        "error_updating_role": "Error updating role",
-        "error_deleting_user": "Error deleting user",
-        "network_error": "Network error",
-        "add_user_success": "User added successfully",
-        "add_user_error": "Error adding user",
-        "enable_remote_access": "Enable Remote Access (Cloud)",
-        "cloud_url": "Cloud URL",
-        "email": "Email",
-        "cloud_credentials_note": "We will use your local username/password for the cloud account.",
-        "register": "Register",
-        "creating_account": "Creating Account...",
-        "enter_email": "Please enter email for cloud registration",
-        "account_created_linked": "Account created and Cloud linked successfully!",
-        "local_account_created": "Local Admin Account created successfully!",
-        "no_rooms": "No rooms. Create one.",
-        "unassign": "Unassign",
-        "delete_room_confirm": "Delete room?",
-        "new_room_name_prompt": "New name for room",
-        "enter_name": "Enter a name",
-        "ai_error": "AI Error",
-        "no_people_tracked": "No people tracked",
-        "error_loading_presence": "Error loading presence",
-        "usage": "Usage",
-        "solar": "Solar",
-        "grid_import": "Grid (Import)",
-        "grid_export": "Grid (Export)",
-        "error_loading_energy": "Error loading energy",
-        "weather_sunny": "Sunny",
-        "weather_partly_cloudy": "Partly Cloudy",
-        "weather_cloudy": "Cloudy",
-        "weather_fog": "Fog",
-        "weather_rain": "Rain",
-        "weather_snow": "Snow",
-        "weather_showers": "Showers",
-        "weather_storm": "Storm",
-        "weather_unknown": "Unknown",
-        "weather_unavailable": "Weather information unavailable",
-        "weather_service_error": "Weather service unreachable",
-        "enter_city": "Enter city for weather:",
-        "location_not_found": "Location not found",
-        "speedtest_running": "Speedtest running...",
-        "speedtest_error": "Speedtest error",
-        "speedtest_finished": "Finished",
-        "uptime": "Uptime",
-        "memory": "Memory",
-        "status_online": "Online",
-        "status_offline": "Offline",
-        "fetching_ink": "Fetching ink status...",
-        "ink_cyan": "Cyan",
-        "ink_magenta": "Magenta",
-        "ink_yellow": "Yellow",
-        "ink_black": "Black",
-        "speed_excellent": "Excellent (Fiber)",
-        "speed_very_good": "Very Good",
-        "speed_good": "Good",
-        "speed_fair": "Fair",
-        "speed_slow": "Slow",
-        "last_test": "Last test",
-        "just_now": "Just now",
-        "speedtest_failed": "Speedtest failed (Check internet)",
-        "testing_speed": "Testing internet speed..."
-    }
-};
+(function() {
+    window.translations = {}; // Will be populated from JSON
 
-function t(key) {
-    const lang = localStorage.getItem('language') || 'nl';
-    return translations[lang][key] || key;
-}
-
-function applyTranslations() {
-    const elements = document.querySelectorAll('[data-i18n]');
-    elements.forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (key) {
-            if (el.tagName === 'INPUT' && el.getAttribute('placeholder')) {
-                el.placeholder = t(key);
+    async function loadTranslations() {
+        try {
+            const res = await fetch('../data/locales.json');
+            if (res.ok) {
+                window.translations = await res.json();
+                applyTranslations(); // Apply immediately after loading
+                console.log('[i18n] Translations loaded');
             } else {
-                el.textContent = t(key);
+                console.error("Failed to load locales.json");
             }
+        } catch (e) {
+            console.error("Error fetching translations:", e);
         }
+    }
+
+    window.t = function(key) {
+        const lang = localStorage.getItem('language') || 'nl';
+        let val = null;
+
+        // Try selected language
+        if (window.translations && window.translations[lang]) {
+            val = window.translations[lang][key];
+        }
+
+        // Try fallback English
+        if (!val && window.translations && window.translations['en']) {
+             val = window.translations['en'][key];
+        }
+        
+        return val || key; // Fallback to key itself
+    };
+
+    window.applyTranslations = function() {
+        const lang = localStorage.getItem('language') || 'nl';
+        document.documentElement.lang = lang;
+
+        const elements = document.querySelectorAll('[data-i18n]');
+        elements.forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            const text = window.t(key);
+            
+            if (text) {
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    if (el.hasAttribute('placeholder')) {
+                        el.setAttribute('placeholder', text);
+                    } else if (el.type === 'submit' || el.type === 'button') {
+                        el.value = text;
+                    }
+                } else {
+                    el.textContent = text;
+                }
+            }
+        });
+        
+        window.dispatchEvent(new Event('translations-applied'));
+    };
+    
+    // Initial Load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadTranslations();
     });
-}
 
-// Expose to global scope
-window.t = t;
-window.applyTranslations = applyTranslations;
-
-document.addEventListener('DOMContentLoaded', applyTranslations);
+})();

@@ -1,21 +1,18 @@
 <!DOCTYPE html>
 <html lang="nl">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - DelovaHome</title>
     <link rel="stylesheet" href="../style/base.css">
-    <script>/* Prevent white flash: set immediate background & text color */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
+    <script>/* Prevent white flash */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
     <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-
 <body>
     <div class="app-container">
-        <nav class="main-nav">
-            <!-- Navigation will be loaded here -->
-        </nav>
+        <!-- Main Nav (dynamically loaded by script.js, but we'll add a placeholder if needed or let script do it) -->
+        <nav class="main-nav"></nav>
 
         <main class="content-area">
             <header class="page-header">
@@ -25,65 +22,66 @@
                         <p data-i18n="dashboard_subtitle">Overzicht van kamers, apparaten en handige widgets</p>
                     </div>
                     <div class="ai-assistant">
-                        <input type="text" id="aiInput" placeholder="Ask DelovaHome (e.g. 'Turn on lights')..." data-i18n="ask_ai" />
+                        <input type="text" id="aiInput" placeholder="Ask DelovaHome..." data-i18n="ask_ai" />
                         <button id="aiSubmit" class="btn-icon"><i class="fas fa-magic"></i></button>
                     </div>
                 </div>
             </header>
             
-            <!-- Scenes / Modes Bar -->
-            <div id="scenesBar" class="scenes-bar">
-                <!-- Modes loaded via JS -->
-            </div>
+            <!-- Scenes Bar -->
+            <div id="scenesBar" class="scenes-bar"></div>
 
-            <div class="dashboard-grid">
-                <div id="roomsList">
-                    <!-- Rooms will be loaded here -->
+            <div class="dashboard-layout">
+                <!-- Left Column: Rooms -->
+                <div class="rooms-section">
+                   <div id="roomsList" class="unified-grid">
+                        <!-- Loaded via JS -->
+                   </div>
                 </div>
-                <aside class="widgets-panel">
-                    <div class="widget" id="presenceWidget">
-                        <h4><i class="fas fa-user-friends"></i> <span data-i18n="presence">Presence</span></h4>
+
+                <!-- Right Column: Widgets -->
+                <aside class="widgets-panel" style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- Clock Widget -->
+                    <div class="unified-card widget" id="clockWidget">
+                        <div class="clock-display" style="text-align:center; padding:10px;">
+                             <div class="clock-time" id="clockTime" style="font-size: 2.5em; font-weight:800;">--:--</div>
+                             <div class="clock-date" id="clockDate" style="opacity:0.7;">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Presence Widget -->
+                    <div class="unified-card widget" id="presenceWidget">
+                        <div class="unified-card-header">
+                            <h4><i class="fas fa-user-friends"></i> <span data-i18n="presence">Presence</span></h4>
+                        </div>
                         <div id="presenceContent" data-i18n="loading">Loading...</div>
                     </div>
 
-                    <div class="widget" id="energyWidget">
-                        <h4><i class="fas fa-bolt"></i> <span data-i18n="energy">Energy</span></h4>
+                    <!-- Energy Widget -->
+                    <div class="unified-card widget" id="energyWidget">
+                         <div class="unified-card-header">
+                            <h4><i class="fas fa-bolt"></i> <span data-i18n="energy">Energy</span></h4>
+                         </div>
                         <div id="energyContent" data-i18n="loading">Loading...</div>
                     </div>
-
-                    <div class="widget" id="clockWidget">
-                        <div class="clock-time" id="clockTime">--:--</div>
-                        <div class="clock-date" id="clockDate">--</div>
+                    
+                    <!-- Weather Widget -->
+                    <div class="unified-card widget" id="weatherWidget">
+                         <div class="unified-card-header">
+                            <h4><span data-i18n="weather">Weather</span></h4>
+                         </div>
+                        <div id="weatherContent" class="weather-container" data-i18n="loading">Loading...</div>
                     </div>
+
+                    <!-- Spotify Widget -->
                     <div id="spotify-widget-container"></div>
 
-                    <div class="widget" id="systemStatusWidget">
-                        <h4 data-i18n="status">Systeem Status</h4>
-                        <div id="systemStatusContent" data-i18n="loading">Laden...</div>
-                    </div>
-
-                    <div class="widget" id="weatherWidget">
-                        <h4 data-i18n="weather">Weer</h4>
-                        <div id="weatherContent" class="weather-container" data-i18n="loading">Laden…</div>
-                    </div>
-
-                    <div class="widget" id="printerWidget" style="display: none;">
-                        <h4 data-i18n="printer_status">Printer Status</h4>
-                        <div id="printerContent" data-i18n="loading">Laden...</div>
-                    </div>
-
-                    <div class="widget" id="speedtestWidget">
-                        <h4 data-i18n="speedtest">Speedtest</h4>
-                        <div id="speedtestContent">
-                            <button id="runSpeedtest" class="btn-primary" data-i18n="start_speedtest">Start Speedtest</button>
-                            <div id="speedtestResults"></div>
-                        </div>
-                    </div>
                 </aside>
             </div>
         </main>
     </div>
 
+    <!-- Scripts -->
     <script src="../script/script.js"></script>
     <script src="../script/i18n.js"></script>
     <script src="../script/modal.js"></script>

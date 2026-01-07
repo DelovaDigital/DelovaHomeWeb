@@ -1,5 +1,5 @@
 class AppTranslations {
-  static final Map<String, Map<String, String>> _localizedValues = {
+  static Map<String, Map<String, String>> _localizedValues = {
     'en': {
       'welcome': 'Welcome to DelovaHome',
       'welcome_back': 'Welcome back',
@@ -270,5 +270,18 @@ class AppTranslations {
 
   static String get(String key, {String lang = 'nl'}) {
     return _localizedValues[lang]?[key] ?? _localizedValues['en']?[key] ?? key;
+  }
+
+  static void update(Map<String, dynamic> newValues) {
+    newValues.forEach((lang, keys) {
+      if (keys is Map) {
+        if (!_localizedValues.containsKey(lang)) {
+          _localizedValues[lang] = {};
+        }
+        keys.forEach((k, v) {
+          _localizedValues[lang]![k.toString()] = v.toString();
+        });
+      }
+    });
   }
 }

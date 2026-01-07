@@ -89,7 +89,6 @@ class SonosManagerModule {
                     if (match) {
                         console.log(`[Sonos] ✅ Found matching Favorite: "${match.title}"`);
                         
-                        // We must first Clear the Queue for a container replacement
                         try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
 
                         await device.QueueService.AddURI({
@@ -108,12 +107,64 @@ class SonosManagerModule {
                         
                         return device.Play();
                     } else {
-                        throw new Error('Playlist not found in Sonos Favorites. Please add it to "My Sonos" first.');
+                        console.log('[Sonos] Playlist not found in favorites. Trying brute-force AddURI strategy...');
                     }
                 } catch (favError) {
-                    console.error('[Sonos] Favorites lookup failed:', favError.message);
-                    throw favError;
+                    console.error('[Sonos] Favorites lookup checked but failed or empty. Proceeding to fallback.');
                 }
+
+                // FALLBACK: Brute-force the Service Index (sn) and Flags
+                // We typically see sn=1, 3, 7. Flags are usually 8300 or 10860.
+                const attempts = [
+                     { sn: 3, flags: 8300 }, // Seen in user logs
+                     { sn: 7, flags: 8300 }, // Library default
+                     { sn: 1, flags: 8300 }, // Common
+                     { sn: 3, flags: 10860 },
+                     { sn: 7, flags: 10860 }
+                ];
+
+                const encodedSpotifyUri = encodeURIComponent(uri);
+                let lastError = null;
+
+                for (const attempt of attempts) {
+                    try {
+                        console.log(`[Sonos] Attempting AddURI with sn=${attempt.sn} flags=${attempt.flags}...`);
+                        
+                        const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=${attempt.flags}&sn=${attempt.sn}`;
+                        // Use Anonymous ID
+                        const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_X_#Svc65535-0-Token</desc></item></DIDL-Lite>`;
+
+                        await device.QueueService.AddURI({
+                             InstanceID: 0,
+                             EnqueuedURI: sonosServiceUri,
+                             EnqueuedURIMetaData: sonosMeta,
+                             DesiredFirstTrackNumberEnqueued: 0,
+                             EnqueueAsNext: true
+                        });
+                        
+                        console.log(`[Sonos] ✅ Success using sn=${attempt.sn} flags=${attempt.flags}!`);
+                        
+                        // Set Transport to Queue and Play
+                         await device.AVTransportService.SetAVTransportURI({
+                           InstanceID: 0,
+                           CurrentURI: `x-rincon-queue:${device.uuid}#0`,
+                           CurrentURIMetaData: ''
+                        });
+                        return device.Play();
+                        
+                    } catch (e) {
+                        console.log(`[Sonos] Failed with sn=${attempt.sn}: ${e.message}`);
+                        lastError = e;
+                        if (!e.message.includes('Invalid args') && !e.message.includes('402')) {
+                            // If it's NOT an invalid args error (e.g. network error), stop trying.
+                            // But 402/714 IS what we are trying to fix by changing parameters.
+                        }
+                    }
+                }
+                
+                // If all failed
+                console.error('[Sonos] All AddURI attempts failed.');
+                throw lastError || new Error('Failed to play Spotify URI on Sonos');
             }
 
             // Standard playback for other URIs

@@ -69,49 +69,51 @@ class SonosManagerModule {
             // Special handling for Spotify URIs using the library's native helper
             // Special handling for Spotify URIs on Sonos
             if (uri.startsWith('spotify:')) {
-                console.log('[Sonos] Spotify URI detected. QueueService strategy.');
-
-                // Discovered via debugging
-                const SONOS_SPOTIFY_SN = 3; 
-                // We use Anonymous account since we couldn't extract the exact SA_RINCON ID due to library masking.
-                // However, sn=3 combined with correct sid=9 might work, OR we might need to rely on what works for others.
-                const SONOS_SPOTIFY_MEMBER_ID = 'SA_RINCON65535_X'; 
-
-                // 1. Clear Queue
-                try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
-
-                // 2. QueueService.AddURI
-                const encodedSpotifyUri = encodeURIComponent(uri);
+                console.log('[Sonos] Spotify URI detected. Switch to "Smart Favorites" strategy.');
                 
-                // Note: 1006206c is the prefix for Playlists. 
-                // Using sid=9 (Spotify) and sn=3 (Found on device)
-                // Flags: 10860 is standard for playlists.
-                const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=10860&sn=${SONOS_SPOTIFY_SN}`;
-                
-                const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">${SONOS_SPOTIFY_MEMBER_ID}</desc></item></DIDL-Lite>`;
-
+                // STRATEGY: Look for this item in Sonos Favorites first.
+                // This bypasses the complex metadata security checks because Sonos trusts its own favorites.
                 try {
-                     await device.QueueService.AddURI({
-                         InstanceID: 0,
-                         EnqueuedURI: sonosServiceUri,
-                         EnqueuedURIMetaData: sonosMeta,
-                         DesiredFirstTrackNumberEnqueued: 0,
-                         EnqueueAsNext: true
+                    console.log('[Sonos] Searching for playlist in Sonos Favorites...');
+                    const favorites = await device.GetFavorites();
+                    
+                    // Allow fuzzy matching on the ID (e.g., spotify:playlist:123...)
+                    // The Favorite URI usually looks like: x-rincon-cpcontainer:1006206cspotify%3aplaylist%3a...
+                    const spotifyId = uri.split(':').pop(); // Get the last part (ID)
+                    
+                    const match = favorites.find(fav => {
+                         // Check decoded URI for the ID
+                         return (fav.uri && decodeURIComponent(fav.uri).includes(spotifyId));
                     });
-                } catch (e) {
-                     console.error(`[Sonos] QueueService.AddURI failed: ${e.message}`);
-                     throw e; 
-                }
 
-                // 3. Set Transport to Queue
-                const queueUri = `x-rincon-queue:${device.uuid}#0`;
-                await device.AVTransportService.SetAVTransportURI({
-                   InstanceID: 0,
-                   CurrentURI: queueUri,
-                   CurrentURIMetaData: ''
-                });
-                
-                return device.Play();
+                    if (match) {
+                        console.log(`[Sonos] ✅ Found matching Favorite: "${match.title}"`);
+                        
+                        // We must first Clear the Queue for a container replacement
+                        try { await device.QueueService.RemoveAllTracks({ InstanceID: 0 }); } catch (e) {}
+
+                        await device.QueueService.AddURI({
+                            InstanceID: 0,
+                            EnqueuedURI: match.uri,
+                            EnqueuedURIMetaData: match.metaData,
+                            DesiredFirstTrackNumberEnqueued: 0,
+                            EnqueueAsNext: true
+                        });
+                        
+                        await device.AVTransportService.SetAVTransportURI({
+                           InstanceID: 0,
+                           CurrentURI: `x-rincon-queue:${device.uuid}#0`,
+                           CurrentURIMetaData: ''
+                        });
+                        
+                        return device.Play();
+                    } else {
+                        throw new Error('Playlist not found in Sonos Favorites. Please add it to "My Sonos" first.');
+                    }
+                } catch (favError) {
+                    console.error('[Sonos] Favorites lookup failed:', favError.message);
+                    throw favError;
+                }
             }
 
             // Standard playback for other URIs

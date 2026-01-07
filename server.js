@@ -999,17 +999,23 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
                    } else {
                        console.warn(`[Spotify] Could not resolve Sonos ${uuid} to a Spotify Device ID. Falling back to explicit Sonos playback if applicable.`);
                        
-                       // If command is 'play_context' or 'play', we can TRY to force Sonos to play it via UPnP
-                       // But often this fails for Context URIs on Sonos without Queue manipulation.
-                       // Let's rely on sonosManager.play() which does SetAVTransportURI.
+                       // Fallback for UPnP control
                        if (command === 'play_context' || command === 'play') {
-                           // Extract URI
                            const uri = command === 'play_context' ? value : (value && value.uris ? value.uris[0] : null);
                            if (uri) {
                                console.log(`[Spotify] Fallback: Playing URI directly on Sonos via UPnP: ${uri}`);
                                await sonosManager.play(uuid, uri, null);
                                return res.json({ ok: true, method: 'sonos_fallback' });
                            }
+                       } else if (command === 'next') {
+                           await sonosManager.next(uuid);
+                           return res.json({ ok: true, method: 'sonos_fallback' });
+                       } else if (command === 'previous') {
+                           await sonosManager.previous(uuid);
+                           return res.json({ ok: true, method: 'sonos_fallback' });
+                       } else if (command === 'pause') {
+                           await sonosManager.pause(uuid);
+                           return res.json({ ok: true, method: 'sonos_fallback' });
                        }
                    }
                }

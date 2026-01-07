@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
@@ -69,85 +70,260 @@ class _AutomationsTabState extends State<AutomationsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: Text(t('Automations')),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              _showAddAutomationDialog();
-            },
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadAutomations,
-              child: _automations.isEmpty
-                  ? Center(child: Text(t('No automations found')))
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(
-                        16,
-                        0,
-                        16,
-                        120,
-                      ), // Increased bottom padding to be safe
-                      itemCount: _automations.length,
-                      itemBuilder: (context, index) {
-                        final automation = _automations[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            title: Text(
-                              automation['name'] ?? 'Unnamed Automation',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(
-                              'Trigger: ${automation['trigger']?['type'] ?? 'Unknown'}',
-                            ),
-                            trailing: Switch(
-                              value: automation['enabled'] ?? false,
-                              onChanged: (val) async {
-                                final oldVal = automation['enabled'];
-                                setState(() {
-                                  automation['enabled'] = val;
-                                });
-                                try {
-                                  await _apiService.updateAutomation(
-                                    automation['id'],
-                                    automation,
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  setState(() {
-                                    automation['enabled'] = oldVal;
-                                  });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Failed to update: $e'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t('Automations'),
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF2D3142),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_automations.length} active',
+                        style: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.grey[600],
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.primaryColor.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.add_rounded, color: Colors.white),
+                      onPressed: _showAddAutomationDialog,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _loadAutomations,
+                      child: _automations.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.auto_awesome_outlined,
+                                    size: 64,
+                                    color: isDark ? Colors.white24 : Colors.grey[300],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    t('No automations found'),
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white54 : Colors.grey[500],
+                                      fontSize: 18,
                                     ),
-                                  );
-                                }
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                              itemCount: _automations.length,
+                              itemBuilder: (context, index) {
+                                return _buildAutomationCard(_automations[index]);
                               },
                             ),
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Edit not implemented yet')),
-                              );
-                            },
-                          ),
-                        );
-                      },
                     ),
             ),
+          ],
+        ),
+      ),
     );
+  }
+
+  Widget _buildAutomationCard(Map<String, dynamic> automation) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    IconData triggerIcon = Icons.error_outline;
+    Color triggerColor = Colors.grey;
+    String triggerText = 'Unknown Trigger';
+    
+    final trigger = automation['trigger'];
+    if (trigger != null) {
+        final type = trigger['type'];
+        if (type == 'time') {
+            triggerIcon = Icons.access_time_rounded;
+            triggerColor = Colors.orange;
+            triggerText = _formatCron(trigger['cron']); 
+        } else if (type == 'presence') {
+            triggerIcon = Icons.location_on_rounded;
+            triggerColor = Colors.blue;
+            triggerText = trigger['event'] == 'arrive_home' 
+                ? t('Arrive Home') 
+                : t('Leave Home');
+        } else if (type == 'device_state') {
+            triggerIcon = Icons.devices_other_rounded;
+            triggerColor = Colors.purple;
+            triggerText = t('Device State');
+        }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                 ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Edit not implemented yet')),
+                 );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                      Row(
+                          children: [
+                              Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                      color: triggerColor.withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(triggerIcon, color: triggerColor, size: 24),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                  child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                          Text(
+                                              automation['name'] ?? 'Unnamed',
+                                              style: TextStyle(
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isDark ? Colors.white : const Color(0xFF2D3142),
+                                              ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                              triggerText,
+                                              style: TextStyle(
+                                                  color: isDark ? Colors.white60 : Colors.black54,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                              ),
+                                          ),
+                                      ],
+                                  ),
+                              ),
+                              Switch(
+                                  value: automation['enabled'] ?? false,
+                                  onChanged: (val) async {
+                                    final oldVal = automation['enabled'];
+                                    setState(() {
+                                      automation['enabled'] = val;
+                                    });
+                                    try {
+                                      await _apiService.updateAutomation(
+                                        automation['id'],
+                                        automation,
+                                      );
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      setState(() {
+                                        automation['enabled'] = oldVal;
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Failed to update: $e'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                              ),
+                          ],
+                      ),
+                      if (automation['actions'] != null && (automation['actions'] as List).isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Divider(height: 1, color: isDark ? Colors.white10 : Colors.black12),
+                          const SizedBox(height: 12),
+                          Row(
+                              children: [
+                                  Icon(Icons.bolt_rounded, size: 16, color: isDark ? Colors.white54 : Colors.black45),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                      '${(automation['actions'] as List).length} actions configured', 
+                                      style: TextStyle(
+                                          color: isDark ? Colors.white54 : Colors.black45,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500
+                                      )
+                                  ),
+                              ]
+                          )
+                      ]
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatCron(String? cron) {
+      if (cron == null) return 'No time set';
+      final parts = cron.split(' ');
+      if (parts.length >= 3) {
+          final min = parts[1].padLeft(2, '0');
+          final hour = parts[2].padLeft(2, '0');
+          return '$hour:$min';
+      }
+      return cron;
   }
 
   void _showAddAutomationDialog() {

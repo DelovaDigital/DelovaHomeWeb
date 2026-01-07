@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_translations.dart';
@@ -92,62 +93,39 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(
-          10,
-          0,
-          10,
-          20,
-        ), // Reduced margin to give more space
-        decoration: BoxDecoration(
-          color: navBarColor,
-          borderRadius: BorderRadius.circular(35),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 25,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          bottom: false, // We handle bottom padding manually via margin/padding
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8), // Reduced padding
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  0,
-                  Icons.dashboard_outlined,
-                  Icons.dashboard,
-                  t('dashboard'),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              height: 70,
+              decoration: BoxDecoration(
+                color: navBarColor.withValues(alpha: isDark ? 0.7 : 0.8),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05), 
+                  width: 1
                 ),
-                _buildNavItem(
-                  1,
-                  Icons.devices_outlined,
-                  Icons.devices,
-                  t('devices'),
-                ),
-                _buildNavItem(
-                  2,
-                  Icons.meeting_room_outlined,
-                  Icons.meeting_room,
-                  t('rooms'),
-                ),
-                _buildNavItem(
-                  3,
-                  Icons.auto_awesome_outlined,
-                  Icons.auto_awesome,
-                  t('Automations'),
-                ),
-                _buildNavItem(
-                  4,
-                  Icons.settings_outlined,
-                  Icons.settings,
-                  t('settings'),
-                ),
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, t('dashboard')),
+                  _buildNavItem(1, Icons.devices_outlined, Icons.devices_rounded, t('devices')),
+                  _buildNavItem(2, Icons.meeting_room_outlined, Icons.meeting_room_rounded, t('rooms')),
+                  _buildNavItem(3, Icons.auto_awesome_outlined, Icons.auto_awesome, t('Automations')),
+                  _buildNavItem(4, Icons.settings_outlined, Icons.settings_rounded, t('settings')),
+                ],
+              ),
             ),
           ),
         ),
@@ -159,62 +137,45 @@ class _MainScreenState extends State<MainScreen> {
     int index,
     IconData icon,
     IconData activeIcon,
-    String label,
+    String? label,
   ) {
     final isSelected = _selectedIndex == index;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = const Color(0xFF007AFF);
-    final inactiveColor = isDark ? Colors.grey[400] : const Color(0xFF4A4A4A);
+    final activeColor = isDark ? const Color(0xFF64B5F6) : const Color(0xFF007AFF);
+    final inactiveColor = isDark ? Colors.white54 : Colors.black54;
 
-    // If screen is small, hide text for non-selected items to prevent overflow
-    // With 5 items, we might run out of space.
-    // Let's only show text for selected item, or maybe just icon if space is tight.
-    // The current implementation only shows text if selected: `if (isSelected) ...[ Text(...) ]`
-    // But with 5 items, even that might be too wide on small screens.
-    // Let's reduce padding or font size if needed, or use Flexible.
-
-    return Flexible(
-      child: GestureDetector(
-        onTap: () => _onItemTapped(index),
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 12,
-          ), // Reduced horizontal padding
-          decoration: BoxDecoration(
-            color: isSelected
-                ? activeColor.withValues(alpha: 0.12)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
+    return GestureDetector(
+      onTap: () => _onItemTapped(index),
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutBack,
+            padding: EdgeInsets.all(isSelected ? 10 : 8),
+            decoration: BoxDecoration(
+              color: isSelected ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              isSelected ? activeIcon : icon,
+              color: isSelected ? activeColor : inactiveColor,
+              size: isSelected ? 26 : 24,
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isSelected ? activeIcon : icon,
-                color: isSelected ? activeColor : inactiveColor,
-                size: 24,
+          if (isSelected)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              width: 4,
+              height: 4,
+              decoration: BoxDecoration(
+                color: activeColor,
+                shape: BoxShape.circle,
               ),
-              if (isSelected) ...[
-                const SizedBox(width: 4), // Reduced spacing
-                Flexible(
-                  child: Text(
-                    label,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: activeColor,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12, // Reduced font size
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
+            )
+        ],
       ),
     );
   }

@@ -40,34 +40,32 @@ class _EnergyWidgetState extends State<EnergyWidget> {
     final gridPower = (grid['currentPower'] ?? 0).toDouble();
     final solarPower = (solar['currentPower'] ?? 0).toDouble();
     final usage = (home['currentUsage'] ?? (gridPower + solarPower)).toDouble();
+    final theme = Theme.of(context);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.black54;
-
+    // Energy Logic
+    final isProducing = gridPower < 0;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12.0),
-          child: Row(
-            children: [
-              const Icon(Icons.bolt, color: Colors.yellowAccent, size: 16),
-              const SizedBox(width: 8),
-              Text(t('energy_monitor'), style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold)),
-            ],
-          ),
+        Row(
+          children: [
+            Icon(Icons.bolt_rounded, color: Colors.amber, size: 24),
+            const SizedBox(width: 8),
+            Text(t('energy_monitor'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          ],
         ),
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildItem(Icons.home, '${usage.round()} W', t('usage'), textColor),
-            _buildItem(Icons.wb_sunny, '${solarPower.round()} W', t('solar'), Colors.greenAccent),
-            _buildItem(
-              Icons.electrical_services, 
+            _buildModernItem(Icons.home_rounded, '${usage.round()} W', t('usage'), Colors.blue),
+            _buildModernItem(Icons.wb_sunny_rounded, '${solarPower.round()} W', t('solar'), Colors.amber),
+            _buildModernItem(
+              isProducing ? Icons.upload_rounded : Icons.download_rounded, 
               '${gridPower.abs().round()} W', 
-              gridPower > 0 ? t('import') : t('export'), 
-              gridPower > 0 ? Colors.redAccent : Colors.greenAccent
+              isProducing ? t('export') : t('import'), 
+              isProducing ? Colors.green : Colors.purpleAccent
             ),
           ],
         ),
@@ -75,16 +73,21 @@ class _EnergyWidgetState extends State<EnergyWidget> {
     );
   }
 
-  Widget _buildItem(IconData icon, String value, String label, Color color) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final labelColor = isDark ? Colors.white54 : Colors.black45;
-
+  Widget _buildModernItem(IconData icon, String value, String label, Color color) {
+    final theme = Theme.of(context);
     return Column(
       children: [
-        Icon(icon, color: color.withValues(alpha: 0.8), size: 24),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: TextStyle(color: labelColor, fontSize: 10)),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(value, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
       ],
     );
   }

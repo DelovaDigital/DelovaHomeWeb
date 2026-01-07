@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'spotify_login_screen.dart';
+
 import '../services/api_service.dart';
 import '../models/device.dart';
 import '../widgets/device_card.dart';
@@ -24,7 +24,6 @@ import '../utils/app_translations.dart';
   class _DashboardTabState extends State<DashboardTab> {
     final ApiService _apiService = ApiService();
     int _activeDevices = 0;
-    int _totalDevices = 0;
     List<Device> _favoriteDevices = [];
     Map<String, dynamic>? _weatherData;
     Map<String, dynamic>? _spotifyStatus;
@@ -122,41 +121,7 @@ import '../utils/app_translations.dart';
       }
     }
 
-    Future<void> _openSpotifyLogin() async {
-      try {
-        final baseUrl = await _apiService.getBaseUrl();
-        final prefs = await SharedPreferences.getInstance();
-        final userId = prefs.getString('userId');
-        final username = prefs.getString('username');
-        
-        String uriString = '$baseUrl/api/spotify/login';
-        final params = <String>[];
-        if (userId != null) params.add('userId=$userId');
-        if (username != null) params.add('username=$username');
-        
-        if (params.isNotEmpty) {
-          uriString += '?${params.join('&')}';
-        }
 
-        final headers = await _apiService.getHeaders();
-
-        if (mounted) {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SpotifyLoginScreen(
-                url: uriString,
-                headers: headers,
-              ),
-            ),
-          );
-          // Refresh status after return
-          _fetchSpotifyStatus();
-        }
-      } catch (e) {
-        debugPrint('Open spotify login error: $e');
-      }
-    }
 
     Future<String?> _showSpotifySearchDialog() async {
       final controller = TextEditingController();
@@ -371,76 +336,7 @@ import '../utils/app_translations.dart';
       }
     }
 
-    Future<void> _showSpotifyMusicPicker() async {
-      final playlists = await _apiService.getSpotifyPlaylists();
-      final albums = await _apiService.getSpotifyAlbums();
 
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => DefaultTabController(
-          length: 2,
-          child: AlertDialog(
-            backgroundColor: Colors.grey[900],
-            title: Text(t('choose_music'), style: const TextStyle(color: Colors.white)),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TabBar(tabs: [Tab(text: t('playlists')), Tab(text: t('albums'))]),
-                  SizedBox(
-                    height: 300,
-                    child: TabBarView(children: [
-                      ListView.builder(
-                        itemCount: playlists.length,
-                        itemBuilder: (context, i) {
-                          final p = playlists[i];
-                          return ListTile(
-                            leading: p['images'] != null && p['images'].isNotEmpty
-                                ? Image.network(p['images'][0]['url'], width: 48, height: 48, fit: BoxFit.cover)
-                                : const SizedBox(width: 48, height: 48),
-                            title: Text(p['name'] ?? '', style: const TextStyle(color: Colors.white)),
-                            subtitle: Text(p['owner']?['display_name'] ?? '', style: const TextStyle(color: Colors.grey)),
-                            onTap: () async {
-                              await _apiService.spotifyControl('play_context', p['uri']);
-                              if (!context.mounted) return;
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${p['name']}')));
-                              await _fetchSpotifyStatus();
-                            },
-                          );
-                        },
-                      ),
-                      ListView.builder(
-                        itemCount: albums.length,
-                        itemBuilder: (context, i) {
-                          final a = albums[i];
-                          return ListTile(
-                            leading: a['images'] != null && a['images'].isNotEmpty
-                                ? Image.network(a['images'][0]['url'], width: 48, height: 48, fit: BoxFit.cover)
-                                : const SizedBox(width: 48, height: 48),
-                            title: Text(a['name'] ?? '', style: const TextStyle(color: Colors.white)),
-                            subtitle: Text((a['artists'] != null && a['artists'].isNotEmpty) ? a['artists'][0]['name'] : '', style: const TextStyle(color: Colors.grey)),
-                            onTap: () async {
-                              await _apiService.spotifyControl('play_context', a['uri']);
-                              if (!context.mounted) return;
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playing ${a['name']}')));
-                              await _fetchSpotifyStatus();
-                            },
-                          );
-                        },
-                      ),
-                    ]),
-                  )
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
 
     Future<void> _fetchWeather() async {
       try {
@@ -463,7 +359,6 @@ import '../utils/app_translations.dart';
         final devices = await _apiService.getDevices();
         if (mounted) {
           setState(() {
-            _totalDevices = devices.length;
             _activeDevices = devices.where((d) => d.status.powerState == 'on' || d.status.powerState == 'playing').length;
             _favoriteDevices = devices.where((d) => d.status.powerState == 'on').take(3).toList();
             if (_favoriteDevices.isEmpty) {
@@ -502,381 +397,246 @@ import '../utils/app_translations.dart';
     Widget build(BuildContext context) {
       final now = DateTime.now();
       final dateStr = DateFormat('EEEE d MMMM', _lang).format(now);
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final textColor = isDark ? Colors.white : Colors.black87;
-      final subTextColor = isDark ? Colors.white70 : Colors.black54;
 
-      return RefreshIndicator(
-        onRefresh: () async {
-          await _fetchStats();
-          await _fetchWeather();
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // Extra padding at bottom for nav bar
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Topbar / Navigation
-              Card(
+      final theme = Theme.of(context);
+      final textColor = theme.colorScheme.onSurface;
+      final subTextColor = theme.colorScheme.onSurfaceVariant;
+
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: RefreshIndicator(
+          displacement: 40,
+          onRefresh: () async {
+            await _fetchStats();
+            await _fetchWeather();
+          },
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // 1. Modern Header with Greetings & Date
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-                  child: Column(
+                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(t('welcome_home'), style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
-                              const SizedBox(height: 4),
-                              Text(dateStr, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: subTextColor)),
-                            ]),
+                          Text(
+                            t('welcome_home'), 
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                              height: 1.1,
+                            )
                           ),
-                          IconButton(
-                            tooltip: 'Ververs',
-                            onPressed: () async { await _fetchStats(); await _fetchWeather(); },
-                            icon: Icon(Icons.refresh, color: textColor),
+                          const SizedBox(height: 4),
+                          Text(
+                            dateStr[0].toUpperCase() + dateStr.substring(1), 
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: subTextColor,
+                              fontWeight: FontWeight.w500
+                            )
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      const AIAssistantWidget(),
+                      CircleAvatar(
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        child: IconButton(
+                          icon: const Icon(Icons.notifications_none_rounded),
+                          color: theme.colorScheme.onSurfaceVariant,
+                          onPressed: () {
+                             // Notification center not implemented yet
+                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Geen nieuwe meldingen')));
+                          },
+                        ),
+                      )
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              
-              // Presence & Energy Row
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Presence
-                  Expanded(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: _presenceData != null 
-                          ? PresenceWidget(data: _presenceData!)
-                          : const Center(child: CircularProgressIndicator(color: Colors.white)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Energy
-                  Expanded(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: _energyData != null 
-                          ? EnergyWidget(data: _energyData!)
-                          : const Center(child: CircularProgressIndicator(color: Colors.white)),
-                      ),
-                    ),
-                  ),
-                ],
+
+              // 2. AI Assistant (Full Width)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                  child: const AIAssistantWidget(),
+                ),
               ),
-              const SizedBox(height: 16),
-              const SizedBox(height: 16),
-              
-              // Spotify Card
-              if (_spotifyStatus != null && _spotifyStatus!['is_playing'] == true)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade800, Colors.black],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // 3. Quick Stats (Weather, System)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.music_note, color: Colors.greenAccent, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          const Text('Now Playing', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 14)),
-                          const Spacer(),
-                          IconButton(
-                            icon: const Icon(Icons.speaker_group_outlined, color: Colors.white70),
-                            onPressed: _showSpotifyDevicesDialog,
-                            tooltip: 'Connect Device',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      GestureDetector(
-                        onTap: () {
-                           showModalBottomSheet(
-                             context: context,
-                             backgroundColor: Colors.grey[900],
-                             builder: (context) {
-                               return Wrap(
-                                 children: [
-                                   ListTile(
-                                     leading: const Icon(Icons.search, color: Colors.white),
-                                     title: const Text('Search Music', style: TextStyle(color: Colors.white)),
-                                     onTap: () async {
-                                        Navigator.pop(context);
-                                        final q = await _showSpotifySearchDialog();
-                                        if (q != null && q.isNotEmpty) {
-                                          final res = await _apiService.searchSpotify(q);
-                                          if (mounted) _showSpotifySearchResults(res);
-                                        }
-                                     },
-                                   ),
-                                   ListTile(
-                                     leading: const Icon(Icons.playlist_play, color: Colors.white),
-                                     title: const Text('Your Playlists', style: TextStyle(color: Colors.white)),
-                                     onTap: () {
-                                       Navigator.pop(context);
-                                       _showSpotifyLibraryDialog('playlists');
-                                     },
-                                   ),
-                                   ListTile(
-                                      leading: const Icon(Icons.album, color: Colors.white),
-                                      title: const Text('Your Albums', style: TextStyle(color: Colors.white)),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        _showSpotifyLibraryDialog('albums');
-                                      },
-                                   ),
-                                 ]
-                               );
-                             }
-                           );
-                        },
-                        child: Row(
-                        children: [
-                          Hero(
-                            tag: 'spotify_art',
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: _spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null && _spotifyStatus!['item']['album']['images'].isNotEmpty
-                                  ? Image.network(
-                                      _spotifyStatus!['item']['album']['images'][0]['url'],
-                                      width: 80,
-                                      height: 80,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Container(
-                                      width: 80,
-                                      height: 80,
-                                      color: Colors.white10,
-                                      child: const Icon(Icons.music_note, color: Colors.white54, size: 40),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : t('unknown_title'),
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['artists'][0]['name'] : t('unknown_artist'),
-                                  style: const TextStyle(color: Colors.white70, fontSize: 15),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.expand_more, color: Colors.white54),
-                        ],
-                      ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Progress Bar placeholder (visual only for now)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: 0.3, // TODO: Make dynamic
-                          backgroundColor: Colors.white12,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.greenAccent),
-                          minHeight: 4,
+                      Expanded(
+                        child: _buildStatusCard(
+                          icon: _weatherData != null ? _getWeatherIcon(_weatherData!['weathercode']) : Icons.cloud_outlined,
+                          title: 'Weather',
+                          subtitle: _weatherData != null ? '${_weatherData!['temperature']}°C' : '--',
+                          color: Colors.orange,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 36),
-                            onPressed: () async {
-                              await _apiService.spotifyControl('previous');
-                              await _fetchSpotifyStatus();
-                            },
-                          ),
-                          Container(
-                            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                            child: IconButton(
-                              icon: Icon(
-                                _spotifyStatus!['is_playing'] ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                color: Colors.black,
-                                size: 32,
-                              ),
-                              padding: const EdgeInsets.all(12),
-                              onPressed: () async {
-                                await _apiService.spotifyControl(_spotifyStatus!['is_playing'] ? 'pause' : 'play');
-                                await _fetchSpotifyStatus();
-                              },
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 36),
-                            onPressed: () async {
-                              await _apiService.spotifyControl('next');
-                              await _fetchSpotifyStatus();
-                            },
-                          ),
-                        ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatusCard(
+                          icon: Icons.hub_outlined,
+                          title: 'System',
+                          subtitle: '$_activeDevices Active',
+                          color: Colors.blueAccent,
+                        ),
                       ),
                     ],
                   ),
-                )
+                ),
+              ),
 
-              else
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  child: Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.music_note, color: Colors.green),
-                      title: Text('Spotify', style: TextStyle(color: textColor)),
-                      subtitle: Text(_spotifyAvailable ? 'Ready to play on $_spotifyDeviceName\nTap to search' : 'Tap to connect Spotify', style: TextStyle(color: subTextColor)),
-                      trailing: Icon(Icons.chevron_right, color: subTextColor),
-                      onTap: () async {
-                        if (_spotifyAvailable) {
-                          // Show options to Search or Pick Playlist
-                           showModalBottomSheet(
-                             context: context,
-                             backgroundColor: Colors.grey[900],
-                             builder: (context) {
-                               return Wrap(
-                                 children: [
-                                   ListTile(
-                                     leading: const Icon(Icons.search, color: Colors.white),
-                                     title: const Text('Search Music', style: TextStyle(color: Colors.white)),
-                                     onTap: () async {
-                                        Navigator.pop(context);
-                                        final q = await _showSpotifySearchDialog();
-                                        if (q != null && q.isNotEmpty) {
-                                          final res = await _apiService.searchSpotify(q);
-                                          if (mounted) _showSpotifySearchResults(res);
-                                        }
-                                     },
-                                   ),
-                                   ListTile(
-                                     leading: const Icon(Icons.playlist_play, color: Colors.white),
-                                     title: const Text('Your Playlists', style: TextStyle(color: Colors.white)),
-                                     onTap: () {
-                                       Navigator.pop(context);
-                                       _showSpotifyLibraryDialog('playlists');
-                                     },
-                                   ),
-                                   ListTile(
-                                      leading: const Icon(Icons.album, color: Colors.white),
-                                      title: const Text('Your Albums', style: TextStyle(color: Colors.white)),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        _showSpotifyLibraryDialog('albums');
-                                      },
-                                   ),
-                                 ]
-                               );
-                             }
-                           );
-                        } else {
-                          _openSpotifyLogin();
-                        }
-                      },
-                    ),
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              
+              // 4. Presence & Energy (Full Width Cards)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    children: [
+                       // Presence
+                       Card(
+                         margin: const EdgeInsets.only(bottom: 16),
+                         child: Padding(
+                           padding: const EdgeInsets.all(16.0),
+                           child: _presenceData != null 
+                             ? PresenceWidget(data: _presenceData!)
+                             : const Center(child: LinearProgressIndicator()),
+                         ),
+                       ),
+                       // Energy
+                       Card(
+                         margin: EdgeInsets.zero,
+                         child: Padding(
+                           padding: const EdgeInsets.all(16.0),
+                           child: _energyData != null 
+                             ? EnergyWidget(data: _energyData!)
+                             : const Center(child: LinearProgressIndicator()),
+                         ),
+                       )
+                    ],
                   ),
                 ),
+              ),
 
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatusCard(
-                      icon: Icons.devices,
-                      title: 'System',
-                      subtitle: '$_activeDevices / $_totalDevices Active',
-                      color: Colors.cyanAccent,
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // 5. Scenes (Horizontal Scroll)
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Quick Scenes', 
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatusCard(
-                      icon: _weatherData != null ? _getWeatherIcon(_weatherData!['weathercode']) : Icons.cloud,
-                      title: 'Weather',
-                      subtitle: _weatherData != null ? '${_weatherData!['temperature']}°C' : 'Loading...',
-                      color: Colors.orangeAccent,
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          _buildSceneChip(Icons.movie_filter_rounded, 'Film', Colors.indigoAccent, () => _activateScene('movie')),
+                          const SizedBox(width: 12),
+                          _buildSceneChip(Icons.bedtime_rounded, 'Nacht', Colors.deepPurpleAccent, () => _activateScene('night')),
+                          const SizedBox(width: 12),
+                          _buildSceneChip(Icons.door_back_door_outlined, 'Afwezig', Colors.amber[800]!, () => _activateScene('away')),
+                          const SizedBox(width: 12),
+                          _buildSceneChip(Icons.wb_sunny_rounded, 'Ochtend', Colors.orangeAccent, () => _activateScene('day')),
+                          const SizedBox(width: 12),
+                           _buildSceneChip(Icons.power_settings_new_rounded, 'Alles Uit', Colors.redAccent, () => _turnOffLightsOnly()),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              Text('Snelkoppelingen', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                    _buildQuickAction(Icons.lightbulb_outline, 'Alles Uit', () => _turnOffLightsOnly()),
-                    _buildQuickAction(Icons.movie_creation_outlined, 'Film', () => _activateScene('movie')),
-                    _buildQuickAction(Icons.bedtime_outlined, 'Nacht', () => _activateScene('night')),
-                    _buildQuickAction(Icons.exit_to_app, 'Afwezig', () => _activateScene('away')),
-                ],
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+
+              // 6. Spotify (Media)
+              SliverToBoxAdapter(
+                child: Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 20),
+                   child: _buildSpotifySection()
+                ),
               ),
-              const SizedBox(height: 24),
-              /*
-              Text('Spotify', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-              const SizedBox(height: 12),
-              */
-              /*
-              _buildSpotifyCard(),
-              const SizedBox(height: 24),
-              */
+
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              
+              // 7. Favorites (Grid like)
               if (_favoriteDevices.isNotEmpty) ...[
-                Text('Favorieten', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-                const SizedBox(height: 12),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _favoriteDevices.length,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: DeviceCard(device: _favoriteDevices[index], onRefresh: _fetchStats),
-                    );
-                  },
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                    child: Text('Favorieten', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.all(20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: DeviceCard(device: _favoriteDevices[index], onRefresh: _fetchStats),
+                        );
+                      },
+                      childCount: _favoriteDevices.length,
+                    ),
+                  ),
                 ),
               ],
+              
+              // Bottom spacing
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
         ),
       );
     }
+
+    Widget _buildSceneChip(IconData icon, String label, Color color, VoidCallback onTap) {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+             decoration: BoxDecoration(
+               color: isDark ? color.withValues(alpha: 0.2) : color.withValues(alpha: 0.1),
+               borderRadius: BorderRadius.circular(20),
+               border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+             ),
+             child: Row(
+               children: [
+                 Icon(icon, size: 20, color: color),
+                 const SizedBox(width: 8),
+                 Text(label, style: TextStyle(color: isDark? Colors.white : Colors.black87, fontWeight: FontWeight.w600)),
+               ],
+             ),
+          ),
+        ),
+      );
+    }
+
 
     Future<void> _turnOffLightsOnly() async {
       try {
@@ -933,7 +693,7 @@ import '../utils/app_translations.dart';
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 padding: const EdgeInsets.all(10),
@@ -954,40 +714,7 @@ import '../utils/app_translations.dart';
     );
   }
 
-    Widget _buildQuickAction(IconData icon, String label, VoidCallback onTap) {
-      final theme = Theme.of(context);
-      
-      return Expanded(
-        child: GestureDetector(
-          onTap: onTap,
-          child: Column(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(icon, color: theme.colorScheme.onSurfaceVariant, size: 26),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label, 
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface, 
-                  fontSize: 12, 
-                  fontWeight: FontWeight.w500
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              )
-            ],
-          ),
-        ),
-      );
-    }
+
 
     IconData _getWeatherIcon(int? code) {
       if (code == null) {
@@ -1011,103 +738,152 @@ import '../utils/app_translations.dart';
       return Icons.thunderstorm;
     }
 
-    Widget _buildSpotifyCard() {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final textColor = isDark ? Colors.white : Colors.black87;
-      final subTextColor = isDark ? Colors.white70 : Colors.black54;
-      final iconColor = isDark ? Colors.white : Colors.black87;
-      final iconBgColor = isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05);
-
+    Widget _buildSpotifySection() {
       final isPlaying = _spotifyStatus?['is_playing'] == true;
-      final item = _spotifyStatus != null && _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : 'Not playing';
+      final track = _spotifyStatus != null && _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : null;
+      final artist = _spotifyStatus != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['artists'] != null ? _spotifyStatus!['item']['artists'][0]['name'] : null;
       final albumImages = _spotifyStatus != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['album'] != null ? _spotifyStatus!['item']['album']['images'] as List<dynamic>? : null;
       final artwork = (albumImages != null && albumImages.isNotEmpty) ? albumImages[0]['url'] : null;
-      final progress = (_spotifyStatus != null && _spotifyStatus!['progress_ms'] != null && _spotifyStatus!['item'] != null && _spotifyStatus!['item']['duration_ms'] != null) ? (_spotifyStatus!['progress_ms'] as num) / (_spotifyStatus!['item']['duration_ms'] as num) : 0.0;
 
       return Card(
+        margin: const EdgeInsets.only(bottom: 20),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const Icon(Icons.music_note, color: Color(0xFF1DB954), size: 36),
-              const SizedBox(width: 12),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 350),
-                child: artwork != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(artwork, key: ValueKey<String>(artwork), width: 64, height: 64, fit: BoxFit.cover),
-                      )
-                    : Container(
-                        key: const ValueKey('no_art'),
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: iconBgColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(Icons.music_off, color: subTextColor),
-                      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with Icon and Device Selector
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.music_note, color: Colors.green, size: 24),
+                      const SizedBox(width: 8),
+                      Text('Spotify', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.speaker_group_outlined),
+                    tooltip: 'Select Device',
+                    onPressed: _showSpotifyDevicesDialog,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Spotify', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  child: Text(item, key: ValueKey<String>(item), style: TextStyle(color: subTextColor), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(height: 8),
-                TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
-                  duration: const Duration(milliseconds: 300),
-                  builder: (context, value, child) {
-                    return LinearProgressIndicator(value: value, backgroundColor: isDark ? Colors.white10 : Colors.black12, valueColor: const AlwaysStoppedAnimation<Color>(Colors.green));
-                  },
-                ),
-                const SizedBox(height: 6),
-                if (_spotifyAvailable && _spotifyDeviceName != null)
-                  Text('Apparaat: $_spotifyDeviceName', style: TextStyle(color: subTextColor, fontSize: 12))
-              ])),
-              const SizedBox(width: 8),
-              if (!_spotifyAvailable)
-                ElevatedButton(onPressed: _openSpotifyLogin, style: ElevatedButton.styleFrom(backgroundColor: Colors.green), child: const Text('Verbinden'))
-              else
-                IconButton(
-                  icon: Icon(Icons.refresh, color: subTextColor),
-                  onPressed: () async { await _fetchSpotifyMe(); if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spotify beschikbaar')));
-                  } },
+              const SizedBox(height: 16),
+              
+              // Key Content
+              if (isPlaying && track != null)
+                Row(
+                  children: [
+                    if (artwork != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(artwork, width: 64, height: 64, fit: BoxFit.cover),
+                      )
+                    else
+                      Container(
+                        width: 64, 
+                        height: 64, 
+                        decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.music_note, color: Colors.grey),
+                      ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(track, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          Text(artist ?? 'Unknown Artist', style: const TextStyle(fontSize: 14, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          if (_spotifyDeviceName != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.speaker, size: 12, color: Colors.green),
+                                  const SizedBox(width: 4),
+                                  Expanded(child: Text(_spotifyDeviceName!, style: const TextStyle(fontSize: 12, color: Colors.green), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 )
-            ]),
-            const SizedBox(height: 12),
-            Column(children: [
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_previous), color: iconColor),
-                IconButton(
-                  onPressed: _spotifyAvailable ? () async { if (isPlaying) {
-                    await _apiService.spotifyControl('pause');
-                  } else {
-                    await _apiService.spotifyControl('play');
-                  } await _fetchSpotifyStatus(); } : null,
-                  icon: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                    child: Icon(isPlaying ? Icons.pause : Icons.play_arrow, key: ValueKey<bool>(isPlaying), color: iconColor, size: 32),
+              else
+                // Idle State
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  alignment: Alignment.center,
+                  child: Column(
+                    children: [
+                      Text('Nothing playing', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey)),
+                      if (_spotifyAvailable)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(_spotifyDeviceName != null ? 'Ready on $_spotifyDeviceName' : 'Select a device to start', style: TextStyle(fontSize: 12, color: Colors.green)),
+                        ),
+                    ],
                   ),
                 ),
-                IconButton(onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('next'); await _fetchSpotifyStatus(); } : null, icon: const Icon(Icons.skip_next), color: iconColor),
-              ]),
-              const SizedBox(height: 8),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                TextButton(onPressed: _spotifyAvailable ? _showSpotifyMusicPicker : null, child: Text('Kies muziek', style: TextStyle(color: subTextColor))),
-                const SizedBox(width: 8),
-                TextButton(onPressed: _spotifyAvailable ? () async { final q = await _showSpotifySearchDialog(); if (q != null && q.isNotEmpty) { final results = await _apiService.searchSpotify(q); if (!mounted) return; _showSpotifySearchResults(results); } } : null, child: Text('Zoeken', style: TextStyle(color: subTextColor))),
-                const SizedBox(width: 8),
-                TextButton(onPressed: _spotifyAvailable ? _showSpotifyDevicesDialog : null, child: Text('Kies apparaat', style: TextStyle(color: subTextColor))),
-              ])
-            ])
-          ]),
+
+              const SizedBox(height: 16),
+
+              // Controls Grid
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                   IconButton(
+                     icon: const Icon(Icons.skip_previous_rounded, size: 32),
+                     onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('previous'); await _fetchSpotifyStatus(); } : null,
+                   ),
+                   Container(
+                     decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, shape: BoxShape.circle),
+                     child: IconButton(
+                       icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 32, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                       onPressed: _spotifyAvailable ? () async { 
+                         await _apiService.spotifyControl(isPlaying ? 'pause' : 'play'); 
+                         await _fetchSpotifyStatus(); 
+                       } : null,
+                     ),
+                   ),
+                   IconButton(
+                     icon: const Icon(Icons.skip_next_rounded, size: 32),
+                     onPressed: _spotifyAvailable ? () async { await _apiService.spotifyControl('next'); await _fetchSpotifyStatus(); } : null,
+                   ),
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              const Divider(),
+              
+              // Secondary Actions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.search, size: 18),
+                    label: Text(t('search')),
+                    onPressed: _spotifyAvailable ? () async {
+                       final q = await _showSpotifySearchDialog();
+                       if (q != null && q.isNotEmpty) {
+                         final results = await _apiService.searchSpotify(q); 
+                         if (!mounted) return; 
+                         _showSpotifySearchResults(results);
+                       }
+                    } : null,
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.library_music, size: 18),
+                    label: Text(t('library')),
+                    onPressed: _spotifyAvailable ? () { _showSpotifyLibraryDialog('playlists'); } : null,
+                  ),
+                ],
+              )
+            ],
+          ),
         ),
       );
     }

@@ -1,5 +1,5 @@
 class AppTranslations {
-  static Map<String, Map<String, String>> _localizedValues = {
+  static final Map<String, Map<String, String>> _localizedValues = {
     'en': {
       'welcome': 'Welcome to DelovaHome',
       'welcome_back': 'Welcome back',

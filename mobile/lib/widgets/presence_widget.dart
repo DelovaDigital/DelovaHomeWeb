@@ -34,54 +34,85 @@ class _PresenceWidgetState extends State<PresenceWidget> {
   @override
   Widget build(BuildContext context) {
     final people = widget.data['people'] as List<dynamic>? ?? [];
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final subTextColor = isDark ? Colors.white70 : Colors.black54;
-    final mutedColor = isDark ? Colors.white54 : Colors.black45;
-
-    if (people.isEmpty) {
-      return Center(child: Text(t('no_presence_data'), style: TextStyle(color: mutedColor)));
-    }
+    final theme = Theme.of(context);
+    final mutedColor = theme.disabledColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Row(
-            children: [
-              Icon(Icons.people, color: subTextColor, size: 16),
-              const SizedBox(width: 8),
-              Text(t('presence'), style: TextStyle(color: subTextColor, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        ...people.map((p) {
-          final isHome = p['isHome'] == true;
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: Row(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
               children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: isHome ? Colors.greenAccent : Colors.redAccent,
-                    shape: BoxShape.circle,
-                    boxShadow: isHome ? [BoxShadow(color: Colors.greenAccent.withValues(alpha: 0.5), blurRadius: 4)] : [],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(p['name'] ?? 'Unknown', style: TextStyle(color: textColor)),
-                const Spacer(),
-                Text(
-                  isHome ? t('home') : t('away'),
-                  style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 12),
-                ),
+                Icon(Icons.people_outline, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(t('presence'), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               ],
             ),
-          );
-        }),
+            if (people.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text('${people.where((p) => p['isHome'] == true).length} Home', style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+              )
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        if (people.isEmpty) 
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(t('no_presence_data'), style: TextStyle(color: mutedColor)),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: people.length,
+            separatorBuilder: (c, i) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final p = people[index];
+              final isHome = p['isHome'] == true;
+              return Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isHome ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.person, 
+                      size: 18, 
+                      color: isHome ? Colors.green : Colors.grey
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      p['name'] ?? 'Unknown', 
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: isHome ? FontWeight.bold : FontWeight.normal
+                      )
+                    ),
+                  ),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isHome ? Colors.green : Colors.red,
+                    ),
+                  )
+                ],
+              );
+            },
+          ),
       ],
     );
   }

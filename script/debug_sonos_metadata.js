@@ -36,52 +36,76 @@ async function main() {
         entryDevice.Name = "Unknown Device";
       }
 
-      // Helper function to check a device
-      const checkDevice = async (deviceHost, deviceName) => {
+      // Helper function to check a device (using RAW SOAP to avoid parsing)
+      const fetch = require('node-fetch');
+      const { parse } = require('fast-xml-parser');
+
+      const checkDeviceRaw = async (ip, name) => {
+        console.log(`\nChecking ${name} (${ip}) using RAW SOAP...`);
         try {
-            const d = new SonosDevice(deviceHost);
-            const transport = await d.AVTransportService.GetTransportInfo({ InstanceID: 0 });
-            if (transport.CurrentTransportState === 'PLAYING' || transport.CurrentTransportState === 'PAUSED_PLAYBACK') {
-                console.log(`\n✅ Device ${deviceName || deviceHost} IS PLAYING!`);
-                
-                const mediaInfo = await d.AVTransportService.GetMediaInfo({ InstanceID: 0 });
-                const positionInfo = await d.AVTransportService.GetPositionInfo({ InstanceID: 0 });
+            const soapBody = `<?xml version="1.0" encoding="utf-8"?>
+            <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+                <s:Body>
+                    <u:GetPositionInfo xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
+                        <InstanceID>0</InstanceID>
+                    </u:GetPositionInfo>
+                </s:Body>
+            </s:Envelope>`;
 
-                console.log('---------------------------------------------------');
-                console.log('Media URI:', mediaInfo.CurrentURI);
-                console.log('Track URI:', positionInfo.TrackURI);
-                console.log('Track Metadata:', positionInfo.TrackMetaData);
-                console.log('---------------------------------------------------');
+            const response = await fetch(`http://${ip}:1400/MediaRenderer/AVTransport/Control`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/xml; charset="utf-8"',
+                    'SOAPAction': '"urn:schemas-upnp-org:service:AVTransport:1#GetPositionInfo"'
+                },
+                body: soapBody
+            });
 
-                const fullText = (mediaInfo.CurrentURI || '') + (mediaInfo.CurrentURIMetaData || '') + (positionInfo.TrackURI || '') + (positionInfo.TrackMetaData || '');
-                
-                if (fullText.toLowerCase().includes('spotify')) {
-                    console.log('\n>>> ANALYSIS SUCCESSFUL <<<');
-                    
-                    const snMatch = fullText.match(/sn=(\d+)/);
-                    if (snMatch) console.log(`✅ FOUND Service Account Index (sn): ${snMatch[1]}`);
-                    
-                    const descMatch = fullText.match(/<desc[^>]*>(.*?)<\/desc>/);
-                    if (descMatch) {
-                        console.log(`✅ FOUND Metadata Account ID (<desc>): "${descMatch[1]}"`);
-                        console.log(`\n!!! COPY THE VALUES ABOVE !!!\n`);
-                        return true; 
-                    } else {
-                         console.log('❌ Could not find <desc> tag in Track Metadata either. Please check the log above manually.');
-                         // Verify manually
-                         if (positionInfo.TrackMetaData && positionInfo.TrackMetaData.includes('SA_RINCON')) {
-                             console.log('Wait, I see SA_RINCON in the text, but regex failed. Please copy it manually.');
-                         }
-                         return true; // Stop searching anyway to let user see logs
-                    }
+            if (!response.ok) return false;
+            
+            const text = await response.text();
+            
+            // Extract TrackMetaData using simple regex to avoid full XML parsing issues
+            const trackMetaMatch = text.match(/<TrackMetaData>([\s\S]*?)<\/TrackMetaData>/);
+            if (!trackMetaMatch) return false;
+
+            const rawMetadata = trackMetaMatch[1]
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .replace(/&amp;/g, '&');
+            
+            console.log('--- RAW METADATA START ---');
+            console.log(rawMetadata);
+            console.log('--- RAW METADATA END ---');
+
+            if (rawMetadata.includes('spotify') || rawMetadata.includes('Didl')) {
+                const snMatch = rawMetadata.match(/sn=(\d+)/);
+                if (snMatch) console.log(`✅ FOUND sn=${snMatch[1]}`);
+
+                const descMatch = rawMetadata.match(/<desc[^>]*>(.*?)<\/desc>/);
+                if (descMatch) {
+                    console.log(`✅ FOUND Account ID (desc): ${descMatch[1]}`);
+                    console.log('\nPlease paste this ID to the chat!');
+                    return true;
+                } else {
+                     // Check common patterns
+                     const idMatch = rawMetadata.match(/SA_RINCON[^<"]+/);
+                     if (idMatch) {
+                         console.log(`✅ FOUND Account ID (regex): ${idMatch[0]}`);
+                         console.log('\nPlease paste this ID to the chat!');
+                         return true;
+                     }
                 }
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+            console.error(`Error checking ${ip}:`, e.message);
+        }
         return false;
       };
 
       // 1. Check the entry point first
-      if (await checkDevice(entryDevice.host, entryDevice.Name)) return;
+      if (await checkDeviceRaw(entryDevice.host, entryDevice.Name)) return;
 
       // 2. If not playing, use ZoneGroupTopology to find others
       console.log('Fetching ZoneGroupTopology to find other devices...');
@@ -89,7 +113,6 @@ async function main() {
       const zoneGroupStateXML = topologyData.ZoneGroupState;
 
       // Simple Regex to extract all Locations (IPs)
-      // Location="http://192.168.1.102:1400/xml/device_description.xml"
       const ipRegex = /Location="http:\/\/([^:]+):/g;
       let match;
       const ips = new Set();
@@ -98,11 +121,10 @@ async function main() {
           if (match[1] !== entryDevice.host) ips.add(match[1]);
       }
 
-      console.log(`Found ${ips.size} other devices in topology.`);
+      console.log(`Found ${ips.size} other devices to check.`);
       
       for (const ip of ips) {
-          console.log(`Checking ${ip}...`);
-          if (await checkDevice(ip, `IP ${ip}`)) return;
+          if (await checkDeviceRaw(ip, `IP ${ip}`)) return;
       }
 
       console.log('\n❌ No devices found playing Spotify. Please start playback in the Sonos App first.');

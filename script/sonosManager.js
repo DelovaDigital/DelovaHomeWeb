@@ -32,17 +32,13 @@ class SonosManagerModule {
 
     getDiscoveredDevices() {
         if (!this.isInitialized) {
-            console.warn('Sonos manager not yet initialized. Device list may be empty.');
-            return [];
+            console.warn('Sonos manager not yet fully initialized. Returning devices found so far.');
         }
         // Safely access devices without throwing if empty
         try {
             // The library throws "No Devices available!" if accessing .Devices when empty.
-            // Using checkInitialized() internally or similar might trigger this.
-            // We can check this.manager.devices (lowercase) if accessible or wrap in try-catch.
             return (this.manager.Devices || []).map(d => ({ uuid: d.uuid, name: d.Name }));
         } catch (e) {
-            // Suppress "No Devices available!" error from library
             return [];
         }
     }

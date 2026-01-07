@@ -590,7 +590,7 @@ import '../utils/app_translations.dart';
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.green.withValues(alpha: 0.3),
+                        color: Colors.green.withOpacity(0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -914,7 +914,7 @@ import '../utils/app_translations.dart';
     Widget _buildStatusCard({required IconData icon, required String title, required String subtitle, required Color color}) {
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onSurface;
-    final cardColor = theme.colorScheme.surfaceContainer;
+    final cardColor = theme.colorScheme.surface;
 
     return AspectRatio(
       aspectRatio: 1, // Square shape
@@ -930,7 +930,7 @@ import '../utils/app_translations.dart';
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: color.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
                 padding: const EdgeInsets.all(10),
@@ -963,7 +963,7 @@ import '../utils/app_translations.dart';
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
+                  color: theme.colorScheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(icon, color: theme.colorScheme.onSurfaceVariant, size: 26),
@@ -1013,7 +1013,7 @@ import '../utils/app_translations.dart';
       final textColor = isDark ? Colors.white : Colors.black87;
       final subTextColor = isDark ? Colors.white70 : Colors.black54;
       final iconColor = isDark ? Colors.white : Colors.black87;
-      final iconBgColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05);
+      final iconBgColor = isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05);
 
       final isPlaying = _spotifyStatus?['is_playing'] == true;
       final item = _spotifyStatus != null && _spotifyStatus!['item'] != null ? _spotifyStatus!['item']['name'] : 'Not playing';

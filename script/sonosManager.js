@@ -113,12 +113,25 @@ class SonosManagerModule {
                     console.error('[Sonos] Favorites lookup checked but failed or empty. Proceeding to fallback.');
                 }
 
+                // Determine UPnP Class based on URI type
+                const isAlbum = uri.includes(':album:');
+                const isTrack = uri.includes(':track:');
+                // Correct class is crucial for Sonos to accept the AddURI
+                const upnpClass = isAlbum ? 'object.container.album.musicAlbum' : 
+                                 (isTrack ? 'object.item.audioItem.musicTrack' : 'object.container.playlistContainer');
+                
+                // For tracks, we typically play them directly via SetAVTransportURI with metadata if available,
+                // BUT if we want to queue them or if SetAVTransportURI fails for spotify:, we use AddURI.
+                // If metadata was provided (e.g. from server.js for a track), we should use it?
+                // The block below overwrites metadata. Let's fix that for tracks if needed. 
+                // But for Playlists/Albums (User Request), we construct it.
+
                 // FALLBACK: Brute-force the Service Index (sn) and Flags
                 // We typically see sn=1, 3, 7. Flags are usually 8300 or 10860.
                 const attempts = [
                      { sn: 3, flags: 8300 }, // Seen in user logs
                      { sn: 7, flags: 8300 }, // Library default
-                     { sn: 1, flags: 8300 }, // Common
+                     { sn: 1, flags: 8300 }, // Common, sometimes works for Albums
                      { sn: 3, flags: 10860 },
                      { sn: 7, flags: 10860 }
                 ];
@@ -128,11 +141,11 @@ class SonosManagerModule {
 
                 for (const attempt of attempts) {
                     try {
-                        console.log(`[Sonos] Attempting AddURI with sn=${attempt.sn} flags=${attempt.flags}...`);
+                        console.log(`[Sonos] Attempting AddURI with sn=${attempt.sn} flags=${attempt.flags} class=${upnpClass}...`);
                         
                         const sonosServiceUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=${attempt.flags}&sn=${attempt.sn}`;
                         // Use Anonymous ID
-                        const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_X_#Svc65535-0-Token</desc></item></DIDL-Lite>`;
+                        const sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Content</dc:title><upnp:class>${upnpClass}</upnp:class><desc id="cdudn" nameSpace="urn:schemas-rinconnetworks-com:metadata-1-0/">SA_RINCON65535_X_#Svc65535-0-Token</desc></item></DIDL-Lite>`;
 
                         await device.QueueService.AddURI({
                              InstanceID: 0,

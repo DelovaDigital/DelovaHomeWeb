@@ -191,20 +191,13 @@ class SceneManager extends EventEmitter {
     }
 
     getMode() {
-        return this.const targetId = this.resolveDeviceId(action.deviceId);
+        return this.currentMode;
+    }
 
-                    if (targetId === 'all_lights') {
-                        // Special macro
-                        await this.turnOffAllLights();
-                    } else if (targetId === 'all_blinds') {
-                        // TODO: Implement blind control loop
-                    } else if (targetId) { // Check if mapped/exists
-                        if (targetId !== action.deviceId) {
-                             console.log(`[SceneManager] Mapped ${action.deviceId} -> ${targetId}`);
-                        }
-                        await deviceManager.controlDevice(targetId, action.command, action.value);
-                    } else {
-                        console.warn(`[SceneManager] Check mappings: Device ID '${action.deviceId}' is unmapped or null.`
+    setMode(mode) {
+        if (this.currentMode === mode) return;
+        
+        console.log(`[SceneManager] Switching mode: ${this.currentMode} -> ${mode}`);
         this.currentMode = mode;
         this.emit('mode-changed', mode);
 
@@ -250,13 +243,20 @@ class SceneManager extends EventEmitter {
         for (const action of scene.actions) {
             try {
                 if (action.type === 'device') {
-                    if (action.deviceId === 'all_lights') {
+                    const targetId = this.resolveDeviceId(action.deviceId);
+
+                    if (targetId === 'all_lights') {
                         // Special macro
                         await this.turnOffAllLights();
-                    } else if (action.deviceId === 'all_blinds') {
+                    } else if (targetId === 'all_blinds') {
                         // TODO: Implement blind control loop
+                    } else if (targetId) {
+                        if (targetId !== action.deviceId) {
+                             console.log(`[SceneManager] Mapped ${action.deviceId} -> ${targetId}`);
+                        }
+                        await deviceManager.controlDevice(targetId, action.command, action.value);
                     } else {
-                        await deviceManager.controlDevice(action.deviceId, action.command, action.value);
+                        console.warn(`[SceneManager] Check mappings: Device ID '${action.deviceId}' is unmapped or null.`);
                     }
                 } else if (action.type === 'system') {
                     await this.handleSystemAction(action);

@@ -220,7 +220,9 @@ class SonosManagerModule {
                 if (!success) {
                      // If all failed
                     console.error('[Sonos] All AddURI attempts failed.');
-                throw lastError || new Error('Failed to play Spotify URI on Sonos');
+                    throw lastError || new Error('Failed to play Spotify URI on Sonos');
+                }
+                return;
             }
 
             // Standard playback for other URIs

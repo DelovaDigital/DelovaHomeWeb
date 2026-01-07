@@ -498,7 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Check for media capability
         const hasMediaProtocol = (device.protocols && (device.protocols.includes('airplay') || device.protocols.includes('raop') || device.protocols.includes('spotify-connect') || device.protocols.includes('googlecast')));
         
-        const isMedia = (type === 'tv' || type === 'speaker' || type === 'receiver' || 
+        const isMedia = (type === 'tv' || type === 'speaker' || type === 'receiver' || type === 'sonos' ||
                         device.protocol === 'mdns-airplay' || device.protocol === 'spotify-connect' ||
                         hasMediaProtocol ||
                         device.name.toLowerCase().includes('denon')) && isOn;
@@ -775,6 +775,22 @@ document.addEventListener('DOMContentLoaded', () => {
                  inkHtml = '<div style="text-align: center; color: #888; margin-top: 20px;">Inktniveaus onbekend</div>';
              }
              controlsHtml += inkHtml;
+        } else if (type === 'sonos') {
+            const isPlaying = device.state.playingState === 'PLAYING' || device.state.playingState === 'playing'; // Handle case sensitivity
+            controlsHtml += `
+                <div class="modal-slider-container">
+                    <label class="modal-slider-label">Volume: ${device.state.volume || 0}%</label>
+                    <input type="range" class="modal-slider" min="0" max="100" value="${device.state.volume || 0}"
+                        onchange="controlDevice('${device.id}', 'set_volume', this.value)">
+                </div>
+                <div class="remote-grid" style="margin-top: 20px;">
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'previous')"><i class="fas fa-step-backward"></i></button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', '${isPlaying ? 'pause' : 'play'}')">
+                        <i class="fas ${isPlaying ? 'fa-pause' : 'fa-play'}"></i>
+                    </button>
+                    <button class="remote-btn" onclick="controlDevice('${device.id}', 'next')"><i class="fas fa-step-forward"></i></button>
+                </div>
+            `;
         } else if (type === 'receiver' || device.name.toLowerCase().includes('denon') || device.protocol === 'denon-avr') {
              const defaultInputs = ['TV', 'HDMI1', 'HDMI2', 'HDMI3', 'HDMI4', 'Bluetooth', 'AUX', 'Tuner', 'NET', 'Phono', 'CD'];
              const inputs = device.inputs || defaultInputs;

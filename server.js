@@ -1357,6 +1357,29 @@ app.get('/api/status', (req, res) => {
 // Device API
 app.get('/api/devices', (req, res) => {
     const devices = deviceManager.getAllDevices();
+
+    // Merge Sonos Devices from sonosManager
+    try {
+        const sonosDevices = sonosManager.getDiscoveredDevices().map(d => ({
+            id: `sonos:${d.uuid}`,
+            name: d.name,
+            type: 'sonos',
+            platform: 'sonos',
+            online: true,
+            uuid: d.uuid,
+            state: { on: true, volume: 25, playingState: 'stopped' } // Default state prevents frontend crash
+        }));
+
+        sonosDevices.forEach(sd => {
+             const exists = devices.some(d => d.name && d.name.toLowerCase() === sd.name.toLowerCase());
+             if (!exists) {
+                 devices.push(sd);
+             }
+        });
+    } catch (e) {
+        console.error('Error merging Sonos devices:', e);
+    }
+
     const map = roomsStore.getMap();
     const rooms = roomsStore.getRooms();
 
@@ -1577,6 +1600,24 @@ app.post('/api/devices/:id/command', async (req, res) => {
     const { id } = req.params;
     const { command, value } = req.body;
     
+    // Handle Sonos Devices explicitly (inserted via /api/devices merge)
+    if (id.startsWith('sonos:')) {
+        const uuid = id.replace('sonos:', '');
+        try {
+            if (command === 'play' || command === 'turn_on') await sonosManager.play(uuid);
+            else if (command === 'pause' || command === 'turn_off') await sonosManager.pause(uuid);
+            else if (command === 'next') await sonosManager.next(uuid);
+            else if (command === 'previous') await sonosManager.previous(uuid);
+            else if (command === 'set_volume') await sonosManager.setVolume(uuid, value);
+            else console.warn(`Unknown Sonos command: ${command}`);
+
+            return res.json({ ok: true });
+        } catch (e) {
+            console.error('Sonos Control Error:', e);
+            return res.status(500).json({ ok: false, message: e.message });
+        }
+    }
+
     // console.log(`Received command for ${id}: ${command} = ${value}`);
 
     // Fire and forget for faster UI response

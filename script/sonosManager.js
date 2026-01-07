@@ -72,19 +72,16 @@ class SonosManagerModule {
                  // Manual Construction:
                  if (uri.includes('playlist')) {
                      // Spotify Playlist
-                     // Format: x-rincon-cpcontainer:1006206c{hex_playlist_id}?sid=9&flags=10860&sn=1
-                     const playlistId = uri.split(':')[2];
+                     // Correct format requires the FULL Spotify URI to be encoded and appended to 1006206c
+                     // Format: x-rincon-cpcontainer:1006206c{encoded_spotify_uri}?sid=9&flags=10860&sn=1
+                     const encodedSpotifyUri = encodeURIComponent(uri);
                      
                      // Metadata IS required for containers.
-                     // The <desc> tag often causes UPnP Error 402 if the Account ID (SA_RINCON...) doesn't match the actual account.
-                     // It is safer to OMIT <desc> when we don't know the exact account ID.
                      if (!sonosMeta) {
-                         sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${playlistId}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class></item></DIDL-Lite>`;
+                         sonosMeta = `<DIDL-Lite xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:r="urn:schemas-rinconnetworks-com:metadata-1-0/" xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/"><item id="1006206c${encodedSpotifyUri}" parentID="1006206c" restricted="true"><dc:title>Spotify Playlist</dc:title><upnp:class>object.container.playlistContainer</upnp:class></item></DIDL-Lite>`;
                      }
                      
-                     // Try to URLEncode the playlist ID properly just in case
-                     const encodedId = encodeURIComponent(playlistId);
-                     sonosUri = `x-rincon-cpcontainer:1006206c${encodedId}?sid=9&flags=10860&sn=1`;
+                     sonosUri = `x-rincon-cpcontainer:1006206c${encodedSpotifyUri}?sid=9&flags=10860&sn=1`;
                      
                      // Force Queue path immediately for playlists
                      console.log(`[Sonos] Spotify Playlist detected. Using Queue-based playback directly. URI: ${sonosUri}`);

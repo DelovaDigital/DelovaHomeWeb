@@ -1787,3 +1787,54 @@ input:checked + .slider:before {
     color: var(--primary, #007bff);
 }
 
+/* Scenes Bar */
+.scenes-scroll-container {
+    overflow-x: auto;
+    padding-bottom: 5px;
+    margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+}
+.scenes-scroll-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+.scenes-bar {
+    display: flex;
+    gap: 12px;
+    padding: 2px;
+}
+
+.scene-chip {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: inherit;
+}
+
+.scene-chip:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.scene-chip.active {
+    background: var(--primary, #007BFF);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+    border-color: transparent;
+}
+
+.scene-chip i {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+

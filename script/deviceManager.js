@@ -1112,20 +1112,22 @@ class DeviceManager extends EventEmitter {
             let updated = false;
 
             // Update name if existing is generic and new is specific
-            const genericNames = ['Samsung Smart TV', 'Unknown Device', 'UPnP Device', 'Device', 'Tvheadend', 'System Monitor', 'OpenElec', 'LibreElec', 'Kodi', 'XBMC'];
+            const genericNames = ['Samsung Smart TV', 'Unknown Device', 'UPnP Device', 'Device', 'Tvheadend', 'System Monitor', 'OpenElec', 'LibreElec', 'Kodi', 'XBMC', 'HomePodSensor'];
             // Note: 'Kodi' is sometimes generic if the specific hostname (e.g. KODI-WOONKAMER) is available via another protocol
             
             const isExistingGeneric = genericNames.some(n => existingDevice.name === n || existingDevice.name.startsWith(n + ' ')); // Partial match "Device (IP)"
             const isNewGeneric = genericNames.some(n => device.name === n || device.name.startsWith(n + ' '));
 
             // Also consider shorter names generic compared to longer ones (heuristic for Hostname vs ServiceName)
-            const isNewBetter = !isNewGeneric && (isExistingGeneric || (device.name.length > existingDevice.name.length && device.name.includes(existingDevice.name)));
+            // Exception: 'HomePodSensor' is long but we usually prefer the shorter AirPlay name (e.g. 'Living Room')
+            const isHomePodSensor = device.name.includes('HomePodSensor');
+            const isNewBetter = !isNewGeneric && !isHomePodSensor && (isExistingGeneric || (device.name.length > existingDevice.name.length && device.name.includes(existingDevice.name)));
 
-            if (isExistingGeneric && !isNewGeneric) {
+            if (isExistingGeneric && !isNewGeneric && !isHomePodSensor) {
                 console.log(`[DeviceManager] Updating name for ${device.ip}: ${existingDevice.name} -> ${device.name}`);
                 existingDevice.name = device.name;
                 updated = true;
-            } else if (device.name !== existingDevice.name && !isNewGeneric && device.type === 'pc' && existingDevice.type === 'nas') {
+            } else if (device.name !== existingDevice.name && !isNewGeneric && !isHomePodSensor && device.type === 'pc' && existingDevice.type === 'nas') {
                 // Prefer PC hostname over NAS service name (often Tvheadend appears as NAS)
                 console.log(`[DeviceManager] Preferring PC hostname: ${existingDevice.name} -> ${device.name}`);
                 existingDevice.name = device.name;
@@ -1137,6 +1139,23 @@ class DeviceManager extends EventEmitter {
             if (device.paired !== undefined && existingDevice.paired !== device.paired) {
                 existingDevice.paired = device.paired;
                 updated = true;
+            }
+
+            // Capture HomeKit Sensor capabilities if merging (e.g. HomePodSensor found via HAP, merging with AirPlay Speaker)
+            if (device.name.includes('HomePodSensor') && existingDevice.type === 'speaker') {
+                if (!existingDevice.capabilities.includes('homekit')) {
+                    existingDevice.capabilities.push('homekit');
+                    existingDevice.capabilities.push('sensor');
+                    console.log(`[DeviceManager] Added HomeKit Sensor capabilities to ${existingDevice.name}`);
+                    existingDevice.hapId = device.id; // Store HAP ID
+                    
+                    // Add state placeholders for sensor
+                    if (existingDevice.state.temperature === undefined) {
+                         existingDevice.state.temperature = '--'; 
+                         existingDevice.state.humidity = '--';
+                    }
+                    updated = true;
+                }
             }
 
             // Prioritize protocols: samsung-tizen > mdns-airplay > ssdp

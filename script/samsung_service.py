@@ -1,11 +1,19 @@
 import sys
 import json
 import os
-import logging
 import time
 import socket
-from samsungtvws import SamsungTVWS
 
+# Early print to debug startup
+print(json.dumps({"status": "debug", "message": "Service starting..."}), flush=True)
+
+try:
+    from samsungtvws import SamsungTVWS
+except ImportError as e:
+    print(json.dumps({"error": f"Import failed: {e}", "type": "import_error"}), flush=True)
+    sys.exit(1)
+
+import logging
 # Suppress logs
 logging.basicConfig(level=logging.CRITICAL)
 

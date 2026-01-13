@@ -10,12 +10,13 @@ function start() {
 
     console.log('[SystemMonitor] Starting local system monitoring...');
 
-    // Update every 5 seconds
-    updateInterval = setInterval(async () => {
+    // Function to run update
+    const update = async () => {
         try {
             if (!mqttManager.connected) return;
 
             const cpuPercent = await getCpuUsage();
+
             const totalMem = os.totalmem();
             const freeMem = os.freemem();
             const usedMem = totalMem - freeMem;
@@ -76,11 +77,17 @@ function start() {
             };
 
             mqttManager.publish(`energy/devices/${deviceName}`, JSON.stringify(payload));
+            // console.log(`[SystemMonitor] Reported: Power ${estimatedPower.toFixed(1)}W, CPU ${cpuPercent}%`);
         
         } catch (e) {
             console.error('[SystemMonitor] Error collecting stats:', e);
         }
-    }, 5000);
+    };
+
+    // Run immediately then interval
+    // We delay the first run slightly to ensure MQTT is ready
+    setTimeout(update, 2000);
+    updateInterval = setInterval(update, 5000);
 }
 
 function stop() {

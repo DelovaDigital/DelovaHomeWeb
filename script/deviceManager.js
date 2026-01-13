@@ -2599,6 +2599,42 @@ class DeviceManager extends EventEmitter {
     async handleSamsungCommand(device, command, value) {
         console.log(`[Samsung] Handling command '${command}' for ${device.name}`);
 
+        if (command === 'repair') {
+            console.log(`[Samsung] Repair requested for ${device.name} (${device.ip}). Clearing credentials...`);
+            
+            // Delete persistent process so it restarts fresh
+            if (this.samsungProcesses.has(device.ip)) {
+                try {
+                    this.samsungProcesses.get(device.ip).kill();
+                } catch(e) {}
+                this.samsungProcesses.delete(device.ip);
+            }
+
+            // Remove token from file and memory
+            if (this.samsungCredentials[device.ip]) {
+                delete this.samsungCredentials[device.ip];
+                // Also update the file manually if possible via the python script or direct file access
+                try {
+                    const tokenPath = path.join(__dirname, '../samsung-tokens.json');
+                    if (fs.existsSync(tokenPath)) {
+                        const tokens = JSON.parse(fs.readFileSync(tokenPath));
+                        if (tokens[device.ip]) {
+                            delete tokens[device.ip];
+                            fs.writeFileSync(tokenPath, JSON.stringify(tokens, null, 2));
+                            console.log(`[Samsung] Token removed from disk for ${device.ip}`);
+                        }
+                    }
+                } catch(e) { console.error('Failed to clear token file:', e); }
+            }
+
+            // Start a connection attempt immediately by sending a dummy key
+            // This triggers the Python script which will see no token and ask for one
+            setTimeout(() => {
+                this.handleSamsungCommand(device, 'toggle', null); 
+            }, 1000);
+            return;
+        }
+
         const keyMap = {
             'turn_off': 'KEY_POWEROFF', 'toggle': 'KEY_POWER', // Use KEY_POWER for toggle to avoid accidental shutdown during pairing
             'turn_on': 'KEY_POWERON',
@@ -2784,11 +2820,17 @@ class DeviceManager extends EventEmitter {
                 } catch (e) {}
             }
             this.pythonPath = pythonPath; // Cache it
+            console.log(`[DeviceManager] Selected Python interpreter: ${this.pythonPath}`);
         }
 
         const scriptPath = path.join(__dirname, 'samsung_service.py');
         
+        console.log(`[DeviceManager] Spawning: ${pythonPath} ${scriptPath} ${ip}`);
         const childProc = spawn(pythonPath, [scriptPath, ip]);
+
+        childProc.stderr.on('data', (data) => {
+            console.error(`[Samsung Service ERROR] ${ip}: ${data.toString()}`);
+        });
         
         childProc.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');
@@ -4203,6 +4245,16 @@ class DeviceManager extends EventEmitter {
         if (device) {
             // Update existing
             let updated = false;
+
+            // Prioritize Agent Name if the current name looks auto-generated or "ugly"
+            // e.g. "DelovaHome [e4:5f...]" -> "DelovaHome"
+            if (payload.name && device.name !== payload.name) {
+                if (device.name.includes('[') || device.name.includes('(') || device.name.toLowerCase() === 'computer' || device.name.toLowerCase() === 'server') {
+                    console.log(`[DeviceManager] Updating name for ${device.ip}: ${device.name} -> ${payload.name}`);
+                    device.name = payload.name;
+                    updated = true;
+                }
+            }
             
             // Update Core Identifiers if missing or trusted
             if (payload.mac && device.mac !== payload.mac) { device.mac = payload.mac; updated = true; }

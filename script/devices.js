@@ -726,8 +726,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
                         <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
                     </div>
-                </div>
             `;
+            
+            // Add Re-pair button for Samsung or generic TVs that might have connection issues
+            if (device.protocol === 'samsung-tizen' || device.name.toLowerCase().includes('samsung')) {
+                controlsHtml += `
+                    <div style="margin-top: 15px; width: 100%; display: flex; justify-content: center;">
+                        <button class="btn btn-secondary" style="background-color: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; display: flex; align-items: center; gap: 8px;" onclick="if(confirm('Start pairing process for this Samsung TV? You may need to accept a popup on the TV.')) controlDevice('${device.id}', 'repair')">
+                            <i class="fas fa-link"></i> Re-pair Connection
+                        </button>
+                    </div>
+                </div>
+                `;
+            } else {
+                controlsHtml += `</div>`;
+            }
+
         } else if (type === 'nas') {
             controlsHtml += `<div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">`;
             

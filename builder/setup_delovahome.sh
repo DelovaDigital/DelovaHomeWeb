@@ -83,7 +83,12 @@ fi
 
 echo "Installing Python dependencies..."
 ./.venv/bin/pip install --upgrade pip
-./.venv/bin/pip install pyatv samsungtvws
+if [ -f "requirements.txt" ]; then
+    ./.venv/bin/pip install -r requirements.txt
+else
+    echo "requirements.txt not found, installing core packages..."
+    ./.venv/bin/pip install pyatv samsungtvws
+fi
 
 # 4. Install Node Dependencies
 echo "[4/6] Installing project dependencies..."

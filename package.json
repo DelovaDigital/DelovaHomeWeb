@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "start": "node --openssl-legacy-provider server.js",
-    "dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider nodemon server.js"
+    "dev": "cross-env NODE_OPTIONS=--openssl-legacy-provider nodemon server.js",
+    "install-python": "node -e \"const fs=require('fs'); const cp=require('child_process'); const p='./.venv/bin/pip'; const cmd = fs.existsSync(p) ? p : 'pip3'; cp.spawnSync(cmd, ['install', '-r', 'requirements.txt'], {stdio:'inherit'});\"",
+    "postinstall": "npm run install-python"
   },
   "dependencies": {
     "@marsaud/smb2": "^0.18.0",

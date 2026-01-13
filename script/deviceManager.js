@@ -2817,9 +2817,14 @@ class DeviceManager extends EventEmitter {
                 try {
                     if (fs.existsSync(cand)) {
                         pythonPath = cand;
+                        console.log(`[DeviceManager] Found valid Python env: ${cand}`);
                         break;
+                    } else {
+                         console.log(`[DeviceManager] Python env not found at: ${cand}`);
                     }
-                } catch(e) {}
+                } catch(e) {
+                     console.log(`[DeviceManager] Error checking Python env ${cand}: ${e.message}`);
+                }
             }
             
             this.pythonPath = pythonPath; // Cache it

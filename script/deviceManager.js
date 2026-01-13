@@ -4160,10 +4160,23 @@ class DeviceManager extends EventEmitter {
         let device = null;
         const agentId = `pc-${payload.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-        // 1. ID Match
-        device = this.devices.get(agentId);
+        // 1. IP Match (Strongest Link)
+        if (payload.ip) {
+            for (const [_, d] of this.devices) {
+                if (d.ip === payload.ip) {
+                    device = d;
+                    // console.log(`[DeviceManager] Linked Agent '${payload.name}' to Device '${d.name}' via IP ${payload.ip}`);
+                    break;
+                }
+            }
+        }
 
-        // 2. Name Match (Fuzzy)
+        // 2. ID Match (if IP match failed)
+        if (!device) {
+             device = this.devices.get(agentId);
+        }
+
+        // 3. Name Match (Fuzzy)
         if (!device) {
              for (const [_, d] of this.devices) {
                  if (d.name.toLowerCase() === payload.name.toLowerCase()) {
@@ -4178,6 +4191,12 @@ class DeviceManager extends EventEmitter {
         if (device) {
             // Update existing
             let updated = false;
+            // Only update IP if device doesn't have one or it changed (and we trust the agent)
+            if (payload.ip && device.ip !== payload.ip) { 
+                // device.ip = payload.ip; updated = true; 
+                // Caution: changing IP might break other protocols if agent reports a different interface IP
+            }
+            
             if (!device.state.on) { device.state.on = true; updated = true; }
             if (device.state.power !== payload.power) { device.state.power = payload.power; updated = true; }
             if (device.state.cpu !== payload.cpu_load) { device.state.cpu = payload.cpu_load; updated = true; }
@@ -4189,6 +4208,9 @@ class DeviceManager extends EventEmitter {
                 updated = true;
             }
 
+            // If we matched by IP but ID is different, we might want to alias them?
+            // For now, just enriching the existing device is enough.
+
             device.lastSeen = now;
 
             if (updated) this.emit('device-updated', device);
@@ -4198,7 +4220,7 @@ class DeviceManager extends EventEmitter {
                 id: agentId,
                 name: payload.name,
                 type: 'computer',
-                ip: null, // Agent doesn't always send IP in metric payload, but maybe discovery did?
+                ip: payload.ip || null,
                 protocol: 'mqtt-agent',
                 capabilities: ['pc_control', 'energy-monitor'],
                 state: {

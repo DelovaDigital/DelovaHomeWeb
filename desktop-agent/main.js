@@ -213,6 +213,7 @@ async function reportMetrics(deviceName) {
         const payload = {
             name: deviceName,
             type: 'computer',
+            ip: getLocalIp(), // Include IP for linking
             power: parseFloat(estimatedPower.toFixed(2)),
             cpu_load: parseFloat(cpuLoad.currentLoad.toFixed(1)),
             memory_used: mem.used,

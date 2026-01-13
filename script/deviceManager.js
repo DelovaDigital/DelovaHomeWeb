@@ -1175,11 +1175,13 @@ class DeviceManager extends EventEmitter {
 
     async loadDenonInputs(device) {
         if (!device || !device.ip) return;
+        if (device.loadingInputs) return;
+        device.loadingInputs = true;
         
         try {
             const fetchXml = async (path, method = 'GET', body = null) => {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 3000);
+                const timeout = setTimeout(() => controller.abort(), 5000);
                 try {
                     const httpsAgent = new https.Agent({ rejectUnauthorized: false });
                     const baseOptions = { 
@@ -1195,11 +1197,13 @@ class DeviceManager extends EventEmitter {
                     try {
                          const httpsOptions = { ...baseOptions, agent: httpsAgent };
                          const res = await fetch(`https://${device.ip}${path}`, httpsOptions);
+                         if (!res.ok) throw new Error(`Status ${res.status}`);
                          return await res.text();
                     } catch(e) {
                          // Fallback to HTTP
                          const httpOptions = { ...baseOptions };
                          const res = await fetch(`http://${device.ip}${path}`, httpOptions);
+                         if (!res.ok) throw new Error(`Status ${res.status}`);
                          return await res.text();
                     }
                 } finally {
@@ -1211,59 +1215,132 @@ class DeviceManager extends EventEmitter {
 
             // Method 1: AppCommand.xml (Newer Models - HEOS)
             try {
-                console.log(`[Denon] Fetching AppCommand.xml for ${device.ip}...`);
-                const cmdXml = '<?xml version="1.0" encoding="utf-8"?>\n<tx>\n <cmd id="1">GetSourceStatus</cmd>\n</tx>';
-                const xml = await fetchXml('/goform/AppCommand.xml', 'POST', cmdXml);
+                // Try port 8080 first for newer AVRs (X1700H etc)
+                // If the device.ip doesn't have a port, we might need to try both or assume 8080 if 80 fails.
+                // But fetchXml takes a path, so we need to encode the port in the fetch call or device.ip.
                 
-                // Extract all <param> blocks first
-                const paramBlocks = xml.match(/<param>[\s\S]*?<\/param>/gi);
+                // HACK: Allow fetchXml to try port 8080 if 80/443 fails
+                const originalFetch = fetchXml;
+                const robustFetch = async (path, method, body) => {
+                    try {
+                        return await originalFetch(path, method, body);
+                    } catch (e) {
+                         // Try port 8080
+                         console.log(`[Denon] Port 80/443 failed, trying port 8080...`);
+                         const controller = new AbortController();
+                         const timeout = setTimeout(() => controller.abort(), 5000);
+                         try {
+                              const opts = { 
+                                  signal: controller.signal, 
+                                  method: method,
+                                  headers: body ? {'Content-Type': 'text/xml', 'Referer': `http://${device.ip}:8080/`} : {'Referer': `http://${device.ip}:8080/`}
+                              };
+                              if (body) opts.body = body;
+                              const res = await fetch(`http://${device.ip}:8080${path}`, opts);
+                              if (!res.ok) throw new Error(`Status ${res.status}`);
+                              return await res.text();
+                         } finally {
+                              clearTimeout(timeout);
+                         }
+                    }
+                };
+
+                // console.log(`[Denon] Fetching AppCommand.xml for ${device.ip}...`);
+                // Try GetRenameSource first (Newer AVRs)
+                const cmdXml = '<?xml version="1.0" encoding="utf-8"?>\n<tx>\n <cmd id="1">GetRenameSource</cmd>\n</tx>';
+                const xml = await robustFetch('/goform/AppCommand.xml', 'POST', cmdXml);
                 
-                if (paramBlocks) {
-                    paramBlocks.forEach(block => {
-                        const getTag = (tag) => {
-                            const m = block.match(new RegExp(`<${tag}>(.*?)<\/${tag}>`, 'i'));
-                            return m ? m[1].trim() : null;
-                        };
+                // console.log(`[Denon] AppCommand response: ${xml.substring(0, 200)}...`);
 
-                        const id = getTag('id');
-                        const defaultName = getTag('name');
-                        const renamed = getTag('rename');
-                        const status = getTag('status'); // 1 = visible
-                        const use = getTag('use');       // 1 = active (some models)
-                        const deleted = getTag('deleted');// 1 = deleted
-                        
-                        // Check visibility: status=1 or use=1, and deleted!=1
-                        const isVisible = (status === '1' || use === '1') && deleted !== '1';
-                        
-                        // Default to visible if status/use/deleted tags are missing but we have name+id
-                        const valid = isVisible || (!status && !use && !deleted && id && defaultName);
+                // Check for <functionrename> block
+                const renameBlock = xml.match(/<functionrename>([\s\S]*?)<\/functionrename>/i);
 
-                        if (valid && id) {
-                            // Determine display name
-                            let name = (renamed && renamed.length > 0) ? renamed : defaultName;
-                            name = name || id; // Fallback
+                if (renameBlock) {
+                    const listItems = renameBlock[1].match(/<list>([\s\S]*?)<\/list>/gi);
+                    if (listItems) {
+                         listItems.forEach(item => {
+                             const getName = (tag) => {
+                                 const m = item.match(new RegExp(`<${tag}>(.*?)<\/${tag}>`, 'i'));
+                                 return m ? m[1].trim() : null;
+                             };
+                             
+                             const originalName = getName('name');
+                             const renamed = getName('rename');
+                             
+                             if (originalName) {
+                                 const name = (renamed && renamed.length > 0) ? renamed : originalName;
+                                 
+                                 // Map original names to SI codes
+                                 const map = {
+                                     'CBL/SAT': 'SISAT/CBL',
+                                     'Blu-ray': 'SIBD',
+                                     'Blu-Ray': 'SIBD', // potential case diff
+                                     'DVD': 'SIDVD',
+                                     'Media Player': 'SIMPLAY',
+                                     'GAME': 'SIGAME',
+                                     'AUX1': 'SIAUX1',
+                                     'AUX2': 'SIAUX2',
+                                     'AUX': 'SIAUX1', // Generic
+                                     'TV AUDIO': 'SITV',
+                                     'PHONO': 'SIPHONO',
+                                     'TUNER': 'SITUNER',
+                                     'Bluetooth': 'SIBT',
+                                     'NETWORK': 'SINET',
+                                     'CD': 'SICD',
+                                     'Internet Radio': 'SIIRADIO',
+                                     'Ex-Stereo': 'SIEXT', // ?
+                                     'USB': 'SIUSB',
+                                     'USB/iPod': 'SIUSB'
+                                 };
 
-                            // Determine Command ID (SI code)
-                            // Usually just prepend SI to the ID
-                            // e.g. TV -> SITV, GAME -> SIGAME
-                            let commandId = `SI${id.toUpperCase()}`;
-                            
-                            // Special tweaks if needed
-                            if (id === 'Internet Radio') commandId = 'SIIRADIO';
-                            
-                            inputs.push({ id: commandId, name: name });
-                        }
-                    });
+                                 // Fallback ID generation
+                                 const id = map[originalName] || `SI${originalName.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+                                 
+                                 inputs.push({ id, name });
+                             }
+                         });
+                    }
+                } else {
+                     // Fallback to old GetSourceStatus logic if RenameSource failed
+                     const cmdXmlOld = '<?xml version="1.0" encoding="utf-8"?>\n<tx>\n <cmd id="1">GetSourceStatus</cmd>\n</tx>';
+                     // We try the old one just in case
+                     const xmlOld = await robustFetch('/goform/AppCommand.xml', 'POST', cmdXmlOld);
+                     const paramBlocks = xmlOld.match(/<param>[\s\S]*?<\/param>/gi);
+                     
+                     if (paramBlocks) {
+                         paramBlocks.forEach(block => {
+                             // ... existing logic ...
+                             const getTag = (tag) => {
+                                 const m = block.match(new RegExp(`<${tag}>(.*?)<\/${tag}>`, 'i'));
+                                 return m ? m[1].trim() : null;
+                             };
+                             const id = getTag('id');
+                             const defaultName = getTag('name');
+                             const renamed = getTag('rename');
+                             const status = getTag('status'); 
+                             const use = getTag('use');       
+                             const deleted = getTag('deleted');
+                             const isVisible = (status === '1' || use === '1') && deleted !== '1';
+                             if (isVisible && id) {
+                                 let name = (renamed && renamed.length > 0) ? renamed : defaultName;
+                                 name = name || id;
+                                 let commandId = `SI${id.toUpperCase()}`;
+                                 if (id === 'Internet Radio') commandId = 'SIIRADIO';
+                                 inputs.push({ id: commandId, name: name });
+                             }
+                         });
+                     }
                 }
+
                 console.log(`[Denon] AppCommand found ${inputs.length} inputs.`);
             } catch (e) {
-                console.log('[Denon] AppCommand.xml failed or timed out:', e.message);
+                console.log('[Denon] AppCommand.xml failed:', e.message);
             }
 
             // Method 2: MainZoneXml.xml (Older Models) - Fallback
             if (inputs.length === 0) {
                 try {
-                    console.log(`[Denon] Fetching MainZoneXml.xml for ${device.ip}...`);
+                    // console.log(`[Denon] Fetching MainZoneXml.xml for ${device.ip}...`);
                     const xml = await fetchXml('/goform/formMainZone_MainZoneXml.xml');
 
                     // Match <RenameSource><value>X</value></RenameSource> structure which is common
@@ -1348,14 +1425,18 @@ class DeviceManager extends EventEmitter {
 
             // Save to the device object so frontend can show options
             try {
-                device.inputs = inputs;
-                this.emit('device-updated', device);
-                console.log(`[Denon] Inputs updated for ${device.name}: ${inputs.map(i => i.name).join(', ')}`);
+                if (inputs && inputs.length > 0) {
+                    device.inputs = inputs;
+                    this.emit('device-updated', device);
+                    console.log(`[Denon] Inputs updated for ${device.name}: ${inputs.map(i => i.name).join(', ')}`);
+                }
             } catch (e) {
                 console.error('[Denon] Failed to set inputs on device object:', e);
             }
         } catch (e) {
             console.error('Failed to load Denon inputs:', e.message);
+        } finally {
+            device.loadingInputs = false;
         }
     }
 

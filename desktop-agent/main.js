@@ -1,14 +1,36 @@
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const mqtt = require('mqtt');
 const si = require('systeminformation');
 const Store = require('electron-store');
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+const AutoLaunch = require('auto-launch');
+
+// Logging
+log.transports.file.level = 'info';
+autoUpdater.logger = log;
 
 const store = new Store();
 let mainWindow;
 let tray;
 let client;
 let intervalId;
+let appAutoLauncher = new AutoLaunch({
+  name: 'DelovaHome Agent',
+  path: app.getPath('exe'),
+});
+
+// Check auto launch
+appAutoLauncher.isEnabled().then((isEnabled) => {
+  if (!isEnabled) appAutoLauncher.enable();
+}).catch(function(err){
+  // handle error
+  console.log('Auto-launch error:', err);
+});
+
+// Update Config
+autoUpdater.autoDownload = false;
 
 // Default Config
 const DEFAULT_CONFIG = {
@@ -248,11 +270,20 @@ function getLocalIp() {
 }
 
 app.whenReady().then(() => {
-    // Create dummy icon if missing (optional, mostly for dev)
-    
+    // Check for updates immediately
+    autoUpdater.checkForUpdatesAndNotify();
+
+    // Check for updates every hour
+    setInterval(() => {
+        autoUpdater.checkForUpdatesAndNotify();
+    }, 60 * 60 * 1000);
+
     createTray();
-    // createWindow(); // Don't show window on startup, or maybe do?
-    // Let's hide it by default and run in tray
+    
+    // Hide dock icon on macOS to be truly background
+    if (process.platform === 'darwin') {
+        app.dock.hide();
+    }
     
     startMonitoring();
 
@@ -261,10 +292,36 @@ app.whenReady().then(() => {
     });
 });
 
+// Update Events
+autoUpdater.on('update-available', () => {
+    dialog.showMessageBox({
+        type: 'info',
+        title: 'Update Available',
+        message: 'A new version of DelovaHome Agent is available. Do you want to download it now?',
+        buttons: ['Yes', 'No']
+    }).then((result) => {
+        if (result.response === 0) {
+            autoUpdater.downloadUpdate();
+        }
+    });
+});
+
+autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox({
+        type: 'info',
+        title: 'Update Ready',
+        message: 'Update downloaded. Restart now to install?',
+        buttons: ['Restart', 'Later']
+    }).then((result) => {
+        if (result.response === 0) {
+            autoUpdater.quitAndInstall();
+        }
+    });
+});
+
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        // app.quit(); // Keep running in tray
-    }
+    // Don't quit! We want background mode.
+    // If user explicitly quits via tray -> app.quit() is called there.
 });
 
 ipcMain.on('save-config', (event, config) => {

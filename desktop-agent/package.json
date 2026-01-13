@@ -5,14 +5,18 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "pub": "electron-builder -p always"
   },
   "author": "Alessio Depreytere",
   "license": "ISC",
   "dependencies": {
+    "auto-launch": "^5.0.6",
+    "electron-log": "^5.4.3",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.7.3",
     "mqtt": "^5.3.5",
-    "systeminformation": "^5.21.22",
-    "electron-store": "^8.1.0"
+    "systeminformation": "^5.21.22"
   },
   "devDependencies": {
     "electron": "^28.1.0",
@@ -24,13 +28,28 @@
     "mac": {
       "identity": null,
       "category": "public.app-category.utilities",
-      "target": ["dmg", "zip"] 
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "AlessioD200",
+        "repo": "DelovaHomeWeb"
+      }
+    ],
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "linux": {
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     }
   }
 }

@@ -130,7 +130,9 @@ class EnergyManager extends EventEmitter {
             // Handle device reports
             if (topic.startsWith('energy/devices/')) {
                 try {
-                    const payload = JSON.parse(message);
+                    // MqttManager might have already parsed the JSON
+                    const payload = (typeof message === 'object') ? message : JSON.parse(message);
+                    
                     const deviceName = payload.name || topic.split('/').pop();
                     this.data.devices[deviceName] = payload;
                     

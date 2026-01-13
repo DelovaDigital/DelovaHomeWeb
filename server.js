@@ -759,9 +759,19 @@ app.post('/api/users', async (req, res) => {
 // Webhook Endpoint for HomeKit Data (e.g. from Shortcuts Automation)
 app.post('/api/webhooks/homekit', async (req, res) => {
     try {
-        const { deviceId, name, temperature, humidity } = req.body;
-        console.log(`[Webhook] Received HomeKit data for ${name || deviceId}: ${temperature}°C ${humidity}%`);
+        console.log('[Webhook] Raw Body:', JSON.stringify(req.body));
         
+        // Handle both simple key-value and potentially nested shortcuts input
+        // Sometimes shortcuts sends it as a list or with different keys depending on how it was built
+        let { deviceId, name, temperature, humidity } = req.body;
+        
+        // If keys are capitalized (Shortcuts often does this automatically if you picked from a list?)
+        if (!name && req.body.Name) name = req.body.Name;
+        if (!temperature && req.body.Temperature) temperature = req.body.Temperature;
+        if (!humidity && req.body.Humidity) humidity = req.body.Humidity;
+
+        console.log(`[Webhook] Processed Data -> Name: ${name}, Temp: ${temperature}, Hum: ${humidity}`);
+
         // Find device by ID or Name
         let device = null;
         if (deviceId) {

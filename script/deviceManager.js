@@ -1588,47 +1588,6 @@ class DeviceManager extends EventEmitter {
             });
         });
     }
-                            if (!acc.services) continue;
-                            for (const srv of acc.services) {
-                                if (!srv.characteristics) continue;
-                                for (const char of srv.characteristics) {
-                                    // 00000011 -> Current Temperature
-                                    if (char.type.startsWith('00000011')) temp = char.value;
-                                    // 00000010 -> Current Relative Humidity
-                                    if (char.type.startsWith('00000010')) humidity = char.value;
-                                }
-                            }
-                        }
-                    }
-
-                    let updated = false;
-
-                    // If we got data, the device is definitely ON/Reachable
-                    if (!device.state.on) {
-                        device.state.on = true;
-                        updated = true;
-                    }
-
-                    if (temp !== null && device.state.temperature !== temp) {
-                        device.state.temperature = temp;
-                        updated = true;
-                    }
-                    if (humidity !== null && device.state.humidity !== humidity) {
-                        device.state.humidity = humidity;
-                        updated = true;
-                    }
-
-                    if (updated) {
-                         // console.log(`[HomeKit] ${device.name}: ${temp}C ${humidity}%`);
-                         this.emit('device-updated', device);
-                    }
-                } catch (e) {
-                     // console.error('[HomeKit] Parse error:', e);
-                }
-                resolve();
-            });
-        });
-    }
 
     async refreshDevice(id) {
         const device = this.devices.get(id);

@@ -1073,6 +1073,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="color: #888;">MAC Adres:</div><div>${device.mac || 'Onbekend'}</div>
                 <div style="color: #888;">Protocol:</div><div>${device.protocol || 'Onbekend'}</div>
                 <div style="color: #888;">Status:</div><div>${device.state.on ? 'Aan' : 'Uit'}</div>
+                ${device.state.platform ? `<div style="color: #888;">OS:</div><div>${device.state.platform}</div>` : ''}
                 <div style="color: #888;">ID:</div><div style="font-size: 0.8em; word-break: break-all;">${device.id}</div>
             </div>
         `;
@@ -1080,6 +1081,40 @@ document.addEventListener('DOMContentLoaded', () => {
         // 4. Energy Tab (New)
         const currentPower = (device.state && device.state.power !== undefined) ? device.state.power : (device.currentPower || 0);
         const sourceLabel = (device.state && device.state.power_source === 'estimated') ? 'Geschat (Software)' : 'Gemeten (Hardware)';
+        
+        let extraStats = '';
+        if (device.state && device.state.cpu !== undefined) {
+            const cpu = device.state.cpu || 0;
+            const ramBytes = device.state.ram || 0;
+            const ramTotalBytes = device.state.ram_total || 1;
+            const ramPercent = Math.round((ramBytes / ramTotalBytes) * 100);
+            const battery = device.state.battery;
+            
+            extraStats = `
+                <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                        <div style="font-size: 0.8em; color: #888; margin-bottom: 5px;">CPU Belasting</div>
+                        <div style="height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 5px;">
+                            <div style="width: ${cpu}%; height: 100%; background: ${cpu > 80 ? '#ef4444' : '#3b82f6'}; transition: width 0.5s;"></div>
+                        </div>
+                        <div style="font-weight: bold; text-align: right;">${cpu}%</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                        <div style="font-size: 0.8em; color: #888; margin-bottom: 5px;">RAM Geheugen</div>
+                        <div style="height: 6px; background: #333; border-radius: 3px; overflow: hidden; margin-bottom: 5px;">
+                            <div style="width: ${ramPercent}%; height: 100%; background: ${ramPercent > 80 ? '#f59e0b' : '#10b981'}; transition: width 0.5s;"></div>
+                        </div>
+                        <div style="font-weight: bold; text-align: right;">${ramPercent}%</div>
+                    </div>
+                </div>
+                ${battery !== null ? `
+                <div style="margin-top: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <div><i class="fas fa-battery-${battery > 80 ? 'full' : (battery > 50 ? 'three-quarters' : (battery > 20 ? 'quarter' : 'empty'))}"></i> Batterij</div>
+                    <div style="font-weight: bold;">${battery}% ${device.state.charging ? '<i class="fas fa-bolt" style="color: yellow;"></i>' : ''}</div>
+                </div>` : ''}
+            `;
+        }
+
         const energyContent = `
             <div style="width: 100%; display: flex; flex-direction: column; gap: 20px;">
                 <div class="control-group">
@@ -1090,6 +1125,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </p>
                 </div>
                 
+                ${extraStats}
+
                 <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px;">
                     <h4 style="margin: 0 0 10px 0;">Vandaag</h4>
                     <div style="display: flex; justify-content: space-between;">
@@ -1100,10 +1137,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span>Kosten:</span>
                         <span style="font-weight: bold;">€ --</span>
                     </div>
-                </div>
-
-                 <div style="height: 150px; background: rgba(0,0,0,0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 1px dashed #666;">
-                    <span style="color: #888;"><i class="fas fa-chart-line"></i> Grafiek beschikbaar in versie 2.0</span>
                 </div>
             </div>
         `;

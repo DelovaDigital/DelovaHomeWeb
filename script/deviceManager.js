@@ -4201,6 +4201,10 @@ class DeviceManager extends EventEmitter {
             if (device.state.power !== payload.power) { device.state.power = payload.power; updated = true; }
             if (device.state.cpu !== payload.cpu_load) { device.state.cpu = payload.cpu_load; updated = true; }
             if (device.state.ram !== payload.memory_used) { device.state.ram = payload.memory_used; updated = true; }
+            if (device.state.ram_total !== payload.memory_total) { device.state.ram_total = payload.memory_total; updated = true; }
+            if (device.state.battery !== payload.battery_level) { device.state.battery = payload.battery_level; updated = true; }
+            if (device.state.charging !== payload.charging) { device.state.charging = payload.charging; updated = true; }
+             if (device.state.platform !== payload.platform) { device.state.platform = payload.platform; updated = true; }
             
             // Capabilities
             if (!device.capabilities.includes('pc_control')) {
@@ -4227,7 +4231,11 @@ class DeviceManager extends EventEmitter {
                     on: true,
                     power: payload.power,
                     cpu: payload.cpu_load,
-                    ram: payload.memory_used
+                    ram: payload.memory_used,
+                    ram_total: payload.memory_total,
+                    battery: payload.battery_level,
+                    charging: payload.charging,
+                    platform: payload.platform
                 },
                 lastSeen: now
             };

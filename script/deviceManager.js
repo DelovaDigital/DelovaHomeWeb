@@ -955,6 +955,19 @@ class DeviceManager extends EventEmitter {
             // Sanitize ID
             const safeId = `mdns-${service.fqdn || name}-${sourceType}`.replace(/[^a-zA-Z0-9-_]/g, '_');
 
+            // Re-declare isPaired here if it was removed or out of scope
+            // Check pairing status for AirPlay devices (logic copied from previous block or re-initialized)
+            let isPaired = false;
+            if (protocol === 'mdns-airplay') {
+                if (deviceId && this.appleTvCredentials[deviceId]) {
+                    isPaired = true;
+                } else if (!deviceId) {
+                    const creds = Object.values(this.appleTvCredentials);
+                    const match = creds.find(c => c.ip === ip);
+                    if (match) isPaired = true;
+                }
+            }
+
             // Force deduplication: If device ID matches one found via another protocol (e.g. airplay vs raop vs spotify)
             // Or if we already have this IP, we use the EXISTING ID to force an update instead of a new add.
             let deviceToAdd = {

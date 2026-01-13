@@ -1083,7 +1083,61 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
         else if (command === 'pause') await spotifyManager.pause(req.userId, req.username);
         else if (command === 'next') await spotifyManager.next(req.userId, req.username);
         else if (command === 'previous') await spotifyManager.previous(req.userId, req.username);
-        else if (command === 'set_volume') await spotifyManager.setVolume(req.userId, value, req.username);
+        else if (command === 'set_volume') {
+            try {
+                await spotifyManager.setVolume(req.userId, value, req.username);
+            } catch (e) {
+                if (e.code === 'VOLUME_RESTRICTED') {
+                    console.log('[Spotify] Volume restricted, attempting fallback to native device control...');
+                    try {
+                        const state = await spotifyManager.getPlaybackState(req.userId, req.username);
+                        let handled = false;
+                        
+                        if (state && state.device) {
+                             const spotifyName = state.device.name.toLowerCase();
+                            
+                             // Try Sonos Fallback first
+                             try {
+                                 const sonosDevices = sonosManager.getDiscoveredDevices();
+                                 const sonosMatch = sonosDevices.find(d => {
+                                     const dn = d.name.toLowerCase();
+                                     return dn.includes(spotifyName) || spotifyName.includes(dn);
+                                 });
+                                 if (sonosMatch) {
+                                     console.log(`[Spotify] Fallback: Controlling Sonos ${sonosMatch.name} (${sonosMatch.uuid}) directly`);
+                                     await sonosManager.setVolume(sonosMatch.uuid, value);
+                                     handled = true;
+                                 }
+                             } catch (sonosErr) { console.error('[Spotify] Sonos fallback failed:', sonosErr); }
+
+                             // Try DeviceManager Fallback if not handled
+                             if (!handled) {
+                                 const devices = Array.from(deviceManager.getAllDevices());
+                                 const match = devices.find(d => {
+                                     const dn = d.name.toLowerCase();
+                                     return dn.includes(spotifyName) || spotifyName.includes(dn);
+                                 });
+                                 if (match) {
+                                     console.log(`[Spotify] Fallback: Controlling ${match.name} (${match.id}) via DeviceManager`);
+                                     await deviceManager.controlDevice(match.id, 'set_volume', value);
+                                     handled = true;
+                                 }
+                             }
+                        }
+                        
+                        if (!handled) {
+                            console.warn(`[Spotify] Fallback failed: No matching device found for '${state?.device?.name}'`);
+                            throw e;
+                        }
+                    } catch (fallbackErr) {
+                        console.error('[Spotify] Fallback error (FATAL):', fallbackErr);
+                        throw e;
+                    }
+                } else {
+                    throw e;
+                }
+            }
+        }
         else if (command === 'transfer') await spotifyManager.transferPlayback(req.userId, targetDeviceId, req.username);
         else if (command === 'play_context') await spotifyManager.playContext(req.userId, value, targetDeviceId, req.username);
         else if (command === 'play_uris') await spotifyManager.playUris(req.userId, value, targetDeviceId, req.username);

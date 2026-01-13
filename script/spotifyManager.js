@@ -385,7 +385,9 @@ class SpotifyManager {
         if (!resp.ok) {
             if (resp.status === 403) {
                 console.warn(`[Spotify] setVolume 403 Forbidden (User not premium or device restriction)`);
-                return;
+                const err = new Error('Spotify volume control restricted on this device');
+                err.code = 'VOLUME_RESTRICTED';
+                throw err;
             }
             throw new Error(`Spotify setVolume failed: ${resp.status}`);
         }

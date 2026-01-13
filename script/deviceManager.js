@@ -2146,7 +2146,9 @@ class DeviceManager extends EventEmitter {
         const lgtvClient = lgtv({ url: `ws://${device.ip}:3000` });
         
         lgtvClient.on('connect', () => {
-            if (command === 'set_volume') {
+            if (command === 'launch_app') {
+                lgtvClient.request('ssap://system.launcher/launch', { id: value });
+            } else if (command === 'set_volume') {
                 lgtvClient.request('ssap://audio/setVolume', { volume: parseInt(value) });
             } else if (command === 'set_input') {
                 // Map common friendly names to webOS input identifiers
@@ -2643,6 +2645,27 @@ class DeviceManager extends EventEmitter {
                 this.handleSamsungCommand(device, 'toggle', null); 
             }, 1000);
             return;
+        }
+
+        if (command === 'launch_app') {
+            console.log(`[Samsung] Launching app ${value} on ${device.name}`);
+            try {
+                const process = this.getSamsungProcess(device.ip);
+                if (process.exitCode !== null) throw new Error("Samsung service process is dead");
+
+                // Send launch_app command to python service
+                const payload = {
+                    method: 'launch_app',
+                    app_id: value
+                };
+                process.stdin.write(JSON.stringify(payload) + '\n');
+                return;
+            } catch(e) {
+                console.error(`[Samsung] Failed to launch app via Python: ${e.message}`);
+                // Fallback to WebSocket method if possible?
+                // Not implemented in legacy method easily.
+                return;
+            }
         }
 
         const keyMap = {

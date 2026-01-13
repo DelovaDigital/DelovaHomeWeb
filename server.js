@@ -2545,3 +2545,21 @@ udpServer.bind(8888, () => {
     console.error('\nCommon causes: SQL Server not running, TCP/IP disabled, wrong host/port, firewall, or SQL auth disabled.');
   }
 })();
+
+// --- App Control API ---
+
+app.get('/api/devices/:id/apps', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const apps = await deviceManager.getDeviceApps(id);
+        if (apps) {
+            res.json({ ok: true, apps });
+        } else {
+            // Not supported or no apps found
+            res.json({ ok: false, message: 'Not supported or empty' });
+        }
+    } catch (e) {
+        console.error(`Failed to get apps for ${id}:`, e);
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});

@@ -8,4 +8,4 @@ selfsigned.crt
 selfsigned.key
 hub_config.json
 nas-config.json
-samsungtv_config.json
+samsung-tokens.json

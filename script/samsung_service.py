@@ -41,82 +41,47 @@ def main():
 
     ip = sys.argv[1]
     tv = None
-    is_legacy = False
-
-    # Check ports to determine generation
-    # Priority: 8002 (Modern Secure) > 8001 (Modern) > 55000 (Legacy)
-    try:
-        # Check Port 8002 (Tizen Secure)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1)
-        if sock.connect_ex((ip, 8002)) == 0:
-            is_legacy = False
-        else:
-            sock.close()
-            # Check Port 8001 (Tizen/J-Series)
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(1)
-            if sock.connect_ex((ip, 8001)) == 0:
-                is_legacy = False
-            else:
-                sock.close()
-                # Check Port 55000 (Legacy)
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
-                if sock.connect_ex((ip, 55000)) == 0:
-                    is_legacy = True
-                sock.close()
-        sock.close()
-    except:
-        pass
-
-    if is_legacy:
-        print(json.dumps({"error": "legacy_detected", "ip": ip}), flush=True)
-        # Exit so deviceManager knows to use fallback
-        sys.exit(1)
-
+    cached_port = None
+    
     def connect():
-        nonlocal tv
+        nonlocal tv, cached_port
         tokens = load_tokens()
         token = tokens.get(ip)
         
-        print(json.dumps({"status": "debug", "message": f"Attempting connection to {ip}..."}), flush=True)
+        # If we found a working port before, prioritize it
+        ports = [8002, 8001]
+        if cached_port == 8001:
+            ports = [8001, 8002]
 
-        # Try Port 8002 (Secure Tizen)
-        try:
-            tv = SamsungTVWS(host=ip, port=8002, token=token, name='DelovaHome', timeout=10)
-            tv.open()
-            
-            # Log token status
-            if tv.token:
-                print(json.dumps({"status": "debug", "message": f"Token obtained: {tv.token[:5]}..."}), flush=True)
-                if tv.token != token:
-                    save_token(ip, tv.token)
-                    print(json.dumps({"status": "debug", "message": "New token saved"}), flush=True)
-            else:
-                print(json.dumps({"status": "debug", "message": "No token returned by TV"}), flush=True)
+        print(json.dumps({"status": "debug", "message": f"Connecting to {ip}..."}), flush=True)
 
-            print(json.dumps({"status": "connected", "ip": ip, "port": 8002}), flush=True)
-            return True
-        except Exception as e_8002:
-            print(json.dumps({"status": "debug", "message": f"Port 8002 failed: {e_8002}"}), flush=True)
-            # Try Port 8001 (Legacy Tizen / J-Series)
+        for port in ports:
             try:
-                tv = SamsungTVWS(host=ip, port=8001, token=token, name='DelovaHome', timeout=10)
+                # Reduced timeout for snappier UI response
+                # If cached_port is set, we expect it to work instantly.
+                t_out = 2 if cached_port == port else 0.5 
+                
+                # Try Port
+                tv = SamsungTVWS(host=ip, port=port, token=token, name='DelovaHome', timeout=3)
                 tv.open()
-                if tv.token and tv.token != token:
-                    save_token(ip, tv.token)
-                print(json.dumps({"status": "connected", "ip": ip, "port": 8001}), flush=True)
-                return True
-            except Exception as e_8001:
-                print(json.dumps({"status": "debug", "message": f"Port 8001 failed: {e_8001}"}), flush=True)
-                print(json.dumps({"error": f"8002: {e_8002}, 8001: {e_8001}", "type": "connection_error"}), flush=True)
-                tv = None
-                return False
+                
+                if tv.token:
+                    if tv.token != token:
+                        save_token(ip, tv.token)
 
-    # Initial connection attempt
-    if not is_legacy:
-        connect()
+                print(json.dumps({"status": "connected", "ip": ip, "port": port}), flush=True)
+                cached_port = port
+                return True
+            except Exception as e:
+                 # Only log detailed debug if we are struggling
+                 pass
+        
+        print(json.dumps({"error": "Connection failed on both ports", "type": "connection_error"}), flush=True)
+        tv = None
+        return False
+
+    # Initial connection
+    connect()
 
     # Read stdin
     while True:

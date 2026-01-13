@@ -797,6 +797,7 @@ app.post('/api/webhooks/homekit', async (req, res) => {
              
              // Ensure numeric parsing -- Fix comma issues again just in case input is string "21,4"
              const parseVal = (v) => {
+                 if (v === undefined || v === null) return NaN;
                  if (typeof v === 'string') return parseFloat(v.replace(',', '.'));
                  return parseFloat(v);
              }
@@ -804,7 +805,16 @@ app.post('/api/webhooks/homekit', async (req, res) => {
              const t = parseVal(temperature);
              const h = parseVal(humidity);
              
-             console.log(`[Webhook] Updating ${device.name} -> Temp: ${t}, Hum: ${h}`);
+             console.log(`[Webhook] Updating ${device.name} -> Parsed Temp: ${t}, Hum: ${h}`);
+
+             // Initial state init if missing
+             if (!device.state) device.state = {};
+
+             // Always set to ON since we are receiving data
+             if (!device.state.on) {
+                 device.state.on = true;
+                 updated = true;
+             }
 
              if (!isNaN(t) && device.state.temperature !== t) {
                  device.state.temperature = t;
@@ -816,12 +826,10 @@ app.post('/api/webhooks/homekit', async (req, res) => {
                  updated = true;
              }
 
-             if (updated) {
-                 deviceManager.emit('device-updated', device);
-                 res.json({ ok: true, message: 'Updated' });
-             } else {
-                 res.json({ ok: true, message: 'No changes' });
-             }
+             // Force update event even if "No Changes" detected logic-wise, 
+             // to ensure UI refreshes just in case.
+             deviceManager.emit('device-updated', device);
+             res.json({ ok: true, message: 'Updated', state: device.state });
         } else {
              res.status(404).json({ ok: false, message: 'Device not found' });
         }

@@ -343,7 +343,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const type = device.type ? device.type.toLowerCase() : 'unknown';
-        const isOn = device.state && device.state.on;
+        // HomePods are "always on" for UI purposes
+        const isHomePod = (type === 'speaker' && device.protocol === 'mdns-homekit') || (device.name && device.name.includes('HomePod'));
+        const isOn = (device.state && device.state.on) || isHomePod;
+        
         const hasError = !!device.error;
         let statusClass = isOn ? 'on' : 'off';
         if (hasError) statusClass = 'error';

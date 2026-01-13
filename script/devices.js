@@ -379,6 +379,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             else summary = 'Aan';
+
+            // Append Power Usage if available
+            if (device.state.power > 0) {
+                // If summary is just "Aan", replace it with power
+                if (summary === 'Aan') summary = `${device.state.power} W`;
+                else summary += ` <span style="opacity:0.7; font-size:0.9em;">• ${device.state.power} W</span>`;
+            }
         } else {
             summary = 'Uit';
         }
@@ -1072,13 +1079,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 4. Energy Tab (New)
         const currentPower = (device.state && device.state.power !== undefined) ? device.state.power : (device.currentPower || 0);
+        const sourceLabel = (device.state && device.state.power_source === 'estimated') ? 'Geschat (Software)' : 'Gemeten (Hardware)';
         const energyContent = `
             <div style="width: 100%; display: flex; flex-direction: column; gap: 20px;">
                 <div class="control-group">
-                    <label>Huidig Verbruik (Realtime)</label>
+                    <label>Huidig Verbruik</label>
                     <div style="font-size: 2.5em; font-weight: bold; color: var(--primary);">${currentPower} W</div>
                     <p style="color: #888; font-size: 0.9em;">
-                        ${(device.state && device.state.power !== undefined) ? 'Gemeten via slimme stekker' : 'Geschat verbruik (Standaard)'}
+                        <i class="fas fa-info-circle"></i> ${sourceLabel}
                     </p>
                 </div>
                 

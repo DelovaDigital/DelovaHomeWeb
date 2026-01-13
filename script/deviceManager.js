@@ -60,6 +60,20 @@ class DeviceManager extends EventEmitter {
     constructor() {
         super();
         this.devices = new Map();
+        
+        // Intercept emit to automatically enrich device state with energy estimates
+        const originalEmit = this.emit.bind(this);
+        this.emit = (event, ...args) => {
+            if (event === 'device-updated' && args[0]) {
+                try {
+                    this.estimatePowerUsage(args[0]);
+                } catch (e) {
+                    // console.error('Power estimation failed:', e);
+                }
+            }
+            return originalEmit(event, ...args);
+        };
+
         this.localIp = this._determineLocalIp();
         this.atvProcesses = new Map();
         this.androidTvProcesses = new Map();
@@ -949,6 +963,81 @@ class DeviceManager extends EventEmitter {
 
     addMockDevices() {
         // Mock devices removed
+    }
+
+    estimatePowerUsage(device) {
+        if (!device.state) return;
+        
+        // If device already reports real power, trust it (e.g. Shelly) if not explicitly marked as estimated
+        if (device.state.power !== undefined && device.state.power_source !== 'estimated') {
+            return;
+        }
+
+        let power = 0;
+        let isEstimated = true;
+        
+        const type = String(device.type || '').toLowerCase();
+        const name = String(device.name || '').toLowerCase();
+        const isOn = device.state.on;
+
+        // Default standby for all devices
+        if (!isOn) {
+            // Standby power
+            if (['tv', 'console', 'ps5', 'receiver', 'computer', 'pc', 'workstation', 'mac'].includes(type) || name.includes('tv')) {
+                power = 1.0; // Modern standby < 1W usually, but say 1W
+                if (type === 'ps5' || name.includes('ps5')) power = 1.5; // Rest mode
+            } else if (['speaker', 'sonos'].includes(type) || name.includes('sonos') || name.includes('homepod')) {
+                power = 2.0; 
+            } else if (['printer', 'nas'].includes(type)) {
+                power = 5.0; // NAS disks spinning?
+            } else if (device.protocol === 'hue' || type === 'light') {
+                power = 0.4; 
+            } else if (type === 'camera') {
+                power = 3.0; // Always ON usually
+            } else if (type === 'shelly' || type === 'switch') {
+                power = 0.5;
+            } else if (name.includes('imac')) {
+                power = 1.0;
+            }
+        } else {
+            // Active power estimations
+            if (device.protocol === 'hue' || type === 'light') {
+                // LED Bulb: ~9W at 100%
+                const bri = device.state.brightness !== undefined ? device.state.brightness : 100;
+                power = 0.5 + (9 * (bri / 100)); 
+            } else if (type === 'tv' || name.includes('tv')) {
+                power = 85; // Mix of sizes
+            } else if (type === 'ps5' || type === 'console' || name.includes('ps5')) {
+                power = 200; 
+            } else if (type === 'computer' || type === 'pc' || type === 'workstation') {
+                power = 150; // Desktop avg
+            } else if (type === 'mac' || name.includes('macbook')) {
+                 power = 30; // Laptop
+            } else if (name.includes('imac')) {
+                 power = 65;
+            } else if (type === 'speaker' || type === 'sonos' || name.includes('sonos') || name.includes('homepod')) {
+                power = 8; 
+                if (device.state.volume > 50) power += 10;
+            } else if (type === 'receiver' || name.includes('denon') || name.includes('avr')) {
+                power = 65; 
+            } else if (type === 'nas') {
+                power = 35; 
+            } else if (type === 'printer') {
+                power = 15; 
+            } else if (type === 'camera') {
+                power = 4;
+            } else if (type === 'raspberrypi' || type === 'rpi' || name.includes('pi')) {
+                power = 4; 
+            } else if (type === 'vacuum') {
+                power = 30; // Charging or running?
+            }
+        }
+        
+        // Ensure no negative
+        if (power < 0) power = 0;
+
+        device.state.power = Math.round(power * 10) / 10; // Round to 1 decimal
+        device.state.power_source = 'estimated';
     }
 
     addDevice(device) {

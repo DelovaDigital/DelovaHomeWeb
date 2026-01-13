@@ -1112,13 +1112,24 @@ class DeviceManager extends EventEmitter {
             let updated = false;
 
             // Update name if existing is generic and new is specific
-            const genericNames = ['Samsung Smart TV', 'Unknown Device', 'UPnP Device', 'Device'];
-            const isExistingGeneric = genericNames.some(n => existingDevice.name.startsWith(n));
-            const isNewGeneric = genericNames.some(n => device.name.startsWith(n));
+            const genericNames = ['Samsung Smart TV', 'Unknown Device', 'UPnP Device', 'Device', 'Tvheadend', 'System Monitor', 'OpenElec', 'LibreElec', 'Kodi', 'XBMC'];
+            // Note: 'Kodi' is sometimes generic if the specific hostname (e.g. KODI-WOONKAMER) is available via another protocol
+            
+            const isExistingGeneric = genericNames.some(n => existingDevice.name === n || existingDevice.name.startsWith(n + ' ')); // Partial match "Device (IP)"
+            const isNewGeneric = genericNames.some(n => device.name === n || device.name.startsWith(n + ' '));
+
+            // Also consider shorter names generic compared to longer ones (heuristic for Hostname vs ServiceName)
+            const isNewBetter = !isNewGeneric && (isExistingGeneric || (device.name.length > existingDevice.name.length && device.name.includes(existingDevice.name)));
 
             if (isExistingGeneric && !isNewGeneric) {
                 console.log(`[DeviceManager] Updating name for ${device.ip}: ${existingDevice.name} -> ${device.name}`);
                 existingDevice.name = device.name;
+                updated = true;
+            } else if (device.name !== existingDevice.name && !isNewGeneric && device.type === 'pc' && existingDevice.type === 'nas') {
+                // Prefer PC hostname over NAS service name (often Tvheadend appears as NAS)
+                console.log(`[DeviceManager] Preferring PC hostname: ${existingDevice.name} -> ${device.name}`);
+                existingDevice.name = device.name;
+                existingDevice.type = 'pc'; 
                 updated = true;
             }
 

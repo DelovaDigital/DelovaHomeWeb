@@ -878,9 +878,31 @@ document.addEventListener('DOMContentLoaded', () => {
                  inkHtml = '<div style="text-align: center; color: #888; margin-top: 20px;">Inktniveaus onbekend</div>';
              }
              controlsHtml += inkHtml;
-        } else if (type === 'sonos') {
+        } else if (type === 'sonos' || (type === 'speaker' && device.protocol === 'mdns-homekit')) {
             const isPlaying = device.state.playingState === 'PLAYING' || device.state.playingState === 'playing'; // Handle case sensitivity
+            
+            // Add Sensor info for HomePods
+            if (device.state.temperature || device.state.humidity) {
+                 controlsHtml += `
+                    <div style="display: flex; gap: 30px; font-size: 1.2em; margin-bottom: 20px; justify-content: center; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px;">
+                        ${device.state.temperature ? `
+                            <div style="text-align: center;">
+                                <i class="fas fa-thermometer-half" style="color: #ff6b6b; font-size: 1.5em; display: block; margin-bottom: 5px;"></i>
+                                <span style="font-weight: 500;">${device.state.temperature}°C</span>
+                            </div>
+                        ` : ''}
+                        ${device.state.humidity ? `
+                            <div style="text-align: center;">
+                                <i class="fas fa-tint" style="color: #4dabf7; font-size: 1.5em; display: block; margin-bottom: 5px;"></i>
+                                <span style="font-weight: 500;">${device.state.humidity}%</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                 `;
+            }
+
             controlsHtml += `
+            <div style="opacity: ${isOn ? '1' : '0.5'}; pointer-events: ${isOn ? 'auto' : 'none'}; transition: opacity 0.3s;">
                 <div class="modal-slider-container">
                     <label class="modal-slider-label">Volume: ${device.state.volume || 0}%</label>
                     <input type="range" class="modal-slider" min="0" max="100" value="${device.state.volume || 0}"
@@ -893,6 +915,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'next')"><i class="fas fa-step-forward"></i></button>
                 </div>
+            </div>
             `;
         } else if (type === 'receiver' || device.name.toLowerCase().includes('denon') || device.protocol === 'denon-avr') {
              const defaultInputs = ['TV', 'HDMI1', 'HDMI2', 'HDMI3', 'HDMI4', 'Bluetooth', 'AUX', 'Tuner', 'NET', 'Phono', 'CD'];

@@ -705,26 +705,46 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else if (type === 'tv' && isOn) {
             controlsHtml += `
-                <div class="remote-control">
-                    <div class="d-pad">
+                <div class="remote-layout">
+                    <!-- D-Pad Navigation -->
+                    <div class="d-pad" style="margin-bottom: 30px;">
                         <button class="d-pad-btn d-pad-up" onclick="controlDevice('${device.id}', 'up')"><i class="fas fa-chevron-up"></i></button>
                         <button class="d-pad-btn d-pad-left" onclick="controlDevice('${device.id}', 'left')"><i class="fas fa-chevron-left"></i></button>
                         <button class="d-pad-btn d-pad-center" onclick="controlDevice('${device.id}', 'select')"><i class="fas fa-circle"></i></button>
                         <button class="d-pad-btn d-pad-right" onclick="controlDevice('${device.id}', 'right')"><i class="fas fa-chevron-right"></i></button>
                         <button class="d-pad-btn d-pad-down" onclick="controlDevice('${device.id}', 'down')"><i class="fas fa-chevron-down"></i></button>
                     </div>
-                    <div class="remote-grid">
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'back')"><i class="fas fa-arrow-left"></i></button>
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'home')"><i class="fas fa-home"></i></button>
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'menu')"><i class="fas fa-bars"></i></button>
+
+                    <!-- System Actions -->
+                    <div class="remote-actions-row">
+                        <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'back')">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'home')">
+                            <i class="fas fa-home"></i> Home
+                        </button>
+                        <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'menu')">
+                            <i class="fas fa-bars"></i> Menu
+                        </button>
+                    </div>
+                    
+                    <!-- Controls Surface -->
+                    <div class="remote-surface">
+                        <!-- Playback -->
+                        <div class="remote-row-grouped">
+                            <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'previous')"><i class="fas fa-step-backward"></i></button>
+                            <button class="remote-icon-btn large" onclick="controlDevice('${device.id}', 'play')"><i class="fas fa-play"></i></button>
+                            <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'next')"><i class="fas fa-step-forward"></i></button>
+                        </div>
                         
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'previous')"><i class="fas fa-step-backward"></i></button>
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'play')"><i class="fas fa-play"></i></button>
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'next')"><i class="fas fa-step-forward"></i></button>
-                        
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_down')"><i class="fas fa-minus"></i></button>
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
-                        <button class="remote-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
+                        <div style="width: 100%; height: 1px; background: rgba(255,255,255,0.08);"></div>
+
+                        <!-- Volume -->
+                        <div class="remote-row-grouped">
+                            <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'volume_down')"><i class="fas fa-minus"></i></button>
+                            <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
+                            <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
+                        </div>
                     </div>
             `;
             

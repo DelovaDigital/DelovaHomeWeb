@@ -133,6 +133,14 @@ class EnergyManager extends EventEmitter {
                     const payload = JSON.parse(message);
                     const deviceName = payload.name || topic.split('/').pop();
                     this.data.devices[deviceName] = payload;
+                    
+                    // Forward to DeviceManager for state/discovery
+                    if (deviceManager && deviceManager.handleAgentUpdate) {
+                        deviceManager.handleAgentUpdate(payload);
+                    } else {
+                        // If method missing, fallback (though it should exist now)
+                    }
+
                     this.emit('update', this.data);
                     return;
                 } catch (e) {

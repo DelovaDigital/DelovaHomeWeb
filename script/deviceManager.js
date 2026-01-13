@@ -4153,6 +4153,68 @@ class DeviceManager extends EventEmitter {
         return castDevices;
     }
 
+    handleAgentUpdate(payload) {
+        if (!payload || !payload.name) return;
+
+        // Try to find existing device
+        let device = null;
+        const agentId = `pc-${payload.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
+        // 1. ID Match
+        device = this.devices.get(agentId);
+
+        // 2. Name Match (Fuzzy)
+        if (!device) {
+             for (const [_, d] of this.devices) {
+                 if (d.name.toLowerCase() === payload.name.toLowerCase()) {
+                     device = d;
+                     break;
+                 }
+             }
+        }
+
+        const now = Date.now();
+
+        if (device) {
+            // Update existing
+            let updated = false;
+            if (!device.state.on) { device.state.on = true; updated = true; }
+            if (device.state.power !== payload.power) { device.state.power = payload.power; updated = true; }
+            if (device.state.cpu !== payload.cpu_load) { device.state.cpu = payload.cpu_load; updated = true; }
+            if (device.state.ram !== payload.memory_used) { device.state.ram = payload.memory_used; updated = true; }
+            
+            // Capabilities
+            if (!device.capabilities.includes('pc_control')) {
+                device.capabilities.push('pc_control');
+                updated = true;
+            }
+
+            device.lastSeen = now;
+
+            if (updated) this.emit('device-updated', device);
+        } else {
+            // Create new device from Agent
+            device = {
+                id: agentId,
+                name: payload.name,
+                type: 'computer',
+                ip: null, // Agent doesn't always send IP in metric payload, but maybe discovery did?
+                protocol: 'mqtt-agent',
+                capabilities: ['pc_control', 'energy-monitor'],
+                state: {
+                    on: true,
+                    power: payload.power,
+                    cpu: payload.cpu_load,
+                    ram: payload.memory_used
+                },
+                lastSeen: now
+            };
+            this.devices.set(device.id, device);
+            this.emit('device-added', device);
+            console.log(`[DeviceManager] Registered new PC Agent: ${device.name}`);
+        }
+    }
+
     launchSpotifyOnCastDevice(ip) {
         return new Promise((resolve, reject) => {
             const client = new CastClient();

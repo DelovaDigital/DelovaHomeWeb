@@ -1,0 +1,36 @@
+{
+  "name": "delovahome-desktop-agent",
+  "version": "1.0.0",
+  "description": "DelovaHome Desktop Agent for PC Monitoring",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "author": "Alessio Depreytere",
+  "license": "ISC",
+  "dependencies": {
+    "mqtt": "^5.3.5",
+    "systeminformation": "^5.21.22",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.delovahome.agent",
+    "productName": "DelovaHome Agent",
+    "mac": {
+      "identity": null,
+      "category": "public.app-category.utilities",
+      "target": ["dmg", "zip"] 
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
+  }
+}

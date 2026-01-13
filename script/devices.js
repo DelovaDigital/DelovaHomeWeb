@@ -1050,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${errorHtml}
                 <div style="display: flex; flex-direction: row; width: 100%; gap: 20px; align-items: flex-start;">
                     <div class="modal-left-col">
-                        <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
+                        <i class="${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
                         ${controlsHtml}
                     </div>
                     <div class="modal-right-col">
@@ -1073,7 +1073,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${errorHtml}
                 <div style="display: flex; flex-direction: row; width: 100%; gap: 20px; align-items: flex-start;">
                     <div class="modal-left-col">
-                        <i class="fas ${icon} modal-device-icon on"></i>
+                        <i class="${icon} modal-device-icon on"></i>
                         <div style="margin-bottom: 20px; font-size: 1.2em; color: #aaa;">${device.ip}</div>
                         ${controlsHtml}
                     </div>
@@ -1090,7 +1090,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             tabControlsContent = `
                 ${errorHtml}
-                <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
+                <i class="${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
                 ${controlsHtml}
             `;
         }

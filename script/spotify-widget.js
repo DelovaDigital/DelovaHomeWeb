@@ -130,12 +130,16 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(async res => {
             const data = await res.json();
             if (!res.ok) {
-                if (data.message && data.message.includes('No active Spotify device')) {
-                    alert('Geen actief Spotify-apparaat. Kies een apparaat om af te spelen.');
-                    // Pass the pending command to toggleSpotifyDevices so it can retry after selection
+                const isNoDevice = (data.message && data.message.includes('No active Spotify device')) || 
+                                   (data.code === 'NO_ACTIVE_DEVICE') ||
+                                   (data.error && data.error.code === 'NO_ACTIVE_DEVICE');
+
+                if (isNoDevice) {
+                    // Directly open the device picker without an alert
+                    console.log('No active device, prompting selection...');
                     toggleSpotifyDevices({ command, value });
                 } else {
-                    console.error('Spotify control error:', data.message);
+                    console.error('Spotify control error:', data.message || data.error);
                 }
             } else {
                 setTimeout(fetchStatus, 500);
@@ -210,9 +214,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
+            const title = pendingCommand ? 'Kies apparaat om af te spelen' : 'Kies apparaat';
+
             const modalHtml = `
                 <div class="modal-header">
-                    <h3>Kies apparaat</h3>
+                    <h3>${title}</h3>
                     <button class="close-modal" onclick="closeModal()">&times;</button>
                 </div>
                 <div class="modal-body">

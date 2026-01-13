@@ -330,21 +330,51 @@ class SpotifyManager {
         const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/pause', { method: 'PUT', headers });
-        if (!resp.ok) throw new Error(`Spotify pause failed: ${resp.status}`);
+        if (!resp.ok) {
+            if (resp.status === 404) {
+                const error = await resp.json().catch(() => ({}));
+                if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
+                    const err = new Error('No active Spotify device found. Please start playing on a device first.');
+                    err.code = 'NO_ACTIVE_DEVICE';
+                    throw err;
+                }
+            }
+            throw new Error(`Spotify pause failed: ${resp.status}`);
+        }
     }
 
     async next(userId, username) {
         const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/next', { method: 'POST', headers });
-        if (!resp.ok) throw new Error(`Spotify next failed: ${resp.status}`);
+        if (!resp.ok) {
+            if (resp.status === 404) {
+                const error = await resp.json().catch(() => ({}));
+                if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
+                    const err = new Error('No active Spotify device found. Please start playing on a device first.');
+                    err.code = 'NO_ACTIVE_DEVICE';
+                    throw err;
+                }
+            }
+            throw new Error(`Spotify next failed: ${resp.status}`);
+        }
     }
 
     async previous(userId, username) {
         const headers = await this.getHeaders(userId, username);
         if (!headers) throw new Error('No valid Spotify token for user');
         const resp = await fetch('https://api.spotify.com/v1/me/player/previous', { method: 'POST', headers });
-        if (!resp.ok) throw new Error(`Spotify previous failed: ${resp.status}`);
+        if (!resp.ok) {
+            if (resp.status === 404) {
+                const error = await resp.json().catch(() => ({}));
+                if (error.error && error.error.reason === 'NO_ACTIVE_DEVICE') {
+                    const err = new Error('No active Spotify device found. Please start playing on a device first.');
+                    err.code = 'NO_ACTIVE_DEVICE';
+                    throw err;
+                }
+            }
+            throw new Error(`Spotify previous failed: ${resp.status}`);
+        }
     }
 
     async setVolume(userId, volume, username) {

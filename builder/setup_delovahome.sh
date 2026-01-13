@@ -83,7 +83,7 @@ fi
 
 echo "Installing Python dependencies..."
 ./.venv/bin/pip install --upgrade pip
-./.venv/bin/pip install pyatv
+./.venv/bin/pip install pyatv samsungtvws
 
 # 4. Install Node Dependencies
 echo "[4/6] Installing project dependencies..."

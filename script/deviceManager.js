@@ -986,6 +986,16 @@ class DeviceManager extends EventEmitter {
     estimatePowerUsage(device) {
         if (!device.state) return;
         
+        // 1. If power source is 'agent' or 'measurement', it's high quality - KEEP IT.
+        if (device.state.power_source === 'measurement' || device.state.power_source === 'agent') {
+            return;
+        }
+
+        // 2. If it's 'estimated' BUT has detailed stats (like CPU), it comes from systemMonitor - KEEP IT.
+        if (device.state.power_source === 'estimated' && device.state.cpu !== undefined) {
+             return;
+        }
+
         // If device already reports real power, trust it (e.g. Shelly) if not explicitly marked as estimated
         if (device.state.power !== undefined && device.state.power_source !== 'estimated') {
             return;
@@ -2792,33 +2802,26 @@ class DeviceManager extends EventEmitter {
                 ];
             } else {
                 candidates = [
-                    path.join(__dirname, '../.venv/bin/python'),
-                    path.join(__dirname, '../../.venv/bin/python'),
                     path.join(process.cwd(), '.venv/bin/python'),
-                    '/home/pi/DelovaHome/.venv/bin/python'
+                    '/home/pi/DelovaHome/.venv/bin/python',
+                    path.join(__dirname, '../.venv/bin/python'),
+                    path.join(__dirname, '../../.venv/bin/python')
                 ];
             }
 
+            // Default fallback
             pythonPath = isWin ? 'python' : 'python3';
+
+            // Check candidates
             for (const cand of candidates) {
                 try {
-                    if (fs.existsSync(cand)) { 
-                        if (isWin) {
-                            const p1 = path.join(path.dirname(cand), 'pyvenv.cfg');
-                            const p2 = path.join(path.dirname(path.dirname(cand)), 'pyvenv.cfg');
-                            let cfgContent = '';
-                            if (fs.existsSync(p1)) cfgContent = fs.readFileSync(p1, 'utf8');
-                            else if (fs.existsSync(p2)) cfgContent = fs.readFileSync(p2, 'utf8');
-                            
-                            if (cfgContent && (cfgContent.includes('/Applications/') || cfgContent.includes('/usr/bin'))) {
-                                continue;
-                            }
-                        }
-                        pythonPath = cand; 
-                        break; 
+                    if (fs.existsSync(cand)) {
+                        pythonPath = cand;
+                        break;
                     }
-                } catch (e) {}
+                } catch(e) {}
             }
+            
             this.pythonPath = pythonPath; // Cache it
             console.log(`[DeviceManager] Selected Python interpreter: ${this.pythonPath}`);
         }

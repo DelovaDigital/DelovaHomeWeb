@@ -2836,6 +2836,9 @@ class DeviceManager extends EventEmitter {
         });
         
         childProc.stdout.on('data', (data) => {
+             // Increase listeners limit if needed or clean up properly
+            if (childProc.stdout.getMaxListeners() < 20) childProc.stdout.setMaxListeners(20);
+
             const lines = data.toString().split('\n');
             lines.forEach(line => {
                 if (!line.trim()) return;

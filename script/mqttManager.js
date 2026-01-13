@@ -48,6 +48,9 @@ class MqttManager extends EventEmitter {
 
         this.client = mqtt.connect(this.config.brokerUrl, options);
 
+        // Increase listeners limit to prevent warnings if many modules use the same manager
+        this.client.setMaxListeners(20);
+
         this.client.on('connect', () => {
             console.log('[MQTT] Connected');
             this.connected = true;

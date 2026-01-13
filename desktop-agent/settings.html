@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DelovaHome Agent</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: #f5f5f5; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { font-size: 1.2rem; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background: #007BFF; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background: #0056b3; }
+        .status { margin-top: 10px; font-size: 0.9rem; color: #666; text-align: center; }
+        .metrics { font-family: monospace; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Settings</h1>
+        <div class="form-group">
+            <label>Hub MQTT URL</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="hubUrl" placeholder="mqtt://192.168.x.x:1883" style="flex: 1;">
+                <button id="scanBtn" style="width: auto; padding: 8px 15px; background: #6c757d;">Scan</button>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Device Name</label>
+            <input type="text" id="deviceName" placeholder="My-PC">
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button id="saveBtn" style="flex: 1;">Save & Restart</button>
+            <button id="updateBtn" style="flex: 1; background-color: #28a745;">Check Updates</button>
+        </div>
+        <div class="status" id="status">Status: Connecting...</div>
+    </div>
+
+    <div class="card">
+        <h1>Control & Status</h1>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+             <button id="dashboardBtn" style="background-color: #6fb98f;">Open Hub Dashboard</button>
+        </div>
+        <div class="metrics" id="metricsDisplay">
+            Waiting for data...
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const hubUrlInput = document.getElementById('hubUrl');
+        const deviceNameInput = document.getElementById('deviceName');
+        const saveBtn = document.getElementById('saveBtn');
+        const scanBtn = document.getElementById('scanBtn');
+        const updateBtn = document.getElementById('updateBtn');
+        const dashboardBtn = document.getElementById('dashboardBtn');
+        const statusDiv = document.getElementById('status');
+        const metricsDiv = document.getElementById('metricsDisplay');
+
+        ipcRenderer.on('init-config', (event, config) => {
+            hubUrlInput.value = config.hubUrl;
+            deviceNameInput.value = config.deviceName;
+        });
+
+        ipcRenderer.on('status', (event, status) => {
+            statusDiv.textContent = `Status: ${status}`;
+            statusDiv.style.color = status.includes('Connected') || status.includes('Found') ? 'green' : (status.includes('Error') ? 'red' : '#666');
+            if (status.includes('Connected')) {
+                scanBtn.textContent = 'Scan';
+                scanBtn.disabled = false;
+            }
+        });
+
+        ipcRenderer.on('metrics', (event, data) => {
+            if (!deviceNameInput.value && data.name) {
+                deviceNameInput.value = data.name;
+            }
+            metricsDiv.innerHTML = `
+                CPU Load: ${data.cpu_load}%<br>
+                Power: ~${data.power} W<br>
+                RAM: ${Math.round(data.memory_used / 1024 / 1024 / 1024 * 10) / 10} / ${Math.round(data.memory_total / 1024 / 1024 / 1024)} GB<br>
+                Battery: ${data.battery_level !== null ? data.battery_level + '%' : 'N/A'}<br>
+                IP: ${data.ip}
+            `;
+        });
+
+        saveBtn.addEventListener('click', () => {
+            ipcRenderer.send('save-config', {
+                hubUrl: hubUrlInput.value,
+                deviceName: deviceNameInput.value
+            });
+            statusDiv.textContent = 'Status: Saving...';
+        });
+
+        scanBtn.addEventListener('click', () => {
+            scanBtn.textContent = 'Scanning...';
+            scanBtn.disabled = true;
+            statusDiv.textContent = 'Status: Searching for Hub...';
+            ipcRenderer.send('start-scan');
+        });
+
+        updateBtn.addEventListener('click', () => {
+             updateBtn.disabled = true;
+             updateBtn.textContent = 'Checking...';
+             ipcRenderer.send('check-for-updates');
+             setTimeout(() => {
+                 updateBtn.disabled = false;
+                 updateBtn.textContent = 'Check Updates';
+             }, 5000);
+        });
+
+        dashboardBtn.addEventListener('click', () => {
+            ipcRenderer.send('open-dashboard');
+        });
+    </script>
+</body>
+</html>

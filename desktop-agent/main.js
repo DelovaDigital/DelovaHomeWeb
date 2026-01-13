@@ -6,6 +6,7 @@ const Store = require('electron-store');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const AutoLaunch = require('auto-launch');
+const { Bonjour } = require('bonjour-service');
 
 // Logging
 log.transports.file.level = 'info';
@@ -13,6 +14,7 @@ autoUpdater.logger = log;
 
 const store = new Store();
 let mainWindow;
+let settingsWindow;
 let tray;
 let client;
 let intervalId;
@@ -34,10 +36,206 @@ autoUpdater.autoDownload = false;
 
 // Default Config
 const DEFAULT_CONFIG = {
-    hubUrl: 'mqtt://192.168.0.216:1883',
+    hubUrl: '', // Auto-discovery will fill this
+    dashboardUrl: '', // Explicit dashboard URL valid override
     deviceName: si.osInfo().hostname || 'Desktop-PC',
     updateInterval: 5000
 };
+
+// Discovery
+const bonjour = new Bonjour();
+let discoveryTimeout;
+
+function startDiscovery() {
+    console.log('Starting Hub Discovery...');
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+        settingsWindow.webContents.send('status', 'Searching for Hub...');
+    }
+    
+    // Look for 'delovahome' service
+    bonjour.find({ type: 'delovahome' }, (service) => {
+        console.log('Found DelovaHome Hub:', service);
+        
+        // MQTT IP
+        let ip = null;
+        if (service.addresses && service.addresses.length > 0) {
+            ip = service.addresses.find(addr => addr.includes('.')) || service.addresses[0];
+        } else if (service.referer && service.referer.address) {
+            ip = service.referer.address;
+        }
+
+        // Web Port (from txt record or default)
+        let webPort = 3000;
+        if (service.txt && service.txt.web_port) {
+             webPort = service.txt.web_port;
+        } else if (service.port) {
+            // Note: service.port is usually MQTT (1883) or HTTP (3000) depending on what advertised it
+            // DelovaHome advertisement in server.js uses type 'delovahome' and passes `port`.
+            // In server.js we saw `bonjour.publish({ ... type: 'delovahome', port: port ...` where port is http port (3000).
+            webPort = service.port;
+        }
+
+        if (ip) {
+            const foundMqttUrl = `mqtt://${ip}:1883`; // Assuming standard MQTT port if using server.js advertisement
+            // Wait, server.js advertises the HTTP port. We can infer MQTT is on 1883 usually.
+            // But actually server.js uses `port` (3000) in advertisement.
+            
+            // NOTE: If the discovered service IS the http server, we should use its IP for mqtt too.
+            
+            const foundHttpUrl = `http://${ip}:${webPort}`;
+            
+            const currentUrl = store.get('hubUrl');
+            
+            if (!currentUrl || currentUrl === '' || currentUrl.includes('192.168.0.216')) {
+                store.set('hubUrl', foundMqttUrl);
+                store.set('dashboardUrl', foundHttpUrl);
+                
+                console.log('Auto-configured:', foundMqttUrl, foundHttpUrl);
+                
+                if (settingsWindow && !settingsWindow.isDestroyed()) {
+                    settingsWindow.webContents.send('init-config', {
+                        hubUrl: foundMqttUrl,
+                        deviceName: store.get('deviceName', DEFAULT_CONFIG.deviceName)
+                    });
+                    settingsWindow.webContents.send('status', 'Hub Found! Connecting...');
+                }
+
+                // Connect immediately
+                startMonitoring();
+                loadDashboard();
+            }
+        }
+    });
+    
+    // ... http fallback ...
+}
+
+function getHubHttpUrl() {
+    // 1. Explicit overwrite
+    const explicit = store.get('dashboardUrl');
+    if (explicit) return explicit;
+    
+    // 2. Infer from MQTT
+    const hubUrl = store.get('hubUrl', DEFAULT_CONFIG.hubUrl);
+    try {
+        const urlObj = new URL(hubUrl);
+        return `http://${urlObj.hostname}:3000`;
+    } catch (e) {
+        return null;
+    }
+}
+
+    // Also look for generic HTTP just in case, filtered by name
+    bonjour.find({ type: 'http' }, (service) => {
+        if (service.name && service.name.toLowerCase().includes('delovahome')) {
+            // Same logic
+             let ip = null;
+            if (service.addresses && service.addresses.length > 0) {
+                ip = service.addresses.find(addr => addr.includes('.')) || service.addresses[0];
+            }
+            if (ip) {
+                 const foundUrl = `mqtt://${ip}:1883`;
+                 const currentUrl = store.get('hubUrl');
+                 if (!currentUrl || currentUrl === '') {
+                     store.set('hubUrl', foundUrl);
+                     store.set('hubHttpPort', service.port); // Save HTTP port too for dashboard?
+                     startMonitoring();
+                     loadDashboard();
+                 }
+            }
+        }
+    });
+
+
+function createMenu() {
+    const template = [
+        {
+            label: 'DelovaHome',
+            submenu: [
+                { label: 'Go to Dashboard', accelerator: 'CmdOrCtrl+D', click: loadDashboard },
+                { label: 'Preferences...', accelerator: 'CmdOrCtrl+,', click: openSettingsWindow },
+                { type: 'separator' },
+                { role: 'quit' }
+            ]
+        },
+        { role: 'editMenu' },
+        { 
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'forceReload' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'resetZoom' },
+                { role: 'zoomIn' },
+                { role: 'zoomOut' },
+                { type: 'separator' },
+                { role: 'togglefullscreen' }
+            ]
+        },
+        { role: 'windowMenu' }
+    ];
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+}
+
+function getHubHttpUrl() {
+    const hubUrl = store.get('hubUrl', DEFAULT_CONFIG.hubUrl);
+    try {
+        // Extract IP from mqtt://192.168.x.x:1883
+        const urlObj = new URL(hubUrl);
+        // Assume Web Dashboard is on port 3000 (standard for OmniHome)
+        return `http://${urlObj.hostname}:3000`;
+    } catch (e) {
+        return null;
+    }
+}
+
+function loadDashboard() {
+    if (!mainWindow) return;
+    const url = getHubHttpUrl();
+    if (url) {
+        console.log('Loading Dashboard:', url);
+        mainWindow.loadURL(url).catch(err => {
+            console.error('Failed to load dashboard:', err);
+            mainWindow.loadFile('settings.html'); // Fallback to settings if connection fails
+        });
+    } else {
+        mainWindow.loadFile('settings.html');
+    }
+}
+
+function openSettingsWindow() {
+    if (settingsWindow) {
+        settingsWindow.focus();
+        return;
+    }
+
+    settingsWindow = new BrowserWindow({
+        width: 500,
+        height: 600,
+        title: 'DelovaHome Agent Settings',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        autoHideMenuBar: true
+    });
+
+    settingsWindow.loadFile('settings.html');
+
+    settingsWindow.on('closed', () => {
+        settingsWindow = null;
+    });
+
+    settingsWindow.once('ready-to-show', () => {
+        settingsWindow.show();
+        settingsWindow.webContents.send('init-config', {
+            hubUrl: store.get('hubUrl', DEFAULT_CONFIG.hubUrl),
+            deviceName: store.get('deviceName', DEFAULT_CONFIG.deviceName)
+        });
+    });
+}
 
 function createWindow() {
     if (mainWindow) {
@@ -46,17 +244,19 @@ function createWindow() {
     }
 
     mainWindow = new BrowserWindow({
-        width: 600,
-        height: 500,
-        show: false,
+        width: 1200,
+        height: 800,
+        title: 'DelovaHome',
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            nodeIntegration: false, // Security for remote content
+            contextIsolation: true,  // Security
+            preload: path.join(__dirname, 'preload.js') // Optional future use
         },
-        autoHideMenuBar: true
+        show: false
     });
 
-    mainWindow.loadFile('index.html');
+    createMenu();
+    loadDashboard();
 
     mainWindow.on('close', (event) => {
         if (!app.isQuiting) {
@@ -68,10 +268,6 @@ function createWindow() {
 
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
-        mainWindow.webContents.send('init-config', {
-            hubUrl: store.get('hubUrl', DEFAULT_CONFIG.hubUrl),
-            deviceName: store.get('deviceName', DEFAULT_CONFIG.deviceName)
-        });
     });
 }
 
@@ -114,7 +310,9 @@ function createTray() {
     tray.setToolTip('DelovaHome Agent');
     tray.setContextMenu(contextMenu);
     
-    tray.on('double-click', createWindow);
+    tray.on('double-click', () => {
+        if (mainWindow) mainWindow.show();
+    });
 }
 
 function startMonitoring() {
@@ -131,7 +329,7 @@ function startMonitoring() {
 
     client.on('connect', () => {
         console.log('MQTT Connected');
-        if (mainWindow) mainWindow.webContents.send('status', 'Connected');
+        if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('status', 'Connected');
         
         // Initial Discovery Announcement
         announceDevice(deviceName);
@@ -160,7 +358,7 @@ function startMonitoring() {
 
     client.on('error', (err) => {
         console.error('MQTT Error:', err.message);
-        if (mainWindow) mainWindow.webContents.send('status', `Error: ${err.message}`);
+        if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.webContents.send('status', `Error: ${err.message}`);
     });
 }
 
@@ -248,8 +446,8 @@ async function reportMetrics(deviceName) {
 
         client.publish(`energy/devices/${deviceName}`, JSON.stringify(payload));
         
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('metrics', payload);
+        if (settingsWindow && !settingsWindow.isDestroyed()) {
+            settingsWindow.webContents.send('metrics', payload);
         }
 
     } catch (e) {
@@ -294,12 +492,13 @@ app.whenReady().then(() => {
 
     createTray();
     
-    // Hide dock icon on macOS to be truly background
-    if (process.platform === 'darwin') {
-        app.dock.hide();
+    // Auto-Discovery on startup
+    const savedUrl = store.get('hubUrl');
+    if (!savedUrl) {
+         startDiscovery();
+    } else {
+        startMonitoring();
     }
-    
-    startMonitoring();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -338,10 +537,20 @@ app.on('window-all-closed', () => {
     // If user explicitly quits via tray -> app.quit() is called there.
 });
 
+app.on('before-quit', () => {
+    // Handle Command+Q (macOS) or explicit quit via Dock
+    app.isQuiting = true;
+});
+
 ipcMain.on('save-config', (event, config) => {
     store.set('hubUrl', config.hubUrl);
     store.set('deviceName', config.deviceName);
     startMonitoring(); // Restart with new config
+    loadDashboard(); // Reload Dashboard in main window
+});
+
+ipcMain.on('start-scan', () => {
+    startDiscovery();
 });
 
 ipcMain.on('check-for-updates', () => {
@@ -350,29 +559,22 @@ ipcMain.on('check-for-updates', () => {
 });
 
 ipcMain.on('open-dashboard', () => {
-    const hubUrl = store.get('hubUrl', DEFAULT_CONFIG.hubUrl);
-    // Convert mqtt://192.168.x.x:1883 to http://192.168.x.x:3000
-    try {
-        const urlObj = new URL(hubUrl);
-        const dashboardUrl = `http://${urlObj.hostname}:3000`; // Assuming port 3000
-        shell.openExternal(dashboardUrl);
-    } catch (e) {
-        console.error('Invalid Hub URL:', e);
-    }
+    loadDashboard();
+    if (mainWindow) mainWindow.show();
 });
 
 autoUpdater.on('update-not-available', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('update-message', 'OmniHome Agent is up to date.');
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+        settingsWindow.webContents.send('update-message', 'OmniHome Agent is up to date.');
     }
 });
 
 autoUpdater.on('error', (err) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('update-message', 'Update Check Failed: ' + (err.message || err));
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+        settingsWindow.webContents.send('update-message', 'Update Check Failed: ' + (err.message || err));
     }
 });
 
 ipcMain.on('open-settings', () => {
-    createWindow();
+    openSettingsWindow();
 });

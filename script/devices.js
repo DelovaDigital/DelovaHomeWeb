@@ -344,7 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const type = device.type ? device.type.toLowerCase() : 'unknown';
         const isOn = device.state && device.state.on;
-        const statusClass = isOn ? 'on' : 'off';
+        const hasError = !!device.error;
+        let statusClass = isOn ? 'on' : 'off';
+        if (hasError) statusClass = 'error';
 
         if (!card) {
             card = document.createElement('div');
@@ -361,7 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Simple Card Content (Summary)
         let summary = '';
-        if (isOn) {
+        if (hasError) {
+            summary = '<span style="color: #ff6b6b; font-weight: bold;">Error</span>';
+        } else if (isOn) {
             const hasMediaProtocol = (device.protocols && (device.protocols.includes('airplay') || device.protocols.includes('raop') || device.protocols.includes('spotify-connect') || device.protocols.includes('googlecast')));
             
             if (type === 'light') summary = `${device.state.brightness || 100}%`;
@@ -523,6 +527,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabsContainer = document.getElementById('modalTabs');
         
         if (tabsContainer) tabsContainer.style.display = 'flex';
+
+        // Error Banner
+        let errorHtml = '';
+        if (device.error) {
+            const errorMsg = typeof device.error === 'string' ? device.error : device.error.message;
+            errorHtml = `
+                <div style="background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: start; gap: 10px;">
+                    <i class="fas fa-exclamation-triangle" style="color: #dc3545; margin-top: 3px;"></i>
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 5px 0; color: #ff6b6b;">Foutmelding</h4>
+                        <p style="margin: 0; font-size: 0.9em; opacity: 0.9;">${errorMsg}</p>
+                        ${device.error.action === 'repair' ? `
+                            <button onclick="unpairDevice('${device.id}'); closeDeviceDetail(); setTimeout(() => openManualPairing(), 500);" 
+                                    class="btn" style="margin-top: 10px; background: #dc3545; color: white; padding: 5px 10px; font-size: 0.9em;">
+                                <i class="fas fa-redo"></i> Opnieuw Koppelen
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
 
         const type = device.type.toLowerCase();
         const isOn = device.state.on;
@@ -984,6 +1009,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (app.toLowerCase().includes('youtube')) artContent = `<i class="fab fa-youtube" style="color: #ff0000;"></i>`;
 
             tabControlsContent = `
+                ${errorHtml}
                 <div style="display: flex; flex-direction: row; width: 100%; gap: 20px; align-items: flex-start;">
                     <div class="modal-left-col">
                         <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
@@ -1006,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else if (isCamera) {
             tabControlsContent = `
+                ${errorHtml}
                 <div style="display: flex; flex-direction: row; width: 100%; gap: 20px; align-items: flex-start;">
                     <div class="modal-left-col">
                         <i class="fas ${icon} modal-device-icon on"></i>
@@ -1024,6 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else {
             tabControlsContent = `
+                ${errorHtml}
                 <i class="fas ${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
                 ${controlsHtml}
             `;

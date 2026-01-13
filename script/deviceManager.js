@@ -2174,10 +2174,21 @@ class DeviceManager extends EventEmitter {
                         this.emit('pairing-required', { ip: ip, name: 'Android TV', type: 'android-tv' });
                     } else if (msg.status === 'connected' || msg.status === 'paired') {
                         console.log(`[Android TV Service] Connected to ${ip}`);
+                        const device = Array.from(this.devices.values()).find(d => d.ip === ip);
+                        if (device && device.error) {
+                            device.error = null;
+                            this.emit('device-updated', device);
+                        }
                     } else if (msg.status === 'failed') {
                         console.error(`[Android TV Service] Connection failed for ${ip}: ${msg.error}`);
+                        const device = Array.from(this.devices.values()).find(d => d.ip === ip);
+                        if (device) {
+                             device.error = { message: msg.error, action: 'repair', type: 'error' };
+                             this.emit('device-updated', device);
+                        }
                     } else if (msg.error) {
                         console.error(`[Android TV Service Error] ${ip}: ${msg.error}`);
+                        // Don't flag transient errors unless persistent
                     }
                 } catch (e) {
                     console.log(`[Android TV Service Raw] ${line}`);
@@ -2288,8 +2299,22 @@ class DeviceManager extends EventEmitter {
                         // Immediately fetch status to sync UI
                         childProc.stdin.write(JSON.stringify({ command: 'status' }) + '\n');
                     } else if (msg.error) {
+                        const device = Array.from(this.devices.values()).find(d => d.ip === ip);
+                        
+                        // Handle critical errors that require user attention
+                        if (msg.error.includes('blocked') || msg.error.includes('remote_control') || msg.error.includes('AirPlay protocol')) {
+                             console.error(`[ATV Service Error] ${ip}: ${msg.error}`);
+                             if (device) {
+                                device.error = {
+                                    message: msg.error,
+                                    type: 'auth_error',
+                                    action: 'repair'
+                                };
+                                this.emit('device-updated', device);
+                            }
+                        }
                         // Suppress common connection errors to avoid log spam
-                        if (!msg.error.includes('Could not find Apple TV') && 
+                        else if (!msg.error.includes('Could not find Apple TV') && 
                             !msg.error.includes('Not connected') &&
                             !msg.error.includes('Connection failed')) {
                             console.error(`[ATV Service Error] ${ip}: ${msg.error}`);
@@ -2298,6 +2323,11 @@ class DeviceManager extends EventEmitter {
                         // Update device state
                         const device = Array.from(this.devices.values()).find(d => d.ip === ip);
                         if (device) {
+                            if (device.error) {
+                                device.error = null; // Clear error on successful status
+                                this.emit('device-updated', device);
+                            }
+
                             const status = msg.data;
                             let updated = false;
                             

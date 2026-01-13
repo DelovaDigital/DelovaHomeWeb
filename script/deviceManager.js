@@ -213,7 +213,10 @@ class DeviceManager extends EventEmitter {
             ip: info.ip,
             mac: info.mac,
             model: info.model,
-            state: { on: false }, // Default state
+            state: { 
+                on: (info.type === 'homekit' || info.type === 'printer' || (info.name && info.name.includes('HomePod'))), // Default ON for always-on devices
+                ...((info.type === 'homekit' || (info.name && info.name.includes('HomePod'))) ? { temperature: null, humidity: null } : {}) // Init sensor slots
+            }, 
             capabilities: [],
             protocols: info.raw && info.raw.type ? [info.raw.type] : []
         };
@@ -1593,10 +1596,18 @@ class DeviceManager extends EventEmitter {
         const device = this.devices.get(id);
         if (!device) return;
 
-        // HomeKit Sensor Refresh
+        // Skip HomeKit/HomePod devices (Updated via Webhook now)
+        // This prevents them from being marked "Offline" if polling fails
+        if (device.type === 'homekit' || (device.name && device.name.includes('HomePod')) || (device.capabilities && device.capabilities.includes('homekit'))) {
+            return;
+        }
+
+        /* 
+        // Logic moved to "Push" model via Webhook
         if (device.capabilities && device.capabilities.includes('homekit') && device.capabilities.includes('sensor')) {
              await this.refreshHomeKitSensor(device);
         }
+        */
 
         // Skip Hue devices (managed by hueManager)
         if (device.protocol === 'hue') return;

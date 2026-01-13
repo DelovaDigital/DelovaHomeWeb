@@ -101,15 +101,39 @@ class DiscoveryService extends EventEmitter {
         });
     }
 
-    async handleMDNSService(service) {
-        // Filter and normalize
+        // Create a unique ID for the service discovery, respecting previous logic
         let device = null;
         const name = service.name || '';
+        // If 'referer' exists (from bonjour-service dependency in some versions), use it.
+        // Otherwise use addresses array.
         const ip = service.referer ? service.referer.address : (service.addresses ? service.addresses[0] : null);
         
         if (!ip) return;
 
         const mac = await this.getMacAddress(ip);
+
+        // Spotify Connect
+        if (service.type === 'spotify-connect') {
+             // Extract CMessage (often contains public key / device ID)
+             // Typically in TXT record 'CPath' or hidden.
+             // Usually we just identify it as a potential Spotify target.
+             // We can map this IP to a spotify capability on the main device.
+             
+             // This doesn't create a standalone device usually, but enriches capabilities.
+             // However, for consistency, we treat it as discovery data.
+             
+             // Check if we can get a Spotify Device ID from TXT
+             // Often not directly available in standard mDNS without decryption.
+             
+             // Emit as 'spotify-target'
+             this.emit('spotify-connect-found', {
+                 name: name,
+                 ip: ip,
+                 port: service.port,
+                 mac: mac
+             });
+             // We continue to see if it matches other types (e.g. it might also be a 'speaker' or 'googlecast')
+        }
 
         // Shelly
         if (name.toLowerCase().includes('shelly') || (service.txt && service.txt.gen)) {

@@ -97,6 +97,24 @@ class DeviceManager extends EventEmitter {
         discoveryService.on('discovered', (deviceInfo) => {
             this.handleDiscoveredDevice(deviceInfo);
         });
+        
+        // Listen for Spotify Connect mDNS announcements to link them to existing devices
+        discoveryService.on('spotify-connect-found', (info) => {
+            console.log(`[Discovery] Spotify Connect service found: ${info.name} at ${info.ip}`);
+            // Check if we already have a device with this IP
+            for (const [id, device] of this.devices) {
+                if (device.ip === info.ip) {
+                    if (!device.capabilities) device.capabilities = [];
+                    if (!device.capabilities.includes('spotify-connect')) {
+                        device.capabilities.push('spotify-connect');
+                        console.log(`[DeviceManager] Enabled 'spotify-connect' capability for ${device.name}`);
+                        this.emit('device-updated', device);
+                    }
+                    break;
+                }
+            }
+        });
+
         discoveryService.start();
 
         // Integrate Hue Manager
@@ -1224,44 +1242,64 @@ class DeviceManager extends EventEmitter {
                     console.log(`[Denon] Fetching MainZoneXml.xml for ${device.ip}...`);
                     const xml = await fetchXml('/goform/formMainZone_MainZoneXml.xml');
 
-                    // Regex for simplified MainZone status
-                    // Look for <RenameSource> block
-                    // In some models: <RenameSource><value>My Name</value>...</RenameSource>
-                    // In others: <RenameSource1>Name</RenameSource1>
+                    // Match <RenameSource><value>X</value></RenameSource> structure which is common
+                    // Or <RenameSource>X</RenameSource>
                     
-                    const standardCodes = ['SITV', 'SIDVD', 'SIBD', 'SIGAME', 'SISAT/CBL', 'SIMPLAY', 'SIUSB', 'SINET', 'SIAUX1', 'SICD', 'SIPHONO', 'SITUNER'];
-                    
-                    // Try pattern A: <RenameSource1>...</RenameSource1>
-                    let foundAny = false;
-                    for (let i = 0; i < standardCodes.length; i++) {
-                         // Check explicit numbered rename tags
-                         const tagVariations = [`RenameSource${i+1}`, `InputFuncSelect${i+1}`]; // some variation
-                         
-                         // Try specific rename tags
-                         const regex = new RegExp(`<RenameSource${i+1}>([^<]+)<\/RenameSource${i+1}>`, 'i');
-                         const m = xml.match(regex);
-                         if (m && m[1].trim()) {
-                             inputs.push({ id: standardCodes[i], name: m[1].trim() });
-                             foundAny = true;
+                    // Helper to clean tag content
+                    const clean = (s) => s.replace(/<\/?value>/gi, '').trim();
+
+                    // 1. Try generic <RenameSource> list if present
+                    const renameBlock = xml.match(/<RenameSource>([\s\S]*?)<\/RenameSource>/i);
+                    if (renameBlock) {
+                         // Extract values inside <value> tags
+                         const values = renameBlock[1].match(/<value>(.*?)<\/value>/gi);
+                         if (values) {
+                             values.forEach(valTag => {
+                                 const name = clean(valTag);
+                                 if (name) {
+                                     // We don't have the ID, so we generate a safe guessed ID
+                                     const id = `SI${name.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+                                     inputs.push({ id, name });
+                                 }
+                             });
                          }
                     }
 
-                    if (!foundAny) {
-                         // Fallback to searching basic tags that imply presence
-                         // <InputFuncList><value>SOURCE</value>...</InputFuncList> is sometimes available
-                         const inputFuncList = xml.match(/<InputFuncList>([\s\S]*?)<\/InputFuncList>/i);
-                         if (inputFuncList) {
-                             const vals = inputFuncList[1].match(/<value>(.*?)<\/value>/gi);
+                    // 2. Try numbered tags <RenameSource1>...</RenameSource1>
+                    // This is very common on older non-HEOS units
+                    if (inputs.length === 0) {
+                        const standardCodes = ['SITV', 'SIDVD', 'SIBD', 'SIGAME', 'SISAT/CBL', 'SIMPLAY', 'SIUSB', 'SINET', 'SIAUX1', 'SICD', 'SIPHONO', 'SITUNER'];
+                        
+                        // We iterate up to 20 to be safe
+                        for (let i = 1; i <= 20; i++) {
+                            const regex = new RegExp(`<RenameSource${i}>([^<]+)<\/RenameSource${i}>`, 'i');
+                            const m = xml.match(regex);
+                            if (m && m[1].trim()) {
+                                // For numbered tags, we often map to standard inputs by index, 
+                                // but the mapping varies by model.
+                                // Safer to use the discovered name as the ID hash if we don't have a map.
+                                // However, usually Source 1 = TV, Source 2 = DVD...
+                                const name = m[1].trim();
+                                const id = (i-1 < standardCodes.length) ? standardCodes[i-1] : `SI${name.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+                                inputs.push({ id, name });
+                            }
+                        }
+                    }
+                    
+                    // 3. Last ditch: <InputFuncList>
+                    if (inputs.length === 0) {
+                         const inputsBlock = xml.match(/<InputFuncList>([\s\S]*?)<\/InputFuncList>/i);
+                         if (inputsBlock) {
+                             const vals = inputsBlock[1].match(/<value>(.*?)<\/value>/gi);
                              if (vals) {
-                                 vals.forEach(v => {
-                                     const raw = v.replace(/<\/?value>/g, '').trim();
-                                     if (raw) {
-                                         inputs.push({ id: `SI${raw}`, name: raw });
-                                     }
+                                 vals.forEach(val => {
+                                     const raw = clean(val);
+                                     if (raw) inputs.push({ id: `SI${raw}`, name: raw });
                                  });
                              }
                          }
                     }
+                    
                 } catch (e) {
                     console.log('[Denon] MainZoneXml failed:', e.message);
                 }

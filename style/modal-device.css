@@ -368,6 +368,8 @@
     justify-content: center;
     transition: all 0.2s;
     border-radius: 12px;
+    padding: 0;
+    margin: 0;
 }
 .d-pad-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
 .d-pad-btn:active { background: rgba(255,255,255,0.2); transform: scale(0.95); }
@@ -570,3 +572,115 @@
     background: #222;
     color: white;
 }
+
+/* Redesigned Remote Control (Added by AI) */
+.remote-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    align-items: center;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+    padding-bottom: 20px;
+}
+
+.remote-actions-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+}
+
+.remote-pill-btn {
+    flex: 1;
+    height: 48px;
+    border-radius: 24px; /* Pill shape */
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: #eee;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.remote-pill-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    color: #fff;
+}
+
+.remote-surface {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 24px;
+    padding: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border: 1px solid rgba(255,255,255,0.02);
+}
+
+.remote-row-grouped {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    width: 100%;
+}
+
+.remote-icon-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.remote-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.remote-icon-btn.large {
+    width: 64px;
+    height: 64px;
+    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.remote-icon-btn.large:hover {
+    background: var(--primary, #3b82f6);
+    color: white;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    transform: scale(1.05);
+}
+
+/* Fix D-Pad Animations */
+.d-pad-up { transform: none !important; margin-left: -25px; }
+.d-pad-down { transform: none !important; margin-left: -25px; }
+.d-pad-left { transform: none !important; margin-top: -25px; }
+.d-pad-right { transform: none !important; margin-top: -25px; }
+/* Keep center centered */
+.d-pad-center { transform: translate(-50%, -50%) !important; }
+
+.d-pad-btn:active {
+    transform: scale(0.95) !important;
+}
+.d-pad-center:active {
+    transform: translate(-50%, -50%) scale(0.95) !important;
+}
+

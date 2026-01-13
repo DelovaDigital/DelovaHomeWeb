@@ -2019,11 +2019,13 @@ window.showAppList = async (deviceId) => {
                 // Icon if available (assuming data.apps has icon/img)
                 let iconHtml = '<i class="fas fa-cube" style="font-size: 1.5em; opacity: 0.7;"></i>';
                 if (app.icon) {
-                    iconHtml = `<img src="${app.icon}" style="width: 32px; height: 32px; object-fit: contain;">`;
+                    iconHtml = `<img src="${app.icon}" style="width: 32px; height: 32px; object-fit: contain;" onerror="this.onerror=null; this.outerHTML='<i class=\\'fas fa-cube\\' style=\\'font-size: 1.5em; opacity: 0.7;\\'></i>'">`;
                 }
 
                 appDiv.innerHTML = `
-                    ${iconHtml}
+                    <div style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        ${iconHtml}
+                    </div>
                     <div style="font-weight: 500; font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${app.name}</div>
                 `;
                 appDiv.onclick = () => window.launchApp(deviceId, app.appId);

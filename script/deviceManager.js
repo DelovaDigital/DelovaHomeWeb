@@ -1574,17 +1574,23 @@ class DeviceManager extends EventEmitter {
             });
 
             socket.on('error', (err) => {
-                if (device.state.on) {
-                    device.state.on = false;
-                    this.emit('device-updated', device);
-                }
+                // Fallback to HTTP
+                this.refreshDenonHttp(device).then(ok => {
+                    if (!ok && device.state.on) {
+                        device.state.on = false;
+                        this.emit('device-updated', device);
+                    }
+                });
                 socket.destroy();
             });
             socket.on('timeout', () => {
-                 if (device.state.on) {
-                    device.state.on = false;
-                    this.emit('device-updated', device);
-                }
+                // Fallback to HTTP
+                this.refreshDenonHttp(device).then(ok => {
+                    if (!ok && device.state.on) {
+                        device.state.on = false;
+                        this.emit('device-updated', device);
+                    }
+                });
                 socket.destroy();
             });
             socket.on('end', () => {
@@ -1594,6 +1600,87 @@ class DeviceManager extends EventEmitter {
             this.refreshPs5(device);
         } else if (device.type === 'printer') {
             this.refreshPrinter(device);
+        }
+    }
+
+    async refreshDenonHttp(device) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 2000);
+            
+            let xml = '';
+            try {
+                const res = await fetch(`http://${device.ip}/goform/formMainZone_MainZoneXml.xml`, { signal: controller.signal });
+                if (!res.ok) throw new Error(res.statusText);
+                xml = await res.text();
+            } finally {
+                clearTimeout(timeout);
+            }
+
+            if (!xml) return false;
+
+            const getValue = (tag) => {
+                const m = xml.match(new RegExp(`<${tag}[^>]*>\\s*(?:<value>)?(.*?)(?:</value>)?\\s*</${tag}>`, 'i'));
+                return m ? m[1] : null;
+            };
+
+            let updated = false;
+
+            // Power
+            const powerVal = getValue('Power'); 
+            if (powerVal) {
+                const isOn = powerVal.toUpperCase() === 'ON';
+                if (device.state.on !== isOn) {
+                    device.state.on = isOn;
+                    updated = true;
+                }
+            }
+
+            // Volume (MasterVolume)
+            // Example: <MasterVolume><value>-40.0</value></MasterVolume>
+            // or <MasterVolume>-40.0</MasterVolume>
+            const volVal = getValue('MasterVolume'); 
+            if (volVal) {
+                let vol = parseFloat(volVal);
+                if (!isNaN(vol)) {
+                    // Check if dB (negative) or direct 0-99
+                    if (volVal.includes('-') && vol < 0) {
+                        // Normalize dB (-80 to +18) to 0-98 approx
+                        // vol + 80
+                        vol = Math.max(0, Math.round(vol + 80));
+                    } else {
+                        vol = Math.round(vol);
+                    }
+                    if (device.state.volume !== vol) {
+                        device.state.volume = vol;
+                        updated = true;
+                    }
+                }
+            }
+
+            // Input
+            const inputVal = getValue('InputFuncSelect');
+            if (inputVal) {
+                // Clean input value
+                const input = inputVal.trim();
+                
+                if (device.state.input !== input) {
+                    device.state.input = input;
+                    updated = true;
+                }
+                if (device.state.mediaTitle !== input) {
+                    device.state.mediaTitle = input;
+                    updated = true;
+                }
+            }
+
+            if (updated) {
+                this.emit('device-updated', device);
+            }
+            return true;
+
+        } catch (e) {
+            return false;
         }
     }
 
@@ -4367,6 +4454,51 @@ class DeviceManager extends EventEmitter {
                 });
             });
         });
+    }
+
+    async getDeviceApps(id) {
+        const device = this.devices.get(id);
+        if (!device) return null;
+        
+        console.log(`[DeviceManager] Fetching apps for ${device.name} (${device.type} / ${device.protocol})`);
+
+        if (device.protocol === 'samsung-tizen') {
+            try {
+                // Fallback: Return predefined common apps for Tizen
+                return [
+                    { name: 'Netflix', appId: '11101200001', icon: 'https://assets.nflxext.com/us/ffe/siteui/common/icons/nficon2016.png' },
+                    { name: 'YouTube', appId: '111299001912', icon: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png' },
+                    { name: 'Spotify', appId: '3201606009684', icon: 'https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg' },
+                    { name: 'Prime Video', appId: '3201512006785', icon: 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Prime_Video.png' },
+                    { name: 'Disney+', appId: '3201907018807', icon: 'https://upload.wikimedia.org/wikipedia/commons/3/3e/Disney%2B_logo.svg' },
+                    { name: 'Apple TV', appId: '3201807016332', icon: 'https://upload.wikimedia.org/wikipedia/commons/2/22/Apple_TV_App_Icon.png' },
+                    { name: 'Plex', appId: '3201512006963', icon: 'https://upload.wikimedia.org/wikipedia/commons/7/7b/Plex_logo_2022.svg' }
+                ];
+            } catch(e) { console.error('Error fetching Samsung apps:', e); }
+        } else if (device.protocol === 'lg-webos') {
+            return new Promise((resolve) => {
+                const lgtvClient = lgtv({ url: `ws://${device.ip}:3000` });
+                lgtvClient.on('connect', () => {
+                    lgtvClient.request('ssap://com.webos.applicationManager/listApps', (err, res) => {
+                         lgtvClient.disconnect();
+                         if (err || !res || !res.apps) {
+                             resolve(null);
+                         } else {
+                             const apps = res.apps.map(a => ({
+                                 name: a.title,
+                                 appId: a.id,
+                                 icon: a.largeIcon || a.icon // Usually local path on TV, might not work on web
+                             }));
+                             resolve(apps);
+                         }
+                    });
+                });
+                lgtvClient.on('error', () => resolve(null));
+                setTimeout(() => { lgtvClient.disconnect(); resolve(null); }, 3000);
+            });
+        }
+        
+        return null;
     }
 }
 

@@ -908,6 +908,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${inputOptions}
                     </select>
                 </div>
+
+                <div class="control-group" style="margin-top: 15px;">
+                    <label style="display:block; margin-bottom:5px; font-weight:500;">Geluidsmodus</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="controlDevice('${device.id}', 'set_sound_mode', 'movie')">Movie</button>
+                        <button class="btn btn-secondary" onclick="controlDevice('${device.id}', 'set_sound_mode', 'music')">Music</button>
+                        <button class="btn btn-secondary" onclick="controlDevice('${device.id}', 'set_sound_mode', 'game')">Game</button>
+                        <button class="btn btn-secondary" onclick="controlDevice('${device.id}', 'set_sound_mode', 'stereo')">Stereo</button>
+                        <button class="btn btn-secondary" onclick="controlDevice('${device.id}', 'set_sound_mode', 'pure_direct')">Pure Direct</button>
+                        <button class="btn btn-secondary" onclick="controlDevice('${device.id}', 'set_sound_mode', 'auto')">Auto</button>
+                    </div>
+                </div>
+
+                <!-- Cursor / Menu Navigation -->
+                <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <h4 style="text-align:center; margin-bottom:15px; font-weight:normal; opacity:0.8;">Menu Navigatie</h4>
+                    <div class="d-pad" style="margin-bottom: 20px;">
+                        <button class="d-pad-btn d-pad-up" onclick="controlDevice('${device.id}', 'cursor_up')"><i class="fas fa-chevron-up"></i></button>
+                        <button class="d-pad-btn d-pad-left" onclick="controlDevice('${device.id}', 'cursor_left')"><i class="fas fa-chevron-left"></i></button>
+                        <button class="d-pad-btn d-pad-center" onclick="controlDevice('${device.id}', 'cursor_enter')"><i class="fas fa-circle"></i></button>
+                        <button class="d-pad-btn d-pad-right" onclick="controlDevice('${device.id}', 'cursor_right')"><i class="fas fa-chevron-right"></i></button>
+                        <button class="d-pad-btn d-pad-down" onclick="controlDevice('${device.id}', 'cursor_down')"><i class="fas fa-chevron-down"></i></button>
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 20px;">
+                        <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'cursor_return')"><i class="fas fa-undo"></i> Back</button>
+                        <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'cursor_option')"><i class="fas fa-sliders-h"></i> Option</button>
+                        <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'cursor_info')"><i class="fas fa-info-circle"></i> Info</button>
+                    </div>
+                </div>
+
                 <div class="remote-grid" style="margin-top: 20px;">
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'previous')"><i class="fas fa-step-backward"></i></button>
                     <button class="remote-btn" onclick="controlDevice('${device.id}', 'play')"><i class="fas fa-play"></i></button>

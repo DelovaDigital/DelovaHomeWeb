@@ -3648,6 +3648,46 @@ class DeviceManager extends EventEmitter {
                 send(code);
             }
         }
+        else if (command === 'set_sound_mode') {
+            // value: movie, music, game, direct, stereo, auto
+            const modeMap = {
+                'movie': 'MSMOVIE',
+                'music': 'MSMUSIC',
+                'game': 'MSGAME',
+                'direct': 'MSPURE DIRECT',
+                'pure_direct': 'MSPURE DIRECT',
+                'stereo': 'MSSTEREO',
+                'auto': 'MSAUTO',
+                'standard': 'MSSTANDARD',
+                'dolby': 'MSDOLBY DIGITAL',
+                'dts': 'MSDTS SURROUND',
+                'mch_stereo': 'MSMCH STEREO',
+                'matrix': 'MSMATRIX',
+                'virtual': 'MSVIRTUAL'
+            };
+            const cmd = modeMap[value.toLowerCase()] || `MS${value.toUpperCase()}`;
+            send(cmd);
+        }
+        else if (command === 'toggle_mute') {
+             // We can't easily toggle without state, but we can try blindly or assume state manages it. 
+             // Better to send specific ON/OFF if state known, but here is a blind toggle request not standard in all protocols.
+             // Denon doesn't have a single toggle command usually, but sending MUON/MUOFF is better.
+             // If we really need toggle, we rely on the UI to send mute/unmute based on current state.
+             // But for completeness:
+             if (device.state.mute) send('MUOFF');
+             else send('MUON');
+        }
+        // Menu / Cursor Control
+        else if (command === 'cursor_up') send('MNCUP');
+        else if (command === 'cursor_down') send('MNCDN');
+        else if (command === 'cursor_left') send('MNCLT');
+        else if (command === 'cursor_right') send('MNCRT');
+        else if (command === 'cursor_enter') send('MNENT');
+        else if (command === 'cursor_return') send('MNRTN');
+        else if (command === 'cursor_option') send('MNOPT'); 
+        else if (command === 'cursor_info') send('MNINF'); 
+        else if (command === 'menu_on') send('MNMEN ON');
+        else if (command === 'menu_off') send('MNMEN OFF');
     }
 
     async handleCastCommand(device, command, value) {

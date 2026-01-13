@@ -48,6 +48,7 @@ const aiManager = require('./script/aiManager');
 const hueManager = require('./script/hueManager');
 const discoveryService = require('./script/discoveryService');
 const cloudClient = require('./script/cloudClient');
+const systemMonitor = require('./script/systemMonitor');
 const WebSocket = require('ws');
 const url = require('url');
 const fs = require('fs');
@@ -2480,6 +2481,9 @@ udpServer.bind(8888, () => {
 
     // Start Discovery Service (mDNS)
     discoveryService.start();
+
+    // Start System Monitor (Self-Monitoring)
+    systemMonitor.start();
 
   } catch (err) {
     console.error('Database connection: FAILED');

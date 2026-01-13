@@ -1090,12 +1090,14 @@ app.post('/api/spotify/control', requireSpotifyUser, async (req, res) => {
 
         res.json({ ok: true });
     } catch (err) {
-        console.error('Error handling spotify control command:', err);
         // Provide a clearer response for Spotify 'no active device' errors so callers
         // can decide whether to prompt the user or attempt a fallback (e.g., Sonos).
+        // We handle this BEFORE logging to console.error, to avoid spamming logs with expected user behavior.
         if (err && err.code === 'NO_ACTIVE_DEVICE') {
             return res.status(409).json({ ok: false, code: 'NO_ACTIVE_DEVICE', message: err.message });
         }
+
+        console.error('Error handling spotify control command:', err);
 
         // Map Spotify HTTP errors to structured responses so clients can react.
         if (err && typeof err.code === 'string' && err.code.startsWith('SPOTIFY_')) {

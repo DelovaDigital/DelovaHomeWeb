@@ -1149,13 +1149,13 @@ class DeviceManager extends EventEmitter {
                         baseOptions.headers = { 'Content-Type': 'text/xml' };
                     }
                     
-                    // Try HTTPS first since we saw redirects/errors
+                    // Try HTTPS first
                     try {
                          const httpsOptions = { ...baseOptions, agent: httpsAgent };
                          const res = await fetch(`https://${device.ip}${path}`, httpsOptions);
                          return await res.text();
                     } catch(e) {
-                         // Fallback to HTTP if HTTPS fails
+                         // Fallback to HTTP
                          const httpOptions = { ...baseOptions };
                          const res = await fetch(`http://${device.ip}${path}`, httpOptions);
                          return await res.text();
@@ -1168,31 +1168,50 @@ class DeviceManager extends EventEmitter {
             let inputs = [];
 
             // Method 1: AppCommand.xml (Newer Models - HEOS)
-            // This provides the actual renamed sources and their IDs
             try {
                 console.log(`[Denon] Fetching AppCommand.xml for ${device.ip}...`);
                 const cmdXml = '<?xml version="1.0" encoding="utf-8"?>\n<tx>\n <cmd id="1">GetSourceStatus</cmd>\n</tx>';
                 const xml = await fetchXml('/goform/AppCommand.xml', 'POST', cmdXml);
-                // console.log(`[Denon] AppCommand response: ${xml.substring(0, 200)}...`);
                 
-                // Parse <param> blocks to find inputs
-                // Structure: <param> <id>...</id> <name>...</name> <rename>...</rename> <status>...</status> </param>
-                // We use a regex to capture these groups.
-                const paramRegex = /<param>[\s\S]*?<id>(.*?)<\/id>[\s\S]*?<name>(.*?)<\/name>[\s\S]*?<rename>(.*?)<\/rename>[\s\S]*?<\/param>/gi;
-                let m;
-                while ((m = paramRegex.exec(xml)) !== null) {
-                    const id = m[1].trim();
-                    const defaultName = m[2].trim();
-                    const renamed = m[3].trim();
-                    
-                    // Check if input is hidden/deleted? 
-                    // Often <status>1</status> means available/visible.
-                    // But for now, if we have a valid ID, we take it.
-                    
-                    const name = (renamed && renamed.length > 0) ? renamed : defaultName;
-                    if (id && name) {
-                        inputs.push({ id, name });
-                    }
+                // Extract all <param> blocks first
+                const paramBlocks = xml.match(/<param>[\s\S]*?<\/param>/gi);
+                
+                if (paramBlocks) {
+                    paramBlocks.forEach(block => {
+                        const getTag = (tag) => {
+                            const m = block.match(new RegExp(`<${tag}>(.*?)<\/${tag}>`, 'i'));
+                            return m ? m[1].trim() : null;
+                        };
+
+                        const id = getTag('id');
+                        const defaultName = getTag('name');
+                        const renamed = getTag('rename');
+                        const status = getTag('status'); // 1 = visible
+                        const use = getTag('use');       // 1 = active (some models)
+                        const deleted = getTag('deleted');// 1 = deleted
+                        
+                        // Check visibility: status=1 or use=1, and deleted!=1
+                        const isVisible = (status === '1' || use === '1') && deleted !== '1';
+                        
+                        // Default to visible if status/use/deleted tags are missing but we have name+id
+                        const valid = isVisible || (!status && !use && !deleted && id && defaultName);
+
+                        if (valid && id) {
+                            // Determine display name
+                            let name = (renamed && renamed.length > 0) ? renamed : defaultName;
+                            name = name || id; // Fallback
+
+                            // Determine Command ID (SI code)
+                            // Usually just prepend SI to the ID
+                            // e.g. TV -> SITV, GAME -> SIGAME
+                            let commandId = `SI${id.toUpperCase()}`;
+                            
+                            // Special tweaks if needed
+                            if (id === 'Internet Radio') commandId = 'SIIRADIO';
+                            
+                            inputs.push({ id: commandId, name: name });
+                        }
+                    });
                 }
                 console.log(`[Denon] AppCommand found ${inputs.length} inputs.`);
             } catch (e) {
@@ -1203,73 +1222,45 @@ class DeviceManager extends EventEmitter {
             if (inputs.length === 0) {
                 try {
                     console.log(`[Denon] Fetching MainZoneXml.xml for ${device.ip}...`);
-                    // Try MainZone XML first (older/standard models)
                     const xml = await fetchXml('/goform/formMainZone_MainZoneXml.xml');
-                    // console.log(`[Denon] MainZoneXml response: ${xml.substring(0, 200)}...`);
 
-                    // Try to parse common renamed source tags
-                    // Matches <RenameSource1>Name</RenameSource1> etc.
-                    const renameMatches = [];
+                    // Regex for simplified MainZone status
+                    // Look for <RenameSource> block
+                    // In some models: <RenameSource><value>My Name</value>...</RenameSource>
+                    // In others: <RenameSource1>Name</RenameSource1>
                     
-                    // Pattern A: <RenameSource1>Name</RenameSource1>
-                    const regexA = /<RenameSource\d*>([^<]+)<\/RenameSource\d*>/gi;
-                    let mA;
-                    while ((mA = regexA.exec(xml)) !== null) {
-                        if (mA[1] && mA[1].trim()) {
-                            renameMatches.push(mA[1].trim());
-                        }
-                    }
-
-                    // Pattern B: <RenameSource><value>Name</value>...</RenameSource>
-                    if (renameMatches.length === 0) {
-                         const renameBlock = xml.match(/<RenameSource>([\s\S]*?)<\/RenameSource>/i);
-                         if (renameBlock) {
-                             const valRegex = /<value>([^<]+)<\/value>/gi;
-                             let mB;
-                             while ((mB = valRegex.exec(renameBlock[1])) !== null) {
-                                 if (mB[1] && mB[1].trim()) {
-                                     renameMatches.push(mB[1].trim());
-                                 }
-                             }
+                    const standardCodes = ['SITV', 'SIDVD', 'SIBD', 'SIGAME', 'SISAT/CBL', 'SIMPLAY', 'SIUSB', 'SINET', 'SIAUX1', 'SICD', 'SIPHONO', 'SITUNER'];
+                    
+                    // Try pattern A: <RenameSource1>...</RenameSource1>
+                    let foundAny = false;
+                    for (let i = 0; i < standardCodes.length; i++) {
+                         // Check explicit numbered rename tags
+                         const tagVariations = [`RenameSource${i+1}`, `InputFuncSelect${i+1}`]; // some variation
+                         
+                         // Try specific rename tags
+                         const regex = new RegExp(`<RenameSource${i+1}>([^<]+)<\/RenameSource${i+1}>`, 'i');
+                         const m = xml.match(regex);
+                         if (m && m[1].trim()) {
+                             inputs.push({ id: standardCodes[i], name: m[1].trim() });
+                             foundAny = true;
                          }
                     }
 
-                    if (renameMatches.length > 0) {
-                        console.log(`[Denon] Found ${renameMatches.length} renamed sources in MainZoneXml.`);
-                        // Map these names to standard SI codes if possible, or just use index
-                        // Denon usually maps Source1 -> TV, Source2 -> DVD, etc. but it varies.
-                        // A safer bet is to just list them and let the user select.
-                        // But we need the ID (SI code) to send the command.
-                        // We can try to infer the ID from the position or other tags.
-                        
-                        // Better approach: Fetch /goform/AppCommand.xml with GetSourceStatus (newer models)
-                        // Or just use a fixed map for the first N sources found.
-                        
-                        const standardCodes = ['SITV', 'SIDVD', 'SIBD', 'SIGAME', 'SISAT/CBL', 'SIMPLAY', 'SIUSB', 'SINET', 'SIAUX1', 'SICD', 'SIPHONO', 'SITUNER'];
-                        
-                        inputs = renameMatches.map((name, index) => {
-                            // If we have more names than codes, we might have an issue, but usually it matches.
-                            // We can also try to guess the code from the name.
-                            let id = standardCodes[index] || `SI${name.toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
-                            
-                            // Special case: if name is "Apple TV", it might be mapped to DVD or GAME.
-                            // Without a proper mapping table from the AVR, we are guessing.
-                            // However, usually RenameSource1 corresponds to the first input button.
-                            
-                            return { id, name };
-                        });
-                    } else {
-                        // Fallback: try to extract things that look like input names
-                        const approx = [];
-                        const candidateMatches = xml.match(/>(TV|HDMI\d|HDMI\s?\d|BLUETOOTH|AUX|TUNER|NET|PHONO|CD|GAME|USB|ARC|BD|DVD)<\//gi);
-                        if (candidateMatches) {
-                            candidateMatches.forEach(m => {
-                                const name = m.replace(/[<>\/]*/g, '').trim();
-                                approx.push({ id: `SI${name.toUpperCase().replace(/\s/g, '')}`, name });
-                            });
-                        }
-
-                        if (approx.length) inputs = approx;
+                    if (!foundAny) {
+                         // Fallback to searching basic tags that imply presence
+                         // <InputFuncList><value>SOURCE</value>...</InputFuncList> is sometimes available
+                         const inputFuncList = xml.match(/<InputFuncList>([\s\S]*?)<\/InputFuncList>/i);
+                         if (inputFuncList) {
+                             const vals = inputFuncList[1].match(/<value>(.*?)<\/value>/gi);
+                             if (vals) {
+                                 vals.forEach(v => {
+                                     const raw = v.replace(/<\/?value>/g, '').trim();
+                                     if (raw) {
+                                         inputs.push({ id: `SI${raw}`, name: raw });
+                                     }
+                                 });
+                             }
+                         }
                     }
                 } catch (e) {
                     console.log('[Denon] MainZoneXml failed:', e.message);

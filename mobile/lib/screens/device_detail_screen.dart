@@ -96,7 +96,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           children: [
             Container(
               width: 40, height: 4, 
-              decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 16),
             Text(t('select_input'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -340,7 +340,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
       ),
@@ -350,7 +350,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                 color: (activeColor ?? Colors.grey).withOpacity(0.2),
+                 color: (activeColor ?? Colors.grey).withValues(alpha: 0.2),
                  shape: BoxShape.circle,
               ),
               child: Icon(icon, color: activeColor ?? (isDark ? Colors.white : Colors.black), size: 20),
@@ -364,7 +364,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14, elevation: 4),
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
                 activeTrackColor: activeColor ?? Theme.of(context).colorScheme.primary,
-                inactiveTrackColor: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
+                inactiveTrackColor: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1),
                 thumbColor: Colors.white,
                 trackShape: const RoundedRectSliderTrackShape(),
               ),
@@ -461,9 +461,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       onTap: () {
         _sendCommand('set_color', {
             'value': {
-              'r': (color.red),
-              'g': (color.green),
-              'b': (color.blue)
+              'r': color.r * 255.0.round().clamp(0, 255),
+              'g': color.g * 255.0.round().clamp(0, 255),
+              'b': color.b * 255.0.round().clamp(0, 255)
             }
         });
       },
@@ -476,7 +476,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.4),
+              color: color.withValues(alpha: 0.4),
               blurRadius: 8,
               offset: const Offset(0, 2),
             )
@@ -581,7 +581,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                      child: Container(
                        padding: const EdgeInsets.all(16),
                        decoration: BoxDecoration(
-                         color: isPoweredOn ? Colors.cyan.withOpacity(0.2) : Colors.grey.withOpacity(0.1),
+                         color: isPoweredOn ? Colors.cyan.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.1),
                          shape: BoxShape.circle,
                        ),
                        child: Icon(
@@ -626,7 +626,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                            Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.15),
+                                color: Colors.orange.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -659,7 +659,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             width: 2,
                           ),
                           boxShadow: isPoweredOn ? [
-                            BoxShadow(color: Colors.cyan.withOpacity(0.4), blurRadius: 12, spreadRadius: 2)
+                            BoxShadow(color: Colors.cyan.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 2)
                           ] : [],
                         ),
                         child: Icon(
@@ -700,14 +700,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       height: 160,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: widget.device.status.isLocked == true ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                        color: widget.device.status.isLocked == true ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
                         border: Border.all(
                           color: widget.device.status.isLocked == true ? Colors.red : Colors.green,
                           width: 4,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: (widget.device.status.isLocked == true ? Colors.red : Colors.green).withOpacity(0.2),
+                            color: (widget.device.status.isLocked == true ? Colors.red : Colors.green).withValues(alpha: 0.2),
                             blurRadius: 30,
                             spreadRadius: 5,
                           )
@@ -791,7 +791,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                            trackHeight: 20,
                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 16),
                            activeTrackColor: Colors.cyanAccent,
-                           inactiveTrackColor: Colors.grey.withOpacity(0.2),
+                           inactiveTrackColor: Colors.grey.withValues(alpha: 0.2),
                         ),
                         child: Slider(
                           value: (widget.device.status.targetTemperature ?? 21).clamp(10, 30),
@@ -1081,7 +1081,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                           children: [
                              _mediaButton(Icons.skip_previous, () => _sendCommand('previous')),
                              Container(
-                               decoration: BoxDecoration(color: Colors.cyanAccent.withOpacity(0.2), shape: BoxShape.circle),
+                               decoration: BoxDecoration(color: Colors.cyanAccent.withValues(alpha: 0.2), shape: BoxShape.circle),
                                child: _mediaButton(Icons.play_arrow, () => _sendCommand('play'), size: 40, color: Colors.cyanAccent),
                              ),
                              _mediaButton(Icons.pause, () => _sendCommand('pause')),
@@ -1140,9 +1140,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+            color: isSelected ? color.withValues(alpha: 0.2) : Colors.transparent,
             shape: BoxShape.circle,
-            border: Border.all(color: isSelected ? color : Colors.grey.withOpacity(0.5))
+            border: Border.all(color: isSelected ? color : Colors.grey.withValues(alpha: 0.5))
           ),
           child: InkWell(
             onTap: () => _sendCommand('set_mode', {'value': label.toLowerCase()}),
@@ -1166,7 +1166,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: (color ?? (isDark ? Colors.white : Colors.black)).withOpacity(0.1),
+              color: (color ?? (isDark ? Colors.white : Colors.black)).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: color ?? (isDark ? Colors.white : Colors.black87), size: 26),
@@ -1183,7 +1183,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       width: 100, // Fixed width for grid look
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -1227,7 +1227,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                width: 200, height: 200,
                decoration: BoxDecoration(
                  shape: BoxShape.circle,
-                 color: (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withOpacity(0.05),
+                 color: (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black).withValues(alpha: 0.05),
                ),
              ),
              Positioned(top: 10, child: _dpadBtn(Icons.keyboard_arrow_up, 'up')),
@@ -1240,8 +1240,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   width: 60, height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.cyanAccent.withOpacity(0.3),
-                    boxShadow: [BoxShadow(color: Colors.cyanAccent.withOpacity(0.2), blurRadius: 10)]
+                    color: Colors.cyanAccent.withValues(alpha: 0.3),
+                    boxShadow: [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.2), blurRadius: 10)]
                   ),
                   child: const Center(child: Text("OK", style: TextStyle(fontWeight: FontWeight.bold))),
                 ),
@@ -1273,7 +1273,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           Stack(
             alignment: Alignment.center,
             children: [
-               Container(width: 180, height: 180, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withOpacity(0.3))),
+               Container(width: 180, height: 180, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.black.withValues(alpha: 0.3))),
                Positioned(top: 0, child: _dpadBtn(Icons.keyboard_arrow_up, 'nudge_up')),
                Positioned(bottom: 0, child: _dpadBtn(Icons.keyboard_arrow_down, 'nudge_down')),
                Positioned(left: 0, child: _dpadBtn(Icons.keyboard_arrow_left, 'nudge_left')),
@@ -1325,10 +1325,10 @@ class GlassContainer extends StatelessWidget {
           height: height,
           padding: padding ?? const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
-            color: (isDark ? Colors.white : Colors.black).withOpacity(0.07),
+            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.07),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: (isDark ? Colors.white : Colors.black).withOpacity(0.1),
+              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1),
             ),
           ),
           child: child,

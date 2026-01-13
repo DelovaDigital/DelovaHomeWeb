@@ -26,12 +26,18 @@
             <label>Device Name</label>
             <input type="text" id="deviceName" placeholder="My-PC">
         </div>
-        <button id="saveBtn">Save & Restart</button>
+        <div style="display: flex; gap: 10px;">
+            <button id="saveBtn" style="flex: 1;">Save & Restart</button>
+            <button id="updateBtn" style="flex: 1; background-color: #28a745;">Check Updates</button>
+        </div>
         <div class="status" id="status">Status: Connecting...</div>
     </div>
 
     <div class="card">
-        <h1>Live Metrics</h1>
+        <h1>Control & Status</h1>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+             <button id="dashboardBtn" style="background-color: #6fb98f;">Open Hub Dashboard</button>
+        </div>
         <div class="metrics" id="metricsDisplay">
             Waiting for data...
         </div>
@@ -43,6 +49,8 @@
         const hubUrlInput = document.getElementById('hubUrl');
         const deviceNameInput = document.getElementById('deviceName');
         const saveBtn = document.getElementById('saveBtn');
+        const updateBtn = document.getElementById('updateBtn');
+        const dashboardBtn = document.getElementById('dashboardBtn');
         const statusDiv = document.getElementById('status');
         const metricsDiv = document.getElementById('metricsDisplay');
 
@@ -56,11 +64,17 @@
             statusDiv.style.color = status.includes('Connected') ? 'green' : (status.includes('Error') ? 'red' : '#666');
         });
 
+        ipcRenderer.on('update-message', (event, message) => {
+            alert(message);
+        });
+
         ipcRenderer.on('metrics', (event, data) => {
             metricsDiv.innerHTML = `
                 CPU Load: ${data.cpu_load}%<br>
                 Power: ~${data.power} W<br>
-                RAM: ${Math.round(data.memory_used / 1024 / 1024 / 1024 * 10) / 10} / ${Math.round(data.memory_total / 1024 / 1024 / 1024)} GB
+                RAM: ${Math.round(data.memory_used / 1024 / 1024 / 1024 * 10) / 10} / ${Math.round(data.memory_total / 1024 / 1024 / 1024)} GB<br>
+                Battery: ${data.battery_level !== null ? data.battery_level + '%' : 'N/A'}<br>
+                IP: ${data.ip}
             `;
         });
 
@@ -70,6 +84,20 @@
                 deviceName: deviceNameInput.value
             });
             statusDiv.textContent = 'Status: Saving...';
+        });
+
+        updateBtn.addEventListener('click', () => {
+             updateBtn.disabled = true;
+             updateBtn.textContent = 'Checking...';
+             ipcRenderer.send('check-for-updates');
+             setTimeout(() => {
+                 updateBtn.disabled = false;
+                 updateBtn.textContent = 'Check Updates';
+             }, 5000);
+        });
+
+        dashboardBtn.addEventListener('click', () => {
+            ipcRenderer.send('open-dashboard');
         });
     </script>
 </body>

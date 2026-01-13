@@ -236,6 +236,7 @@ async function reportMetrics(deviceName) {
             name: deviceName,
             type: 'computer',
             ip: getLocalIp(), // Include IP for linking
+            mac: getMacAddress(), // Include MAC for stricter linking
             power: parseFloat(estimatedPower.toFixed(2)),
             cpu_load: parseFloat(cpuLoad.currentLoad.toFixed(1)),
             memory_used: mem.used,
@@ -267,6 +268,19 @@ function getLocalIp() {
         }
     }
     return '127.0.0.1';
+}
+
+function getMacAddress() {
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+            if (net.family === 'IPv4' && !net.internal && net.mac && net.mac !== '00:00:00:00:00:00') {
+                return net.mac;
+            }
+        }
+    }
+    return null;
 }
 
 app.whenReady().then(() => {
@@ -328,6 +342,35 @@ ipcMain.on('save-config', (event, config) => {
     store.set('hubUrl', config.hubUrl);
     store.set('deviceName', config.deviceName);
     startMonitoring(); // Restart with new config
+});
+
+ipcMain.on('check-for-updates', () => {
+    log.info('Manual update check initiated');
+    autoUpdater.checkForUpdates();
+});
+
+ipcMain.on('open-dashboard', () => {
+    const hubUrl = store.get('hubUrl', DEFAULT_CONFIG.hubUrl);
+    // Convert mqtt://192.168.x.x:1883 to http://192.168.x.x:3000
+    try {
+        const urlObj = new URL(hubUrl);
+        const dashboardUrl = `http://${urlObj.hostname}:3000`; // Assuming port 3000
+        shell.openExternal(dashboardUrl);
+    } catch (e) {
+        console.error('Invalid Hub URL:', e);
+    }
+});
+
+autoUpdater.on('update-not-available', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-message', 'OmniHome Agent is up to date.');
+    }
+});
+
+autoUpdater.on('error', (err) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('update-message', 'Update Check Failed: ' + (err.message || err));
+    }
 });
 
 ipcMain.on('open-settings', () => {

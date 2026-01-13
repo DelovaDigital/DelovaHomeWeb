@@ -4160,23 +4160,35 @@ class DeviceManager extends EventEmitter {
         let device = null;
         const agentId = `pc-${payload.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-        // 1. IP Match (Strongest Link)
-        if (payload.ip) {
-            for (const [_, d] of this.devices) {
-                if (d.ip === payload.ip) {
+        // 1. MAC Match (Strongest Link)
+        if (payload.mac) {
+             for (const [_, d] of this.devices) {
+                if (d.mac && d.mac.toLowerCase() === payload.mac.toLowerCase()) {
                     device = d;
-                    // console.log(`[DeviceManager] Linked Agent '${payload.name}' to Device '${d.name}' via IP ${payload.ip}`);
+                    // console.log(`[DeviceManager] Linked Agent '${payload.name}' to Device '${d.name}' via MAC ${payload.mac}`);
                     break;
                 }
             }
         }
 
-        // 2. ID Match (if IP match failed)
+        // 2. IP Match (If MAC not found)
+        if (!device && payload.ip) {
+            for (const [_, d] of this.devices) {
+                if (d.ip === payload.ip) {
+                    device = d;
+                    // Auto-fill MAC if missing on device
+                    if (!d.mac && payload.mac) d.mac = payload.mac;
+                    break;
+                }
+            }
+        }
+
+        // 3. ID Match (if IP match failed)
         if (!device) {
              device = this.devices.get(agentId);
         }
 
-        // 3. Name Match (Fuzzy)
+        // 4. Name Match (Fuzzy)
         if (!device) {
              for (const [_, d] of this.devices) {
                  if (d.name.toLowerCase() === payload.name.toLowerCase()) {
@@ -4191,11 +4203,11 @@ class DeviceManager extends EventEmitter {
         if (device) {
             // Update existing
             let updated = false;
-            // Only update IP if device doesn't have one or it changed (and we trust the agent)
-            if (payload.ip && device.ip !== payload.ip) { 
-                // device.ip = payload.ip; updated = true; 
-                // Caution: changing IP might break other protocols if agent reports a different interface IP
-            }
+            
+            // Update Core Identifiers if missing or trusted
+            if (payload.mac && device.mac !== payload.mac) { device.mac = payload.mac; updated = true; }
+            // Optional: Update IP if we trust the agent's report
+            // if (payload.ip && device.ip !== payload.ip) { device.ip = payload.ip; updated = true; }
             
             if (!device.state.on) { device.state.on = true; updated = true; }
             if (device.state.power !== payload.power) { device.state.power = payload.power; updated = true; }
@@ -4204,7 +4216,7 @@ class DeviceManager extends EventEmitter {
             if (device.state.ram_total !== payload.memory_total) { device.state.ram_total = payload.memory_total; updated = true; }
             if (device.state.battery !== payload.battery_level) { device.state.battery = payload.battery_level; updated = true; }
             if (device.state.charging !== payload.charging) { device.state.charging = payload.charging; updated = true; }
-             if (device.state.platform !== payload.platform) { device.state.platform = payload.platform; updated = true; }
+            if (device.state.platform !== payload.platform) { device.state.platform = payload.platform; updated = true; }
             
             // Capabilities
             if (!device.capabilities.includes('pc_control')) {

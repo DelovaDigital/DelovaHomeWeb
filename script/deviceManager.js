@@ -1116,6 +1116,20 @@ class DeviceManager extends EventEmitter {
                  console.log(`[DeviceManager] Upgrading protocol for ${device.ip}: ${existingDevice.protocol} -> ${device.protocol}`);
                  existingDevice.protocol = device.protocol;
                  updated = true;
+            } else if (device.protocol === 'denon-avr' && existingDevice.protocol !== 'denon-avr') {
+                 console.log(`[DeviceManager] Upgrading protocol for ${device.ip}: ${existingDevice.protocol} -> ${device.protocol}`);
+                 existingDevice.protocol = device.protocol;
+                 existingDevice.type = 'receiver'; // Ensure type
+                 // Trigger input load
+                 if (!existingDevice.inputs) {
+                     this.loadDenonInputs(existingDevice);
+                 }
+                 updated = true;
+            }
+
+            // Check if Denon inputs need loading (even if protocol didn't change, maybe inputs are missing)
+            if (existingDevice.protocol === 'denon-avr' && (!existingDevice.inputs || existingDevice.inputs.length === 0)) {
+                this.loadDenonInputs(existingDevice);
             }
             
             // Special case for Apple TV: If we found it via AirPlay/MDNS, we want to ensure we keep the Apple TV identity

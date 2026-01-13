@@ -55,6 +55,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   String t(String key) => AppTranslations.get(key, lang: _lang);
 
   Future<void> _showInputDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // Prefer device-provided inputs (e.g., Denon) if available, else fallback to common inputs
     final List<Map<String, String>> options = [];
     final inputs = widget.device.inputs;
@@ -81,14 +82,39 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       ]);
     }
 
-    final choice = await showDialog<String>(
+    final choice = await showModalBottomSheet<String>(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(t('select_input')),
-        children: options.map((opt) => SimpleDialogOption(
-          onPressed: () => Navigator.pop(context, opt['value'] as String),
-          child: Text(opt['label'] as String),
-        )).toList(),
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+           color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4, 
+              decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 16),
+            Text(t('select_input'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: options.map((opt) => ListTile(
+                    leading: const Icon(Icons.input),
+                    title: Text(opt['label'] as String),
+                    onTap: () => Navigator.pop(context, opt['value'] as String),
+                  )).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
 

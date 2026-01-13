@@ -101,6 +101,7 @@ class DiscoveryService extends EventEmitter {
         });
     }
 
+    async handleMDNSService(service) {
         // Create a unique ID for the service discovery, respecting previous logic
         let device = null;
         const name = service.name || '';

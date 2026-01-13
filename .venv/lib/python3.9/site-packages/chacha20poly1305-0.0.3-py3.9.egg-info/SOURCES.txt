@@ -1,0 +1,13 @@
+README.md
+setup.cfg
+setup.py
+chacha20poly1305/__init__.py
+chacha20poly1305/chacha.py
+chacha20poly1305/compat.py
+chacha20poly1305/cryptomath.py
+chacha20poly1305/poly1305.py
+chacha20poly1305.egg-info/PKG-INFO
+chacha20poly1305.egg-info/SOURCES.txt
+chacha20poly1305.egg-info/dependency_links.txt
+chacha20poly1305.egg-info/requires.txt
+chacha20poly1305.egg-info/top_level.txt

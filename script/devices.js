@@ -368,23 +368,31 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (isOn) {
             const hasMediaProtocol = (device.protocols && (device.protocols.includes('airplay') || device.protocols.includes('raop') || device.protocols.includes('spotify-connect') || device.protocols.includes('googlecast')));
             
+            // Sensor Info Helper
+            let sensorInfo = '';
+            const fmt = (n) => Math.round(n * 10) / 10;
+            if (device.state.temperature != null) {
+                sensorInfo = `${fmt(device.state.temperature)}°C`;
+                if (device.state.humidity != null) sensorInfo += ` | ${Math.round(device.state.humidity)}%`;
+            }
+
             if (type === 'light') summary = `${device.state.brightness || 100}%`;
-            else if (type === 'thermostat') summary = `${device.state.temperature}°C`;
-            else if (type === 'sensor') summary = `${device.state.temperature}°C`;
+            else if (type === 'thermostat' || type === 'sensor') summary = sensorInfo || `${device.state.temperature}°C`;
             else if (type === 'lock') summary = device.state.isLocked ? 'Locked' : 'Unlocked';
             else if ((type === 'tv' || type === 'speaker' || type === 'receiver' || hasMediaProtocol) && device.state.mediaTitle) {
                 summary = `<span style="font-size: 0.9em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaTitle}</span>`;
                 if (device.state.mediaArtist) {
                     summary += `<span style="font-size: 0.8em; color: #aaa; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaArtist}</span>`;
                 }
+                if (sensorInfo) summary += `<span style="font-size: 0.8em; opacity: 0.8; display: block; margin-top: 2px;">${sensorInfo}</span>`;
             }
+            else if (sensorInfo) summary = sensorInfo;
             else summary = 'Aan';
 
-            // Append Power Usage if available
+            // Append Power Usage if available and not already redundant with simple 'Aan' which we replaced
             if (device.state.power > 0) {
-                // If summary is just "Aan", replace it with power
                 if (summary === 'Aan') summary = `${device.state.power} W`;
-                else summary += ` <span style="opacity:0.7; font-size:0.9em;">• ${device.state.power} W</span>`;
+                else if (!summary.includes('W')) summary += ` <span style="opacity:0.7; font-size:0.9em;">• ${device.state.power} W</span>`;
             }
         } else {
             summary = 'Uit';

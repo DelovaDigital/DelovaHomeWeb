@@ -1494,9 +1494,150 @@ class DeviceManager extends EventEmitter {
         }
     }
 
+    getPythonPath() {
+        if (this.pythonPath) return this.pythonPath;
+        const isWin = process.platform === 'win32';
+        const candidates = isWin ? [
+            path.join(__dirname, '../.venv/Scripts/python.exe'),
+            path.join(process.cwd(), '.venv/Scripts/python.exe'),
+            'python'
+        ] : [
+            path.join(process.cwd(), '.venv/bin/python'),
+            path.join(process.cwd(), 'script/.venv/bin/python'),
+            '/usr/bin/python3',
+            'python3'
+        ];
+        
+        for (const cand of candidates) {
+            if (cand.indexOf('/') === -1 && cand.indexOf('\\') === -1) { 
+                 this.pythonPath = cand; 
+                 return cand;
+            }
+            if (fs.existsSync(cand)) {
+                this.pythonPath = cand;
+                return cand;
+            }
+        }
+        return 'python3';
+    }
+
+    async refreshHomeKitSensor(device) {
+        // Poll every 60 seconds
+        const now = Date.now();
+        if (device.lastHomeKitPoll && (now - device.lastHomeKitPoll) < 60000) return;
+        device.lastHomeKitPoll = now;
+
+        const { exec } = require('child_process');
+
+        return new Promise((resolve) => {
+            // Use macOS Shortcuts to get data since we can't pair directly while it's in the Home app
+            exec(`shortcuts run "Read HomePod"`, (error, stdout, stderr) => {
+                if (error) {
+                    // console.log('Shortcuts error:', error.message);
+                    resolve();
+                    return;
+                }
+                if (!stdout || !stdout.trim()) {
+                    resolve();
+                    return;
+                }
+
+                try {
+                    // Robust parsing for "Read HomePod" shortcut output
+                    // Handles formats like: {"temperature": 21,4 °C, "humidity":54} or standard JSON
+                    const output = stdout.trim();
+                    let temp = null;
+                    let humidity = null;
+
+                    // Regex to find numbers after keys, supporting dots and commas
+                    const tempMatch = output.match(/"temperature"\s*:\s*["']?([0-9.,]+)/);
+                    if (tempMatch) {
+                        temp = parseFloat(tempMatch[1].replace(',', '.'));
+                    }
+
+                    const humMatch = output.match(/"humidity"\s*:\s*["']?([0-9.,]+)/);
+                    if (humMatch) {
+                        humidity = parseFloat(humMatch[1].replace(',', '.'));
+                    }
+                    
+                    let updated = false;
+
+                    // If we got data, the device is definitely ON/Reachable
+                    if (!device.state.on) {
+                        device.state.on = true;
+                        updated = true;
+                    }
+
+                    if (temp !== null && !isNaN(temp) && device.state.temperature !== temp) {
+                        device.state.temperature = temp;
+                        updated = true;
+                    }
+                    if (humidity !== null && !isNaN(humidity) && device.state.humidity !== humidity) {
+                        device.state.humidity = humidity;
+                        updated = true;
+                    }
+
+                    if (updated) {
+                         // console.log(`[HomeKit] ${device.name}: ${temp}C ${humidity}%`);
+                         this.emit('device-updated', device);
+                    }
+                } catch (e) {
+                     // console.error('[HomeKit] Parse error:', e);
+                }
+                resolve();
+            });
+        });
+    }
+                            if (!acc.services) continue;
+                            for (const srv of acc.services) {
+                                if (!srv.characteristics) continue;
+                                for (const char of srv.characteristics) {
+                                    // 00000011 -> Current Temperature
+                                    if (char.type.startsWith('00000011')) temp = char.value;
+                                    // 00000010 -> Current Relative Humidity
+                                    if (char.type.startsWith('00000010')) humidity = char.value;
+                                }
+                            }
+                        }
+                    }
+
+                    let updated = false;
+
+                    // If we got data, the device is definitely ON/Reachable
+                    if (!device.state.on) {
+                        device.state.on = true;
+                        updated = true;
+                    }
+
+                    if (temp !== null && device.state.temperature !== temp) {
+                        device.state.temperature = temp;
+                        updated = true;
+                    }
+                    if (humidity !== null && device.state.humidity !== humidity) {
+                        device.state.humidity = humidity;
+                        updated = true;
+                    }
+
+                    if (updated) {
+                         // console.log(`[HomeKit] ${device.name}: ${temp}C ${humidity}%`);
+                         this.emit('device-updated', device);
+                    }
+                } catch (e) {
+                     // console.error('[HomeKit] Parse error:', e);
+                }
+                resolve();
+            });
+        });
+    }
+
     async refreshDevice(id) {
         const device = this.devices.get(id);
         if (!device) return;
+
+        // HomeKit Sensor Refresh
+        if (device.capabilities && device.capabilities.includes('homekit') && device.capabilities.includes('sensor')) {
+             await this.refreshHomeKitSensor(device);
+        }
 
         // Skip Hue devices (managed by hueManager)
         if (device.protocol === 'hue') return;

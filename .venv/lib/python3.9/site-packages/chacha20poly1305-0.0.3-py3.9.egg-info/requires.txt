@@ -1,0 +1,10 @@
+
+[dev]
+pep8
+tox
+pypandoc
+
+[docs]
+Sphinx>=1.0
+sphinx_rtd_theme
+sphinxcontrib-programoutput

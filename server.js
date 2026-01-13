@@ -756,6 +756,60 @@ app.post('/api/users', async (req, res) => {
     }
 });
 
+// Webhook Endpoint for HomeKit Data (e.g. from Shortcuts Automation)
+app.post('/api/webhooks/homekit', async (req, res) => {
+    try {
+        const { deviceId, name, temperature, humidity } = req.body;
+        console.log(`[Webhook] Received HomeKit data for ${name || deviceId}: ${temperature}°C ${humidity}%`);
+        
+        // Find device by ID or Name
+        let device = null;
+        if (deviceId) {
+            device = deviceManager.devices.get(deviceId);
+        }
+        
+        if (!device && name) {
+            // Find by name (fuzzy match or exact)
+            for (const d of deviceManager.devices.values()) {
+                if (d.name && (d.name.toLowerCase() === name.toLowerCase() || d.name.toLowerCase().includes(name.toLowerCase()))) {
+                    device = d;
+                    break;
+                }
+            }
+        }
+
+        if (device) {
+             let updated = false;
+             
+             // Ensure numeric parsing
+             const t = parseFloat(temperature);
+             const h = parseFloat(humidity);
+
+             if (!isNaN(t) && device.state.temperature !== t) {
+                 device.state.temperature = t;
+                 updated = true;
+             }
+             
+             if (!isNaN(h) && device.state.humidity !== h) {
+                 device.state.humidity = h;
+                 updated = true;
+             }
+
+             if (updated) {
+                 deviceManager.emit('device-updated', device);
+                 res.json({ ok: true, message: 'Updated' });
+             } else {
+                 res.json({ ok: true, message: 'No changes' });
+             }
+        } else {
+             res.status(404).json({ ok: false, message: 'Device not found' });
+        }
+    } catch (e) {
+        console.error('[Webhook] Error:', e);
+        res.status(500).json({ ok: false, message: e.message });
+    }
+});
+
 // Update User Role Endpoint
 app.put('/api/users/:id', async (req, res) => {
     const userId = req.params.id;

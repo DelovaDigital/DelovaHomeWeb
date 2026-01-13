@@ -48,6 +48,8 @@ def main():
         tokens = load_tokens()
         token = tokens.get(ip)
         
+        print(json.dumps({"status": "debug", "message": f"Token loaded for {ip}: {token}"}), flush=True)
+
         # If we found a working port before, prioritize it
         ports = [8002, 8001]
         if cached_port == 8001:
@@ -57,16 +59,20 @@ def main():
 
         for port in ports:
             try:
-                # Reduced timeout for snappier UI response
+                # Reduced timeout for snappier UI response, but enough for pairing
                 # If cached_port is set, we expect it to work instantly.
-                t_out = 2 if cached_port == port else 0.5 
+                # If pairing (token invalid), we need more time for user to click Allow
+                t_out = 5 if cached_port == port else 20 
                 
                 # Try Port
-                tv = SamsungTVWS(host=ip, port=port, token=token, name='DelovaHome', timeout=3)
+                tv = SamsungTVWS(host=ip, port=port, token=token, name='DelovaHome', timeout=t_out)
                 tv.open()
                 
+                print(json.dumps({"status": "debug", "message": f"Connected. Current token: {tv.token}"}), flush=True)
+
                 if tv.token:
                     if tv.token != token:
+                        print(json.dumps({"status": "debug", "message": "Saving new token..."}), flush=True)
                         save_token(ip, tv.token)
 
                 print(json.dumps({"status": "connected", "ip": ip, "port": port}), flush=True)
@@ -74,6 +80,7 @@ def main():
                 return True
             except Exception as e:
                  # Only log detailed debug if we are struggling
+                 print(json.dumps({"status": "debug", "message": f"Port {port} failed: {e}"}), flush=True)
                  pass
         
         print(json.dumps({"error": "Connection failed on both ports", "type": "connection_error"}), flush=True)

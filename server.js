@@ -770,6 +770,10 @@ app.post('/api/webhooks/homekit', async (req, res) => {
         
         if (!device && name) {
             // Find by name (fuzzy match or exact)
+            // Log available devices to help debugging
+            const availableNames = Array.from(deviceManager.devices.values()).map(d => d.name);
+            console.log(`[Webhook] Available devices: ${availableNames.join(', ')}`);
+
             for (const d of deviceManager.devices.values()) {
                 if (d.name && (d.name.toLowerCase() === name.toLowerCase() || d.name.toLowerCase().includes(name.toLowerCase()))) {
                     device = d;
@@ -781,9 +785,16 @@ app.post('/api/webhooks/homekit', async (req, res) => {
         if (device) {
              let updated = false;
              
-             // Ensure numeric parsing
-             const t = parseFloat(temperature);
-             const h = parseFloat(humidity);
+             // Ensure numeric parsing -- Fix comma issues again just in case input is string "21,4"
+             const parseVal = (v) => {
+                 if (typeof v === 'string') return parseFloat(v.replace(',', '.'));
+                 return parseFloat(v);
+             }
+
+             const t = parseVal(temperature);
+             const h = parseVal(humidity);
+             
+             console.log(`[Webhook] Updating ${device.name} -> Temp: ${t}, Hum: ${h}`);
 
              if (!isNaN(t) && device.state.temperature !== t) {
                  device.state.temperature = t;

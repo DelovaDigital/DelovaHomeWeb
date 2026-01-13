@@ -1120,8 +1120,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             tabControlsContent = `
                 ${errorHtml}
-                <i class="${icon} modal-device-icon ${isOn ? 'on' : ''}"></i>
-                ${controlsHtml}
+                <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                    <i class="${icon} modal-device-icon ${isOn ? 'on' : ''}" style="margin-bottom: 20px;"></i>
+                    <div style="width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px;">
+                        ${controlsHtml}
+                    </div>
+                </div>
             `;
         }
 

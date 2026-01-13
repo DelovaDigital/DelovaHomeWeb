@@ -4,6 +4,7 @@ import json
 import argparse
 from pyatv import scan, pair
 from pyatv.const import Protocol
+from pyatv.conf import ManualService
 
 async def main():
     parser = argparse.ArgumentParser()
@@ -21,6 +22,12 @@ async def main():
     
     # Determine available protocols
     available_protocols = [s.protocol for s in conf.services]
+    
+    # Check if MRP is missing and inject it if so
+    if Protocol.MRP not in available_protocols:
+        print("DEBUG: MRP protocol not advertised. Injecting manual MRP service on port 49152...", file=sys.stdout)
+        conf.add_service(ManualService("mrp", Protocol.MRP, 49152, {}))
+        available_protocols.append(Protocol.MRP)
     
     # Order of preference
     preference = [Protocol.MRP, Protocol.AirPlay, Protocol.Companion]

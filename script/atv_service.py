@@ -243,7 +243,10 @@ async def main():
                     except Exception as e2:
                         print(json.dumps({"error": str(e2)}), flush=True)
                 else:
-                    print(json.dumps({"error": str(e)}), flush=True)
+                    msg = str(e)
+                    if "blocked" in msg.lower() and device_conf.get('protocol') == 'airplay':
+                        msg += " (AirPlay protocol does not support remote control. Please re-pair your Apple TV to use MRP protocol.)"
+                    print(json.dumps({"error": msg}), flush=True)
                     # If error message indicates connection loss, reset atv
                     if "not connected" in str(e).lower() or "closed" in str(e).lower():
                         atv = None

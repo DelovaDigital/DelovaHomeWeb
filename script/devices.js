@@ -596,23 +596,13 @@ document.addEventListener('DOMContentLoaded', () => {
             modalContent.classList.remove('wide');
         }
         
+        // Use uniform icon logic
         let icon = 'fa-question-circle';
-        if (type === 'light') icon = 'fa-lightbulb';
+        if (typeof getDeviceIconClass === 'function') {
+            icon = getDeviceIconClass(device);
+        } else if (type === 'light') icon = 'fa-lightbulb'; // Fallback
         else if (type === 'tv') icon = 'fa-tv';
         else if (type === 'speaker') icon = 'fa-music';
-        else if (type === 'thermostat') icon = 'fa-thermometer-half';
-        else if (type === 'lock') icon = device.state.isLocked ? 'fa-lock' : 'fa-lock-open';
-        else if (type === 'cover') icon = 'fa-warehouse';
-        else if (type === 'vacuum') icon = 'fa-robot';
-        else if (type === 'sensor') icon = 'fa-wifi';
-        else if (type === 'printer') icon = 'fa-print';
-        else if (type === 'receiver' || device.name.toLowerCase().includes('denon')) icon = 'fa-compact-disc';
-        else if (type === 'camera') icon = 'fa-video';
-        else if (type === 'ps5' || type === 'console') icon = 'fa-gamepad';
-        else if (type === 'shelly' || type === 'switch') icon = 'fa-toggle-on';
-        else if (type === 'computer' || type === 'workstation' || type === 'pc' || type === 'mac') icon = 'fa-desktop';
-        else if (type === 'nas') icon = 'fa-server';
-        else if (type === 'raspberrypi' || type === 'rpi') icon = 'fa-microchip';
 
         let controlsHtml = '';
 
@@ -723,8 +713,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'home')">
                             <i class="fas fa-home"></i> Home
                         </button>
-                        <button class="remote-pill-btn" onclick="controlDevice('${device.id}', 'menu')">
-                            <i class="fas fa-bars"></i> Menu
+                        <button class="remote-pill-btn" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);" onclick="showAppList('${device.id}')">
+                            <i class="fas fa-th"></i> Apps
                         </button>
                     </div>
                     
@@ -744,6 +734,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'volume_down')"><i class="fas fa-minus"></i></button>
                             <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'mute')"><i class="fas fa-volume-mute"></i></button>
                             <button class="remote-icon-btn" onclick="controlDevice('${device.id}', 'volume_up')"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div id="apps-container-${device.id}" style="width: 100%; display: none; margin-top: 20px;">
+                        <h4 style="margin-bottom: 10px; color: #fff;">Apps</h4>
+                        <div class="apps-grid" id="apps-grid-${device.id}" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                            <div style="text-align: center; color: #888; padding: 20px; grid-column: span 3;">Laden...</div>
                         </div>
                     </div>
             `;
@@ -1977,5 +1974,90 @@ window.launchPS5Game = async function(deviceId, titleId, name) {
     } catch (e) {
         alert('Error: ' + e.message);
     }
+};
+
+window.showAppList = async (deviceId) => {
+    const container = document.getElementById(`apps-container-${deviceId}`);
+    if (!container) return;
+    
+    // Toggle visibility
+    if (container.style.display !== 'none') {
+        container.style.display = 'none';
+        return;
+    }
+    
+    // Show container
+    container.style.display = 'block';
+    
+    // Find or create grid
+    let grid = document.getElementById(`apps-grid-${deviceId}`);
+    if (!grid) {
+         // Should exist from HTML template, but just in case
+         grid = document.createElement('div');
+         grid.id = `apps-grid-${deviceId}`;
+         grid.className = 'apps-grid';
+         container.appendChild(grid);
+    }
+    
+    grid.innerHTML = '<div style="grid-column: span 3; text-align: center; padding: 20px; color: #aaa;"><i class="fas fa-spinner fa-spin"></i> Apps laden...</div>';
+    
+    try {
+        // Try to fetch apps from backend
+        // Note: Endpoint needs implementation in server/deviceManager
+        const res = await fetch(`/api/devices/${deviceId}/apps`);
+        if (!res.ok) throw new Error(res.statusText);
+        
+        const data = await res.json();
+        
+        if (data.ok && data.apps && data.apps.length > 0) {
+            grid.innerHTML = '';
+            data.apps.forEach(app => {
+                const appDiv = document.createElement('div');
+                appDiv.className = 'app-item';
+                appDiv.style.cssText = 'background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; cursor: pointer; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 80px;';
+                
+                // Icon if available (assuming data.apps has icon/img)
+                let iconHtml = '<i class="fas fa-cube" style="font-size: 1.5em; opacity: 0.7;"></i>';
+                if (app.icon) {
+                    iconHtml = `<img src="${app.icon}" style="width: 32px; height: 32px; object-fit: contain;">`;
+                }
+
+                appDiv.innerHTML = `
+                    ${iconHtml}
+                    <div style="font-weight: 500; font-size: 0.85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${app.name}</div>
+                `;
+                appDiv.onclick = () => window.launchApp(deviceId, app.appId);
+                
+                // Hover effect via JS since inline styles are tricky for pseudo-classes
+                appDiv.onmouseenter = () => { 
+                    appDiv.style.background = 'rgba(255,255,255,0.2)'; 
+                    appDiv.style.transform = 'translateY(-2px)';
+                };
+                appDiv.onmouseleave = () => { 
+                    appDiv.style.background = 'rgba(255,255,255,0.1)'; 
+                    appDiv.style.transform = 'none';
+                };
+                
+                grid.appendChild(appDiv);
+            });
+        } else {
+             // Fallback/Simulated apps for Samsung if not really fetching
+             // Or show "Not Supported"
+            grid.innerHTML = '<div style="grid-column: span 3; text-align: center; color: #888; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;">Geen apps gevonden. Backend support vereist.</div>';
+        }
+    } catch (e) {
+        console.error('Failed to load apps:', e);
+         grid.innerHTML = '<div style="grid-column: span 3; text-align: center; color: #ff6b6b; padding: 15px;">Fout bij laden apps. <br><small>' + e.message + '</small></div>';
+    }
+};
+
+window.launchApp = (deviceId, appId) => {
+    // controlDevice is defined earlier in this file
+    window.controlDevice(deviceId, 'launch_app', appId);
+    
+    // Feedback
+    const container = document.getElementById(`apps-container-${deviceId}`);
+    // Optional: auto-close app list?
+    // if (container) container.style.display = 'none'; 
 };
 

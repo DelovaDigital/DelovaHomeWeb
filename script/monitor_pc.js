@@ -93,9 +93,27 @@ async function reportMetrics() {
         const utilization = Math.min(cpuPercent / 100, 1.0);
         const estimatedPower = IDLE_POWER + ((MAX_POWER - IDLE_POWER) * utilization);
 
+        // Retrieve Network Info
+        const nets = os.networkInterfaces();
+        let mac = '';
+        let ip = '';
+        
+        for (const name of Object.keys(nets)) {
+            for (const net of nets[name]) {
+                if (net.family === 'IPv4' && !net.internal) {
+                    ip = net.address;
+                    mac = net.mac;
+                    break;
+                }
+            }
+            if (mac) break;
+        }
+
         const payload = {
             name: CONFIG.deviceName,
             type: 'computer',
+            ip: ip,
+            mac: mac,
             power: parseFloat(estimatedPower.toFixed(2)),
             power_source: 'estimated',
             cpu_load: cpuPercent, // Percentage (0-100)

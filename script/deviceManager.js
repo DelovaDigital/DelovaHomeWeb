@@ -845,6 +845,11 @@ class DeviceManager extends EventEmitter {
                 type = 'tv';
             } else if (model.includes('AudioAccessory') || lowerName.includes('homepod')) {
                 type = 'sensor';
+            } else if (model.toLowerCase().includes('mac') || lowerName.includes('macbook') || lowerName.includes('imac') || lowerName.includes('mac mini')) {
+                // Determine specific Mac type
+                if (lowerName.includes('macbook')) type = 'laptop';
+                else if (lowerName.includes('imac') || lowerName.includes('mac mini')) type = 'computer';
+                else type = 'computer';
             } else {
                 type = 'speaker';
             }
@@ -950,21 +955,9 @@ class DeviceManager extends EventEmitter {
             // Sanitize ID
             const safeId = `mdns-${service.fqdn || name}-${sourceType}`.replace(/[^a-zA-Z0-9-_]/g, '_');
 
-            // Check pairing status for AirPlay devices
-            let isPaired = false;
-            if (protocol === 'mdns-airplay') {
-                // If we have a deviceId, check credentials
-                if (deviceId && this.appleTvCredentials[deviceId]) {
-                    isPaired = true;
-                } else if (!deviceId) {
-                    // If no deviceId in TXT, try to match by IP in credentials
-                    const creds = Object.values(this.appleTvCredentials);
-                    const match = creds.find(c => c.ip === ip);
-                    if (match) isPaired = true;
-                }
-            }
-
-            this.addDevice({
+            // Force deduplication: If device ID matches one found via another protocol (e.g. airplay vs raop vs spotify)
+            // Or if we already have this IP, we use the EXISTING ID to force an update instead of a new add.
+            let deviceToAdd = {
                 id: safeId,
                 name: name,
                 type: type,
@@ -975,7 +968,18 @@ class DeviceManager extends EventEmitter {
                 deviceId: deviceId,
                 paired: isPaired,
                 state: initialState
-            });
+            };
+
+            // Check if we have an existing device with this IP
+            for (const [existingId, existingDev] of this.devices) {
+                 if (existingDev.ip === ip) {
+                     // Found existing device! Use its ID to force update logic in addDevice()
+                     deviceToAdd.id = existingId;
+                     break;
+                 }
+            }
+
+            this.addDevice(deviceToAdd);
         }
     }
 
@@ -1136,6 +1140,13 @@ class DeviceManager extends EventEmitter {
             if (device.name.includes('Apple TV') && !existingDevice.name.includes('Apple TV')) {
                 existingDevice.name = device.name;
                 existingDevice.type = 'tv'; // Ensure type is TV
+                updated = true;
+            }
+
+            // Fix Mac types if incorrectly set to generic tv/speaker
+            if (['tv', 'speaker'].includes(existingDevice.type) && (device.type === 'computer' || device.type === 'laptop' || device.type === 'mac')) {
+                console.log(`[DeviceManager] Correcting type for ${device.name}: ${existingDevice.type} -> ${device.type}`);
+                existingDevice.type = device.type;
                 updated = true;
             }
 

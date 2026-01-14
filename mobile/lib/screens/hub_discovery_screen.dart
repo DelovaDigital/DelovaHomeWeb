@@ -287,7 +287,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
   }
 
   void _showCloudLoginDialog() {
-    final urlController = TextEditingController(text: 'https://91.177.155.129:4000');
+    final urlController = TextEditingController(text: 'https://87.64.85.182:4000');
     final emailController = TextEditingController();
     final passwordController = TextEditingController();
     bool isLoading = false;

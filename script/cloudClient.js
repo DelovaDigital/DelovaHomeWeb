@@ -24,6 +24,25 @@ class CloudClient {
             const fs = require('fs');
             if (fs.existsSync('cloud-config.json')) {
                 this.config = JSON.parse(fs.readFileSync('cloud-config.json', 'utf8'));
+                
+                // Allow dynamic override via environment variables
+                if (process.env.CLOUD_URL) {
+                    this.config.cloudUrl = process.env.CLOUD_URL;
+                } else if (process.env.DB_SERVER && this.config.cloudUrl) {
+                    // If DB_SERVER is set (e.g. 87.64.85.182), try to update the IP in the stored URL
+                    // Replaces: https://OLD_IP:PORT -> https://NEW_IP:PORT
+                    try {
+                        const url = new URL(this.config.cloudUrl);
+                        if (url.hostname !== process.env.DB_SERVER) {
+                            console.log(`[Cloud] Dynamically updating Cloud IP from env: ${url.hostname} -> ${process.env.DB_SERVER}`);
+                            url.hostname = process.env.DB_SERVER;
+                            this.config.cloudUrl = url.toString().replace(/\/$/, ''); // Remove trailing slash
+                        }
+                    } catch (err) {
+                        // ignore invalid URL in config
+                    }
+                }
+                
                 return true;
             }
         } catch (e) {

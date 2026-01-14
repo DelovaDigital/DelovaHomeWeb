@@ -48,6 +48,7 @@ const aiManager = require('./script/aiManager');
 const hueManager = require('./script/hueManager');
 const discoveryService = require('./script/discoveryService');
 const cloudClient = require('./script/cloudClient');
+const dynamicIpManager = require('./script/dynamicIpManager');
 const systemMonitor = require('./script/systemMonitor');
 const WebSocket = require('ws');
 const url = require('url');
@@ -103,6 +104,9 @@ if (!hubConfig.hubId) {
 async function initHubConfigFromDB() {
     console.log('Starting DB Sync...');
     try {
+        // Start IP Monitor
+        dynamicIpManager.start();
+
         console.log('Step 1: Getting DB Pool...');
         const pool = await db.getPool();
         console.log('Step 1: Pool acquired.');

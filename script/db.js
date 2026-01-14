@@ -51,4 +51,16 @@ async function testConnection() {
   }
 }
 
-module.exports = { getPool, sql, config, testConnection };
+async function resetPool() {
+    if (pool) {
+        try {
+            await pool.close();
+            console.log('[DB] Pool closed for reset.');
+        } catch (e) {
+            console.error('[DB] Error closing pool:', e);
+        }
+        pool = null;
+    }
+}
+
+module.exports = { getPool, sql, config, testConnection, resetPool };

@@ -2055,3 +2055,44 @@ input:checked + .slider:before {
     opacity: 0.7;
     color: var(--text-muted);
 }
+
+/* Automations Page - Specific Fixes */
+.page-header .btn-primary {
+    width: auto !important; /* Prevent it from being full width */
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+}
+
+/* Fix Modal Overflow issues for Weather and others */
+.modal-body {
+    overflow-y: visible !important; /* Allow dropdowns to overflow */
+}
+
+/* Ensure form groups don't clip content */
+.form-group {
+    position: relative;
+    z-index: auto;
+}
+
+/* Specific z-index boost for search dropdown container */
+.form-group:has(#weatherSearchResults) {
+    z-index: 100;
+}
+
+/* Weather Modal Input - Theme Aware */
+.weather-search-input {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-body);
+    color: var(--text);
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.weather-search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}

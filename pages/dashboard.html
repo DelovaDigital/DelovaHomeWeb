@@ -99,9 +99,12 @@
                            placeholder="Zoek stad..." 
                            autocomplete="off" 
                            name="weather_search_unique"
-                           style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border, #ccc); background: var(--bg-body, #fff); color: var(--text-main, #000); font-size: 1rem;">
+                           class="weather-search-input"
+                           placeholder="Zoek stad..." 
+                           style="width: 100%;">
                     
                     <div id="weatherSearchResults" 
+                         className="weather-search-dropdown"
                          style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: var(--card, #fff); border: 1px solid var(--border, #ccc); border-radius: 8px; z-index: 2001; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 5px;">
                     </div>
                 </div>

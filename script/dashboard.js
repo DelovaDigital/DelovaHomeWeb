@@ -457,57 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Scenes Logic
-  async function loadScenes() {
-    const scenesBar = document.getElementById('scenesBar');
-    if (!scenesBar) return;
+  // Scenes Logic moved to initializeScenesBar at end of file
 
-    try {
-      const data = await apiGet('/api/scenes');
-      if (!data || !data.scenes) return;
-
-      scenesBar.innerHTML = '';
-      data.scenes.forEach(scene => {
-        const card = document.createElement('div');
-        card.className = `scene-card${scene.id === data.mode ? ' active' : ''}`;
-        card.onclick = () => activateScene(scene.id);
-        
-        let icon = scene.icon || 'fa-home';
-        // Legacy mapping fallback
-        if (!scene.icon) {
-            if (scene.id === 'AWAY') icon = 'fa-shoe-prints';
-            if (scene.id === 'NIGHT') icon = 'fa-moon';
-            if (scene.id === 'CINEMA') icon = 'fa-film';
-            if (scene.id === 'WORK') icon = 'fa-laptop';
-            if (scene.id === 'VACATION') icon = 'fa-plane';
-        }
-
-        // Color support
-        let style = '';
-        if (scene.color) {
-            // Apply subtle border or icon color
-            style = `color: ${scene.color}`;
-        }
-
-        card.innerHTML = `
-            <div style="font-size: 1.5rem; margin-bottom: 5px; ${style}"><i class="fas ${icon}"></i></div>
-            <div style="font-weight: 500;">${scene.name}</div>
-        `;
-        scenesBar.appendChild(card);
-      });
-    } catch(e) { console.error('Error loading scenes:', e); }
-  }
-
-  window.activateScene = async function(modeId) {
-    try {
-      await fetch('/api/mode/set', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: modeId })
-      });
-      loadScenes(); 
-    } catch(e) { console.error('Failed to set scene:', e); }
-  }
 
   // Presence Logic
   async function loadPresence() {
@@ -567,7 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // initial
-  loadScenes();
+  // loadScenes();
   loadPresence();
   loadEnergy();
   setInterval(loadEnergy, 5000);
@@ -626,47 +577,65 @@ document.addEventListener('DOMContentLoaded', () => {
   loadPrinterStatus();
   loadSystemStatus();
   
-  // Scenes Bar Initialization
-  const scenesBar = document.getElementById('scenesBar');
-  if (scenesBar) {
-      async function loadScenes() {
+  // Scenes Bar Initialization - Fixed Duplicate Function Name
+  const scenesBarContainer = document.getElementById('scenesBar');
+  if (scenesBarContainer) {
+      async function initializeScenesBar() {
           try {
                 let scenes = [];
                 try {
                     scenes = await apiGet('/api/scenes');
+                    if (scenes && scenes.scenes) scenes = scenes.scenes; // Handle wrapper object
                 } catch(e) { console.warn('Using default scenes'); }
 
-                if (!scenes || scenes.length === 0) {
+                // Default Scenes Fallback
+                if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
                      scenes = [
-                        { id: 'mode_home', name: 'Home', icon: 'fas fa-home', color: '#3b82f6' },
-                        { id: 'mode_away', name: 'Away', icon: 'fas fa-sign-out-alt', color: '#64748b' },
-                        { id: 'mode_cinema', name: 'Cinema', icon: 'fas fa-video', color: '#ef4444' },
-                        { id: 'mode_night', name: 'Night', icon: 'fas fa-moon', color: '#8b5cf6' },
-                        { id: 'mode_morning', name: 'Morning', icon: 'fas fa-coffee', color: '#f59e0b' }
+                        { id: 'HOME', name: 'Home', icon: 'fas fa-home', color: '#3b82f6' },
+                        { id: 'AWAY', name: 'Away', icon: 'fas fa-sign-out-alt', color: '#64748b' },
+                        { id: 'CINEMA', name: 'Cinema', icon: 'fas fa-video', color: '#ef4444' },
+                        { id: 'NIGHT', name: 'Night', icon: 'fas fa-moon', color: '#8b5cf6' },
+                        { id: 'MORNING', name: 'Morning', icon: 'fas fa-coffee', color: '#f59e0b' }
                     ];
                 }
                 
-                scenesBar.innerHTML = '';
-                scenesBar.classList.add('scenes-scroll-container');
+                scenesBarContainer.innerHTML = '';
+                scenesBarContainer.classList.add('scenes-scroll-container');
                 
                 scenes.forEach(scene => {
                     const btn = document.createElement('div');
                     btn.className = 'scene-chip';
                     const iconColor = scene.color || '#fff';
-                    btn.innerHTML = `<i class="${scene.icon}" style="color: ${iconColor}"></i> <span>${scene.name}</span>`;
+                    // Support both font-awesome class strings and simple names
+                    const iconClass = scene.icon.startsWith('fa') ? scene.icon : `fas ${scene.icon}`;
+
+                    btn.innerHTML = `<i class="${iconClass}" style="color: ${iconColor}"></i> <span>${scene.name}</span>`;
                     
                     btn.onclick = async () => {
                          btn.classList.add('active');
                          setTimeout(() => btn.classList.remove('active'), 300);
                          try {
+                            // Support both new (sceneId) and old (mode) APIs
                             await fetch(`/api/scenes/${scene.id}`, { method: 'POST' });
-                         } catch (e) { console.error('Scene activation failed'); }
+                         } catch (e) { 
+                             // Fallback to legacy mode API if scene not found
+                             console.warn('Scene activation failed, trying legacy mode set...');
+                             try {
+                                 await fetch('/api/mode/set', {
+                                     method: 'POST',
+                                     headers: { 'Content-Type': 'application/json' },
+                                     body: JSON.stringify({ mode: scene.id })
+                                 });
+                             } catch(e2) {
+                                 console.error('All activation attempts failed');
+                             }
+                        }
                     };
-                    scenesBar.appendChild(btn);
+                    scenesBarContainer.appendChild(btn);
                 });
-          } catch (e) { console.error(e); }
+          } catch (e) { console.error('Scenes bar init error:', e); }
       }
-      loadScenes();
+      initializeScenesBar();
   }
 
   setInterval(loadPrinterStatus, 10000); // Poll printer every 10s

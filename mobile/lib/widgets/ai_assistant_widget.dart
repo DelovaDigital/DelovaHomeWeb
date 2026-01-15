@@ -109,6 +109,15 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
           setState(() {
             _controller.text = result.recognizedWords;
           });
+          
+          if (result.finalResult) {
+            // Fix common speech-to-text concatenation artifacts
+            if (_controller.text.toLowerCase().startsWith('turnlights')) {
+               _controller.text = _controller.text.replaceFirst(RegExp('Turnlights', caseSensitive: false), 'Turn lights');
+            }
+            
+            _sendCommand();
+          }
         },
         localeId: _lang == 'en' ? 'en_US' : 'nl_NL',
         listenOptions: stt.SpeechListenOptions(cancelOnError: true),

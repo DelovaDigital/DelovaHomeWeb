@@ -1,23 +1,74 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // RBAC: Check Role & Hide Admin Elements
-    const role = localStorage.getItem('userRole');
-    if (role !== 'Admin' && role !== 'admin') {
+    // We defer the strict hiding until we verify with the API to handle stale localStorage
+    const verifyRole = async () => {
+        const userId = localStorage.getItem('userId');
         const restricted = ['users', 'knx', 'developer'];
-        restricted.forEach(target => {
-            const item = document.querySelector(`.settings-nav-item[data-target="${target}"]`);
-            if (item) item.style.display = 'none';
-        });
         
-        // Guard against manual URL navigation
-        const urlParams = new URLSearchParams(window.location.search);
-        const tab = urlParams.get('tab');
-        if (restricted.includes(tab)) {
-             // Defer slightly to ensure tab logic runs
-             setTimeout(() => {
-                 const general = document.querySelector('.settings-nav-item[data-target="general"]');
-                 if(general) general.click();
-             }, 100);
+        // Initial visibility check based on cached role
+        let role = localStorage.getItem('userRole');
+        const isCachedAdmin = (role === 'Admin' || role === 'admin');
+        
+        if (!isCachedAdmin) {
+            restricted.forEach(target => {
+                const item = document.querySelector(`.settings-nav-item[data-target="${target}"]`);
+                if (item) item.style.display = 'none';
+            });
         }
+
+        if (userId) {
+            try {
+                // Verify with backend
+                const res = await fetch(`/api/me?userId=${userId}`);
+                const data = await res.json();
+                
+                if (data.ok) {
+                    // Update valid role
+                    role = data.role;
+                    localStorage.setItem('userRole', role);
+                    
+                    const isAdmin = (role === 'Admin' || role === 'admin');
+                    
+                    // Update visibility
+                    restricted.forEach(target => {
+                        const item = document.querySelector(`.settings-nav-item[data-target="${target}"]`);
+                        if (item) {
+                            item.style.display = isAdmin ? '' : 'none';
+                        }
+                    });
+                    
+                    // If we are currently on a restricted tab but not admin, switch away
+                    const currentTab = document.querySelector('.settings-nav-item.active')?.dataset.target;
+                    if (restricted.includes(currentTab) && !isAdmin) {
+                         const general = document.querySelector('.settings-nav-item[data-target="general"]');
+                         if(general) general.click();
+                    }
+                }
+            } catch (e) {
+                console.error('RBAC verification failed', e);
+            }
+        }
+    };
+    
+    verifyRole();
+
+    // Guard against manual URL navigation (legacy check)
+    if (localStorage.getItem('userRole') !== 'Admin' && localStorage.getItem('userRole') !== 'admin') {
+         // This might run before verifyRole finishes, but verifyRole will correct it
+         const urlParams = new URLSearchParams(window.location.search);
+         const tab = urlParams.get('tab');
+         const restricted = ['users', 'knx', 'developer'];
+         
+         if (restricted.includes(tab)) {
+             setTimeout(() => {
+                 // Check again after a delay in case verifyRole worked
+                 const r = localStorage.getItem('userRole');
+                 if (r !== 'Admin' && r !== 'admin') {
+                    const general = document.querySelector('.settings-nav-item[data-target="general"]');
+                    if(general) general.click();
+                 }
+             }, 500);
+         }
     }
 
     // --- Tab Switching Logic ---

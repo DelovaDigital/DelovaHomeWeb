@@ -80,14 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.delete-room').forEach(btn => btn.addEventListener('click', async ()=>{
       const id = btn.getAttribute('data-id');
-      if(!confirm(window.t ? window.t('delete_room_confirm') : 'Kamer verwijderen?')) return;
+      if(!confirm(window.t ? window.t('delete_room_confirm') : 'Delete room?')) return;
       await fetch(`/api/rooms/${id}`, { method: 'DELETE' });
       render();
     }));
 
     document.querySelectorAll('.rename-room').forEach(btn => btn.addEventListener('click', async ()=>{
       const id = btn.getAttribute('data-id');
-      const name = prompt(window.t ? window.t('new_room_name_prompt') : 'Nieuwe naam voor kamer');
+      const name = prompt(window.t ? window.t('new_room_name_prompt') : 'New name for room');
       if(name) {
         await fetch(`/api/rooms/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
         render();
@@ -95,10 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
   }
 
-  if (createRoomBtn) {
+    if (createRoomBtn) {
     createRoomBtn.addEventListener('click', async ()=>{
       const name = newRoomName && newRoomName.value && newRoomName.value.trim();
-      if(!name) return alert(window.t ? window.t('enter_name') : 'Vul een naam in');
+      if(!name) return alert(window.t ? window.t('enter_name') : 'Please enter a name');
       await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
       if(newRoomName) newRoomName.value = '';
       render();
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   window.changeWeatherLocation = async () => {
-      const city = prompt('Voer stad in voor weerbericht:');
+      const city = prompt(window.t ? window.t('enter_city_for_weather') : 'Enter city for weather:');
       if(!city) return;
       
       try {
@@ -213,12 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
               };
               localStorage.setItem('weather_location', JSON.stringify(newLoc));
               loadWeather();
-          } else {
-              alert('Stad niet gevonden.');
-          }
+            } else {
+              alert(window.t ? window.t('city_not_found') : 'City not found');
+            }
       } catch(e) {
           console.error(e);
-          alert('Fout bij zoeken naar stad.');
+            alert(window.t ? window.t('city_search_failed') : 'Failed to search for city');
       }
   };
 

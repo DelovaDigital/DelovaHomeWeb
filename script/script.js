@@ -101,6 +101,20 @@ document.addEventListener('DOMContentLoaded', () => {
         usernameDisplay.textContent = `Hallo, ${username}`;
     }
 
+    // Helper to update greeting using i18n when translations become available
+    function updateGreeting() {
+        const uname = localStorage.getItem('username');
+        if (!uname) return;
+        const els = document.querySelectorAll('#usernameDisplay');
+        const template = (window.t && typeof window.t === 'function') ? window.t('greeting') : null;
+        const text = template ? template.replace('{name}', uname) : `Hallo, ${uname}`;
+        els.forEach(el => { if (el) el.textContent = text; });
+    }
+
+    // Ensure greeting updates when translations load or are applied
+    document.addEventListener('translationsLoaded', updateGreeting);
+    document.addEventListener('translations-applied', updateGreeting);
+
     // Display Hub Name if available (e.g. in header or title)
     let hubName = localStorage.getItem('hubName');
     const brandHeader = document.querySelector('.nav-brand h1');
@@ -187,13 +201,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert('Koppelen succesvol!');
+                    alert(window.t ? window.t('pairing_successful') : 'Koppelen succesvol!');
                     pairingModal.style.display = 'none';
                 } else {
-                    alert('Koppelen mislukt: ' + (data.error || 'Onbekende fout'));
+                    alert((window.t ? window.t('pairing_failed') : 'Koppelen mislukt: ') + (data.error || (window.t ? window.t('unknown_error') : 'Onbekende fout')));
                 }
             } catch (e) {
-                alert('Netwerkfout bij koppelen');
+                alert(window.t ? window.t('network_error_pairing') : 'Netwerkfout bij koppelen');
             }
         };
     }
@@ -214,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = passwordInput ? passwordInput.value : '';
 
         if (!username || !password) {
-            alert('Vul gebruikersnaam en wachtwoord in');
+            alert(window.t ? window.t('enter_username_password') : 'Vul gebruikersnaam en wachtwoord in');
             return;
         }
 
@@ -263,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     window.location.href = '../pages/dashboard.html';
                                 } catch (err) {
                                     console.error('Failed to select hub', err);
-                                    alert('Failed to select hub');
+                                    alert(window.t ? window.t('failed_select_hub') : 'Failed to select hub');
                                 }
                             };
                             list.appendChild(btn);
@@ -284,11 +298,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 window.location.href = '../pages/dashboard.html';
             } else {
-                alert(data.message || 'Inloggen mislukt');
+                alert(data.message || (window.t ? window.t('login_failed') : 'Inloggen mislukt'));
             }
         } catch (err) {
             console.error('Login request failed', err);
-            alert('Kon geen verbinding maken met de server');
+            alert(window.t ? window.t('server_unreachable') : 'Kon geen verbinding maken met de server');
         }
     }
 
@@ -320,13 +334,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navContainer) {
         const currentPage = window.location.pathname.split('/').pop();
         const menuItems = [
-            { name: 'Dashboard', icon: 'fas fa-home', href: 'dashboard.html' },
-            { name: 'Kamers', icon: 'fas fa-door-open', href: 'rooms.html' },
-            { name: 'Apparaten', icon: 'fas fa-laptop-house', href: 'devices.html' },
-            { name: 'Floorplan', icon: 'fas fa-map-marked-alt', href: 'floorplan.html' },
-            { name: 'Energy', icon: 'fas fa-bolt', href: 'energy.html' },
-            { name: 'Automatiseringen', icon: 'fas fa-magic', href: 'automations.html' },
-            { name: 'Instellingen', icon: 'fas fa-cog', href: 'settings.html' }
+            { key: 'dashboard', name: 'Dashboard', icon: 'fas fa-home', href: 'dashboard.html' },
+            { key: 'rooms', name: 'Kamers', icon: 'fas fa-door-open', href: 'rooms.html' },
+            { key: 'devices', name: 'Apparaten', icon: 'fas fa-laptop-house', href: 'devices.html' },
+            { key: 'floorplan', name: 'Floorplan', icon: 'fas fa-map-marked-alt', href: 'floorplan.html' },
+            { key: 'energy', name: 'Energy', icon: 'fas fa-bolt', href: 'energy.html' },
+            { key: 'automations', name: 'Automatiseringen', icon: 'fas fa-magic', href: 'automations.html' },
+            { key: 'settings', name: 'Instellingen', icon: 'fas fa-cog', href: 'settings.html' }
         ];
 
         // Check for NAS (async)
@@ -335,11 +349,19 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(nasList => {
                 if (nasList && nasList.length > 0) {
                     // Insert before Settings
-                    menuItems.splice(3, 0, { name: 'Bestanden', icon: 'fas fa-folder-open', href: 'files.html' });
+                    menuItems.splice(3, 0, { key: 'files', name: 'Bestanden', icon: 'fas fa-folder-open', href: 'files.html' });
                 }
                 renderNav(menuItems, currentPage);
             })
             .catch(() => renderNav(menuItems, currentPage));
+
+        // Re-render navigation when translations have been loaded/applied
+        document.addEventListener('translationsLoaded', () => {
+            renderNav(menuItems, window.location.pathname.split('/').pop());
+        });
+        document.addEventListener('translations-applied', () => {
+            renderNav(menuItems, window.location.pathname.split('/').pop());
+        });
     }
 
     function renderNav(items, currentPage) {
@@ -348,14 +370,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = `
             <div class="nav-brand">
-                <h1>DelovaHome</h1>
+                <h1 data-i18n="brand_name">DelovaHome</h1>
             </div>
             <ul>
         `;
 
         items.forEach(item => {
             const active = currentPage === item.href ? 'class="active"' : '';
-            html += `<li><a href="${item.href}" ${active}><i class="${item.icon}"></i> ${item.name}</a></li>`;
+                const label = (window.t && item.key) ? window.t(item.key) : (item.name || item.key || '');
+                // Render with data-i18n so i18n.applyTranslations can update labels directly
+                if (item.key) {
+                    html += `<li><a href="${item.href}" ${active}><i class="${item.icon}"></i> <span data-i18n="${item.key}">${label}</span></a></li>`;
+                } else {
+                    html += `<li><a href="${item.href}" ${active}><i class="${item.icon}"></i> ${label}</a></li>`;
+                }
         });
 
         html += `
@@ -363,14 +391,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span id="usernameDisplay"></span>
                     <div class="user-avatar"></div>
                     <div class="user-dropdown" id="userDropdown">
-                        <a href="settings.html?tab=profile"><i class="fas fa-user"></i> Profiel</a>
-                        <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> Uitloggen</a>
+                            <a href="settings.html?tab=profile"><i class="fas fa-user"></i> <span data-i18n="profile">${window.t ? window.t('profile') : prettifyKey('profile')}</span></a>
+                            <a href="#" class="logout"><i class="fas fa-sign-out-alt"></i> <span data-i18n="logout">${window.t ? window.t('logout') : prettifyKey('logout')}</span></a>
                     </div>
                 </li>
             </ul>
         `;
 
         nav.innerHTML = html;
+
+        // If translations are available or just loaded, apply them to newly-inserted nav
+        if (window.applyTranslations) {
+            try { window.applyTranslations(); } catch (e) { /* ignore */ }
+        }
+
+        // Update greeting text in nav after translations applied
+        try { if (typeof updateGreeting === 'function') updateGreeting(); } catch (e) { /* ignore */ }
         
         // Re-initialize dynamic elements
         const avatar = nav.querySelector('.user-avatar');
@@ -398,7 +434,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = localStorage.getItem('username');
         const usernameDisplay = document.getElementById('usernameDisplay');
         if (usernameDisplay && username) {
-            usernameDisplay.textContent = `Hallo, ${username}`;
+            const greetTemplate = (window.t && typeof window.t === 'function') ? window.t('greeting') : null;
+            usernameDisplay.textContent = greetTemplate ? greetTemplate.replace('{name}', username) : `Hallo, ${username}`;
             
             // Set dynamic avatar with initials & color
             const avatarEl = nav.querySelector('.user-avatar');

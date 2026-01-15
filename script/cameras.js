@@ -113,7 +113,7 @@ function bindRecordButton(cam, rtspUrl) {
                     isRecording = true;
                     recBtn.classList.add('recording'); // Use CSS class for animation
                 } else {
-                    alert('Failed to start recording: ' + data.error);
+                    alert((window.t ? window.t('recording_start_failed') : 'Failed to start recording: ') + (data.error || ''));
                 }
             } catch(e) { console.error(e); }
         } else {
@@ -171,14 +171,14 @@ document.getElementById('saveUrlBtn').addEventListener('click', async () => {
         const data = await res.json();
         
         if (data.ok) {
-            alert('Saved! Reloading...');
+            alert(window.t ? window.t('saved_reloading') : 'Saved! Reloading...');
             document.getElementById('urlModal').style.display = 'none';
             location.reload();
         } else {
-            alert('Error: ' + data.error);
+            alert((window.t ? window.t('error') : 'Error') + ': ' + data.error);
         }
     } catch(e) {
-        alert('Request failed');
+        alert(window.t ? window.t('request_failed') : 'Request failed');
     }
 });
 

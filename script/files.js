@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (ext === 'pdf') {
             viewPdf(name, streamUrl);
         } else {
-            alert('Bestandstype niet ondersteund voor weergave in browser.');
+            alert(window.t ? window.t('file_type_not_supported') : 'Bestandstype niet ondersteund voor weergave in browser.');
         }
     }
 

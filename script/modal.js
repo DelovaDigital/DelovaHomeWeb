@@ -65,9 +65,9 @@
   btnSave.addEventListener('click', async ()=>{
     const newName = newInput.value && newInput.value.trim();
     try{
-      if(currentOptions.createOnly){
+        if(currentOptions.createOnly){
         if(!newName){
-          alert('Vul een naam in voor de nieuwe kamer');
+          alert(window.t ? window.t('enter_room_name') : 'Vul een naam in voor de nieuwe kamer');
           return;
         }
         // create new room and return its id

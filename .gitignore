@@ -3,7 +3,12 @@ node_modules/
 .env.local
 npm-debug.log
 dist/
-data/
+
+data/energy_history.json
+data/rooms.json
+data/scene_mappings.json
+data/scenes.json
+
 selfsigned.crt
 selfsigned.key
 hub_config.json

@@ -41,8 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.ok && data.ok) {
         showSuccess('Gebruiker aangemaakt!');
         
-        // Flag for first-time setup wizard
-        localStorage.setItem('setupRequired', 'true');
+        // Previously we flagged first-time setup here; removed to avoid forcing setup flow.
         
         form.reset();
         setTimeout(() => {

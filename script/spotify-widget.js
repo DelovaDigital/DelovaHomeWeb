@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const userId = getUserId();
         const username = getUsername();
         if (!userId) {
-            alert('Log in om je Spotify account te koppelen.');
+            alert(window.t ? window.t('spotify_login_required') : 'Log in om je Spotify account te koppelen.');
             return;
         }
         const popup = window.open(`/api/spotify/login?userId=${userId}&username=${username}`, 'SpotifyLogin', 'width=600,height=700');
@@ -164,9 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const sonosData = await sonosRes.json();
             const sonosDevices = (sonosData && sonosData.devices) ? sonosData.devices : [];
 
-            if (!Array.isArray(spotifyDevices)) {
+                if (!Array.isArray(spotifyDevices)) {
                 console.error('Invalid devices response:', spotifyDevices);
-                alert('Kon apparaten niet ophalen.');
+                alert(window.t ? window.t('spotify_devices_fetch_failed') : 'Kon apparaten niet ophalen.');
                 return;
             }
 
@@ -255,22 +255,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             showModal(modalHtml);
-        } catch (e) {
+            } catch (e) {
             console.error('Error fetching devices:', e);
-            alert('Fout bij ophalen apparaten');
+            alert(window.t ? window.t('spotify_devices_fetch_failed') : 'Fout bij ophalen apparaten');
         }
     };
 
     window.openSonosPickerForUri = async (spotifyUri) => {
         try {
             const uri = spotifyUri || window._spotifyCurrentUri;
-            if (!uri) return alert('No Spotify track available to play on Sonos');
+            if (!uri) return alert(window.t ? window.t('no_spotify_track_for_sonos') : 'No Spotify track available to play on Sonos');
 
             // fetch Sonos devices
             const res = await fetch('/api/sonos/devices');
             const data = await res.json();
             const sonos = (data && data.devices) ? data.devices : [];
-            if (!sonos.length) return alert('Geen Sonos-apparaten gevonden');
+            if (!sonos.length) return alert(window.t ? window.t('no_sonos_devices') : 'Geen Sonos-apparaten gevonden');
 
             const modalHtml = `
                 <div class="modal-header">
@@ -289,9 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             showModal(modalHtml);
-        } catch (e) {
+            } catch (e) {
             console.error('Error opening Sonos picker:', e);
-            alert('Fout bij ophalen Sonos-apparaten');
+            alert(window.t ? window.t('sonos_devices_fetch_failed') : 'Fout bij ophalen Sonos-apparaten');
         }
     };
 
@@ -309,14 +309,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             if (res.ok && data.ok) {
-                alert('Playback started on Sonos');
+                alert(window.t ? window.t('sonos_playback_started') : 'Playback started on Sonos');
             } else {
                 console.error('Sonos play failed', data);
-                alert('Kon niet afspelen op Sonos');
+                alert(window.t ? window.t('sonos_play_failed') : 'Kon niet afspelen op Sonos');
             }
         } catch (e) {
             console.error('Error playing on Sonos:', e);
-            alert('Fout bij starten Sonos-afspelen');
+            alert(window.t ? window.t('sonos_play_error') : 'Fout bij starten Sonos-afspelen');
         }
     };
 
@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (playlistsRes.status === 403) {
                 const msg = 'Access Denied (403): This app is in Development Mode. To allow all users to connect, the app owner must apply for "Quota Extension" in the Spotify Developer Dashboard.';
                 console.error(msg);
-                alert(msg);
+                alert(window.t ? window.t('spotify_access_denied_msg') : msg);
                 return;
             }
 
@@ -397,14 +397,14 @@ document.addEventListener('DOMContentLoaded', () => {
             showModal(modalHtml);
         } catch (e) {
             console.error('Error loading library:', e);
-            alert('Kon bibliotheek niet laden. Controleer de console voor details.');
+            alert(window.t ? window.t('spotify_library_load_failed') : 'Kon bibliotheek niet laden. Controleer de console voor details.');
         }
     };
 
     function fetchStatus() {
         const userId = getUserId();
         if (!userId) {
-            container.innerHTML = `<div class="widget" style="text-align: center; padding: 20px;"><p>Log in om Spotify te gebruiken.</p></div>`;
+            container.innerHTML = `<div class="widget" style="text-align: center; padding: 20px;"><p>${window.t ? window.t('spotify_login_prompt') : 'Log in om Spotify te gebruiken.'}</p></div>`;
             return;
         }
 

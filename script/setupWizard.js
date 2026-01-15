@@ -85,55 +85,12 @@ function startSetupWizard() {
                     </div>
                 </div>
 
-                <div class="setup-actions">
-                    <button class="btn-secondary" onclick="nextStep(25)" data-i18n="back">Back</button>
-                    <button class="btn-primary" onclick="nextStep(4)" data-i18n="next">Next</button>
-                </div>
+                 <div class="setup-actions">
+                     <button class="btn-secondary" onclick="nextStep(25)" data-i18n="back">Back</button>
+                     <button class="btn-primary" onclick="nextStep(5)" data-i18n="next">Next</button>
+                 </div>
             </div>
-
-            <!-- Step 4: Create Account -->
-            <div class="setup-step" id="step4">
-                <div class="setup-icon"><i class="fas fa-user-shield"></i></div>
-                <h2 class="setup-title" data-i18n="create_account">Create Admin Account</h2>
-                <p class="setup-desc" data-i18n="create_account_desc">Create your local administrator account. You can also link it to the cloud for remote access.</p>
-                
-                <div style="max-width: 350px; margin: 0 auto 20px auto; text-align: left;">
-                    <label style="display:block; margin-bottom:5px;" data-i18n="username">Username</label>
-                    <input type="text" id="setup-user" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                    
-                    <label style="display:block; margin-bottom:5px;" data-i18n="new_password">Password</label>
-                    <input type="password" id="setup-pass" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-
-                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
-                            <label style="margin:0; font-weight:bold;" data-i18n="enable_remote_access">Enable Remote Access (Cloud)</label>
-                            <input type="checkbox" id="setup-cloud-enable" checked onchange="toggleCloudFields()" style="width:20px; height:20px;">
-                        </div>
-                        
-                        <div id="cloud-fields">
-                            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                                <button type="button" id="tab-login" class="btn-secondary active" onclick="toggleCloudTab('login')" style="flex:1;" data-i18n="login">Login</button>
-                                <button type="button" id="tab-register" class="btn-secondary" onclick="toggleCloudTab('register')" style="flex:1;" data-i18n="register">Register</button>
-                            </div>
-
-                            <label style="display:block; margin-bottom:5px;" data-i18n="cloud_url">Cloud URL</label>
-                            <input type="text" id="setup-cloud-url" value="https://cloud.delovahome.com" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                            
-                            <div id="email-group" style="display:none;">
-                                <label style="display:block; margin-bottom:5px;" data-i18n="email">Email</label>
-                                <input type="email" id="setup-cloud-email" style="width:100%; padding:10px; margin-bottom:10px; border-radius:5px; border:1px solid var(--border); background:var(--bg-input); color:var(--text);">
-                            </div>
-                            <p style="font-size: 0.8em; opacity: 0.7; margin-top: 5px;" data-i18n="cloud_credentials_note">We will use your local username/password for the cloud account.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="setup-actions">
-                    <button class="btn-secondary" onclick="nextStep(3)" data-i18n="back">Back</button>
-                    <button class="btn-primary" onclick="createAccount()" data-i18n="create_finish">Create & Finish</button>
-                </div>
-            </div>
-
+ 
             <!-- Step 5: Finish -->
             <div class="setup-step" id="step5">
                 <div class="setup-icon"><i class="fas fa-check-circle"></i></div>
@@ -151,117 +108,7 @@ function startSetupWizard() {
     // Initialize translations for the wizard
     if (window.applyTranslations) window.applyTranslations();
 
-    window.toggleCloudTab = (tab) => {
-        const loginBtn = document.getElementById('tab-login');
-        const regBtn = document.getElementById('tab-register');
-        const emailGroup = document.getElementById('email-group');
-        
-        if (tab === 'login') {
-            loginBtn.classList.add('active');
-            loginBtn.style.background = 'var(--primary)';
-            loginBtn.style.color = 'white';
-            regBtn.classList.remove('active');
-            regBtn.style.background = '';
-            regBtn.style.color = '';
-            emailGroup.style.display = 'none';
-        } else {
-            regBtn.classList.add('active');
-            regBtn.style.background = 'var(--primary)';
-            regBtn.style.color = 'white';
-            loginBtn.classList.remove('active');
-            loginBtn.style.background = '';
-            loginBtn.style.color = '';
-            emailGroup.style.display = 'block';
-        }
-    };
     
-    // Set initial state
-    setTimeout(() => window.toggleCloudTab('login'), 100);
-
-    window.toggleCloudFields = () => {
-        const enabled = document.getElementById('setup-cloud-enable').checked;
-        const fields = document.getElementById('cloud-fields');
-        fields.style.display = enabled ? 'block' : 'none';
-    };
-
-    window.createAccount = async () => {
-        const username = document.getElementById('setup-user').value;
-        const password = document.getElementById('setup-pass').value;
-        const cloudEnabled = document.getElementById('setup-cloud-enable').checked;
-        
-        const btn = document.querySelector('#step4 .btn-primary');
-        
-        if (!username || !password) return alert(window.t ? window.t('enter_username') : 'Please enter username and password');
-        
-        btn.disabled = true;
-        btn.textContent = window.t ? window.t('creating_account') : 'Creating Account...';
-        
-        try {
-            if (cloudEnabled) {
-                // Cloud + Local
-                const cloudUrl = document.getElementById('setup-cloud-url').value;
-                const email = document.getElementById('setup-cloud-email').value;
-                const isRegister = document.getElementById('tab-register').classList.contains('active');
-                
-                if (isRegister && !email) {
-                    btn.disabled = false;
-                    btn.textContent = window.t ? window.t('create_finish') : 'Create & Finish';
-                    return alert(window.t ? window.t('enter_email') : 'Please enter email for cloud registration');
-                }
-
-                const payload = { 
-                    cloudUrl, 
-                    username, 
-                    password, 
-                    hubName: 'My Home Hub',
-                    email: isRegister ? email : null
-                };
-
-                const res = await fetch('/api/setup/link-cloud', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    alert(window.t ? window.t('account_created_linked') : 'Account created and Cloud linked successfully!');
-                    nextStep(5);
-                } else {
-                    alert((window.t ? window.t('failed') : 'Failed') + ': ' + data.error);
-                    btn.disabled = false;
-                    btn.textContent = window.t ? window.t('create_finish') : 'Create & Finish';
-                }
-            } else {
-                // Local Only
-                const payload = { 
-                    username, 
-                    password, 
-                    role: 'Admin'
-                };
-
-                const res = await fetch('/api/users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                
-                if (data.ok) {
-                    alert(window.t ? window.t('local_account_created') : 'Local Admin Account created successfully!');
-                    nextStep(5);
-                } else {
-                    alert((window.t ? window.t('failed') : 'Failed') + ': ' + data.message);
-                    btn.disabled = false;
-                    btn.textContent = window.t ? window.t('create_finish') : 'Create & Finish';
-                }
-            }
-        } catch (e) {
-            alert((window.t ? window.t('error') : 'Error') + ': ' + e.message);
-            btn.disabled = false;
-            btn.textContent = window.t ? window.t('create_finish') : 'Create & Finish';
-        }
-    };
 
     // Expose functions to global scope for onclick handlers
     window.nextStep = (stepNum) => {

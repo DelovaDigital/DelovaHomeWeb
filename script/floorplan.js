@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Right click remove
                 el.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
-                    if(confirm('Remove marker?')) {
+                    if (confirm(window.t('confirm_remove_marker'))) {
                         markers.splice(index, 1);
                         renderMarkers();
                     }
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ markers })
         });
-        alert('Saved!');
+        alert(window.t('saved'));
         isEditMode = false;
         controls.view.style.display = 'block';
         controls.edit.style.display = 'none';
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('fileUpload').onchange = async (e) => {
          const file = e.target.files[0];
          if (!file) return;
-         if (file.size > 100 * 1024 * 1024) return alert('File too large (Max 100MB)');
+         if (file.size > 100 * 1024 * 1024) return alert(window.t('file_too_large'));
          
          const reader = new FileReader();
          reader.onload = async (ev) => {
@@ -179,11 +179,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('placeholder').style.display = 'none';
                 } else {
                     console.error('Upload failed response:', data);
-                    alert('Upload failed: ' + (data.error || 'Unknown error'));
+                    alert(window.t('upload_failed') + ': ' + (data.error || window.t('unknown_error')));
                 }
              } catch(err) { 
                  console.error('Upload error:', err);
-                 alert('Upload request failed: ' + err.message); 
+                 alert(window.t('upload_request_failed') + ': ' + err.message); 
              }
          };
          reader.readAsDataURL(file);

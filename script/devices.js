@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         scanBtn.disabled = false;
                     }, 3000);
                 } else {
-                    alert('Scan failed');
+                    alert(window.t ? window.t('scan_failed') : 'Scan failed');
                     icon.classList.remove('fa-spin');
                     scanBtn.disabled = false;
                 }
@@ -196,10 +196,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.innerHTML = `
                     <div id="camera-login-${deviceId}" class="camera-login">
                         <i class="fas fa-lock camera-icon"></i>
-                        <h3>Camera Login</h3>
-                        <input class="camera-input" type="text" id="cam-user-${deviceId}" placeholder="Gebruikersnaam">
-                        <input class="camera-input" type="password" id="cam-pass-${deviceId}" placeholder="Wachtwoord">
-                        <button id="btn-connect-${deviceId}" class="camera-btn">Verbinden</button>
+                            <h3>${window.t ? window.t('camera_login') : 'Camera Login'}</h3>
+                            <input class="camera-input" type="text" id="cam-user-${deviceId}" placeholder="${window.t ? window.t('username') : 'Username'}">
+                            <input class="camera-input" type="password" id="cam-pass-${deviceId}" placeholder="${window.t ? window.t('password') : 'Password'}">
+                            <button id="btn-connect-${deviceId}" class="camera-btn">${window.t ? window.t('connect') : 'Connect'}</button>
                     </div>
                 `;
 
@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             editBtn.onclick = (e) => {
                 e.stopPropagation();
-                if (confirm('Reset camera credentials?')) {
+                if (confirm(window.t ? window.t('confirm_reset_camera_creds') : 'Reset camera credentials?')) {
                     localStorage.removeItem(`camera_creds_${deviceId}`);
                     player.destroy();
                     activeStreams.delete(deviceId);
@@ -774,7 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (device.protocol === 'samsung-tizen' || device.name.toLowerCase().includes('samsung')) {
                 controlsHtml += `
                     <div style="margin-top: 15px; width: 100%; display: flex; justify-content: center;">
-                        <button class="btn btn-secondary" style="background-color: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; display: flex; align-items: center; gap: 8px;" onclick="if(confirm('Start pairing process for this Samsung TV? You may need to accept a popup on the TV.')) controlDevice('${device.id}', 'repair')">
+                        <button class="btn btn-secondary" style="background-color: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; display: flex; align-items: center; gap: 8px;" onclick="if(confirm(window.t ? window.t('confirm_start_samsung_pair') : 'Start pairing process for this Samsung TV? You may need to accept a popup on the TV.')) controlDevice('${device.id}', 'repair')">
                             <i class="fas fa-link"></i> Re-pair Connection
                         </button>
                     </div>
@@ -1353,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         window.assignRoom = async (deviceId) => {
-             if (typeof window.showRoomPicker === 'function') {
+            if (typeof window.showRoomPicker === 'function') {
                 const roomId = await window.showRoomPicker({ deviceId });
                 if (roomId) { 
                     await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId }) }); 
@@ -1361,13 +1361,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     closeDeviceDetail();
                 }
             } else {
-                alert('Room picker niet beschikbaar');
+                alert(window.t ? window.t('room_picker_unavailable') : 'Room picker niet beschikbaar');
             }
         };
         
         window.deleteDevice = async (id) => {
-            if(confirm('Weet je zeker dat je dit apparaat wilt verwijderen?')) {
-                alert('Verwijderen nog niet geïmplementeerd in API');
+            if(confirm(window.t ? window.t('confirm_delete_device') : 'Weet je zeker dat je dit apparaat wilt verwijderen?')) {
+                alert(window.t ? window.t('delete_not_implemented') : 'Verwijderen nog niet geïmplementeerd in API');
             }
         };
     }
@@ -1409,7 +1409,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container) return;
         const canvas = container.querySelector('canvas');
         if (!canvas) {
-            alert('Stream nog niet geladen');
+            alert(window.t ? window.t('stream_not_loaded') : 'Stream nog niet geladen');
             return;
         }
 
@@ -1454,7 +1454,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await pipVideo.requestPictureInPicture();
             } catch (err) {
                 console.error('PiP failed:', err);
-                alert('Picture-in-Picture niet ondersteund of mislukt: ' + err.message);
+                alert((window.t ? window.t('pip_not_supported') : 'Picture-in-Picture niet ondersteund of mislukt') + ': ' + err.message);
             }
         }
     };
@@ -1507,31 +1507,31 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                // Optional: show feedback
-            } else {
-                const errorMsg = data.error || 'Unknown error';
-                if (errorMsg.includes('Navigation (D-pad) is not supported')) {
-                    alert('PS5 Control Limitation: \n' + errorMsg);
+                if (data.success) {
+                    // Optional: show feedback
                 } else {
-                    alert('Error: ' + errorMsg);
+                    const errorMsg = data.error || 'Unknown error';
+                    if (errorMsg.includes('Navigation (D-pad) is not supported')) {
+                        alert((window.t ? window.t('ps5_control_limitation') : 'PS5 Control Limitation') + ': ' + errorMsg);
+                    } else {
+                        alert((window.t ? window.t('ps5_error') : 'Error') + ': ' + errorMsg);
+                    }
                 }
-            }
         })
-        .catch(err => alert('Network error: ' + err));
+        .catch(err => alert((window.t ? window.t('network_error') : 'Network error') + ': ' + err));
     };
 
     window.startPS5Pairing = (id) => {
         // Check if we should unpair first
-        if (confirm('Do you want to remove existing pairing first? (Recommended if re-pairing)')) {
+        if (confirm(window.t ? window.t('ps5_confirm_unpair') : 'Do you want to remove existing pairing first? (Recommended if re-pairing)')) {
             fetch(`/api/ps5/${id}/forget`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
-                    if (data.success) {
-                        alert('Existing pairing removed. Proceeding to pair...');
+                        if (data.success) {
+                        alert(window.t ? window.t('existing_pairing_removed') : 'Existing pairing removed. Proceeding to pair...');
                         proceedToPairing(id);
                     } else {
-                        alert('Failed to remove pairing: ' + (data.error || data.message));
+                        alert((window.t ? window.t('failed_remove_pairing') : 'Failed to remove pairing') + ': ' + (data.error || data.message));
                         proceedToPairing(id);
                     }
                 })
@@ -1545,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function proceedToPairing(id) {
-        if (!confirm('Ensure your PS5 is ON and you are ready to login to PSN.')) return;
+        if (!confirm(window.t ? window.t('ps5_confirm_ready') : 'Ensure your PS5 is ON and you are ready to login to PSN.')) return;
         
         // Create custom modal for pairing
         const overlay = document.createElement('div');
@@ -1577,15 +1577,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const showPinEntry = () => {
             modal.innerHTML = `
-                <h3 style="margin:0 0 10px 0;">PS5 Pairing - PIN Required</h3>
-                <p style="font-size:0.9em; opacity:0.8;">Please enter the PIN displayed on your PS5 screen.</p>
-                <p style="font-size:0.8em; opacity:0.6;">Go to Settings > System > Remote Play > Link Device</p>
+                <h3 style="margin:0 0 10px 0;">${window.t ? window.t('ps5_pin_title') : 'PS5 Pairing - PIN Required'}</h3>
+                <p style="font-size:0.9em; opacity:0.8;">${window.t ? window.t('ps5_pin_instructions') : 'Please enter the PIN displayed on your PS5 screen.'}</p>
+                <p style="font-size:0.8em; opacity:0.6;">${window.t ? window.t('ps5_pin_steps') : 'Go to Settings > System > Remote Play > Link Device'}</p>
                 
                 <input type="text" placeholder="00000000" id="ps5-pin-input" style="width:100%; padding:12px; font-size:1.2em; text-align:center; letter-spacing:5px; border-radius:4px; border:1px solid #555; background:#1a202c; color:#fff;">
                 
                 <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-                    <button id="btn-cancel-pin" style="padding:8px 16px; cursor:pointer; background:transparent; color:#aaa; border:1px solid #555; border-radius:4px;">Cancel</button>
-                    <button id="btn-submit-pin" style="padding:8px 16px; cursor:pointer; background:#48bb78; color:white; border:none; border-radius:4px;">Submit PIN</button>
+                    <button id="btn-cancel-pin" style="padding:8px 16px; cursor:pointer; background:transparent; color:#aaa; border:1px solid #555; border-radius:4px;">${window.t ? window.t('cancel') : 'Cancel'}</button>
+                    <button id="btn-submit-pin" style="padding:8px 16px; cursor:pointer; background:#48bb78; color:white; border:none; border-radius:4px;">${window.t ? window.t('submit_pin') : 'Submit PIN'}</button>
                 </div>
             `;
 
@@ -1606,11 +1606,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .then(r => r.json())
                 .then(d => {
-                    if (d.success) {
-                        modal.innerHTML = `<h3 style="text-align:center; color:#48bb78;">Pairing Successful!</h3>`;
+                        if (d.success) {
+                        modal.innerHTML = `<h3 style="text-align:center; color:#48bb78;">${window.t ? window.t('pairing_successful') : 'Pairing Successful!'}</h3>`;
                         setTimeout(() => document.body.removeChild(overlay), 2000);
                     } else {
-                        alert('Pairing failed: ' + d.error);
+                        alert((window.t ? window.t('pairing_failed') : 'Pairing failed: ') + d.error);
                         document.body.removeChild(overlay);
                     }
                 });
@@ -1635,11 +1635,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             showPinEntry();
                         } else if (statusData.status === 'error') {
                             clearInterval(pollInterval);
-                            alert('Pairing failed: ' + statusData.error);
+                            alert((window.t ? window.t('pairing_failed') : 'Pairing failed: ') + statusData.error);
                             document.body.removeChild(overlay);
                         } else if (statusData.status === 'success') {
                             clearInterval(pollInterval);
-                            alert('Pairing successful!');
+                            alert(window.t ? window.t('pairing_successful') : 'Pairing successful!');
                             document.body.removeChild(overlay);
                         }
                     });
@@ -1689,7 +1689,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('btn-submit-pair').onclick = () => {
                         const redirectUrl = document.getElementById('ps5-redirect-url').value.trim();
                         if (!redirectUrl) {
-                            alert('Please paste the redirect URL.');
+                            alert(window.t ? window.t('please_paste_redirect_url') : 'Please paste the redirect URL.');
                             return;
                         }
                         
@@ -1703,7 +1703,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (d.success) {
                                 pollForPin();
                             }
-                            else alert('Pairing failed: ' + d.error);
+                            else alert((window.t ? window.t('pairing_failed') : 'Pairing failed: ') + d.error);
                         });
                     };
 
@@ -1869,7 +1869,7 @@ window.closeSubView = function(deviceId) {
 
 window.authenticatePSN = async function(deviceId) {
     const npsso = document.getElementById('npssoToken').value;
-    if (!npsso) return alert('Please enter NPSSO token');
+    if (!npsso) return alert(window.t ? window.t('enter_npsso_token') : 'Please enter NPSSO token');
 
     try {
         const res = await fetch('/api/psn/auth', {
@@ -1881,10 +1881,10 @@ window.authenticatePSN = async function(deviceId) {
         if (data.success) {
             showPS5Games(deviceId);
         } else {
-            alert('Authentication failed: ' + (data.error || 'Unknown error'));
+            alert((window.t ? window.t('auth_failed') : 'Authentication failed') + ': ' + (data.error || 'Unknown error'));
         }
     } catch (e) {
-        alert('Error: ' + e.message);
+        alert((window.t ? window.t('error') : 'Error') + ': ' + e.message);
     }
 };
 
@@ -1892,11 +1892,11 @@ window.authenticatePSN = async function(deviceId) {
 let currentPairingDevice = null;
 
 window.unpairDevice = async (deviceId) => {
-    if (!confirm('Weet je zeker dat je de inloggegevens wilt verwijderen?')) return;
+    if (!confirm(window.t ? window.t('confirm_unpair_device') : 'Are you sure you want to remove the credentials?')) return;
     
     const device = allDevices.find(d => d.id === deviceId);
     if (!device) {
-        alert('Apparaat niet gevonden');
+        alert(window.t ? window.t('device_not_found') : 'Device not found');
         return;
     }
     
@@ -1908,14 +1908,14 @@ window.unpairDevice = async (deviceId) => {
         });
         const data = await res.json();
         if (data.ok) {
-            alert('Gegevens verwijderd');
+            alert(window.t ? window.t('data_deleted') : 'Data deleted');
             fetchDevices(); // Refresh list
             closeDeviceDetail();
         } else {
-            alert('Fout bij verwijderen: ' + data.error);
+            alert((window.t ? window.t('delete_failed') : 'Failed to delete: ') + (data.error || ''));
         }
     } catch (e) {
-        alert('Netwerkfout: ' + e.message);
+        alert((window.t ? window.t('network_error') : 'Network error') + ': ' + e.message);
     }
 };
 
@@ -1936,7 +1936,7 @@ window.showPairingModal = (arg1, arg2) => {
                  if (devByIp) {
                      currentPairingDevice = { ip: devByIp.ip, name: devByIp.name, type: devByIp.type };
                  } else {
-                     alert('Apparaat niet gevonden: ' + arg1);
+                     alert((window.t ? window.t('device_not_found') : 'Device not found') + ': ' + arg1);
                      return;
                  }
             }
@@ -1947,7 +1947,7 @@ window.showPairingModal = (arg1, arg2) => {
         console.log('showPairingModal called for:', arg1, ip, name, type);
         const modal = document.getElementById('pairingModal');
         if (!modal) {
-            alert('Pairing modal element not found!');
+            alert(window.t ? window.t('pairing_modal_not_found') : 'Pairing modal element not found!');
             return;
         }
         const title = document.getElementById('pairingTitle');
@@ -1987,7 +1987,7 @@ window.showPairingModal = (arg1, arg2) => {
         }
     } catch (e) {
         console.error('Error in showPairingModal:', e);
-        alert('Error opening pairing modal: ' + e.message);
+        alert((window.t ? window.t('pairing_open_error') : 'Error opening pairing modal: ') + e.message);
     }
 };
 
@@ -2018,10 +2018,10 @@ window.submitPairing = async () => {
 
     let ip, type;
 
-    if (!currentPairingDevice) {
+        if (!currentPairingDevice) {
         ip = document.getElementById('pair-ip').value;
         type = document.getElementById('pair-type').value;
-        if (!ip) return alert('IP Adres is verplicht');
+        if (!ip) return alert(window.t ? window.t('ip_required') : 'IP Address is required');
     } else {
         ip = currentPairingDevice.ip;
         type = currentPairingDevice.type;
@@ -2055,14 +2055,14 @@ window.submitPairing = async () => {
         const data = await res.json();
 
         if (data.ok) {
-            alert('Succesvol gekoppeld!');
+            alert(window.t ? window.t('pairing_successful') : 'Succesvol gekoppeld!');
             document.getElementById('pairingModal').style.display = 'none';
             if (typeof fetchDevices === 'function') fetchDevices();
         } else {
-            alert('Koppelen mislukt: ' + (data.error || data.message || 'Onbekende fout'));
+            alert((window.t ? window.t('pairing_failed') : 'Koppelen mislukt: ') + (data.error || data.message || 'Onbekende fout'));
         }
     } catch (e) {
-        alert('Fout: ' + e.message);
+        alert((window.t ? window.t('error') : 'Fout') + ': ' + e.message);
     } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -2070,7 +2070,7 @@ window.submitPairing = async () => {
 };
 
 window.launchPS5Game = async function(deviceId, titleId, name) {
-    if (!confirm(`Launch ${name} on PS5?`)) return;
+    if (!confirm(window.t ? (window.t('confirm_launch_on_ps5') || `Launch ${name} on PS5?`).replace('{name}', name) : `Launch ${name} on PS5?`)) return;
     
     try {
         const res = await fetch(`/api/ps5/${deviceId}/launch`, {
@@ -2080,18 +2080,18 @@ window.launchPS5Game = async function(deviceId, titleId, name) {
         });
         const data = await res.json();
         if (data.success) {
-            alert(`Launched ${name}!`);
+            alert((window.t ? window.t('launch_success') : 'Launched') + ' ' + name + '!');
             closeDeviceDetail();
         } else {
             // Show a more helpful error message if it's the known limitation
             if (data.error && data.error.includes('Remote Play only')) {
-                alert(`Cannot launch ${name}. The current PS5 control library only supports Remote Play, which cannot launch specific games. You can still use the remote control buttons.`);
+                alert(window.t ? window.t('cannot_launch_game') : `Cannot launch ${name}. The current PS5 control library only supports Remote Play, which cannot launch specific games. You can still use the remote control buttons.`);
             } else {
-                alert('Failed to launch: ' + (data.error || 'Unknown error'));
+                alert((window.t ? window.t('failed_to_launch') : 'Failed to launch: ') + (data.error || 'Unknown error'));
             }
         }
     } catch (e) {
-        alert('Error: ' + e.message);
+        alert((window.t ? window.t('error') : 'Error') + ': ' + e.message);
     }
 };
 

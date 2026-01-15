@@ -150,13 +150,13 @@ window.editAutomation = (id) => {
 };
 
 window.deleteAutomation = async (id) => {
-    if (!confirm('Weet je zeker dat je deze automatisering wilt verwijderen?')) return;
+    if (!confirm(window.t ? window.t('confirm_delete_automation') : 'Are you sure you want to delete this automation?')) return;
     
     try {
         await fetch(`/api/automations/${id}`, { method: 'DELETE' });
         loadAutomations();
     } catch (e) {
-        alert('Fout bij verwijderen: ' + e.message);
+        alert((window.t ? window.t('delete_failed') : 'Failed to delete: ') + e.message);
     }
 };
 
@@ -290,9 +290,9 @@ window.saveAutomation = async () => {
             loadAutomations();
         } else {
             const data = await res.json();
-            alert('Fout: ' + data.message);
+            alert((window.t ? window.t('failed') : 'Failed') + ': ' + (data.message || ''));
         }
     } catch (e) {
-        alert('Netwerkfout: ' + e.message);
+        alert((window.t ? window.t('network_error') : 'Network error') + ': ' + e.message);
     }
 };

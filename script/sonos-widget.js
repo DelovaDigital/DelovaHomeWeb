@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.browseSonosMusic = async () => {
         const userId = localStorage.getItem('userId');
         if (!userId) {
-            alert('Log in om muziek te browsen.');
+            alert(window.t ? window.t('sonos_login_required') : 'Log in om muziek te browsen.');
             return;
         }
 
@@ -249,13 +249,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showSonosModal(modalHtml);
         } catch (e) {
             console.error('Error browsing music:', e);
-            alert('Fout bij laden van muziekbibliotheek.');
+            alert(window.t ? window.t('sonos_library_load_failed') : 'Fout bij laden van muziekbibliotheek.');
         }
     };
 
     window.playSonosSpotify = async (uri) => {
         if (!activeUuid) {
-            alert('Geen Sonos apparaat geselecteerd.');
+            alert(window.t ? window.t('no_sonos_selected') : 'Geen Sonos apparaat geselecteerd.');
             return;
         }
         
@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(fetchState, 1000);
         } catch (e) {
             console.error('Error playing Spotify on Sonos:', e);
-            alert('Kon niet afspelen.');
+            alert(window.t ? window.t('sonos_play_failed') : 'Kon niet afspelen.');
         }
     };
 

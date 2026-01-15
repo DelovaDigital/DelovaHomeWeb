@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnLogout = document.getElementById('btnProfileLogout');
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
-            if(confirm('Weet u zeker dat u wilt uitloggen?')) {
+            if (confirm(window.t ? window.t('confirm_logout') : 'Weet u zeker dat u wilt uitloggen?')) {
                 localStorage.clear();
                 window.location.href = '../index.html';
             }
@@ -382,11 +382,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (res.ok) {
                     checkSpotifyStatus();
                 } else {
-                    alert('Fout bij ontkoppelen');
+                    alert(window.t ? window.t('spotify_unlink_failed') : 'Fout bij ontkoppelen');
                 }
             } catch (e) {
                 console.error(e);
-                alert('Netwerkfout');
+                alert(window.t ? window.t('network_error') : 'Netwerkfout');
             }
         }
 
@@ -455,8 +455,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const btn = document.getElementById('btn-link-cloud');
         
-        if (!username || !password) return alert('Please enter username and password');
-        if (isRegister && !email) return alert('Please enter email');
+        if (!username || !password) return alert(window.t ? window.t('enter_username_password') : 'Please enter username and password');
+        if (isRegister && !email) return alert(window.t ? window.t('enter_email') : 'Please enter email');
         
         const originalText = btn.textContent;
         btn.disabled = true;
@@ -479,14 +479,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json();
             
             if (data.success) {
-                alert('Successfully linked!');
+                alert(window.t ? window.t('cloud_link_success') : 'Successfully linked!');
                 // Update UI to show linked status
                 checkCloudStatus();
             } else {
-                alert('Failed: ' + data.error);
+                alert((window.t ? window.t('cloud_link_failed') : 'Failed') + ': ' + (data.error || ''));
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            alert((window.t ? window.t('cloud_link_error') : 'Error') + ': ' + e.message);
         } finally {
             btn.disabled = false;
             btn.textContent = originalText;
@@ -600,11 +600,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('error') : 'Fout'}</td></tr>`;
             }
-        } catch(e) { 
-            console.error(e); 
-            if(usersTableBody) usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('network_error') : 'Netwerkfout'}</td></tr>`;
+        } catch (e) {
+            console.error(e);
+            icon.classList.remove('fa-spin');
+            scanBtn.disabled = false;
         }
-    }
 
     // Reload users when translations are ready
     window.addEventListener('translationsLoaded', loadUsers);
@@ -700,7 +700,7 @@ window.updateTimezone = async (tz) => {
         });
     } catch (e) {
         console.error('Failed to save timezone:', e);
-        alert('Failed to save timezone');
+        alert(window.t ? window.t('failed_save_timezone') : 'Failed to save timezone');
     }
 };
 // --- Scene Configuration Logic ---
@@ -809,14 +809,14 @@ window.saveSceneMappings = async function() {
         });
         
         if (res.ok) {
-            alert('Mappings opgeslagen!');
+            alert(window.t ? window.t('mappings_saved') : 'Mappings opgeslagen!');
             // Reload to verify
-            if (btn) btn.textContent = 'Opgeslagen!';
+            if (btn) btn.textContent = window.t ? window.t('saved') : 'Opgeslagen!';
         } else {
-            alert('Opslaan mislukt.');
+            alert(window.t ? window.t('save_failed') : 'Opslaan mislukt.');
         }
-    } catch (e) {
-        alert('Netwerkfout: ' + e.message);
+        } catch (e) {
+        alert((window.t ? window.t('network_error') : 'Netwerkfout') + ': ' + e.message);
     } finally {
         setTimeout(() => { if(btn) btn.textContent = 'Opslaan'; }, 2000);
     }
@@ -854,11 +854,11 @@ async function simulateEvent(type, data = {}) {
             // alert(`Event '${type}' triggered!`); // Optional feedback
             console.log(`Event '${type}' triggered successfully`);
         } else {
-            alert(`Failed: ${result.error}`);
+            alert((window.t ? window.t('failed') : 'Failed') + ': ' + (result.error || ''));
         }
     } catch (e) {
         console.error(e);
-        alert('Request failed');
+        alert(window.t ? window.t('request_failed') : 'Request failed');
     }
 }
 window.simulateEvent = simulateEvent;
@@ -872,11 +872,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRestore.addEventListener('click', () => {
              const file = backupFile.files[0];
              if (!file) {
-                 alert('Selecteer eerst een back-up bestand (.json).');
+                 alert(window.t ? window.t('select_backup_file') : 'Selecteer eerst een back-up bestand (.json).');
                  return;
              }
              
-             if (!confirm('Weet je zeker dat je wilt herstellen? Huidige instellingen worden overschreven en de hub herstart.')) return;
+             if (!confirm(window.t ? window.t('confirm_restore') : 'Weet je zeker dat je wilt herstellen? Huidige instellingen worden overschreven en de hub herstart.')) return;
 
              const reader = new FileReader();
              reader.onload = async (e) => {
@@ -894,11 +894,11 @@ document.addEventListener('DOMContentLoaded', () => {
                          // Reload page or wait for restart
                          setTimeout(() => window.location.reload(), 3000);
                      } else {
-                         alert('Restore mislukt: ' + (result.error || 'Unknown error'));
+                         alert((window.t ? window.t('restore_failed') : 'Restore failed') + ': ' + (result.error || window.t ? window.t('unknown_error') : 'Unknown error'));
                      }
                  } catch (err) {
                      console.error(err);
-                     alert('Ongeldig back-up bestand of server fout.');
+                    alert(window.t ? window.t('invalid_backup_file') : 'Ongeldig back-up bestand of server fout.');
                  }
              };
              reader.readAsText(file);
@@ -907,16 +907,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function systemAction(action) {
-    if(!confirm('Weet je het zeker?')) return;
+    if(!confirm(window.t ? window.t('confirm_action') : 'Weet je het zeker?')) return;
     fetch(`/api/system/${action}`, { method: 'POST' })
         .then(res => res.json())
         .then(data => {
             if(data.success) {
-                alert('Actie uitgevoerd. App wordt herladen...');
+                alert(window.t ? window.t('action_executed_reloading') : 'Actie uitgevoerd. App wordt herladen...');
                 setTimeout(() => window.location.reload(), 3000);
             }
         })
-        .catch(e => alert('Failed: ' + e));
+        .catch(e => alert((window.t ? window.t('failed') : 'Failed') + ': ' + e));
 }
 window.systemAction = systemAction;
 

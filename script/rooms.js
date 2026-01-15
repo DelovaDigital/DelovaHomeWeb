@@ -29,11 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const emptyBtn = document.getElementById('createRoomEmptyBtn');
       if(emptyBtn) emptyBtn.addEventListener('click', async ()=>{
         try{
-          if(typeof window.showRoomPicker === 'function'){
+            if(typeof window.showRoomPicker === 'function'){
             const roomId = await window.showRoomPicker({ createOnly: true });
             if(roomId) render();
           } else {
-            const name = prompt('Nieuwe kamer naam');
+            const name = prompt(window.t ? window.t('new_room_name_prompt') : 'New name for room');
             if(name && name.trim()){
               await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name.trim() }) });
               render();
@@ -52,8 +52,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(typeof window.showRoomPicker === 'function'){
               const roomId = await window.showRoomPicker({ createOnly: true });
               if(roomId) render();
-            } else {
-              const name = prompt('Nieuwe kamer naam');
+              } else {
+              const name = prompt(window.t ? window.t('new_room_name_prompt') : 'New name for room');
               if(name && name.trim()){
                 await fetch('/api/rooms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name.trim() }) });
                 render();
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Event listeners
       roomEl.querySelector('.rename-room').onclick = async () => {
-        const newName = prompt('Nieuwe naam:', r.name);
+        const newName = prompt(window.t ? window.t('rename_room_prompt') : 'New name:', r.name);
         if(newName && newName !== r.name){
           await fetch(`/api/rooms/${r.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: newName }) });
           render();
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       
       roomEl.querySelector('.delete-room').onclick = async () => {
-        if(confirm(`Kamer "${r.name}" verwijderen?`)){
+        if(confirm(window.t ? window.t('confirm_delete_room_name').replace('{name}', r.name) : `Delete room "${r.name}"?`)){
           await fetch(`/api/rooms/${r.id}`, { method:'DELETE' });
           render();
         }

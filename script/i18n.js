@@ -34,7 +34,14 @@
         if (val) return val;
         const prettify = (k) => {
             try {
-                return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                // Remove any standalone 'desc' tokens (e.g. welcome_desc) and similar suffixes
+                let s = k.replace(/\bdesc\b/gi, '');
+                // Also remove trailing separators before cleaned 'desc' (e.g. '_desc', '-desc', '.desc')
+                s = s.replace(/[_\-\. ]+$/g, '');
+                // Normalize separators to spaces, collapse multiple spaces, trim
+                s = s.replace(/[_\-\.]+/g, ' ').replace(/\s+/g, ' ').trim();
+                // Capitalize first letter of each word
+                return s.replace(/\b\w/g, c => c.toUpperCase());
             } catch (e) {
                 return k;
             }
@@ -50,18 +57,29 @@
         elements.forEach(el => {
             const key = el.getAttribute('data-i18n');
             const text = window.t(key);
-            
-            if (text) {
-                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                    if (el.hasAttribute('placeholder')) {
-                        el.setAttribute('placeholder', text);
-                    } else if (el.type === 'submit' || el.type === 'button') {
-                        el.value = text;
+
+                if (text) {
+                    // Clean up any lingering 'desc' tokens in prettified/fallback text
+                    const cleanText = (t) => {
+                        try {
+                            return String(t).replace(/\bdesc\b/gi, '').replace(/\s+/g, ' ').trim();
+                        } catch (e) {
+                            return t;
+                        }
+                    };
+
+                    const applied = cleanText(text);
+
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        if (el.hasAttribute('placeholder')) {
+                            el.setAttribute('placeholder', applied);
+                        } else if (el.type === 'submit' || el.type === 'button') {
+                            el.value = applied;
+                        }
+                    } else {
+                        el.textContent = applied;
                     }
-                } else {
-                    el.textContent = text;
                 }
-            }
         });
         
         window.dispatchEvent(new Event('translations-applied'));

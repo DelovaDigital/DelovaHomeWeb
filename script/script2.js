@@ -40,17 +40,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/system/check-update');
                 const data = await res.json();
 
-                if (data.canUpdate) {
-                    if (confirm('Er is een nieuwe versie beschikbaar. Wil je nu updaten?')) {
+                    if (data.canUpdate) {
+                    if (confirm(window.t ? window.t('confirm_update') : 'Er is een nieuwe versie beschikbaar. Wil je nu updaten?')) {
                         btn.textContent = 'Updaten...';
                         const updateRes = await fetch('/api/system/update', { method: 'POST' });
                         const updateData = await updateRes.json();
                         
                         if (updateData.success) {
-                            alert('Update geslaagd! De server wordt herstart. De pagina wordt zo herladen.');
+                            alert(window.t ? window.t('update_success') : 'Update geslaagd! De server wordt herstart. De pagina wordt zo herladen.');
                             setTimeout(() => window.location.reload(), 5000);
                         } else {
-                            alert('Update mislukt: ' + (updateData.details || 'Onbekende fout'));
+                            alert((window.t ? window.t('update_failed') : 'Update mislukt') + ': ' + (updateData.details || 'Onbekende fout'));
                             btn.textContent = originalText;
                             btn.disabled = false;
                         }
@@ -59,13 +59,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.disabled = false;
                     }
                 } else {
-                    alert('Je bent up-to-date!');
+                    alert(window.t ? window.t('up_to_date') : 'Je bent up-to-date!');
                     btn.textContent = originalText;
                     btn.disabled = false;
                 }
             } catch (e) {
                 console.error(e);
-                alert('Fout bij controleren op updates.');
+                alert(window.t ? window.t('update_check_failed') : 'Fout bij controleren op updates.');
                 btn.textContent = originalText;
                 btn.disabled = false;
             }

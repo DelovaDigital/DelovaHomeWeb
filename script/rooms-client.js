@@ -2,7 +2,7 @@
 window.assignDeviceToRoom = async function(deviceId){
   try{
     if(typeof showRoomPicker !== 'function'){
-      alert('Room picker niet beschikbaar');
+      alert(window.t ? window.t('room_picker_unavailable') : 'Room picker niet beschikbaar');
       return;
     }
     const roomId = await showRoomPicker(deviceId); // returns string id or null
@@ -10,9 +10,9 @@ window.assignDeviceToRoom = async function(deviceId){
     // We will still call API to unassign if empty string selected -> pass null
     if(roomId === undefined) return;
     await fetch('/api/room-mapping', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ deviceId, roomId }) });
-    alert('Toewijzing opgeslagen');
+    alert(window.t ? window.t('assignment_saved') : 'Toewijzing opgeslagen');
   }catch(e){
     console.error('Assign failed', e);
-    alert('Kon apparaat niet toewijzen');
+    alert(window.t ? window.t('assignment_failed') : 'Kon apparaat niet toewijzen');
   }
 };

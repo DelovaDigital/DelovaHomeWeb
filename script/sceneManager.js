@@ -1,6 +1,7 @@
 const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
+const cron = require('node-cron');
 const deviceManager = require('./deviceManager');
 
 const SCENES_FILE = path.join(__dirname, '../data/scenes.json');
@@ -12,7 +13,8 @@ class SceneManager extends EventEmitter {
         this.currentMode = 'HOME'; // HOME, AWAY, NIGHT, CINEMA, SLEEP, GUEST, WORK, VACATION
         this.isGuestMode = false;
         this.isVacationMode = false;
-
+        
+        this.cronJobs = new Map(); // sceneId -> cronTask
         this.scenes = [];
         this.mappings = {};
         this.defaultScenes = [
@@ -114,7 +116,70 @@ class SceneManager extends EventEmitter {
             this.scenes = this.defaultScenes;
             this.save();
         }
+        this.initScheduler();
         console.log('[SceneManager] Initialized with mode:', this.currentMode);
+    }
+    
+    initScheduler() {
+        this.cronJobs.forEach(job => job.stop());
+        this.cronJobs.clear();
+
+        for (const scene of this.scenes) {
+            if (scene.schedule && scene.schedule.enabled && scene.schedule.cron) {
+                this.scheduleScene(scene.id, scene.schedule.cron);
+            }
+        }
+        console.log(`[SceneManager] Scheduler initialized with ${this.cronJobs.size} active jobs.`);
+    }
+
+    scheduleScene(sceneId, cronExpression) {
+        // Remove existing job if any
+        if (this.cronJobs.has(sceneId)) {
+            this.cronJobs.get(sceneId).stop();
+            this.cronJobs.delete(sceneId);
+        }
+
+        if (cron.validate(cronExpression)) {
+            // Check if we should skip due to vacation mode? 
+            // Maybe add a property 'skipOnVacation' to the schedule config?
+            const job = cron.schedule(cronExpression, () => {
+                console.log(`[SceneManager] Executing scheduled scene: ${sceneId}`);
+                this.activateScene(sceneId);
+            });
+            this.cronJobs.set(sceneId, job);
+            console.log(`[SceneManager] Scheduled ${sceneId} at '${cronExpression}'`);
+        } else {
+            console.warn(`[SceneManager] Invalid cron '${cronExpression}' for scene ${sceneId}`);
+        }
+    }
+
+    removeSchedule(sceneId) {
+        if (this.cronJobs.has(sceneId)) {
+            this.cronJobs.get(sceneId).stop();
+            this.cronJobs.delete(sceneId);
+            
+            // Update Scene data model
+            const scene = this.scenes.find(s => s.id === sceneId);
+            if (scene && scene.schedule) {
+                scene.schedule.enabled = false;
+                this.save();
+            }
+        }
+    }
+
+    updateSceneSchedule(sceneId, scheduleConfig) {
+        const scene = this.scenes.find(s => s.id === sceneId);
+        if (!scene) return false;
+
+        scene.schedule = { ...scheduleConfig };
+        this.save();
+        
+        if (scene.schedule.enabled && scene.schedule.cron) {
+            this.scheduleScene(sceneId, scene.schedule.cron);
+        } else {
+            this.removeSchedule(sceneId);
+        }
+        return true;
     }
 
     load() {

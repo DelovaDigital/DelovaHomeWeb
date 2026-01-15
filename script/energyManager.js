@@ -1,6 +1,10 @@
 const EventEmitter = require('events');
+const fs = require('fs');
+const path = require('path');
 const mqttManager = require('./mqttManager');
 const deviceManager = require('./deviceManager');
+
+const DATA_PATH = path.join(__dirname, '../data/energy_history.json');
 
 class EnergyManager extends EventEmitter {
     constructor() {
@@ -66,10 +70,117 @@ class EnergyManager extends EventEmitter {
         };
         this.standbyState = new Map();
 
+        this.history = {
+            hourly: [],
+            daily: [],
+            monthly: []
+        };
+        this.loadHistory();
+
+        // Accumulate energy every minute
+        setInterval(() => this.accumulateEnergy(), 60000);
+
         if (this.config.isConfigured) {
             this.setupMqtt();
         }
     }
+
+    loadHistory() {
+        try {
+            if (fs.existsSync(DATA_PATH)) {
+                const data = JSON.parse(fs.readFileSync(DATA_PATH, 'utf8'));
+                this.history = data;
+            }
+        } catch(e) {
+            console.error('[Energy] Failed to load history:', e);
+        }
+    }
+
+    saveHistory() {
+        try {
+            const dir = path.dirname(DATA_PATH);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(DATA_PATH, JSON.stringify(this.history, null, 0)); // No format to save space? or 2
+        } catch(e) {
+            console.error('[Energy] Failed to save history:', e);
+        }
+    }
+
+    accumulateEnergy() {
+        // Run every minute.
+        // Convert current Power (W) to Energy (kWh) -> W * (1/60)h / 1000
+        const factor = 1 / 60 / 1000; 
+        
+        // Solar
+        const solarKwh = (this.data.solar.currentPower || 0) * factor;
+        this.data.solar.dailyEnergy += solarKwh;
+        this.data.solar.totalEnergy += solarKwh; // Monotonically increasing usually read from device, but here we estimate
+        
+        // Grid (Import/Export)
+        const gridPower = this.data.grid.currentPower || 0;
+        let importKwh = 0;
+        let exportKwh = 0;
+        if (gridPower > 0) {
+            importKwh = (gridPower * factor);
+            this.data.grid.dailyImport += importKwh;
+        } else {
+            exportKwh = (Math.abs(gridPower) * factor);
+            this.data.grid.dailyExport += exportKwh;
+        }
+
+        // Home Usage
+        const usageKwh = (this.data.home.currentUsage || 0) * factor;
+        
+        // Add to history
+        const now = new Date();
+        const hourKey = now.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+        const dayKey = now.toISOString().slice(0, 10); // YYYY-MM-DD
+        const monthKey = now.toISOString().slice(0, 7); // YYYY-MM
+        
+        this.addToHistory('hourly', hourKey, usageKwh, solarKwh, importKwh, exportKwh);
+        this.addToHistory('daily', dayKey, usageKwh, solarKwh, importKwh, exportKwh);
+        this.addToHistory('monthly', monthKey, usageKwh, solarKwh, importKwh, exportKwh);
+
+        // Reset daily counters at midnight
+        if (now.getHours() === 0 && now.getMinutes() === 0) {
+            this.data.solar.dailyEnergy = 0;
+            this.data.grid.dailyImport = 0;
+            this.data.grid.dailyExport = 0;
+            // Clean up old hourly history (keep 48h)
+            if (this.history.hourly.length > 48) {
+                this.history.hourly = this.history.hourly.slice(-48);
+            }
+        }
+        
+        this.saveHistory();
+        this.emit('update', this.data);
+    }
+
+    addToHistory(type, key, usage, solar, imp, exp) {
+        let entry = this.history[type].find(e => e.date === key);
+        if (!entry) {
+            entry = { date: key, usage: 0, solar: 0, import: 0, export: 0, cost: 0 };
+            this.history[type].push(entry);
+        }
+        
+        entry.usage += usage;
+        entry.solar += solar;
+        entry.import += imp;
+        entry.export += exp;
+        
+        // Cost calc (Simplified: Import * Cost)
+        // Ideally export reduces cost
+        const cost = (imp * this.config.costPerKwh);
+        entry.cost += cost;
+        
+        // Rounding to save space
+        entry.usage = parseFloat(entry.usage.toFixed(4));
+        entry.solar = parseFloat(entry.solar.toFixed(4));
+        entry.import = parseFloat(entry.import.toFixed(4));
+        entry.export = parseFloat(entry.export.toFixed(4));
+        entry.cost = parseFloat(entry.cost.toFixed(4));
+    }
+
 
     checkStandby(device) {
         // Use device name or ID as key

@@ -1,3 +1,22 @@
+/* Global Auth Interceptor */
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+    if (typeof url === 'string' && url.startsWith('/api/')) {
+        const token = localStorage.getItem('token');
+        if (token) {
+            if (!options.headers) options.headers = {};
+            if (options.headers instanceof Headers) {
+                options.headers.append('Authorization', `Bearer ${token}`);
+            } else {
+                if (!options.headers['Authorization']) {
+                     options.headers['Authorization'] = `Bearer ${token}`;
+                }
+            }
+        }
+    }
+    return originalFetch(url, options);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     // Clear anti-FOUC inline styles so CSS gradients can take over
     document.documentElement.style.background = '';
@@ -258,6 +277,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('hubName', data.hubInfo.name);
                 }
 
+                // Save Auth
+                if (data.token) localStorage.setItem('token', data.token);
+                if (data.role) localStorage.setItem('userRole', data.role);
+                if (data.userId) localStorage.setItem('userId', data.userId);
+
                 window.location.href = '../pages/dashboard.html';
             } else {
                 alert(data.message || 'Inloggen mislukt');
@@ -299,6 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { name: 'Dashboard', icon: 'fas fa-home', href: 'dashboard.html' },
             { name: 'Kamers', icon: 'fas fa-door-open', href: 'rooms.html' },
             { name: 'Apparaten', icon: 'fas fa-laptop-house', href: 'devices.html' },
+            { name: 'Floorplan', icon: 'fas fa-map-marked-alt', href: 'floorplan.html' },
+            { name: 'Energy', icon: 'fas fa-bolt', href: 'energy.html' },
             { name: 'Automatiseringen', icon: 'fas fa-magic', href: 'automations.html' },
             { name: 'Instellingen', icon: 'fas fa-cog', href: 'settings.html' }
         ];
@@ -407,6 +433,63 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.dispatchEvent(customEvent);
                 } else if (msg.type === 'pairing-required') {
                     showPairingModal(msg.ip, msg.name);
+                } else if (msg.type === 'notification') {
+                    const customEvent = new CustomEvent('notification', { detail: msg.data });
+                    document.dispatchEvent(customEvent);
+                    
+                    // Show basic toaster
+                    const div = document.createElement('div');
+                    const level = msg.data.level || 'info';
+                    div.className = `unified-toast ${level}`;
+                    
+                    let icon = 'fa-info-circle';
+                    let borderColor = '#3b82f6';
+                    if (level === 'error') { icon = 'fa-exclamation-circle'; borderColor = '#ef4444'; }
+                    else if (level === 'warning') { icon = 'fa-exclamation-triangle'; borderColor = '#f59e0b'; }
+                    else if (level === 'success') { icon = 'fa-check-circle'; borderColor = '#10b981'; }
+                    
+                    div.innerHTML = `
+                        <div style="display:flex; align-items:flex-start; gap:10px;">
+                            <i class="fas ${icon}" style="margin-top:3px; color:${borderColor}"></i>
+                            <div>
+                                <div style="font-weight:bold; margin-bottom:2px;">${msg.data.title || 'Notification'}</div>
+                                <div style="font-size:0.9em; opacity:0.9;">${msg.data.message}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    div.style.cssText = `
+                        position: fixed; 
+                        bottom: 20px; 
+                        right: 20px; 
+                        background: rgba(30, 41, 59, 0.9); 
+                        color: white; 
+                        padding: 15px; 
+                        border-radius: 8px; 
+                        z-index: 9999; 
+                        animation: slideInRight 0.3s forwards; 
+                        box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+                        backdrop-filter: blur(10px); 
+                        border-left: 4px solid ${borderColor};
+                        min-width: 300px;
+                        max-width: 400px;
+                    `;
+                    
+                    // Add keyframes if not exists
+                    if (!document.getElementById('toast-style')) {
+                        const style = document.createElement('style');
+                        style.id = 'toast-style';
+                        style.textContent = `@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`;
+                        document.head.appendChild(style);
+                    }
+                    
+                    document.body.appendChild(div);
+                    setTimeout(() => { 
+                        div.style.transition = 'all 0.3s ease';
+                        div.style.opacity = '0'; 
+                        div.style.transform = 'translateX(20px)';
+                        setTimeout(() => div.remove(), 300); 
+                    }, 5000);
                 }
             } catch (e) {
                 console.error('Error parsing WebSocket message', e);

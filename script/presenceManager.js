@@ -2,13 +2,14 @@ const EventEmitter = require('events');
 const deviceManager = require('./deviceManager');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 const CONFIG_PATH = path.join(__dirname, '../data/presence_config.json');
 
 class PresenceManager extends EventEmitter {
     constructor() {
         super();
-        this.people = new Map(); // userId -> { name, deviceId, isHome, lastSeen, location: {lat, lon, timestamp} }
+        this.people = new Map(); // userId -> { name, deviceIds: [], isHome, lastSeen, location: {lat, lon, timestamp} }
         this.homeState = 'unknown'; // 'home', 'away'
         this.homeLocation = {
             latitude: 0,
@@ -24,6 +25,9 @@ class PresenceManager extends EventEmitter {
         
         // Periodic check for "Away" status (if device hasn't been seen in X minutes)
         setInterval(() => this.checkAwayStatus(), 60000); // Check every minute
+        
+        // Active Ping Loop for critical devices (phones)
+        setInterval(() => this.pingDevices(), 30000); // Ping every 30s
     }
 
     loadConfig() {
@@ -67,20 +71,23 @@ class PresenceManager extends EventEmitter {
         });
     }
 
-    addPerson(userId, name, trackingDeviceId) {
+    addPerson(userId, name, trackingDeviceIds) {
         // Keep existing data if present
         const uid = String(userId);
         const existing = this.people.get(uid);
         
+        // Handle single string or array
+        const deviceIds = Array.isArray(trackingDeviceIds) ? trackingDeviceIds : [trackingDeviceIds];
+
         this.people.set(uid, {
             userId: uid,
             name,
-            deviceId: trackingDeviceId,
+            deviceIds: deviceIds,
             isHome: existing ? existing.isHome : false,
             lastSeen: existing ? existing.lastSeen : 0,
             location: existing ? existing.location : null
         });
-        console.log(`[Presence] Tracking ${name} via device ${trackingDeviceId} (ID: ${uid})`);
+        console.log(`[Presence] Tracking ${name} via devices ${deviceIds.join(', ')} (ID: ${uid})`);
     }
 
     removePerson(userId) {
@@ -149,27 +156,62 @@ class PresenceManager extends EventEmitter {
 
     checkDevicePresence(device) {
         for (const [userId, person] of this.people) {
-            if (person.deviceId === device.id || person.deviceId === device.mac) {
+            // Check if this device is one of the person's trackers
+            if (person.deviceIds && (person.deviceIds.includes(device.id) || person.deviceIds.includes(device.mac))) {
                 // Device found/updated
                 const wasHome = person.isHome;
                 person.lastSeen = Date.now();
                 
-                // If device is ON/Reachable, they are home
-                // But if we have location data saying they are away, which wins?
-                // Usually Network presence is more reliable for "Home" than GPS (which drifts).
-                // So if Network says Home, they are Home.
-                
-                if (device.state.on) {
+                if (device.state.on || device.available) {
                      person.isHome = true;
                 }
 
                 if (!wasHome && person.isHome) {
-                    console.log(`[Presence] ${person.name} arrived home (Device).`);
+                    console.log(`[Presence] ${person.name} arrived home (Device: ${device.name}).`);
                     this.emit('person-arrived', person);
                     this.updateHomeState();
                 }
             }
         }
+    }
+
+    pingDevices() {
+        // Collect all IPs that need pinging
+        // We need to look up IPs from deviceManager for the deviceIds we track
+        for (const [userId, person] of this.people) {
+            if (!person.deviceIds) continue;
+            
+            for (const devId of person.deviceIds) {
+                const device = deviceManager.getDevice(devId);
+                // IF device exists and has an IP, ping it
+                if (device && device.ip) {
+                    this.ping(device.ip).then(alive => {
+                        if (alive) {
+                            // Update last seen
+                            person.lastSeen = Date.now();
+                            if (!person.isHome) {
+                                person.isHome = true;
+                                console.log(`[Presence] ${person.name} arrived (Ping: ${device.name})`);
+                                this.emit('person-arrived', person);
+                                this.updateHomeState();
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    ping(ip) {
+        return new Promise(resolve => {
+             const cmd = process.platform === 'win32' 
+                ? `ping -n 1 -w 200 ${ip}` 
+                : `ping -c 1 -W 1 ${ip}`;
+            
+            exec(cmd, (error, stdout) => {
+                resolve(!error);
+            });
+        });
     }
 
     checkAwayStatus() {

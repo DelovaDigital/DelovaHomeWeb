@@ -382,6 +382,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (type === 'light') summary = `${device.state.brightness || 100}%`;
             else if (type === 'thermostat' || type === 'sensor') summary = sensorInfo || `${device.state.temperature}°C`;
             else if (type === 'lock') summary = device.state.isLocked ? 'Locked' : 'Unlocked';
+            else if (type === 'server' || type === 'computer' || type === 'nas' || type === 'rpi') {
+                 let parts = [];
+                 if (device.state.health) {
+                     if (typeof device.state.health === 'object' && device.state.health.status) {
+                         if (device.state.health.status !== 'ok') parts.push(device.state.health.status.toUpperCase());
+                     } else if (typeof device.state.health === 'string' && device.state.health !== 'ok') {
+                         parts.push(device.state.health.toUpperCase());
+                     }
+                 }
+                 if (device.state.cpu !== undefined) parts.push(`CPU: ${Math.round(device.state.cpu)}%`);
+                 if (device.state.disk !== undefined) parts.push(`Disk: ${device.state.disk}%`);
+                 if (parts.length > 0) summary = parts.join(' | ');
+                 else summary = 'Online';
+            }
             else if ((type === 'tv' || type === 'speaker' || type === 'receiver' || hasMediaProtocol) && device.state.mediaTitle) {
                 summary = `<span style="font-size: 0.9em; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;">${device.state.mediaTitle}</span>`;
                 if (device.state.mediaArtist) {
@@ -793,12 +807,49 @@ document.addEventListener('DOMContentLoaded', () => {
             
             controlsHtml += `</div>`;
 
-        } else if (type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'mac') {
+        } else if (type === 'pc' || type === 'computer' || type === 'workstation' || type === 'raspberrypi' || type === 'rpi' || type === 'server' || type === 'mac') {
             const isWindows = type.includes('pc') || type.includes('computer') || type.includes('workstation') || device.name.toLowerCase().includes('windows') || device.name.toLowerCase().includes('win');
             
+            // Health Dashboard
+            controlsHtml += `<div class="device-health-dashboard" style="width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">`;
+            
+            const renderStat = (label, val, unit, color) => `
+                <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 0.8em; opacity: 0.7;">${label}</div>
+                    <div style="font-size: 1.2em; font-weight: bold; color: ${color};">${val !== undefined && val !== null ? val : '-'}${unit}</div>
+                </div>
+            `;
+            
+            controlsHtml += renderStat('CPU', device.state.cpu, '%', (device.state.cpu > 80) ? '#ff6b6b' : '#4cc9f0');
+            
+            let ramPercent = null;
+            if (device.state.ram && device.state.ram_total) {
+                // If stored as bytes, convert. If stored as raw numbers, assume they are compatible (e.g. both GB or both bytes)
+                // Actually systemMonitor sends bytes/bytes
+                 ramPercent = Math.round((device.state.ram / device.state.ram_total) * 100);
+            }
+            controlsHtml += renderStat('RAM', ramPercent, '%', '#4cc9f0');
+            controlsHtml += renderStat('Disk', device.state.disk, '%', (device.state.disk > 90) ? '#ff6b6b' : '#4cc9f0');
+            
+            let healthText = 'OK';
+            let healthColor = '#4cc9f0';
+            if (device.state.health) {
+                 if (typeof device.state.health === 'object') {
+                     healthText = device.state.health.status ? device.state.health.status.toUpperCase() : 'OK';
+                     if (healthText === 'CRITICAL') healthColor = '#ff6b6b';
+                     else if (healthText === 'WARNING') healthColor = '#fca311';
+                 } else {
+                     healthText = device.state.health.toUpperCase();
+                     if (healthText !== 'OK') healthColor = '#ff6b6b';
+                 }
+            }
+            controlsHtml += renderStat('Health', healthText, '', healthColor);
+            
+            controlsHtml += `</div>`;
+
             controlsHtml += `
-                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 20px;">
-                    <p>Beheer verbindingen en bestanden.</p>
+                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                    <p style="opacity: 0.7; font-size: 0.9em;">Beheer verbindingen en bestanden.</p>
             `;
 
             if (!device.isPaired) {

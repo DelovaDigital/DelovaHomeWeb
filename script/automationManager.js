@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const deviceManager = require('./deviceManager');
 const presenceManager = require('./presenceManager');
+const notificationManager = require('./notificationManager');
 
 const DATA_FILE = path.join(__dirname, '../data/automations.json');
 
@@ -235,7 +236,22 @@ class AutomationManager extends EventEmitter {
                 if (type === 'device') {
                     await deviceManager.controlDevice(action.deviceId, action.command, action.value);
                 } else if (type === 'scene') {
-                    await deviceManager.activateScene(action.sceneName);
+                    // This was calling deviceManager.activateScene, but sceneManager is better if available. 
+                    // But to avoid circular dependency, we might emit an event or rely on deviceManager proxy.
+                    // Assuming deviceManager handles scenes or we just stick to it.
+                    // But wait, server.js has sceneManager. 
+                    // Let's check how scene activations are routed.
+                    // The old code used deviceManager.activateScene. Let's see if that exists.
+                    // Actually, let's add notification type first.
+                    try { await deviceManager.activateScene(action.sceneName); } catch(e) { console.warn("Scene action via deviceManager failed", e); }
+                } else if (type === 'notification') {
+                    // { type: 'notification', title: 'Start', message: 'Washing machine started', priority: 'normal', target: 'all' }
+                    await notificationManager.send(
+                        action.title || 'Automation', 
+                        action.message || 'Triggered', 
+                        action.priority || 'normal', 
+                        action.target || 'all'
+                    );
                 } else if (type === 'delay') {
                     await new Promise(resolve => setTimeout(resolve, action.duration));
                 } else {

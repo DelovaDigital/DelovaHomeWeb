@@ -1,0 +1,126 @@
+.floorplan-container {
+    display: flex;
+    height: calc(100vh - 140px);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card-bg);
+}
+
+.floorplan-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    display: flex; /* Centering */
+    align-items: center; 
+    justify-content: center;
+    background: #1e1e1e; /* Dark bg for contrast */
+}
+
+#floorplanImg {
+    max-width: none; /* Allow full resolution */
+    display: block;
+    user-select: none;
+    pointer-events: none; /* Let clicks pass to wrapper/markers if needed, but we need drag drop */
+}
+/* Actually we want pointer events on img to catch drops? No, wrapper handles it. */
+
+.placeholder-text {
+    color: #888;
+    position: absolute;
+    pointer-events: none;
+}
+
+#marker-layer {
+    position: absolute;
+    top: 0; left: 0;
+    width: 0; height: 0; /* Will match image size via JS */
+}
+
+.marker {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: var(--card);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    transition: background 0.2s, box-shadow 0.2s transform 0.2s;
+    border: 2px solid white;
+    color: #333;
+}
+
+.marker:hover {
+    transform: translate(-50%, -50%) scale(1.15);
+    z-index: 100;
+}
+
+.marker.on {
+    background: #fbbf24; /* Amber-400 */
+    border-color: #f59e0b;
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.6);
+}
+
+.marker i {
+    pointer-events: none;
+}
+
+/* Tooltip on hover */
+.marker::after {
+    content: attr(data-name);
+    position: absolute;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    font-size: 0.8rem;
+}
+.marker:hover::after {
+    opacity: 1;
+}
+
+.edit-sidebar {
+    width: 280px;
+    border-left: 1px solid var(--border);
+    background: var(--bg);
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.draggable-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+.draggable-item {
+    padding: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+.draggable-item:active {
+    cursor: grabbing;
+}

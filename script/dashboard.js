@@ -645,3 +645,71 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   }, 5000);
 });
+
+/* AI Assistant Logic */
+document.addEventListener('DOMContentLoaded', () => {
+    const aiInput = document.getElementById('aiInput');
+    const aiSubmit = document.getElementById('aiSubmit');
+    const aiMic = document.getElementById('aiMic');
+
+    if (aiSubmit && aiInput) {
+        async function sendAICommand() {
+            const text = aiInput.value.trim();
+            if (!text) return;
+            
+            aiInput.value = '';
+            const originalPlaceholder = aiInput.placeholder;
+            aiInput.placeholder = 'Thinking...';
+            
+            try {
+                const res = await fetch('/api/ai/command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                
+                if (data.ok) {
+                    // Feedback via placeholder or alert
+                    aiInput.placeholder = data.message || 'Done';
+                    setTimeout(() => aiInput.placeholder = originalPlaceholder, 3000);
+                } else {
+                     aiInput.placeholder = 'Error: ' + data.message;
+                     setTimeout(() => aiInput.placeholder = originalPlaceholder, 3000);
+                }
+            } catch (e) {
+                console.error(e);
+                aiInput.placeholder = 'Connection Failed';
+            }
+        }
+
+        aiSubmit.addEventListener('click', sendAICommand);
+        aiInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendAICommand();
+        });
+        
+        // Voice Control
+        if (aiMic && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US'; 
+            
+            recognition.onstart = () => {
+                aiMic.style.color = '#ef4444';
+            };
+            recognition.onend = () => {
+                aiMic.style.color = '';
+            };
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                aiInput.value = text;
+                sendAICommand();
+            };
+            
+            aiMic.onclick = () => recognition.start();
+        } else if (aiMic) {
+            aiMic.style.display = 'none'; 
+        }
+    }
+});

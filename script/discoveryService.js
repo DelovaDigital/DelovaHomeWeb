@@ -16,6 +16,13 @@ class DiscoveryService extends EventEmitter {
         this.startSSDP();
     }
 
+    rescan() {
+        console.log('[Discovery] Force rescan requested.');
+        this.stop();
+        this.discoveredDevices.clear();
+        setTimeout(() => this.start(), 1000);
+    }
+
     stop() {
         if (this.bonjour) {
             this.bonjour.destroy();

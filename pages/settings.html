@@ -48,6 +48,12 @@
                     <div class="settings-nav-item" data-target="scenes">
                         <i class="fas fa-magic"></i> <span data-i18n="scenes">Scenes</span>
                     </div>
+                    <div class="settings-nav-item" data-target="developer">
+                        <i class="fas fa-code"></i> <span data-i18n="developer">Developer</span>
+                    </div>
+                    <div class="settings-nav-item" data-target="maintenance">
+                        <i class="fas fa-tools"></i> <span data-i18n="maintenance">Onderhoud</span>
+                    </div>
                 </aside>
 
                 <!-- Content -->
@@ -501,6 +507,94 @@
                                 </div>
                                 <div class="form-actions" style="margin-top: 20px; text-align: right;">
                                     <button id="btn-save-mappings" class="btn btn-primary" data-i18n="save">Opslaan</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Developer Section -->
+                    <div id="developer" class="settings-section">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-flask"></i>
+                                <h3>Simulation Tools</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Simulate Doorbell</span>
+                                        <span class="setting-desc">Triggers standard doorbell notification/event.</span>
+                                    </div>
+                                    <button class="btn btn-secondary" onclick="simulateEvent('doorbell')">Trigger</button>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Simulate Motion</span>
+                                        <span class="setting-desc">Triggers motion event in a simulated room.</span>
+                                    </div>
+                                    <button class="btn btn-secondary" onclick="simulateEvent('motion')">Trigger</button>
+                                </div>
+                                 <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Simulate Leak</span>
+                                        <span class="setting-desc">Triggers critical water leak alert.</span>
+                                    </div>
+                                    <button class="btn btn-secondary" onclick="simulateEvent('leak')">Trigger</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Maintenance Section -->
+                    <div id="maintenance" class="settings-section">
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-save"></i>
+                                <h3>Backup & Restore</h3>
+                            </div>
+                            <div class="card-body">
+                                <p style="margin-bottom: 20px; opacity: 0.8;">
+                                    Download een back-up van je configuratie of herstel een eerdere versie.
+                                    Dit bevat je instellingen, scenes, kamers en apparaten.
+                                </p>
+                                
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Configuratie Downloaden</span>
+                                        <span class="setting-desc">Download een .json bestand met al je data.</span>
+                                    </div>
+                                    <a href="/api/backup/download" class="btn btn-primary" target="_blank">
+                                        <i class="fas fa-download"></i> Download Backup
+                                    </a>
+                                </div>
+
+                                <div class="setting-item" style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px;">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Back-up Herstellen</span>
+                                        <span class="setting-desc">Upload een back-up bestand om te herstellen.</span>
+                                    </div>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <input type="file" id="backupFile" accept=".json" style="max-width: 200px;">
+                                        <button id="btnRestore" class="btn btn-danger">
+                                            <i class="fas fa-upload"></i> Restore
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                         <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-power-off"></i>
+                                <h3>Systeem Acties</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="setting-item">
+                                    <div class="setting-info">
+                                        <span class="setting-label">Herstart Hub</span>
+                                        <span class="setting-desc">Herstart de server service.</span>
+                                    </div>
+                                    <button onclick="systemAction('restart')" class="btn btn-secondary">Herstarten</button>
                                 </div>
                             </div>
                         </div>

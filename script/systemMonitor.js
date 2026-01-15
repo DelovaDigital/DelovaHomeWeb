@@ -1,8 +1,13 @@
 const os = require('os');
+const { exec } = require('child_process');
 const mqttManager = require('./mqttManager');
 
 let isStarted = false;
 let updateInterval = null;
+let healthStatus = {
+    status: 'ok', // ok, warning, critical
+    issues: []
+};
 
 function start() {
     if (isStarted) return;
@@ -16,11 +21,21 @@ function start() {
             if (!mqttManager.connected) return;
 
             const cpuPercent = await getCpuUsage();
+            const diskUsage = await getDiskUsage();
 
             const totalMem = os.totalmem();
             const freeMem = os.freemem();
             const usedMem = totalMem - freeMem;
             
+            // Health Checks
+            const issues = [];
+            if (cpuPercent > 90) issues.push('High CPU Usage');
+            if (diskUsage && diskUsage > 90) issues.push('Low Disk Space');
+            if (freeMem / totalMem < 0.1) issues.push('Low Memory');
+            
+            healthStatus.status = issues.length > 0 ? (issues.length > 2 ? 'critical' : 'warning') : 'ok';
+            healthStatus.issues = issues;
+
             // Load avg for reference (1 min)
             const loadAvg = os.loadavg()[0];
 
@@ -71,6 +86,8 @@ function start() {
                 load_avg: loadAvg,
                 memory_used: usedMem,
                 memory_total: totalMem,
+                disk_usage: diskUsage,
+                health: healthStatus,
                 platform: os.platform() + ' ' + os.release(),
                 battery_level: 100,
                 charging: true
@@ -118,6 +135,58 @@ function getCpuUsage() {
             const usage = 100 - Math.round((idle / total) * 100);
             resolve(Math.max(0, usage));
         }, 1000);
+    });
+}
+
+function getDiskUsage() {
+    return new Promise((resolve) => {
+        if (process.platform === 'win32') {
+            // Windows: Use wmic
+            exec('wmic logicaldisk where "DeviceID=\'C:\'" get FreeSpace,Size', (err, stdout) => {
+                if (err) {
+                    resolve(null);
+                    return;
+                }
+                const lines = stdout.trim().split('\n');
+                if (lines.length < 2) { 
+                    resolve(null); 
+                    return; 
+                }
+                const parts = lines[1].trim().split(/\s+/);
+                if (parts.length >= 2) {
+                    const free = parseInt(parts[0]);
+                    const size = parseInt(parts[1]);
+                    if (!isNaN(free) && !isNaN(size) && size > 0) {
+                        const used = size - free;
+                        resolve(Math.round((used / size) * 100));
+                        return;
+                    }
+                }
+                resolve(null);
+            });
+        } else {
+            // Linux/Mac: Use df -k /
+             exec('df -k /', (err, stdout) => {
+                if (err) {
+                    resolve(null);
+                    return;
+                }
+                const lines = stdout.trim().split('\n');
+                if (lines.length < 2) {
+                    resolve(null);
+                    return;
+                }
+                const parts = lines[1].replace(/\s+/g, ' ').split(' ');
+                // Filesystem 1K-blocks Used Available Use% Mounted on
+                // usually parts[4] is Use% (e.g., "15%")
+                const useStr = parts[4]; 
+                if (useStr && useStr.endsWith('%')) {
+                    resolve(parseInt(useStr.replace('%', '')));
+                } else {
+                    resolve(null);
+                }
+             });
+        }
     });
 }
 

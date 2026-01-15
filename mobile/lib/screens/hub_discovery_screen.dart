@@ -122,6 +122,13 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
       _hubs.clear();
     });
 
+    // Auto-stop after 15 seconds to allow UI to show Retry button
+    Future.delayed(const Duration(seconds: 15), () {
+      if (mounted && _isScanning) {
+        _stopDiscovery();
+      }
+    });
+
     // 1. Start UDP Discovery (Fast & Reliable on local subnet)
     _startUDPDiscovery();
 
@@ -681,12 +688,18 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                                   ],
                                 ),
                         )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: _hubs.length,
-                          itemBuilder: (context, index) {
-                            final hub = _hubs[index];
-                            return Padding(
+                      : RefreshIndicator(
+                          onRefresh: () async {
+                             await _stopDiscovery();
+                             _startDiscovery();
+                          },
+                          child: ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: _hubs.length,
+                            itemBuilder: (context, index) {
+                              final hub = _hubs[index];
+                              return Padding(
                               padding: const EdgeInsets.only(bottom: 16),
                               child: Card(
                                 child: ListTile(
@@ -719,6 +732,7 @@ class _HubDiscoveryScreenState extends State<HubDiscoveryScreen> with SingleTick
                           },
                         ),
                 ),
+              ),
                 
                 // Manual Connect Button
                 Padding(

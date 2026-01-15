@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cameras - DelovaHome</title>
+    <link rel="stylesheet" href="../style/base.css">
+    <link rel="stylesheet" href="../style/cameras.css">
+    <script>/* Prevent white flash */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
+    <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="../script/jsmpeg.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="main-nav">
+             <!-- Navigation loaded here -->
+        </nav>
+        <main class="content-area">
+            <header class="page-header">
+                <div class="header-content">
+                    <div>
+                        <h2>Cameras</h2>
+                        <p>Live feeds & Recordings</p>
+                    </div>
+                     <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="openRecordingsModal()">
+                            <i class="fas fa-film"></i> View Recordings
+                        </button>
+                    </div>
+                </div>
+            </header>
+            
+            <div id="cameraGrid" class="camera-grid">
+                <!-- Loaded via JS -->
+                 <div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Loading cameras...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Recordings Modal -->
+    <div id="recordingsModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3>Recorded Clips</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="recordingsList" class="file-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- URL Setup Modal -->
+    <div id="urlModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Camera Setup</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Enter RTSP URL for <strong id="setupDeviceName"></strong></p>
+                <input type="text" id="rtspUrlInput" class="form-control" placeholder="rtsp://user:pass@ip:554/stream">
+                <input type="hidden" id="setupDeviceId">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="saveUrlBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../script/script.js"></script>
+    <script src="../script/cameras.js"></script>
+</body>
+</html>

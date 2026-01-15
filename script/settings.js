@@ -1,4 +1,25 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // RBAC: Check Role & Hide Admin Elements
+    const role = localStorage.getItem('userRole');
+    if (role !== 'Admin' && role !== 'admin') {
+        const restricted = ['users', 'knx', 'developer'];
+        restricted.forEach(target => {
+            const item = document.querySelector(`.settings-nav-item[data-target="${target}"]`);
+            if (item) item.style.display = 'none';
+        });
+        
+        // Guard against manual URL navigation
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        if (restricted.includes(tab)) {
+             // Defer slightly to ensure tab logic runs
+             setTimeout(() => {
+                 const general = document.querySelector('.settings-nav-item[data-target="general"]');
+                 if(general) general.click();
+             }, 100);
+        }
+    }
+
     // --- Tab Switching Logic ---
     const navItems = document.querySelectorAll('.settings-nav-item');
     const sections = document.querySelectorAll('.settings-section');
@@ -737,3 +758,83 @@ document.addEventListener('DOMContentLoaded', () => {
         initSceneSetup();
     }
 });
+
+// Developer Tools
+async function simulateEvent(type, data = {}) {
+    try {
+        const res = await fetch('/api/simulate/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, data })
+        });
+        const result = await res.json();
+        if (result.ok) {
+            // alert(`Event '${type}' triggered!`); // Optional feedback
+            console.log(`Event '${type}' triggered successfully`);
+        } else {
+            alert(`Failed: ${result.error}`);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Request failed');
+    }
+}
+window.simulateEvent = simulateEvent;
+
+/* Backup Restore Logic */
+document.addEventListener('DOMContentLoaded', () => {
+    const btnRestore = document.getElementById('btnRestore');
+    const backupFile = document.getElementById('backupFile');
+
+    if (btnRestore && backupFile) {
+        btnRestore.addEventListener('click', () => {
+             const file = backupFile.files[0];
+             if (!file) {
+                 alert('Selecteer eerst een back-up bestand (.json).');
+                 return;
+             }
+             
+             if (!confirm('Weet je zeker dat je wilt herstellen? Huidige instellingen worden overschreven en de hub herstart.')) return;
+
+             const reader = new FileReader();
+             reader.onload = async (e) => {
+                 try {
+                     const json = JSON.parse(e.target.result);
+                     const res = await fetch('/api/backup/restore', {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify(json)
+                     });
+                     
+                     const result = await res.json();
+                     if (result.success) {
+                         alert(result.message);
+                         // Reload page or wait for restart
+                         setTimeout(() => window.location.reload(), 3000);
+                     } else {
+                         alert('Restore mislukt: ' + (result.error || 'Unknown error'));
+                     }
+                 } catch (err) {
+                     console.error(err);
+                     alert('Ongeldig back-up bestand of server fout.');
+                 }
+             };
+             reader.readAsText(file);
+        });
+    }
+});
+
+function systemAction(action) {
+    if(!confirm('Weet je het zeker?')) return;
+    fetch(`/api/system/${action}`, { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                alert('Actie uitgevoerd. App wordt herladen...');
+                setTimeout(() => window.location.reload(), 3000);
+            }
+        })
+        .catch(e => alert('Failed: ' + e));
+}
+window.systemAction = systemAction;
+

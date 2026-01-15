@@ -4687,6 +4687,8 @@ class DeviceManager extends EventEmitter {
             if (device.state.cpu !== payload.cpu_load) { device.state.cpu = payload.cpu_load; updated = true; }
             if (device.state.ram !== payload.memory_used) { device.state.ram = payload.memory_used; updated = true; }
             if (device.state.ram_total !== payload.memory_total) { device.state.ram_total = payload.memory_total; updated = true; }
+            if (payload.disk_usage !== undefined && device.state.disk !== payload.disk_usage) { device.state.disk = payload.disk_usage; updated = true; }
+            if (payload.health !== undefined && JSON.stringify(device.state.health) !== JSON.stringify(payload.health)) { device.state.health = payload.health; updated = true; }
             if (device.state.battery !== payload.battery_level) { device.state.battery = payload.battery_level; updated = true; }
             if (device.state.charging !== payload.charging) { device.state.charging = payload.charging; updated = true; }
             if (device.state.platform !== payload.platform) { device.state.platform = payload.platform; updated = true; }
@@ -4718,6 +4720,8 @@ class DeviceManager extends EventEmitter {
                     cpu: payload.cpu_load,
                     ram: payload.memory_used,
                     ram_total: payload.memory_total,
+                    disk: payload.disk_usage,
+                    health: payload.health,
                     battery: payload.battery_level,
                     charging: payload.charging,
                     platform: payload.platform

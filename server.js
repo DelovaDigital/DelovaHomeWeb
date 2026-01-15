@@ -43,6 +43,7 @@ adaptiveLighting.start();
 const espManager = require('./script/espManager'); // Advanced MQTT/ESP32 Management
 const ps5Manager = require('./script/ps5Manager');
 const psnManager = require('./script/psnManager');
+const notificationManager = require('./script/notificationManager');
 const presenceManager = require('./script/presenceManager');
 const aiManager = require('./script/aiManager');
 const hueManager = require('./script/hueManager');
@@ -409,6 +410,35 @@ try {
 
 
 app.use(express.json());
+
+// --- Authentication Middleware ---
+const sessions = new Map(); // token -> { userId, role, username }
+
+const authenticate = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        if (sessions.has(token)) {
+            req.user = sessions.get(token);
+        }
+    }
+    next();
+};
+
+const requireAuth = (req, res, next) => {
+    if (!req.user) return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    next();
+};
+
+const requireAdmin = (req, res, next) => {
+    if (!req.user || (req.user.role !== 'Admin' && req.user.role !== 'admin')) { // Handle case sensitivity
+        return res.status(403).json({ ok: false, message: 'Forbidden: Admin access required' });
+    }
+    next();
+};
+
+app.use(authenticate);
+
 // Serve static files from project root
 app.use(express.static(__dirname));
 
@@ -478,9 +508,14 @@ app.post('/api/login', async (req, res) => {
     
     // Auto-register user for presence tracking
     presenceManager.addPerson(user.Id, user.Username, 'mobile-app');
+    
+    // Generate Token
+    const token = uuidv4();
+    sessions.set(token, { id: user.Id, username: user.Username, role: user.Role });
 
     res.json({ 
         ok: true, 
+        token: token,
         userId: user.Id, 
         username: user.Username, 
         role: user.Role,
@@ -665,7 +700,7 @@ app.get('/api/setup/status', async (req, res) => {
 });
 
 // List Users Endpoint
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', requireAdmin, async (req, res) => {
     try {
         const pool = await db.getPool();
         const result = await pool.request()
@@ -687,7 +722,7 @@ app.get('/api/users', async (req, res) => {
 });
 
 // Delete User Endpoint
-app.delete('/api/users/:id', async (req, res) => {
+app.delete('/api/users/:id', requireAdmin, async (req, res) => {
     const userId = req.params.id;
     try {
         const pool = await db.getPool();
@@ -711,7 +746,7 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // Create User Endpoint
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', requireAdmin, async (req, res) => {
     const { username, password, role } = req.body;
     if (!username || !password) return res.status(400).json({ ok: false, message: 'Username and password required' });
 
@@ -844,7 +879,7 @@ app.post('/api/webhooks/homekit', async (req, res) => {
 });
 
 // Update User Role Endpoint
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', requireAdmin, async (req, res) => {
     const userId = req.params.id;
     const { role } = req.body;
     
@@ -864,6 +899,13 @@ app.put('/api/users/:id', async (req, res) => {
 
 const deviceManager = require('./script/deviceManager');
 const sonosManager = require('./script/sonosManager');
+// Simulator Integration
+const Simulator = require('./script/simulator');
+const simulator = new Simulator(deviceManager, notificationManager);
+// Only start automatic simulation if explicitly enabled via ENV or config
+if (process.env.ENABLE_SIMULATION === 'true') {
+    simulator.start();
+}
 
 // Load spotifyManager defensively to avoid crashing the whole server if the module has syntax errors
 let spotifyManager;
@@ -1868,11 +1910,60 @@ app.post('/api/camera/webrtc/offer', async (req, res) => {
 
     try {
         const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
-        const answerSdp = await stream.handleOffer(sdp);
-        res.json({ sdp: answerSdp });
+        // Check if handleOffer exists (feature check)
+        if (typeof stream.handleOffer === 'function') {
+            const answerSdp = await stream.handleOffer(sdp);
+            res.json({ sdp: answerSdp });
+        } else {
+            res.status(501).json({ error: 'WebRTC not implemented on this server node. Use JSMpeg.' });
+        }
     } catch (e) {
         console.error('WebRTC Error:', e);
         res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/camera/record/start', (req, res) => {
+    const { deviceId, rtspUrl } = req.body;
+    try {
+        const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
+        const filename = stream.startRecording();
+        res.json({ success: true, filename });
+    } catch (e) {
+        console.error("Recording error:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/camera/record/stop', (req, res) => {
+    const { deviceId, rtspUrl } = req.body;
+    try {
+        const stream = cameraStreamManager.getStream(deviceId, rtspUrl);
+        stream.stopRecording();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/camera/recordings', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const recDir = path.join(__dirname, 'recordings');
+    if (!fs.existsSync(recDir)) return res.json([]);
+    
+    try {
+        const files = fs.readdirSync(recDir)
+            .filter(f => f.endsWith('.mp4'))
+            .map(f => ({ 
+                filename: f, 
+                url: `/recordings/${f}`,
+                timestamp: fs.statSync(path.join(recDir, f)).mtime 
+            }))
+            .sort((a,b) => b.timestamp - a.timestamp);
+        res.json(files);
+    } catch (e) {
+        res.status(500).json({ error: "Failed to list recordings" });
     }
 });
 
@@ -1922,6 +2013,52 @@ app.post('/api/ai/command', async (req, res) => {
 // --- Presence ---
 app.get('/api/presence', (req, res) => {
     res.json(presenceManager.getPresenceStatus());
+});
+
+// --- Floorplan API ---
+const FLOORPLAN_IMG = path.join(__dirname, 'img', 'floorplan.png');
+const FLOORPLAN_MARKERS = path.join(__dirname, 'data', 'floorplan_markers.json');
+
+app.get('/api/floorplan', (req, res) => {
+    const hasImage = fs.existsSync(FLOORPLAN_IMG);
+    let markers = [];
+    if (fs.existsSync(FLOORPLAN_MARKERS)) {
+        try { markers = JSON.parse(fs.readFileSync(FLOORPLAN_MARKERS)); } catch(e){}
+    }
+    res.json({
+        hasImage,
+        imageUrl: hasImage ? '../img/floorplan.png?t=' + Date.now() : null,
+        markers
+    });
+});
+
+app.post('/api/floorplan/upload', requireAdmin, express.json({limit: '50mb'}), (req, res) => {
+    const { image } = req.body; // Base64 string "data:image/png;base64,..."
+    if (!image) return res.status(400).json({ error: 'No image' });
+    
+    // Ensure img dir exists
+    const imgDir = path.dirname(FLOORPLAN_IMG);
+    if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir);
+
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    fs.writeFile(FLOORPLAN_IMG, base64Data, 'base64', (err) => {
+        if (err) return res.status(500).json({ error: 'Write failed: ' + err.message });
+        res.json({ ok: true });
+    });
+});
+
+app.post('/api/floorplan/markers', requireAdmin, (req, res) => {
+    const { markers } = req.body;
+    if (!Array.isArray(markers)) return res.status(400).json({ error: 'Invalid markers' });
+    
+    // Ensure data dir exists
+    const dataDir = path.dirname(FLOORPLAN_MARKERS);
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+    
+    fs.writeFile(FLOORPLAN_MARKERS, JSON.stringify(markers, null, 2), (err) => {
+         if (err) return res.status(500).json({ error: 'Write failed' });
+         res.json({ ok: true });
+    });
 });
 
 // --- Security API ---
@@ -1984,7 +2121,35 @@ app.post('/api/presence/home-location', (req, res) => {
 
 // --- Energy ---
 app.get('/api/energy', (req, res) => {
-    res.json(energyManager.data);
+    res.json({
+        ...energyManager.data,
+        history: energyManager.history
+    });
+});
+
+// --- Simulator API ---
+app.post('/api/simulate/event', (req, res) => {
+    const { type, data } = req.body;
+    if (!simulator) return res.status(503).json({ error: 'Simulator not available' });
+
+    try {
+        switch(type) {
+            case 'doorbell':
+                simulator.triggerDoorbell();
+                break;
+            case 'motion':
+                simulator.triggerMotion(data ? data.roomId : null);
+                break;
+            case 'leak':
+                simulator.triggerLeak();
+                break;
+            default:
+                return res.status(400).json({error: 'Unknown type'});
+        }
+        res.json({ok: true});
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // --- Scene & Mode API ---
@@ -2246,7 +2411,7 @@ app.get('/api/system/check-update', (req, res) => {
     });
 });
 
-app.post('/api/system/update', (req, res) => {
+app.post('/api/system/update', requireAdmin, (req, res) => {
     console.log('Starting system update...');
     
     // We attempt to update both. 
@@ -2626,6 +2791,16 @@ udpServer.bind(8888, () => {
     // Start System Monitor (Self-Monitoring)
     systemMonitor.start();
 
+    // Start Notification Listeners
+    notificationManager.on('notification', (note) => {
+        const msg = JSON.stringify({ type: 'notification', data: note });
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(msg);
+            }
+        });
+    });
+
   } catch (err) {
     console.error('Database connection: FAILED');
     console.error(err.message || err);
@@ -2634,6 +2809,34 @@ udpServer.bind(8888, () => {
 })();
 
 // --- App Control API ---
+
+// --- Notification API ---
+app.get('/api/notifications', (req, res) => {
+    res.json(notificationManager.getHistory(req.query.userId));
+});
+
+app.post('/api/notifications', (req, res) => {
+    const { title, message, priority, target } = req.body;
+    notificationManager.send(title, message, priority || 'normal', target || 'all');
+    res.json({ ok: true });
+});
+
+app.post('/api/notifications/:id/read', (req, res) => {
+    notificationManager.markAsRead(req.params.id);
+    res.json({ ok: true });
+});
+
+// --- Enhanced Scene API ---
+app.post('/api/scenes/:id/schedule', (req, res) => {
+    const { id } = req.params;
+    const { enabled, cron } = req.body;
+    
+    // Validate cron
+    // We could use a regex or just trust the SceneManager to validate
+    const success = sceneManager.updateSceneSchedule(id, { enabled, cron });
+    if (success) res.json({ ok: true });
+    else res.status(404).json({ ok: false, message: 'Scene not found' });
+});
 
 app.get('/api/devices/:id/apps', async (req, res) => {
     const { id } = req.params;
@@ -2650,3 +2853,20 @@ app.get('/api/devices/:id/apps', async (req, res) => {
         res.status(500).json({ ok: false, message: e.message });
     }
 });
+
+// --- Remote Access Routes ---
+try {
+    const setupRemoteAccess = require('./script/remoteAccess');
+    setupRemoteAccess(app, hubConfig, cloudClient);
+} catch (err) {
+    console.error('Failed to load remote access routes:', err);
+}
+
+// --- Backup & System Routes ---
+try {
+    const setupBackupManager = require('./script/backupManager');
+    setupBackupManager(app, hubConfig);
+} catch (err) {
+    console.error('Failed to load backup manager:', err);
+}
+

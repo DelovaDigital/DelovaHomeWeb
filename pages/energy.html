@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy - DelovaHome</title>
+    <link rel="stylesheet" href="../style/base.css">
+    <script>/* Prevent white flash */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
+    <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .energy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .energy-card {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .energy-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        .energy-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        .energy-label {
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        .chart-container {
+            height: 350px;
+            padding: 20px;
+        }
+        /* Icon colors */
+        .icon-solar { background: rgba(255, 215, 0, 0.2); color: #ffd700; }
+        .icon-grid-in { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .icon-grid-out { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .icon-usage { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="main-nav"></nav>
+
+        <main class="content-area">
+            <header class="page-header">
+                <div>
+                    <h2>Energy Monitor</h2>
+                    <p>Real-time usage and history</p>
+                </div>
+            </header>
+
+            <!-- Summary Cards -->
+            <div class="energy-grid">
+                <div class="unified-card energy-card">
+                    <div class="energy-icon icon-usage"><i class="fas fa-bolt"></i></div>
+                    <div>
+                        <div class="energy-value" id="valUsage">0 W</div>
+                        <div class="energy-label">Current Usage</div>
+                    </div>
+                </div>
+                <div class="unified-card energy-card">
+                    <div class="energy-icon icon-solar"><i class="fas fa-sun"></i></div>
+                    <div>
+                        <div class="energy-value" id="valSolar">0 W</div>
+                        <div class="energy-label">Solar Generation</div>
+                    </div>
+                </div>
+                <div class="unified-card energy-card">
+                    <div class="energy-icon icon-grid-in"><i class="fas fa-plug"></i></div>
+                    <div>
+                        <div class="energy-value" id="valGrid">0 W</div>
+                        <div class="energy-label">Grid Net</div>
+                    </div>
+                </div>
+                <div class="unified-card energy-card">
+                    <div class="energy-icon icon-usage"><i class="fas fa-coins"></i></div>
+                    <div>
+                        <div class="energy-value" id="valCost">€ 0.00</div>
+                        <div class="energy-label">Today's Cost</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Chart -->
+            <div class="unified-card chart-container">
+                <h3>Last 24 Hours</h3>
+                <canvas id="mainChart"></canvas>
+            </div>
+
+            <div class="unified-card chart-container" style="margin-top: 20px;">
+                <h3>Last 7 Days (Energy)</h3>
+                <canvas id="historyChart"></canvas>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../script/script.js"></script>
+    <script>
+        let mainChart, historyChart;
+
+        async function initCharts() {
+            // Main Chart (Line)
+            const ctxMain = document.getElementById('mainChart').getContext('2d');
+            mainChart = new Chart(ctxMain, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Usage', data: [], borderColor: '#3b82f6', tension: 0.4 },
+                        { label: 'Solar', data: [], borderColor: '#ffd700', tension: 0.4 },
+                        { label: 'Grid', data: [], borderColor: '#ef4444', tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'top' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // History Chart (Bar)
+            const ctxHist = document.getElementById('historyChart').getContext('2d');
+            historyChart = new Chart(ctxHist, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Usage (kWh)', data: [], backgroundColor: '#3b82f6' },
+                        { label: 'Solar (kWh)', data: [], backgroundColor: '#ffd700' },
+                        { label: 'Grid Import (kWh)', data: [], backgroundColor: '#ef4444' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } }
+                }
+            });
+        }
+
+        async function fetchEnergyData() {
+            try {
+                // Fetch real-time data
+                const res = await fetch('/api/energy');
+                const data = await res.json();
+                
+                // Update Cards
+                document.getElementById('valUsage').innerText = Math.round(data.home?.currentUsage || 0) + ' W';
+                document.getElementById('valSolar').innerText = Math.round(data.solar?.currentPower || 0) + ' W';
+                
+                const gridW = Math.round(data.grid?.currentPower || 0);
+                document.getElementById('valGrid').innerText = gridW + ' W';
+                // Adjust color/icon based on import/export
+                const gridIcon = document.querySelector('.icon-grid-in');
+                if (gridW < 0) {
+                    gridIcon.className = 'energy-icon icon-grid-out';
+                    gridIcon.innerHTML = '<i class="fas fa-arrow-right"></i>';
+                } else {
+                    gridIcon.className = 'energy-icon icon-grid-in';
+                    gridIcon.innerHTML = '<i class="fas fa-arrow-left"></i>';
+                }
+                
+                // Update Charts if history provided
+                if (data.history) {
+                    updateCharts(data.history);
+                }
+
+                // Cost estimate
+                // If backend provides cost, use it. Otherwise calc locally for "today"
+                if (data.history && data.history.daily) {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const todayEntry = data.history.daily.find(e => e.date === today);
+                    if (todayEntry) {
+                         document.getElementById('valCost').innerText = '€ ' + (todayEntry.cost || 0).toFixed(2);
+                    }
+                }
+
+            } catch (e) {
+                console.error('Failed to fetch energy data', e);
+            }
+        }
+
+        function updateCharts(history) {
+            if (!history) return;
+
+            // Update Main Chart (Hourly) - Last 24h
+            const hourly = history.hourly || [];
+            if (hourly.length > 0) {
+                const labels = hourly.map(e => e.date.substr(11, 2) + ':00');
+                mainChart.data.labels = labels;
+                // These are kWh, maybe correct to W? Or just show pattern.
+                // Hourly kWh * 1000 = Avg Watts for that hour
+                mainChart.data.datasets[0].data = hourly.map(e => e.usage * 1000);
+                mainChart.data.datasets[1].data = hourly.map(e => e.solar * 1000);
+                mainChart.data.datasets[2].data = hourly.map(e => (e.import - e.export) * 1000);
+                mainChart.update();
+            }
+
+            // Update History Chart (Daily) - Last 7 days
+            const daily = history.daily || [];
+            if (daily.length > 0) {
+                const recent = daily.slice(-7);
+                historyChart.data.labels = recent.map(e => e.date.substr(5)); // MM-DD
+                historyChart.data.datasets[0].data = recent.map(e => e.usage);
+                historyChart.data.datasets[1].data = recent.map(e => e.solar);
+                historyChart.data.datasets[2].data = recent.map(e => e.import);
+                historyChart.update();
+            }
+        }
+
+        initCharts();
+        fetchEnergyData();
+        setInterval(fetchEnergyData, 5000);
+
+    </script>
+</body>
+</html>

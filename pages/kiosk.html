@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiosk - DelovaHome</title>
+    <link rel="stylesheet" href="../style/base.css">
+    <script>/* Prevent white flash */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
+    <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Kiosk Overrides */
+        body { overflow: hidden; }
+        .app-container { grid-template-columns: 1fr !important; height: 100vh; }
+        .main-nav { display: none !important; }
+        .content-area { padding: 15px !important; margin: 0 !important; height: 100vh; overflow-y: auto; }
+        .page-header { margin-bottom: 20px; }
+        .dashboard-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; height: calc(100vh - 100px); }
+        .rooms-section { overflow-y: auto; padding-right: 10px; }
+        .widgets-panel { overflow-y: auto; padding-right: 5px; }
+        
+        /* Hide complex interactive elements not needed for passive kiosk */
+        .ai-assistant { display: none; } 
+        
+        /* Exit button floating at bottom right */
+        .kiosk-exit {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            opacity: 0.1;
+            transition: opacity 0.3s;
+            z-index: 9999;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .kiosk-exit:hover { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        
+        <main class="content-area">
+            <header class="page-header" style="justify-content: center; text-align: center;">
+                <div class="header-content" style="flex-direction: column; align-items: center;">
+                     <!-- Clock placed in header for Kiosk -->
+                     <h1 id="kioskClock" style="font-size: 3rem; margin: 0;">--:--</h1>
+                     <p id="kioskDate" style="font-size: 1.2rem; opacity: 0.8; margin: 0;">--</p>
+                </div>
+            </header>
+            
+            <!-- Scenes Bar Horizontal -->
+            <div id="scenesBar" class="scenes-bar" style="justify-content: center; margin-bottom: 20px;"></div>
+
+            <div class="dashboard-layout">
+                <!-- Left Column: Rooms Grid -->
+                <div class="rooms-section">
+                   <div id="roomsList" class="unified-grid">
+                        <!-- Loaded via JS -->
+                   </div>
+                </div>
+
+                <!-- Right Column: Critical Info Widgets -->
+                <aside class="widgets-panel" style="display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <!-- Weather Widget -->
+                    <div class="unified-card widget" id="weatherWidget">
+                         <div class="unified-card-header">
+                            <h4><span data-i18n="weather">Weather</span></h4>
+                         </div>
+                        <div id="weatherContent" class="weather-container" data-i18n="loading">Loading...</div>
+                    </div>
+
+                    <!-- Presence Widget -->
+                    <div class="unified-card widget" id="presenceWidget">
+                        <div class="unified-card-header">
+                            <h4><i class="fas fa-user-friends"></i> <span data-i18n="presence">Presence</span></h4>
+                        </div>
+                        <div id="presenceContent" data-i18n="loading">Loading...</div>
+                    </div>
+                    
+                    <!-- Energy Widget -->
+                    <div class="unified-card widget" id="energyWidget">
+                         <div class="unified-card-header">
+                            <h4><i class="fas fa-bolt"></i> <span data-i18n="energy">Energy</span></h4>
+                         </div>
+                        <div id="energyContent" data-i18n="loading">Loading...</div>
+                    </div>
+
+                    <!-- Media Widgets -->
+                    <div id="spotify-widget-container"></div>
+                    <div id="sonos-widget-container"></div>
+
+                </aside>
+            </div>
+            
+            <a href="dashboard.html" class="kiosk-exit" title="Exit Kiosk"><i class="fas fa-sign-out-alt"></i></a>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../script/script.js"></script>
+    <script src="../script/i18n.js"></script>
+    <script src="../script/modal.js"></script>
+    <script src="../script/dashboard.js"></script>
+    <script src="../script/spotify-widget.js"></script>
+    <script src="../script/sonos-widget.js"></script>
+    <script src="../script/animations.js"></script>
+    <script src="../script/jsmpeg.min.js"></script>
+    <script>
+        // Specific Kiosk Clock Logic
+        function updateKioskClock() {
+            const now = new Date();
+            const timeEl = document.getElementById('kioskClock');
+            const dateEl = document.getElementById('kioskDate');
+            
+            if(timeEl) timeEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if(dateEl) dateEl.textContent = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+        }
+        setInterval(updateKioskClock, 1000);
+        updateKioskClock();
+
+        // Prevent navigation loading by script.js (if it tries to inject nav)
+        document.addEventListener('DOMContentLoaded', () => {
+             const nav = document.querySelector('.main-nav');
+             if(nav) nav.remove(); // Ensure it's gone
+        });
+    </script>
+</body>
+</html>

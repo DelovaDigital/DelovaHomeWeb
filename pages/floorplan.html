@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floorplan - DelovaHome</title>
+    <link rel="stylesheet" href="../style/base.css">
+    <link rel="stylesheet" href="../style/floorplan.css">
+    <script>/* Prevent white flash */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
+    <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <nav class="main-nav">
+             <!-- Navigation -->
+        </nav>
+        <main class="content-area">
+            <header class="page-header">
+                <div class="header-content">
+                    <div>
+                        <h2>Floorplan</h2>
+                        <p>Interactive Home Map</p>
+                    </div>
+                     <div class="header-actions">
+                         <div id="viewControls">
+                            <button id="btnEditMode" class="btn btn-secondary"><i class="fas fa-edit"></i> Edit</button>
+                         </div>
+                         <div id="editControls" style="display:none; gap:10px;">
+                             <input type="file" id="fileUpload" style="display:none" accept="image/*">
+                             <button id="btnUpload" class="btn btn-secondary"><i class="fas fa-upload"></i> Upload Image</button>
+                             <button id="btnSave" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                             <button id="btnCancel" class="btn btn-danger"><i class="fas fa-times"></i> Cancel</button>
+                         </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="floorplan-container">
+                 <div id="floorplan-wrapper" class="floorplan-wrapper">
+                      <!-- Image will be set as background or img tag -->
+                      <img id="floorplanImg" draggable="false" />
+                      <div id="placeholder" class="placeholder-text">No floorplan image uploaded.</div>
+                      <div id="marker-layer"></div>
+                 </div>
+                 
+                 <!-- Edit Sidebar -->
+                 <aside id="edit-sidebar" class="edit-sidebar" style="display:none">
+                      <h3>Devices</h3>
+                      <div class="device-search">
+                          <input type="text" id="deviceSearch" class="form-control" placeholder="Search devices...">
+                      </div>
+                      <div id="device-list" class="draggable-list">
+                          <!-- Draggable items -->
+                      </div>
+                 </aside>
+            </div>
+        </main>
+    </div>
+    <script src="../script/script.js"></script>
+    <script src="../script/floorplan.js"></script>
+</body>
+</html>

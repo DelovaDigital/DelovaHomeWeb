@@ -1249,6 +1249,18 @@ class DeviceManager extends EventEmitter {
 
         // General deduplication by ID (fallback)
         if (!this.devices.has(device.id)) {
+            // [PERSISTENCE FIX] Apply persisted camera config if available
+            if (this.cameraConfigs && this.cameraConfigs[device.id]) {
+                if (!device.attributes) device.attributes = {};
+                device.attributes.rtsp_url = this.cameraConfigs[device.id];
+                
+                // Ensure type consistency
+                if (device.type === 'unknown' || device.type === 'generic' || !device.type) {
+                    device.type = 'camera';
+                }
+                console.log(`[DeviceManager] Applied saved config to ${device.id}`);
+            }
+
             this.devices.set(device.id, device);
             this.emit('device-added', device);
             console.log(`Device discovered: ${device.name} (${device.type}) via ${device.protocol || 'mock'}`);

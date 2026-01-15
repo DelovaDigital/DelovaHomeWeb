@@ -2854,6 +2854,16 @@ app.post('/api/notifications', (req, res) => {
     res.json({ ok: true });
 });
 
+app.post('/api/notifications/register-token', (req, res) => {
+    const { token, platform } = req.body;
+    if (token) {
+        notificationManager.registerDeviceToken(token, platform);
+        res.json({ ok: true });
+    } else {
+        res.status(400).json({ ok: false, message: 'Missing token' });
+    }
+});
+
 app.post('/api/notifications/:id/read', (req, res) => {
     notificationManager.markAsRead(req.params.id);
     res.json({ ok: true });

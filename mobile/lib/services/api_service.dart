@@ -48,6 +48,21 @@ class ApiService {
     return headers;
   }
 
+  Future<void> registerPushToken(String token) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await getHeaders();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/notifications/register-token'),
+      headers: headers,
+      body: jsonEncode({'token': token, 'platform': defaultTargetPlatform.toString()}),
+    );
+    
+    if (response.statusCode != 200) {
+      debugPrint('Failed to register token: ${response.body}');
+    }
+  }
+
   Future<Map<String, dynamic>> getSystemInfo() async {
     final baseUrl = await getBaseUrl();
     final response = await http.get(

@@ -1,9 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/hub_discovery_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'utils/app_theme.dart';
+import 'services/notification_service.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -16,6 +17,17 @@ class MyHttpOverrides extends HttpOverrides {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   HttpOverrides.global = MyHttpOverrides();
+  
+  try {
+     // You MUST add google-services.json (Android) and GoogleService-Info.plist (iOS) 
+     // for this to work, otherwise app will crash on start.
+     await Firebase.initializeApp();
+     // Start notification listener
+     await NotificationService().initialize();
+  } catch(e) {
+     debugPrint('Firebase init failed (missing config?): $e');
+  }
+
   // Initialize date formatting for Dutch locale used in the app
   await initializeDateFormatting('nl');
   runApp(const DelovaHome());

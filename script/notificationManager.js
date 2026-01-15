@@ -7,10 +7,27 @@ class NotificationManager extends EventEmitter {
         super();
         this.history = [];
         this.maxHistory = 100;
+        this.pushTokens = new Set();
+        this.fcmAdmin = null;
+        
+        // Try initialize Firebase Admin if creds exist
+        // const serviceAccount = require('../serviceAccountKey.json');
+        // if (serviceAccount) {
+        //    const admin = require('firebase-admin');
+        //    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+        //    this.fcmAdmin = admin;
+        // }
+
         this.settings = {
             email: { enabled: false, smtp: '' }, // Placeholder for Windows Server SMTP or external
             push: { enabled: false, fcmKey: '' } // Placeholder for Firebase
         };
+    }
+    
+    registerDeviceToken(token, platform) {
+        if (!token) return;
+        this.pushTokens.add(token);
+        console.log(`[Notification] Registered push token (Total: ${this.pushTokens.size})`);
     }
 
     /**
@@ -41,6 +58,21 @@ class NotificationManager extends EventEmitter {
 
         // 2. Emit event (for WebSocket broadcasting in server.js)
         this.emit('notification', notification);
+        
+        // 3. Send Push Notification via Firebase
+        if (this.pushTokens.size > 0 && this.fcmAdmin) {
+            try {
+                 const messagePayload = {
+                    notification: { title, body: message },
+                    tokens: Array.from(this.pushTokens)
+                 };
+                 await this.fcmAdmin.messaging().sendMulticast(messagePayload);
+                 console.log(`[Notification] Sent FCM push to ${this.pushTokens.size} devices`);
+            } catch(e) {
+                 console.error('[Notification] FCM Send Error:', e);
+            }
+        }
+
 
         // 3. Dispatch to external providers (Not implemented yet, but scaffolded)
         if (this.settings.email.enabled) {

@@ -11,6 +11,11 @@ class AIManager {
                 handler: this.handlePower.bind(this)
             },
             {
+                // Usage: "Turn [device] on" or "Turn lights off"
+                regex: /(turn|switch)\s+(?:the\s+)?(.+)\s+(on|off)/i,
+                handler: this.handlePowerSuffix.bind(this)
+            },
+            {
                 regex: /set\s+(?:the\s+)?(.+?)\s+(?:brightness|level)\s+to\s+(\d+)%?/i,
                 handler: this.handleBrightness.bind(this)
             },
@@ -115,6 +120,33 @@ class AIManager {
         const action = match[2].toLowerCase(); // on or off
         const target = match[3];
         
+        return this._executePower(target, action);
+    }
+
+    async handlePowerSuffix(match) {
+        const target = match[2];
+        const action = match[3].toLowerCase(); // on or off
+        
+        return this._executePower(target, action);
+    }
+
+    async _executePower(target, action) {
+        // Special case for "lights" or "all lights" -> Group Action
+        if (target.toLowerCase().includes('lights') || target.toLowerCase().includes('all lights')) {
+             const devices = [];
+             for (const [id, device] of deviceManager.devices) {
+                 if (['light', 'hue', 'dimmer'].includes(device.type)) devices.push(device);
+             }
+             
+             if (devices.length === 0) return { ok: false, message: "No lights found." };
+             
+             const cmd = action === 'on' ? 'turn_on' : 'turn_off';
+             for (const dev of devices) {
+                 await deviceManager.controlDevice(dev.id, cmd);
+             }
+             return { ok: true, message: `Turned ${action} ${devices.length} lights.` };
+        }
+
         const device = this.findDevice(target);
         if (!device) return { ok: false, message: `Device "${target}" not found.` };
 

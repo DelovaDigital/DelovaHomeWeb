@@ -1,85 +1,183 @@
+/* Modern Camera Grid */
 .camera-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 20px;
-    padding: 20px 0;
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); /* Wider default for cinematic feel */
+    gap: 25px;
+    padding-bottom: 40px;
 }
+
+@media (max-width: 768px) {
+    .camera-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+}
+
 .camera-card {
-    background: var(--card-bg);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     position: relative;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    aspect-ratio: 16/9;
     display: flex;
     flex-direction: column;
 }
-.camera-header {
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(127,127,127,0.1);
+
+.camera-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    border-color: rgba(255, 255, 255, 0.2);
 }
+
+/* Video Canvas */
 .camera-view {
     width: 100%;
-    aspect-ratio: 16/9;
-    background: black;
+    height: 100%;
     position: relative;
+    background: #111;
 }
+
 .camera-view canvas {
     width: 100%;
     height: 100%;
+    object-fit: cover;
     display: block;
 }
-.rec-indicator {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    color: red;
-    font-weight: bold;
-    display: none;
-    align-items: center;
-    gap: 5px;
-    background: rgba(0,0,0,0.5);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    pointer-events: none;
-}
-.rec-indicator.active { display: flex; }
-.blink { animation: blink 1s infinite; }
-@keyframes blink { 50% { opacity: 0; } }
 
-.file-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-height: 400px;
-    overflow-y: auto;
-}
-.file-item {
-    background: rgba(255,255,255,0.05);
-    padding: 10px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.file-item a {
-    text-decoration: none; 
-}
-
+/* Setup Placeholder */
 .setup-placeholder {
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100%;
-    color: #888;
-    padding: 20px;
-    text-align: center;
+    background: rgba(20, 20, 20, 0.8);
+    color: rgba(255, 255, 255, 0.5);
     cursor: pointer;
+    transition: all 0.3s ease;
 }
+
 .setup-placeholder:hover {
+    background: rgba(30, 30, 30, 0.9);
+    color: white;
+}
+
+/* Floating Overlay Header */
+.camera-overlay-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 15px 20px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 2;
+    pointer-events: none; /* Let clicks pass through to video/canvas if needed */
+}
+
+.camera-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    font-weight: 600;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    font-size: 1.1rem;
+    pointer-events: auto;
+}
+
+.live-badge {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+}
+
+.live-badge.blink i { animation: blink 1.5s infinite; }
+
+/* Floating Controls (Bottom) */
+.camera-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    z-index: 2;
+}
+
+.camera-card:hover .camera-controls {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.cam-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: all 0.2s ease;
+    font-size: 1rem;
+}
+
+.cam-btn:hover {
+    background: white;
+    color: black;
+    transform: scale(1.1);
+}
+
+.cam-btn.recording {
+    background: #ef4444;
+    color: white;
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+/* Recordings Modal Styles */
+.file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.file-item {
     background: rgba(255,255,255,0.05);
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }

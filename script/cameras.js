@@ -22,31 +22,38 @@ async function initCameras() {
         const card = document.createElement('div');
         card.className = 'camera-card';
         card.innerHTML = `
-            <div class="camera-header">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <i class="fas fa-video"></i>
-                    <strong>${cam.name}</strong>
-                </div>
-                <div class="actions" style="display:flex; gap:8px;">
-                     ${hasUrl ? 
-                        `<button class="btn-icon" id="rec-btn-${cam.id}" title="Record"><i class="fas fa-circle"></i></button>` : ''
-                     }
-                     <button class="btn-icon" onclick="openSettings('${cam.id}')" title="Settings"><i class="fas fa-cog"></i></button>
-                     ${hasUrl ? 
-                        `<button class="btn-icon" onclick="openFullscreen('${cam.id}')"><i class="fas fa-expand"></i></button>` : ''
-                     }
-                </div>
-            </div>
             <div class="camera-view" id="view-${cam.id}">
-                ${hasUrl ? 
-                    `<div class="rec-indicator" id="rec-ind-${cam.id}"><i class="fas fa-circle blink"></i> REC</div>
-                     <canvas id="canvas-${cam.id}" style="width:100%; height:100%; object-fit: cover;"></canvas>` 
-                    : 
-                    `<div class="setup-placeholder" onclick="openSettings('${cam.id}')">
-                        <i class="fas fa-wrench" style="font-size:2em; margin-bottom:10px;"></i>
-                        <span>Click to configure stream</span>
-                     </div>`
-                }
+                ${hasUrl ? `<canvas id="canvas-${cam.id}"></canvas>` : ''}
+                
+                ${!hasUrl ? `
+                    <div class="setup-placeholder" onclick="openSettings('${cam.id}')">
+                        <i class="fas fa-wrench" style="font-size: 2.5em; margin-bottom: 15px; opacity: 0.7;"></i>
+                        <span style="font-weight: 500;">Configure Stream</span>
+                    </div>
+                ` : ''}
+
+                <!-- Overlay Header -->
+                <div class="camera-overlay-header">
+                    <div class="camera-name">
+                        <i class="fas fa-video"></i> ${cam.name}
+                    </div>
+                    ${hasUrl ? `<div class="live-badge blink"><i class="fas fa-circle"></i> LIVE</div>` : ''}
+                </div>
+
+                <!-- Floating Controls -->
+                <div class="camera-controls">
+                    ${hasUrl ? `
+                        <button class="cam-btn" id="rec-btn-${cam.id}" title="Start Recording">
+                            <i class="fas fa-bullseye"></i>
+                        </button>
+                        <button class="cam-btn" onclick="openFullscreen('${cam.id}')" title="Fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    ` : ''}
+                    <button class="cam-btn" onclick="openSettings('${cam.id}')" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
             </div>
         `;
         grid.appendChild(card);
@@ -88,7 +95,6 @@ function setupStream(cam) {
 
 function bindRecordButton(cam, rtspUrl) {
     const recBtn = document.getElementById(`rec-btn-${cam.id}`);
-    const recInd = document.getElementById(`rec-ind-${cam.id}`);
     if (!recBtn) return;
     
     let isRecording = false;
@@ -105,8 +111,7 @@ function bindRecordButton(cam, rtspUrl) {
                 const data = await res.json();
                 if (data.success) {
                     isRecording = true;
-                    recBtn.style.color = '#ef4444'; // Red
-                    recInd.classList.add('active');
+                    recBtn.classList.add('recording'); // Use CSS class for animation
                 } else {
                     alert('Failed to start recording: ' + data.error);
                 }
@@ -120,8 +125,7 @@ function bindRecordButton(cam, rtspUrl) {
                     body: JSON.stringify({ deviceId: cam.id, rtspUrl })
                 });
                 isRecording = false;
-                recBtn.style.color = '';
-                recInd.classList.remove('active');
+                recBtn.classList.remove('recording');
             } catch(e) { console.error(e); }
         }
     });

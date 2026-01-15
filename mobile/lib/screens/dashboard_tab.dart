@@ -544,7 +544,27 @@ import '../utils/app_translations.dart';
                 ),
               ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+              // 2.1 Energy Widget (Full Width if data available)
+              if (_energyData != null)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: EnergyWidget(data: _energyData!),
+                  ),
+                ),
+
+              // 2.2 Presence Widget (Full Width if data available)
+              if (_presenceData != null && _presenceData!.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: PresenceWidget(data: _presenceData!),
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
               // 3. Quick Stats (Weather, System)
               SliverToBoxAdapter(

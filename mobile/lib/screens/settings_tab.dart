@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
+import '../utils/color_utils.dart';
 import 'hub_discovery_screen.dart';
 import 'manage_users_screen.dart';
 import 'settings/knx_settings_screen.dart';
@@ -27,6 +28,8 @@ class _SettingsTabState extends State<SettingsTab> {
   String _appVersion = 'Unknown';
   List<dynamic> _nasDevices = [];
   String _lang = 'nl';
+  String _username = 'User';
+  String _role = '';
 
   @override
   void initState() {
@@ -44,6 +47,8 @@ class _SettingsTabState extends State<SettingsTab> {
       _hubIp = prefs.getString('hub_ip') ?? 'Unknown';
       _appVersion = packageInfo.version;
       _lang = prefs.getString('language') ?? 'nl';
+      _username = prefs.getString('username') ?? 'User';
+      _role = prefs.getString('userRole') ?? '';
     });
 
     try {
@@ -160,6 +165,61 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 
+  Widget _buildUserProfile(ThemeData theme) {
+    final initial = _username.isNotEmpty ? _username.substring(0, 1).toUpperCase() : '?';
+    final bgColor = ColorUtils.generateColor(_username);
+
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+                ]
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _username,
+                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                if (_role.isNotEmpty)
+                  Text(
+                    _role == 'Admin' ? t('user_role_admin') : (_role == 'User' ? t('user_role_user') : (_role == 'Guest' ? t('user_role_guest') : _role)),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant
+                    ),
+                  ),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -176,7 +236,36 @@ class _SettingsTabState extends State<SettingsTab> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
                 children: [
+                  _buildUserProfile(theme),
+                  const SizedBox(height: 24),
                   _buildHubInfoCard(theme),
+                  const SizedBox(height: 24),
+                  
+                  // Device Health / System Status Section
+                  Card(
+                    color: _hubVersion != 'Unknown' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                    elevation: 0,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _hubVersion != 'Unknown' ? Icons.check_circle : Icons.warning_amber_rounded,
+                            color: _hubVersion != 'Unknown' ? Colors.green : Colors.orange
+                          ),
+                          const SizedBox(width: 16),
+                          Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text('System Health', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                               Text(_hubVersion != 'Unknown' ? 'All systems operational' : 'Hub disconnected', style: theme.textTheme.bodyMedium),
+                             ],
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 24),
                   _buildSectionHeader(t('general'), theme),
                   const SizedBox(height: 8),
@@ -226,10 +315,16 @@ class _SettingsTabState extends State<SettingsTab> {
                           icon: Icons.router,
                           title: 'KNX',
                           subtitle: t('configure_knx'),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const KnxSettingsScreen()),
-                          ),
+                          onTap: () {
+                             if (_role == 'Admin' || _role == 'admin') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const KnxSettingsScreen()),
+                                );
+                             } else {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Access Denied')));
+                             }
+                          },
                           theme: theme,
                         ),
                         Divider(height: 1, indent: 56, color: theme.colorScheme.outlineVariant),
@@ -248,7 +343,13 @@ class _SettingsTabState extends State<SettingsTab> {
                           icon: Icons.storage,
                           title: 'NAS',
                           subtitle: '${_nasDevices.length} ${t('devices')}',
-                          onTap: _handleNasTap,
+                          onTap: () {
+                             if (_role == 'Admin' || _role == 'admin') {
+                                _handleNasTap();
+                             } else {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Access Denied')));
+                             }
+                          },
                           theme: theme,
                         ),
                       ],
@@ -265,11 +366,21 @@ class _SettingsTabState extends State<SettingsTab> {
                           icon: Icons.people,
                           title: t('users'),
                           subtitle: t('manage_users'),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
-                          ),
+                          onTap: () {
+                             if (_role == 'Admin' || _role == 'admin') {
+                               Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
+                               );
+                             } else {
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                 const SnackBar(content: Text('Access Denied: Admins Only')),
+                               );
+                             }
+                          },
                           theme: theme,
+                          // Dim the tile if not admin
+                          isDestructive: false, // Just misuse for visual check? No.
                         ),
                         Divider(height: 1, indent: 56, color: theme.colorScheme.outlineVariant),
                         _buildSettingTile(

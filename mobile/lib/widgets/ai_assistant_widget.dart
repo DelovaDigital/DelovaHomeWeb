@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import '../services/api_service.dart';
 import '../utils/app_translations.dart';
 
@@ -13,13 +15,33 @@ class AIAssistantWidget extends StatefulWidget {
 class _AIAssistantWidgetState extends State<AIAssistantWidget> {
   final TextEditingController _controller = TextEditingController();
   final ApiService _apiService = ApiService();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  
   bool _isLoading = false;
+  bool _isListening = false;
+  bool _speechEnabled = false;
   String _lang = 'nl';
 
   @override
   void initState() {
     super.initState();
     _loadLanguage();
+    _initSpeech();
+  }
+  
+  void _initSpeech() async {
+    try {
+      _speechEnabled = await _speech.initialize(
+        onError: (e) => setState(() => _isListening = false),
+        onStatus: (status) {
+          if (mounted) {
+             setState(() => _isListening = status == 'listening');
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('Speech initialization error: $e');
+    }
   }
 
   Future<void> _loadLanguage() async {
@@ -28,6 +50,69 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
       setState(() {
         _lang = prefs.getString('language') ?? 'nl';
       });
+    }
+  }
+  
+  void _listen() async {
+    // 1. Check Permissions First
+    var micStatus = await Permission.microphone.status;
+    var speechStatus = await Permission.speech.status;
+
+    if (!micStatus.isGranted || !speechStatus.isGranted) {
+      Map<Permission, PermissionStatus> statuses = await [
+        Permission.microphone,
+        Permission.speech,
+      ].request();
+
+      if (statuses[Permission.microphone] != PermissionStatus.granted || 
+          statuses[Permission.speech] != PermissionStatus.granted) {
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+             content: Text('Permissions missing: Mic=${statuses[Permission.microphone]}, Speech=${statuses[Permission.speech]}')
+           ));
+         }
+         return;
+      }
+    }
+
+    // 2. Initialize if not ready
+    if (!_speechEnabled) {
+      bool available = await _speech.initialize(
+        onError: (e) {
+          debugPrint('Speech error: $e');
+          if (mounted) setState(() => _isListening = false);
+        },
+        onStatus: (status) {
+          debugPrint('Speech status: $status');
+          if (mounted) {
+             setState(() => _isListening = status == 'listening');
+          }
+        },
+      );
+      
+      if (mounted) {
+        setState(() => _speechEnabled = available);
+      }
+      
+      if (!available) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Speech recognition not available')));
+        return;
+      }
+    }
+
+    // 3. Toggle Listening
+    if (_isListening) {
+      await _speech.stop();
+    } else {
+      await _speech.listen(
+        onResult: (result) {
+          setState(() {
+            _controller.text = result.recognizedWords;
+          });
+        },
+        localeId: _lang == 'en' ? 'en_US' : 'nl_NL',
+        listenOptions: stt.SpeechListenOptions(cancelOnError: true),
+      );
     }
   }
 
@@ -89,6 +174,16 @@ class _AIAssistantWidgetState extends State<AIAssistantWidget> {
               onSubmitted: (_) => _sendCommand(),
             ),
           ),
+          IconButton(
+            icon: Icon(
+              _isListening ? Icons.mic : Icons.mic_none,
+              color: _isListening ? Colors.redAccent : const Color(0xFF3B82F6),
+            ),
+            onPressed: _listen,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: _isLoading 
               ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: textColor))

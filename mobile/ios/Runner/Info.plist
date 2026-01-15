@@ -33,6 +33,10 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Delova Home needs access to your local network to discover your Hub.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used for voice commands to control your home.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Used to recognize voice commands for controlling devices.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Delova Home needs access to your location to determine if you are home.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

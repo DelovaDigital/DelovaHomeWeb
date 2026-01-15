@@ -2493,6 +2493,20 @@ deviceManager.on('pairing-required', (data) => {
 deviceManager.on('device-updated', (device) => {
     // console.log(`[Server] Broadcasting update for ${device.name}`);
     broadcast({ type: 'device-update', device });
+    // Push to Cloud
+    cloudClient.pushDeviceUpdate(device);
+});
+
+// Broadcast notifications
+notificationManager.on('notification', (note) => {
+    const msg = JSON.stringify({ type: 'notification', data: note });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(msg);
+        }
+    });
+    // Push to Cloud
+    cloudClient.pushNotification(note);
 });
 
 app.post('/api/device/pair', (req, res) => {
@@ -2825,14 +2839,7 @@ udpServer.bind(8888, () => {
     systemMonitor.start();
 
     // Start Notification Listeners
-    notificationManager.on('notification', (note) => {
-        const msg = JSON.stringify({ type: 'notification', data: note });
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(msg);
-            }
-        });
-    });
+    /* Notification logic moved to line 2490 to group with device updates */
 
   } catch (err) {
     console.error('Database connection: FAILED');
@@ -2852,6 +2859,16 @@ app.post('/api/notifications', (req, res) => {
     const { title, message, priority, target } = req.body;
     notificationManager.send(title, message, priority || 'normal', target || 'all');
     res.json({ ok: true });
+});
+
+app.post('/api/notifications/register-token', (req, res) => {
+    const { token, platform } = req.body;
+    if (token) {
+        notificationManager.registerDeviceToken(token, platform);
+        res.json({ ok: true });
+    } else {
+        res.status(400).json({ ok: false, message: 'Missing token' });
+    }
 });
 
 app.post('/api/notifications/:id/read', (req, res) => {

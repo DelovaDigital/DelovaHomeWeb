@@ -2,6 +2,7 @@ const EventEmitter = require('events');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
+const { Bonjour } = require('bonjour-service');
 
 class HueManager extends EventEmitter {
     constructor() {
@@ -11,6 +12,7 @@ class HueManager extends EventEmitter {
         this.configPath = path.join(__dirname, '../data/hue_config.json');
         this.config = this.loadConfig();
         this.pollingInterval = null;
+        this.bonjour = new Bonjour();
     }
 
     loadConfig() {
@@ -43,25 +45,54 @@ class HueManager extends EventEmitter {
     }
 
     async discoverBridges() {
+        console.log('[Hue] Starting discovery via mDNS and N-UPnP...');
+        
+        // Method 1: mDNS Discovery (Local, Reliable)
         try {
-            // N-UPnP discovery
+            this.bonjour.find({ type: 'hue' }, (service) => {
+                // service.referer.address might be IPv4 or ipv6
+                const ip = service.addresses && service.addresses.find(a => a.match(/^\d+\.\d+\.\d+\.\d+$/)) || service.referer.address;
+                if (ip) {
+                    this.addBridge(ip, service.name);
+                }
+            });
+            // Also search for general _http._tcp as some older bridges might use that, but 'hue' is standard now.
+        } catch (e) {
+            console.error('[Hue] mDNS error:', e.message);
+        }
+
+        // Method 2: N-UPnP (Cloud, fallback)
+        try {
             const res = await fetch('https://discovery.meethue.com/');
-            const bridges = await res.json();
-            
-            for (const b of bridges) {
-                const ip = b.internalipaddress;
-                if (!this.bridges.find(br => br.ip === ip)) {
-                    console.log(`[Hue] Discovered bridge at ${ip}`);
-                    this.bridges.push({ id: b.id, ip: ip });
-                    
-                    // If we have a username for this IP, verify it
-                    if (this.config.bridges[ip]) {
-                        this.verifyConnection(ip, this.config.bridges[ip]);
-                    }
+            if (res.ok) {
+                const text = await res.text();
+                // Check if empty or not json
+                if (text && text.length > 0) {
+                   try {
+                       const bridges = JSON.parse(text);
+                       for (const b of bridges) {
+                           this.addBridge(b.internalipaddress, b.id);
+                       }
+                   } catch(parseErr) {
+                       console.warn('[Hue] N-UPnP response was not valid JSON:', text.substring(0, 50));
+                   }
                 }
             }
         } catch (e) {
-            console.error('[Hue] Discovery failed:', e.message);
+            console.error('[Hue] Cloud discovery failed (this is expected if internet is down or API is deprecated):', e.message);
+        }
+    }
+
+    addBridge(ip, id) {
+        if (!ip) return;
+        if (!this.bridges.find(br => br.ip === ip)) {
+            console.log(`[Hue] Discovered bridge at ${ip} (ID: ${id || 'unknown'})`);
+            this.bridges.push({ id: id, ip: ip });
+            
+            // If we have a username for this IP, verify it
+            if (this.config.bridges[ip]) {
+                this.verifyConnection(ip, this.config.bridges[ip]);
+            }
         }
     }
 

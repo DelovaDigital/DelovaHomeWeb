@@ -3,28 +3,43 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device.dart';
+import 'connection_manager.dart';
 
 class ApiService {
   static const String _port = '3000';
 
   Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    final ip = prefs.getString('hub_ip');
+    final ip = prefs.getString('hub_ip'); // Local IP
     final port = prefs.getString('hub_port') ?? _port;
-    
-    if (ip == null) {
+    final cloudUrl = prefs.getString('cloud_url'); // Cloud Proxy URL (if available)
+
+    if (ip == null && cloudUrl == null) {
       throw Exception('Hub not connected');
     }
 
-    // Smart URL handling:
-    // 1. If input starts with http/https, use it as is (ignoring port setting)
-    if (ip.startsWith('http://') || ip.startsWith('https://')) {
-      // Remove trailing slash if present
-      return ip.endsWith('/') ? ip.substring(0, ip.length - 1) : ip;
+    // Smart Switching Logic
+    if (ip != null) {
+        // Construct Local URL
+        String localUrl = ip.startsWith('http') ? ip : 'https://$ip:$port';
+        if (localUrl.endsWith('/')) localUrl = localUrl.substring(0, localUrl.length - 1);
+
+        // Check availability (Cached mostly)
+        bool isLocal = await ConnectionManager.isLocalAvailable(localUrl);
+        if (isLocal) {
+             debugPrint("Using Local Connection: $localUrl");
+             return localUrl;
+        }
     }
 
-    // 2. Default behavior: Assume it's an IP/Hostname and force HTTPS + Port
-    return 'https://$ip:$port';
+    // Fallback to Cloud
+    if (cloudUrl != null && cloudUrl.isNotEmpty) {
+        debugPrint("Using Cloud Connection: $cloudUrl");
+        return cloudUrl.endsWith('/') ? cloudUrl.substring(0, cloudUrl.length - 1) : cloudUrl;
+    }
+
+    // Default back to local if cloud fails or not set (hoping for the best)
+    return ip!.startsWith('http') ? ip : 'https://$ip:$port';
   }
 
   Future<Map<String, String>> getHeaders() async {
@@ -46,6 +61,21 @@ class ApiService {
       headers['x-delova-username'] = username;
     }
     return headers;
+  }
+
+  Future<void> registerPushToken(String token) async {
+    final baseUrl = await getBaseUrl();
+    final headers = await getHeaders();
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/notifications/register-token'),
+      headers: headers,
+      body: jsonEncode({'token': token, 'platform': defaultTargetPlatform.toString()}),
+    );
+    
+    if (response.statusCode != 200) {
+      debugPrint('Failed to register token: ${response.body}');
+    }
   }
 
   Future<Map<String, dynamic>> getSystemInfo() async {
@@ -119,6 +149,7 @@ class ApiService {
     }
   }
 
+
   Future<Map<String, dynamic>> checkUpdate() async {
     final baseUrl = await getBaseUrl();
     try {
@@ -178,6 +209,7 @@ class ApiService {
           'userId': userId,
           'latitude': latitude,
           'longitude': longitude,
+          'source': 'mobile_background',
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         }),
       );

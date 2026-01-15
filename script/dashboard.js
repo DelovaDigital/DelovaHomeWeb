@@ -197,14 +197,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   window.changeWeatherLocation = async () => {
+      // Prefer modal-based search when available (richer UX). Fallback to prompt+geocoding.
+      const modal = document.getElementById('weatherModal');
+      if (modal) {
+          modal.style.display = 'block';
+          setTimeout(() => {
+              const input = document.getElementById('weatherSearchInput');
+              if (input) input.focus();
+          }, 100);
+          setupWeatherSearch();
+          return;
+      }
+
       const city = prompt(window.t ? window.t('enter_city_for_weather') : 'Enter city for weather:');
-      if(!city) return;
-      
+      if (!city) return;
+
       try {
           const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=nl&format=json`);
           const data = await res.json();
-          
-          if(data.results && data.results.length > 0) {
+
+          if (data.results && data.results.length > 0) {
               const result = data.results[0];
               const newLoc = {
                   name: result.name,
@@ -213,13 +225,80 @@ document.addEventListener('DOMContentLoaded', () => {
               };
               localStorage.setItem('weather_location', JSON.stringify(newLoc));
               loadWeather();
-            } else {
+          } else {
               alert(window.t ? window.t('city_not_found') : 'City not found');
-            }
-      } catch(e) {
+          }
+      } catch (e) {
           console.error(e);
-            alert(window.t ? window.t('city_search_failed') : 'Failed to search for city');
+          alert(window.t ? window.t('city_search_failed') : 'Failed to search for city');
       }
+  };
+
+  window.closeWeatherModal = () => {
+      const modal = document.getElementById('weatherModal');
+      if (modal) modal.style.display = 'none';
+      const results = document.getElementById('weatherSearchResults');
+      if (results) results.style.display = 'none';
+      const input = document.getElementById('weatherSearchInput');
+      if (input) input.value = '';
+  };
+
+  let weatherSearchInitialized = false;
+  function setupWeatherSearch() {
+      if (weatherSearchInitialized) return;
+      weatherSearchInitialized = true;
+
+      const input = document.getElementById('weatherSearchInput');
+      const resultsBox = document.getElementById('weatherSearchResults');
+      let debounceTimer;
+
+      if (input && resultsBox) {
+          input.addEventListener('input', (e) => {
+              clearTimeout(debounceTimer);
+              const query = e.target.value;
+              
+              if (query.length < 3) {
+                  resultsBox.style.display = 'none';
+                  return;
+              }
+
+              debounceTimer = setTimeout(async () => {
+                  try {
+                      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=nl&format=json`);
+                      const data = await res.json();
+                      
+                      if (data.results && data.results.length > 0) {
+                          resultsBox.innerHTML = data.results.map(r => `
+                              <div style="padding: 12px; cursor: pointer; border-bottom: 1px solid var(--border, rgba(255,255,255,0.1));" 
+                                   onclick="applyWeatherLocation('${r.name}', ${r.latitude}, ${r.longitude})">
+                                  <div style="font-weight: 600;">${r.name}</div>
+                                  <div style="font-size: 0.85rem; opacity: 0.7;">${r.admin1 || ''}, ${r.country || ''}</div>
+                              </div>
+                          `).join('');
+                          resultsBox.style.display = 'block';
+                      } else {
+                          resultsBox.style.display = 'none';
+                      }
+                  } catch (err) {
+                      console.error('Geo search error', err);
+                  }
+              }, 500);
+          });
+
+          // Close results when clicking outside
+          document.addEventListener('click', (e) => {
+              if (!input.contains(e.target) && !resultsBox.contains(e.target)) {
+                  resultsBox.style.display = 'none';
+              }
+          });
+      }
+  }
+
+  window.applyWeatherLocation = (name, lat, lon) => {
+      const newLoc = { name, lat, lon };
+      localStorage.setItem('weather_location', JSON.stringify(newLoc));
+      loadWeather();
+      closeWeatherModal();
   };
 
   // System Status Widget
@@ -360,11 +439,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderSpeedResult(ping, mbps, dateStr) {
       if (!speedtestResults) return;
-      const eval = getSpeedEvaluation(mbps);
-        speedtestResults.innerHTML = `
+            const result = getSpeedEvaluation(mbps);
+                speedtestResults.innerHTML = `
           <div style="text-align: center; margin-top: 10px;">
               <div style="font-size: 2.5em; font-weight: bold; color: var(--text);">${mbps} <span style="font-size: 0.4em; color: var(--muted);">Mbps</span></div>
-              <div style="color: ${eval.color}; font-weight: bold; margin-bottom: 5px;">${eval.text}</div>
+                            <div style="color: ${result.color}; font-weight: bold; margin-bottom: 5px;">${result.text}</div>
               <div style="font-size: 0.9em; color: var(--muted);">Ping: ${ping} ms</div>
               ${dateStr ? `<div style="font-size: 0.8em; color: var(--muted); margin-top: 5px;">${window.t ? window.t('last_test') : 'Laatste test'}: ${dateStr}</div>` : ''}
           </div>
@@ -401,57 +480,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Scenes Logic
-  async function loadScenes() {
-    const scenesBar = document.getElementById('scenesBar');
-    if (!scenesBar) return;
+  // Scenes Logic moved to initializeScenesBar at end of file
 
-    try {
-      const data = await apiGet('/api/scenes');
-      if (!data || !data.scenes) return;
-
-      scenesBar.innerHTML = '';
-      data.scenes.forEach(scene => {
-        const card = document.createElement('div');
-        card.className = `scene-card${scene.id === data.mode ? ' active' : ''}`;
-        card.onclick = () => activateScene(scene.id);
-        
-        let icon = scene.icon || 'fa-home';
-        // Legacy mapping fallback
-        if (!scene.icon) {
-            if (scene.id === 'AWAY') icon = 'fa-shoe-prints';
-            if (scene.id === 'NIGHT') icon = 'fa-moon';
-            if (scene.id === 'CINEMA') icon = 'fa-film';
-            if (scene.id === 'WORK') icon = 'fa-laptop';
-            if (scene.id === 'VACATION') icon = 'fa-plane';
-        }
-
-        // Color support
-        let style = '';
-        if (scene.color) {
-            // Apply subtle border or icon color
-            style = `color: ${scene.color}`;
-        }
-
-        card.innerHTML = `
-            <div style="font-size: 1.5rem; margin-bottom: 5px; ${style}"><i class="fas ${icon}"></i></div>
-            <div style="font-weight: 500;">${scene.name}</div>
-        `;
-        scenesBar.appendChild(card);
-      });
-    } catch(e) { console.error('Error loading scenes:', e); }
-  }
-
-  window.activateScene = async function(modeId) {
-    try {
-      await fetch('/api/mode/set', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: modeId })
-      });
-      loadScenes(); 
-    } catch(e) { console.error('Failed to set scene:', e); }
-  }
 
   // Presence Logic
   async function loadPresence() {
@@ -511,7 +541,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // initial
-  loadScenes();
   loadPresence();
   loadEnergy();
   setInterval(loadEnergy, 5000);
@@ -570,47 +599,65 @@ document.addEventListener('DOMContentLoaded', () => {
   loadPrinterStatus();
   loadSystemStatus();
   
-  // Scenes Bar Initialization
-  const scenesBar = document.getElementById('scenesBar');
-  if (scenesBar) {
-      async function loadScenes() {
+  // Scenes Bar Initialization - Fixed Duplicate Function Name
+  const scenesBarContainer = document.getElementById('scenesBar');
+  if (scenesBarContainer) {
+      async function initializeScenesBar() {
           try {
                 let scenes = [];
                 try {
                     scenes = await apiGet('/api/scenes');
+                    if (scenes && scenes.scenes) scenes = scenes.scenes; // Handle wrapper object
                 } catch(e) { console.warn('Using default scenes'); }
 
-                if (!scenes || scenes.length === 0) {
+                // Default Scenes Fallback
+                if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
                      scenes = [
-                        { id: 'mode_home', name: 'Home', icon: 'fas fa-home', color: '#3b82f6' },
-                        { id: 'mode_away', name: 'Away', icon: 'fas fa-sign-out-alt', color: '#64748b' },
-                        { id: 'mode_cinema', name: 'Cinema', icon: 'fas fa-video', color: '#ef4444' },
-                        { id: 'mode_night', name: 'Night', icon: 'fas fa-moon', color: '#8b5cf6' },
-                        { id: 'mode_morning', name: 'Morning', icon: 'fas fa-coffee', color: '#f59e0b' }
+                        { id: 'HOME', name: 'Home', icon: 'fas fa-home', color: '#3b82f6' },
+                        { id: 'AWAY', name: 'Away', icon: 'fas fa-sign-out-alt', color: '#64748b' },
+                        { id: 'CINEMA', name: 'Cinema', icon: 'fas fa-video', color: '#ef4444' },
+                        { id: 'NIGHT', name: 'Night', icon: 'fas fa-moon', color: '#8b5cf6' },
+                        { id: 'MORNING', name: 'Morning', icon: 'fas fa-coffee', color: '#f59e0b' }
                     ];
                 }
                 
-                scenesBar.innerHTML = '';
-                scenesBar.classList.add('scenes-scroll-container');
+                scenesBarContainer.innerHTML = '';
+                scenesBarContainer.classList.add('scenes-scroll-container');
                 
                 scenes.forEach(scene => {
                     const btn = document.createElement('div');
                     btn.className = 'scene-chip';
                     const iconColor = scene.color || '#fff';
-                    btn.innerHTML = `<i class="${scene.icon}" style="color: ${iconColor}"></i> <span>${scene.name}</span>`;
+                    // Support both font-awesome class strings and simple names
+                    const iconClass = scene.icon.startsWith('fa') ? scene.icon : `fas ${scene.icon}`;
+
+                    btn.innerHTML = `<i class="${iconClass}" style="color: ${iconColor}"></i> <span>${scene.name}</span>`;
                     
                     btn.onclick = async () => {
                          btn.classList.add('active');
                          setTimeout(() => btn.classList.remove('active'), 300);
                          try {
+                            // Support both new (sceneId) and old (mode) APIs
                             await fetch(`/api/scenes/${scene.id}`, { method: 'POST' });
-                         } catch (e) { console.error('Scene activation failed'); }
+                         } catch (e) { 
+                             // Fallback to legacy mode API if scene not found
+                             console.warn('Scene activation failed, trying legacy mode set...');
+                             try {
+                                 await fetch('/api/mode/set', {
+                                     method: 'POST',
+                                     headers: { 'Content-Type': 'application/json' },
+                                     body: JSON.stringify({ mode: scene.id })
+                                 });
+                             } catch(e2) {
+                                 console.error('All activation attempts failed');
+                             }
+                        }
                     };
-                    scenesBar.appendChild(btn);
+                    scenesBarContainer.appendChild(btn);
                 });
-          } catch (e) { console.error(e); }
+          } catch (e) { console.error('Scenes bar init error:', e); }
       }
-      loadScenes();
+      initializeScenesBar();
   }
 
   setInterval(loadPrinterStatus, 10000); // Poll printer every 10s

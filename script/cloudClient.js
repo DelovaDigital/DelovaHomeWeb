@@ -300,37 +300,27 @@ class CloudClient {
 
     async handleRequest(payload) {
         const { id, method, path, body, query, headers } = payload;
-        console.log(`[Cloud] Proxy Request: ${method} ${path}`);
+        // console.log(`[Cloud] Proxy Request: ${method} ${path}`);
 
         try {
             // Forward request to local Express server
-            // Use 127.0.0.1 instead of localhost to avoid IPv6 issues
-            // Also check if we should use HTTP port (3001) or HTTPS port (3000)
-            // Based on server.js, HTTP is on port + 1 (3001) if SSL is active, or port (3000) if not.
-            // To be safe, let's try to detect or just use the HTTP port if we know it.
-            // But cloudClient doesn't know if SSL is active.
-            // Let's try 127.0.0.1:3000 first.
-            
             let url = `${this.localApiUrl}${path}`;
-            // Replace localhost with 127.0.0.1 to avoid socket hang up on some systems
             url = url.replace('localhost', '127.0.0.1');
 
-            // If query params are provided in the payload, append them
-            // Note: If path already contains query params (from req.url), we should be careful not to duplicate
             if (query && Object.keys(query).length > 0) {
                 const separator = url.includes('?') ? '&' : '?';
                 url += separator + new URLSearchParams(query).toString();
             }
 
-            // Create a custom agent to handle potential self-signed certs if using HTTPS
             const https = require('https');
-            const agent = new https.Agent({
-                rejectUnauthorized: false
-            });
+            const agent = new https.Agent({ rejectUnauthorized: false });
 
             const requestHeaders = { 'Content-Type': 'application/json' };
             if (headers) {
                 Object.assign(requestHeaders, headers);
+                // Remove host header if present to avoid confusion
+                delete requestHeaders['host'];
+                delete requestHeaders['content-length']; // fetch calculates this
             }
 
             const options = {
@@ -341,55 +331,83 @@ class CloudClient {
             };
             
             if (body && (method === 'POST' || method === 'PUT')) {
-                options.body = JSON.stringify(body);
+                options.body = typeof body === 'string' ? body : JSON.stringify(body);
             }
 
             const res = await fetch(url, options);
             
-            // Capture headers to support redirects and other metadata
             const responseHeaders = {};
             res.headers.forEach((val, key) => { responseHeaders[key] = val; });
 
-            // Handle non-JSON responses (like 404 html)
             const contentType = res.headers.get('content-type');
             let data;
-            if (contentType && contentType.includes('application/json')) {
+            
+            // Handle binary/image data better
+            if (contentType && (contentType.startsWith('image/') || contentType.startsWith('application/octet-stream'))) {
+                const buffer = await res.buffer();
+                data = buffer.toString('base64');
+                responseHeaders['x-is-base64'] = 'true';
+            } else if (contentType && contentType.includes('application/json')) {
                 data = await res.json();
             } else {
-                // For redirects or HTML, get text
                 data = await res.text();
-                // Try to parse as JSON just in case, but keep as string if not
-                try {
-                    data = JSON.parse(data);
-                } catch {
-                    // Keep as string
-                }
             }
 
-            // Send response back to Cloud
-            this.ws.send(JSON.stringify({
-                type: 'RESPONSE',
-                payload: {
-                    id,
-                    status: res.status,
-                    headers: responseHeaders,
-                    data
-                }
-            }));
-
-        } catch (e) {
-            console.error('[Cloud] Local request failed:', e);
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.ws.send(JSON.stringify({
                     type: 'RESPONSE',
                     payload: {
                         id,
-                        status: 500,
-                        data: { error: 'Local Hub Error: ' + e.message }
+                        status: res.status,
+                        headers: responseHeaders,
+                        data
+                    }
+                }));
+            }
+
+        } catch (e) {
+            console.error('[Cloud] Local request failed:', e.message);
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    type: 'RESPONSE',
+                    payload: {
+                        id,
+                        status: 502,
+                        data: { error: 'Bad Gateway: ' + e.message }
                     }
                 }));
             }
         }
+    }
+
+    // --- State Push Methods ---
+
+    pushEvent(type, payload) {
+        if (!this.isConnected()) return;
+        try {
+            this.ws.send(JSON.stringify({
+                type: 'EVENT',
+                timestamp: Date.now(),
+                eventType: type,
+                payload
+            }));
+        } catch (e) {
+            console.error('[Cloud] Update push failed:', e.message);
+        }
+    }
+
+    pushDeviceUpdate(device) {
+        // Optimize: Send only necessary fields if bandwidth is concern, 
+        // but for now full object ensures consistency
+        this.pushEvent('device-update', device);
+    }
+
+    pushNotification(notification) {
+        this.pushEvent('notification', notification);
+    }
+    
+    pushSystemStatus(status) {
+        this.pushEvent('system-status', status);
     }
 
     async registerUser(username, password) {

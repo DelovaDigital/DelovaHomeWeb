@@ -2825,14 +2825,14 @@ udpServer.bind(8888, () => {
             hubConfig.hubId = cloudClient.config.hubId;
             try {
                 fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
-    // Broadcast notifications
-    notificationManager.on('notification', (note) => {
-        // Redundant listener removed, handled above
-        // Kept logic consistent
-    });
-    // actually, let's remove the second listener block if it exists or merge them
-    // It seems I edited a block around line 2490, but there was another one around 2828.
-    // Let's check the context again.Start Discovery Service (mDNS)
+            } catch (e) {
+                console.error('[Hub] Failed to save synced config:', e);
+            }
+        }
+    }
+    cloudClient.connect();
+
+    // Start Discovery Service (mDNS)
     discoveryService.start();
 
     // Start System Monitor (Self-Monitoring)

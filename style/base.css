@@ -405,6 +405,29 @@ button, .btn, .btn-mini, .btn-toggle, .btn-power, .btn-icon-only, .btn-text, .bt
 
 .btn:active { transform: scale(0.98); }
 
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
 /* Modals */
 .modal-overlay { 
     position: fixed;

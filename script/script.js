@@ -343,17 +343,23 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'settings', name: 'Instellingen', icon: 'fas fa-cog', href: 'settings.html' }
         ];
 
-        // Check for NAS (async)
+        // Immediate render to prevent flickering/missing nav
+        renderNav(menuItems, currentPage);
+
+        // Check for NAS (async) and re-render if needed
         fetch('/api/nas')
             .then(res => res.json())
             .then(nasList => {
                 if (nasList && nasList.length > 0) {
-                    // Insert before Settings
-                    menuItems.splice(3, 0, { key: 'files', name: 'Bestanden', icon: 'fas fa-folder-open', href: 'files.html' });
+                    // Avoid duplicate insertion
+                    if (!menuItems.find(i => i.key === 'files')) {
+                         // Insert before Settings
+                        menuItems.splice(6, 0, { key: 'files', name: 'Bestanden', icon: 'fas fa-folder-open', href: 'files.html' });
+                        renderNav(menuItems, currentPage);
+                    }
                 }
-                renderNav(menuItems, currentPage);
             })
-            .catch(() => renderNav(menuItems, currentPage));
+            .catch(() => { /* No NAS or error, keep default nav */ });
 
         // Re-render navigation when translations have been loaded/applied
         document.addEventListener('translationsLoaded', () => {

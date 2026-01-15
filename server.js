@@ -2519,6 +2519,14 @@ notificationManager.on('notification', (note) => {
     cloudClient.pushNotification(note);
 });
 
+// Broadcast Presence Updates
+const broadcastPresence = () => {
+    broadcast({ type: 'presence-full-update', data: presenceManager.getPresenceStatus() });
+};
+presenceManager.on('person-arrived', broadcastPresence);
+presenceManager.on('person-left', broadcastPresence);
+presenceManager.on('home-state-changed', broadcastPresence);
+
 app.post('/api/device/pair', (req, res) => {
     const { ip, pin } = req.body;
     if (!ip || !pin) return res.status(400).json({ error: 'IP and PIN required' });

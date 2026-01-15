@@ -510,6 +510,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (msg.type === 'energy-update') {
                     const customEvent = new CustomEvent('energy-update', { detail: msg.data });
                     document.dispatchEvent(customEvent);
+                } else if (msg.type === 'presence-full-update') {
+                    const customEvent = new CustomEvent('presence-update', { detail: msg.data });
+                    document.dispatchEvent(customEvent);
                 } else if (msg.type === 'pairing-required') {
                     showPairingModal(msg.ip, msg.name);
                 } else if (msg.type === 'notification') {

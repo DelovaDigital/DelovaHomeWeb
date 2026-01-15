@@ -488,13 +488,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
   // Presence Logic
+  function renderPresence(people) {
+      const el = document.getElementById('presenceContent');
+      if(!el) return;
+      
+      if(!people || people.length === 0) {
+          el.innerHTML = '<div class="empty">No users tracking</div>';
+          return;
+      }
+
+      el.innerHTML = `<div class="presence-list">
+        ${people.map(p => `
+          <div class="person-item">
+              <div class="person-status ${p.isHome ? 'home' : 'away'}"></div>
+              <span>${p.name}</span>
+              <span style="margin-left:auto; font-size:0.8em; opacity:0.7">${p.isHome ? 'Thuis' : 'Afwezig'}</span>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
   async function loadPresence() {
       const el = document.getElementById('presenceContent');
       if(!el) return;
       try {
-          // Timeout to avoid hanging forever
+          // Timeout to avoid hanging forever (Increased to 10s)
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
           
           const res = await fetch('/api/presence', { signal: controller.signal })
             .then(r => r.ok ? r.json() : null)
@@ -503,30 +523,24 @@ document.addEventListener('DOMContentLoaded', () => {
           clearTimeout(timeoutId);
 
           if(!res || !res.people) {
-               console.warn('Presence API failed or returned invalid data');
-               el.innerHTML = `<div class="empty" style="opacity:0.6; font-size:0.9em;">Unavailable</div>`;
+               // Only overwrite if we don't have data yet
+               if (el.innerHTML.includes('Loading')) {
+                   el.innerHTML = `<div class="empty" style="opacity:0.6; font-size:0.9em;">Unavailable</div>`;
+               }
                return;
           }
           
-          if(res.people.length === 0) {
-              el.innerHTML = '<div class="empty">No users tracking</div>';
-              return;
-          }
+          renderPresence(res.people);
 
-          el.innerHTML = `<div class="presence-list">
-            ${res.people.map(p => `
-              <div class="person-item">
-                  <div class="person-status ${p.isHome ? 'home' : 'away'}"></div>
-                  <span>${p.name}</span>
-                  <span style="margin-left:auto; font-size:0.8em; opacity:0.7">${p.isHome ? 'Thuis' : 'Afwezig'}</span>
-              </div>
-            `).join('')}
-          </div>`;
       } catch(e) { 
           console.error('Presence error', e); 
-          el.innerHTML = `<div class="empty" style="color:var(--danger)">Error</div>`;
+          if(el.innerHTML.includes('Loading')) el.innerHTML = `<div class="empty" style="color:var(--danger)">Error</div>`;
       }
   }
+
+  document.addEventListener('presence-update', (e) => {
+      if(e.detail && e.detail.people) renderPresence(e.detail.people);
+  });
 
   // Energy Logic
   async function loadEnergy() {

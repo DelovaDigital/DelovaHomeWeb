@@ -2048,16 +2048,34 @@ app.get('/api/floorplan', (req, res) => {
 });
 
 app.post('/api/floorplan/upload', requireAdmin, (req, res) => {
+    console.log('[Floorplan] Upload received');
     const { image } = req.body; // Base64 string "data:image/png;base64,..."
-    if (!image) return res.status(400).json({ error: 'No image' });
     
+    if (!image) {
+        console.error('[Floorplan] No image in body');
+        return res.status(400).json({ error: 'No image provided in request body' });
+    }
+    
+    console.log(`[Floorplan] Image received (Length: ${image.length})`);
+
     // Ensure img dir exists
     const imgDir = path.dirname(FLOORPLAN_IMG);
-    if (!fs.existsSync(imgDir)) fs.mkdirSync(imgDir);
+    if (!fs.existsSync(imgDir)) {
+        try {
+            fs.mkdirSync(imgDir, { recursive: true });
+        } catch (e) {
+            console.error('[Floorplan] Failed to create directory:', e);
+            return res.status(500).json({ error: 'Server filesystem error' });
+        }
+    }
 
     const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
     fs.writeFile(FLOORPLAN_IMG, base64Data, 'base64', (err) => {
-        if (err) return res.status(500).json({ error: 'Write failed: ' + err.message });
+        if (err) {
+            console.error('[Floorplan] Write failed:', err);
+            return res.status(500).json({ error: 'Write failed: ' + err.message });
+        }
+        console.log('[Floorplan] Upload successful');
         res.json({ ok: true });
     });
 });

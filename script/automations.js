@@ -7,11 +7,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nav = document.querySelector('.main-nav');
     if (nav) {
         // Simple nav injection if not handled by script.js
-        // But script.js usually handles it.
     }
     
     await loadDevices();
     await loadAutomations();
+    
+    // Observer to hide empty message in modal
+    const list = document.getElementById('actionsList');
+    // Observer is a backup if renderActions doesn't handle it, but renderActions will handle it.
 });
 
 async function loadDevices() {
@@ -73,21 +76,14 @@ function getTriggerDescription(t) {
         return t.event === 'leave_home' ? 'Bij verlaten huis' : 'Bij thuiskomst';
     } else if (t.type === 'time') {
         if (!t.cron) return 'Tijd: Onbekend';
-        // Try to parse standard time cron: "0 46 11 * * *" or "46 11 * * *"
         const parts = t.cron.split(' ');
-        // Check for simple daily schedule (ending in * * *)
         if (parts.length >= 5 && parts.slice(parts.length - 3).every(p => p === '*')) {
             let h, m;
             if (parts.length === 5) {
-                // min hour * * *
-                m = parts[0];
-                h = parts[1];
+                m = parts[0]; h = parts[1];
             } else if (parts.length === 6) {
-                // sec min hour * * *
-                m = parts[1];
-                h = parts[2];
+                m = parts[1]; h = parts[2];
             }
-            
             if (!isNaN(h) && !isNaN(m)) {
                 const pad = (n) => n.toString().padStart(2, '0');
                 return `Tijd: ${pad(h)}:${pad(m)}`;
@@ -101,6 +97,40 @@ function getTriggerDescription(t) {
     return 'Onbekend';
 }
 
+// --- Helper Logic for New UI ---
+
+window.selectTriggerType = (type, element) => {
+    // Update hidden input
+    const input = document.getElementById('triggerType');
+    if(input) input.value = type;
+    
+    // Visual update
+    document.querySelectorAll('.trigger-card').forEach(el => {
+        el.classList.remove('active');
+        // If element is not provided (programmatic call), match by onclick text
+        if (!element) {
+             const onClickAttr = el.getAttribute('onclick');
+             if (onClickAttr && onClickAttr.includes(`'${type}'`)) {
+                 el.classList.add('active');
+             }
+        }
+    });
+    
+    if (element) {
+        element.classList.add('active');
+    }
+    
+    // Call existing logic
+    updateTriggerFields();
+};
+
+window.updateCronFromTime = (val) => {
+    if(!val) return;
+    const [h, m] = val.split(':');
+    // Simple daily cron: m h * * *
+    document.getElementById('timeCron').value = `${parseInt(m)} ${parseInt(h)} * * *`;
+};
+
 // --- Modal Logic ---
 
 window.openAutomationModal = () => {
@@ -108,8 +138,10 @@ window.openAutomationModal = () => {
     document.getElementById('modalTitle').textContent = 'Nieuwe Automatisering';
     document.getElementById('automationId').value = '';
     document.getElementById('autoName').value = '';
-    document.getElementById('triggerType').value = 'presence';
-    updateTriggerFields();
+    
+    // Reset to presence
+    selectTriggerType('presence');
+    
     currentActions = [];
     renderActions();
 };
@@ -121,7 +153,8 @@ window.closeAutomationModal = () => {
 window.updateTriggerFields = () => {
     const type = document.getElementById('triggerType').value;
     document.querySelectorAll('.trigger-group').forEach(el => el.style.display = 'none');
-    document.getElementById(`trigger-${type}`).style.display = 'block';
+    const target = document.getElementById(`trigger-${type}`);
+    if(target) target.style.display = 'block';
 };
 
 window.editAutomation = (id) => {
@@ -132,13 +165,32 @@ window.editAutomation = (id) => {
     document.getElementById('modalTitle').textContent = 'Automatisering Bewerken';
     document.getElementById('automationId').value = auto.id;
     document.getElementById('autoName').value = auto.name;
-    document.getElementById('triggerType').value = auto.trigger.type;
-    updateTriggerFields();
-
+    
+    // Set trigger type visually and logically
+    if(auto.trigger && auto.trigger.type) {
+        selectTriggerType(auto.trigger.type);
+    }
+    
+    // Set field values
     if (auto.trigger.type === 'presence') {
         document.getElementById('presenceEvent').value = auto.trigger.event;
     } else if (auto.trigger.type === 'time') {
         document.getElementById('timeCron').value = auto.trigger.cron;
+        // Try to reverse engineer time input
+        // "min hour * * *"
+        const parts = auto.trigger.cron.split(' ');
+        if(parts.length >= 5) {
+             let m = parts[0];
+             let h = parts[1];
+             // handle 6 parts
+             if(parts.length === 6) { m = parts[1]; h = parts[2]; }
+             
+             if(!isNaN(m) && !isNaN(h)) {
+                 const timeStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                 const timeInput = document.getElementById('timeInput');
+                 if(timeInput) timeInput.value = timeStr;
+             }
+        }
     } else if (auto.trigger.type === 'state') {
         document.getElementById('stateDevice').value = auto.trigger.deviceId;
         document.getElementById('stateProperty').value = auto.trigger.property;
@@ -191,6 +243,8 @@ window.updateAction = (index, field, value) => {
 
 function renderActions() {
     const container = document.getElementById('actionsList');
+    if(!container) return;
+    
     container.innerHTML = currentActions.map((action, index) => {
         if (action.type === 'device') {
             const deviceOptions = devices.map(d => `<option value="${d.id}" ${d.id === action.deviceId ? 'selected' : ''}>${d.name}</option>`).join('');
@@ -228,7 +282,11 @@ function renderActions() {
             `;
         }
         return '';
-    }).join('');
+    }).join('') + '<div id="emptyActionsMsg" style="text-align: center; color: var(--text-muted); padding: 20px; display: none;">Nog geen acties toegevoegd. Klik op + om te beginnen.</div>';
+    
+    // Update empty message visibility
+    const emptyMsg = document.getElementById('emptyActionsMsg');
+    if(emptyMsg) emptyMsg.style.display = currentActions.length === 0 ? 'block' : 'none';
 }
 
 // --- Save Logic ---

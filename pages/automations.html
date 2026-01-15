@@ -9,6 +9,14 @@
     <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* Modern Logic Builder Styles */
+        :root {
+            --logic-if-bg: rgba(59, 130, 246, 0.1);
+            --logic-if-border: rgba(59, 130, 246, 0.3);
+            --logic-then-bg: rgba(16, 185, 129, 0.1);
+            --logic-then-border: rgba(16, 185, 129, 0.3);
+        }
+
         .automation-card {
             display: flex;
             justify-content: space-between;
@@ -18,11 +26,12 @@
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            transition: transform 0.2s;
+            transition: all 0.2s ease;
         }
         .automation-card:hover {
             transform: translateY(-2px);
             border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .automation-info h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
         .automation-desc { color: var(--text-muted); font-size: 0.9rem; }
@@ -35,35 +44,147 @@
             z-index: 1000; 
             left: 0; top: 0; 
             width: 100%; height: 100%; 
-            background-color: rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
+            background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
         }
         .modal-content {
             background-color: var(--card);
-            margin: 5% auto; 
-            padding: 25px; 
+            margin: 2% auto; 
+            padding: 0;
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            width: 90%; 
-            max-width: 600px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            max-height: 90vh;
-            overflow-y: auto;
+            border-radius: 24px;
+            width: 95%; 
+            max-width: 900px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
-        .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        .form-group select, .form-group input { width: 100%; }
+        .modal-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+        }
         
+        .modal-body {
+            padding: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .logic-section {
+            padding: 30px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logic-header {
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .if-header { color: #60a5fa; }
+        .then-header { color: #34d399; }
+
+        .trigger-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .trigger-card {
+            background: var(--bg-body);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            opacity: 0.7;
+        }
+
+        .trigger-card:hover { opacity: 1; transform: translateY(-2px); }
+        .trigger-card.active {
+            border-color: #60a5fa;
+            background: rgba(96, 165, 250, 0.1);
+            opacity: 1;
+        }
+        .trigger-card i { font-size: 1.5rem; margin-bottom: 10px; display: block; }
+
+        .action-builder {
+            background: var(--logic-then-bg);
+            border: 1px dashed var(--logic-then-border);
+            padding: 20px;
+            border-radius: 12px;
+            min-height: 100px;
+        }
+
         .action-item {
-            background: rgba(0,0,0,0.05);
-            padding: 10px;
+            background: var(--card);
+            padding: 12px 16px;
             border-radius: 8px;
             margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .action-item:last-child { margin-bottom: 0; }
+
+        .close { font-size: 24px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
+        .close:hover { opacity: 1; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.9rem; opacity: 0.9; }
+        .form-group select, .form-group input { 
+            width: 100%; 
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .config-box {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section-name {
+            padding: 30px;
+            padding-bottom: 0;
         }
     </style>
 </head>
@@ -95,82 +216,119 @@
 
     <!-- Automation Modal -->
     <div id="automationModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeAutomationModal()">&times;</span>
-            <h2 id="modalTitle">Nieuwe Automatisering</h2>
-            
-            <form id="automationForm" onsubmit="event.preventDefault(); saveAutomation();">
+        <form id="automationForm" class="modal-content" onsubmit="event.preventDefault(); saveAutomation();">
+            <div class="modal-header">
+                <h2 id="modalTitle" style="margin: 0; font-size: 1.5rem;">Nieuwe Automatisering</h2>
+                <span class="close" onclick="closeAutomationModal()"><i class="fas fa-times"></i></span>
+            </div>
+
+            <div class="modal-body">
                 <input type="hidden" id="automationId">
+                <input type="hidden" id="triggerType" value="presence">
                 
-                <div class="form-group">
-                    <label>Naam</label>
-                    <input type="text" id="autoName" required placeholder="Bijv. Lichten uit bij vertrek">
-                </div>
-
-                <div class="form-group">
-                    <label>Trigger Type</label>
-                    <select id="triggerType" onchange="updateTriggerFields()">
-                        <option value="presence">Aanwezigheid (Locatie)</option>
-                        <option value="time">Tijd</option>
-                        <option value="state">Apparaat Status</option>
-                    </select>
-                </div>
-
-                <!-- Trigger Specific Fields -->
-                <div id="triggerFields" style="background: rgba(0,0,0,0.03); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <!-- Presence -->
-                    <div id="trigger-presence" class="trigger-group">
-                        <label>Gebeurtenis</label>
-                        <select id="presenceEvent">
-                            <option value="leave_home">Iedereen verlaat huis</option>
-                            <option value="arrive_home">Iemand komt thuis</option>
-                        </select>
-                    </div>
-
-                    <!-- Time -->
-                    <div id="trigger-time" class="trigger-group" style="display:none;">
-                        <label>Tijd</label>
-                        <input type="text" id="timeCron" placeholder="20:00 of Cron (0 8 * * *)">
-                        <small style="color: var(--text-muted);">Voer een tijd in (HH:MM) of een cron expressie.</small>
-                    </div>
-
-                    <!-- State -->
-                    <div id="trigger-state" class="trigger-group" style="display:none;">
-                        <label>Apparaat</label>
-                        <select id="stateDevice"></select>
-                        <label style="margin-top: 10px;">Eigenschap</label>
-                        <input type="text" id="stateProperty" value="on" placeholder="on, brightness, etc.">
-                        <label style="margin-top: 10px;">Waarde</label>
-                        <input type="text" id="stateValue" placeholder="true, 100, etc.">
+                <div class="section-name">
+                    <div class="form-group">
+                        <label>Naam van automatisering</label>
+                        <input type="text" id="autoName" required placeholder="Bijv. Lichten uit bij vertrek" style="font-size: 1.1rem; padding: 12px;">
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label style="display: flex; justify-content: space-between; align-items: center;">
-                        Acties
-                        <div>
-                            <button type="button" class="btn-mini" onclick="loadDevices()" title="Apparaten verversen" style="background: var(--secondary); color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; margin-right: 5px;">
-                                <i class="fas fa-sync"></i>
+                <!-- Step 1: WHEN -->
+                <div class="logic-section" style="background: linear-gradient(to bottom, transparent, var(--logic-if-bg));">
+                    <div class="logic-header if-header">
+                        <i class="fas fa-bolt"></i> IF (Als dit gebeurt...)
+                    </div>
+
+                    <div class="trigger-cards">
+                        <div class="trigger-card active" onclick="selectTriggerType('presence', this)">
+                            <i class="fas fa-map-marker-alt" style="color: #60a5fa;"></i>
+                            <div>Locatie</div>
+                        </div>
+                        <div class="trigger-card" onclick="selectTriggerType('time', this)">
+                            <i class="fas fa-clock" style="color: #f59e0b;"></i>
+                            <div>Tijd</div>
+                        </div>
+                        <div class="trigger-card" onclick="selectTriggerType('state', this)">
+                            <i class="fas fa-toggle-on" style="color: #10b981;"></i>
+                            <div>Apparaat Status</div>
+                        </div>
+                    </div>
+
+                    <!-- Trigger Specific Fields -->
+                    <div id="triggerFields" class="config-box">
+                        <!-- Presence -->
+                        <div id="trigger-presence" class="trigger-group">
+                            <label>Gebeurtenis</label>
+                            <select id="presenceEvent">
+                                <option value="leave_home">Iedereen verlaat huis</option>
+                                <option value="arrive_home">Iemand komt thuis</option>
+                            </select>
+                            <p style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
+                                Deze trigger gaat af wanneer de laatste persoon het huis verlaat of de eerste persoon thuiskomt.
+                            </p>
+                        </div>
+
+                        <!-- Time -->
+                        <div id="trigger-time" class="trigger-group" style="display:none;">
+                            <label>Tijdstip (Uur:Minuut)</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <input type="time" id="timeInput" onchange="updateCronFromTime(this.value)" style="max-width: 150px;">
+                                <span style="font-size: 0.9rem; opacity: 0.7;">of</span>
+                                <input type="text" id="timeCron" placeholder="Cron expressie (0 8 * * *)">
+                            </div>
+                        </div>
+
+                        <!-- State -->
+                        <div id="trigger-state" class="trigger-group" style="display:none;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <label>Apparaat</label>
+                                    <select id="stateDevice"></select>
+                                </div>
+                                <div>
+                                    <label>Eigenschap</label>
+                                    <input type="text" id="stateProperty" value="on" placeholder="on, brightness">
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px;">
+                                <label>Waarde is gelijk aan</label>
+                                <input type="text" id="stateValue" placeholder="true, 100, etc.">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: THEN -->
+                <div class="logic-section" style="background: linear-gradient(to bottom, transparent, var(--logic-then-bg));">
+                    <div class="logic-header then-header" style="justify-content: space-between;">
+                        <span><i class="fas fa-play-circle"></i> THEN (Doe dit...)</span>
+                        
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-mini" onclick="addDeviceAction()" title="Apparaat besturen" style="background: var(--card); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text-main);">
+                                <i class="fas fa-plus" style="color: #10b981;"></i> Apparaat
                             </button>
-                            <button type="button" class="btn-mini" onclick="addDeviceAction()" title="Apparaat toevoegen" style="background: var(--primary); color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; margin-right: 5px;">
-                                <i class="fas fa-plug"></i> Apparaat
-                            </button>
-                            <button type="button" class="btn-mini" onclick="addDelayAction()" title="Wachttijd toevoegen" style="background: #17a2b8; color: white; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer;">
-                                <i class="fas fa-clock"></i> Wacht
+                            <button type="button" class="btn-mini" onclick="addDelayAction()" title="Wachttijd toevoegen" style="background: var(--card); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--text-main);">
+                                <i class="fas fa-clock" style="color: #f59e0b;"></i> Wacht
                             </button>
                         </div>
-                    </label>
-                    <div id="actionsList">
+                    </div>
+
+                    <div id="actionsList" class="action-builder">
+                        <div id="emptyActionsMsg" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                            Nog geen acties toegevoegd. Klik op + om te beginnen.
+                        </div>
                         <!-- Actions will be added here -->
                     </div>
                 </div>
+            </div>
 
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                    <button type="button" class="btn btn-secondary" onclick="closeAutomationModal()">Annuleren</button>
-                    <button type="submit" class="btn btn-primary">Opslaan</button>
-                </div>
-            </form>
-        </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" style="background: transparent; border: 1px solid var(--border); color: var(--text-main);" onclick="closeAutomationModal()">Annuleren</button>
+                <button type="submit" class="btn btn-primary" style="padding-left: 30px; padding-right: 30px;">
+                    <i class="fas fa-save"></i> Opslaan
+                </button>
+            </div>
+        </form>
     </div>
 
     <script src="../script/script.js"></script>

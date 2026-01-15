@@ -382,9 +382,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const nav = document.querySelector('.main-nav');
         if (!nav) return;
 
+        // Determine correct Hub Name
+        const customHubName = localStorage.getItem('hubName');
+        const defaultName = "DelovaHome";
+        
+        // If we have a custom name, don't use i18n tag to avoid conflict
+        const brandHtml = customHubName 
+            ? `<h1>${customHubName}</h1>` 
+            : `<h1 data-i18n="brand_name">${defaultName}</h1>`;
+
         let html = `
             <div class="nav-brand">
-                <h1 data-i18n="brand_name">DelovaHome</h1>
+                ${brandHtml}
             </div>
             <ul>
         `;
@@ -480,10 +489,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // Update Hub Name
-        let hubName = localStorage.getItem('hubName');
-        const brandHeader = nav.querySelector('.nav-brand h1');
-        if (brandHeader && hubName) {
+        // Update Hub Name (Legacy check, should be handled by render now)
+        if (brandHeader && hubName && brandHeader.textContent !== hubName) {
             brandHeader.textContent = hubName;
         }
     }

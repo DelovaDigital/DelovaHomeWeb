@@ -269,10 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
                       
                       if (data.results && data.results.length > 0) {
                           resultsBox.innerHTML = data.results.map(r => `
-                              <div style="padding: 12px; cursor: pointer; border-bottom: 1px solid var(--border, rgba(255,255,255,0.1));" 
+                              <div class="weather-search-result" 
                                    onclick="applyWeatherLocation('${r.name}', ${r.latitude}, ${r.longitude})">
-                                  <div style="font-weight: 600;">${r.name}</div>
-                                  <div style="font-size: 0.85rem; opacity: 0.7;">${r.admin1 || ''}, ${r.country || ''}</div>
+                                  <div class="weather-result-name">${r.name}</div>
+                                  <div class="weather-result-sub">${r.admin1 || ''}, ${r.country || ''}</div>
                               </div>
                           `).join('');
                           resultsBox.style.display = 'block';
@@ -308,8 +308,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!statusWidget || !statusContent) return;
 
     try {
-        const res = await fetch('/api/status');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const res = await fetch('/api/status', { signal: controller.signal });
         const data = await res.json();
+        clearTimeout(timeoutId);
         
         if (data.ok) {
             const uptimeHours = (data.uptime / 3600).toFixed(1);
@@ -488,8 +492,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const el = document.getElementById('presenceContent');
       if(!el) return;
       try {
-          const res = await apiGet('/api/presence');
-          if(!res || !res.people) return;
+          // Timeout to avoid hanging forever
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          
+          const res = await fetch('/api/presence', { signal: controller.signal })
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null);
+          
+          clearTimeout(timeoutId);
+
+          if(!res || !res.people) {
+               console.warn('Presence API failed or returned invalid data');
+               el.innerHTML = `<div class="empty" style="opacity:0.6; font-size:0.9em;">Unavailable</div>`;
+               return;
+          }
           
           if(res.people.length === 0) {
               el.innerHTML = '<div class="empty">No users tracking</div>';
@@ -505,7 +522,10 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
             `).join('')}
           </div>`;
-      } catch(e) { console.error('Presence error', e); }
+      } catch(e) { 
+          console.error('Presence error', e); 
+          el.innerHTML = `<div class="empty" style="color:var(--danger)">Error</div>`;
+      }
   }
 
   // Energy Logic
@@ -513,11 +533,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const el = document.getElementById('energyContent');
       if(!el) return;
       try {
-          const res = await apiGet('/api/energy'); 
+          // Timeout protection
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+          const res = await fetch('/api/energy', { signal: controller.signal })
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null);
+          
+          clearTimeout(timeoutId);
+
           // Fix: The API returns the data object directly, not wrapped in a 'data' property
           const d = (res && res.data) ? res.data : res;
           
-          if(!d || !d.grid || !d.solar) return;
+          if(!d || !d.grid || !d.solar) {
+               // Silent fail or minimal text if just waiting for data
+               if (!el.innerHTML || el.innerText === 'Loading...') {
+                   el.innerHTML = '<div class="empty" style="opacity:0.6;">No Data</div>';
+               }
+               return;
+          }
           
           const gridClass = d.grid.currentPower > 0 ? 'pos' : (d.grid.currentPower < 0 ? 'neg' : '');
           

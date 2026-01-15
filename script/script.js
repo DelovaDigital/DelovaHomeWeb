@@ -420,7 +420,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </ul>
         `;
 
+        // Prevent unnecessary DOM trashing/respringing
+        if (nav.lastRenderedHTML === html) return;
+        
         nav.innerHTML = html;
+        nav.lastRenderedHTML = html;
 
         // If translations are available or just loaded, apply them to newly-inserted nav
         if (window.applyTranslations) {

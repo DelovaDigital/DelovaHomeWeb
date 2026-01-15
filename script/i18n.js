@@ -1,11 +1,31 @@
 (function() {
     window.translations = {}; // Will be populated from JSON
 
+    // Try to load cached translations immediately
+    try {
+        const cached = localStorage.getItem('translations_cache');
+        if (cached) {
+            window.translations = JSON.parse(cached);
+            // We can't apply to DOM yet if it's not ready, but window.t will work
+        }
+    } catch (e) {
+        console.error("Failed to load translations from cache", e);
+    }
+
     async function loadTranslations() {
         try {
+            // If we have cached translations, signal readiness immediately
+            if (Object.keys(window.translations).length > 0) {
+                 window.dispatchEvent(new Event('translationsLoaded'));
+                 setTimeout(() => { if(window.applyTranslations) window.applyTranslations(); }, 0);
+            }
+
             const res = await fetch('../data/locales.json');
             if (res.ok) {
-                window.translations = await res.json();
+                const data = await res.json();
+                window.translations = data;
+                localStorage.setItem('translations_cache', JSON.stringify(data));
+                
                 applyTranslations(); // Apply immediately after loading
                 console.log('[i18n] Translations loaded');
                 window.dispatchEvent(new Event('translationsLoaded'));

@@ -106,7 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const uname = localStorage.getItem('username');
         if (!uname) return;
         const els = document.querySelectorAll('#usernameDisplay');
-        const template = (window.t && typeof window.t === 'function') ? window.t('greeting') : null;
+        let template = (window.t && typeof window.t === 'function') ? window.t('greeting') : null;
+        // Avoid using prettified key "Greeting" if translation not loaded
+        if (template && !template.includes('{name}')) template = null;
+        
         const text = template ? template.replace('{name}', uname) : `Hallo, ${uname}`;
         els.forEach(el => { if (el) el.textContent = text; });
     }
@@ -445,7 +448,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = localStorage.getItem('username');
         const usernameDisplay = document.getElementById('usernameDisplay');
         if (usernameDisplay && username) {
-            const greetTemplate = (window.t && typeof window.t === 'function') ? window.t('greeting') : null;
+            let greetTemplate = (window.t && typeof window.t === 'function') ? window.t('greeting') : null;
+            // Avoid using prettified key "Greeting" if translation not loaded
+            if (greetTemplate && !greetTemplate.includes('{name}')) greetTemplate = null;
+
             usernameDisplay.textContent = greetTemplate ? greetTemplate.replace('{name}', username) : `Hallo, ${username}`;
             
             // Set dynamic avatar with initials & color

@@ -602,9 +602,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         } catch (e) {
             console.error(e);
-            icon.classList.remove('fa-spin');
-            scanBtn.disabled = false;
         }
+    }
 
     // Reload users when translations are ready
     window.addEventListener('translationsLoaded', loadUsers);

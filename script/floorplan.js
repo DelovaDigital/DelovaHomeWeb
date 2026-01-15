@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('fileUpload').onchange = async (e) => {
          const file = e.target.files[0];
          if (!file) return;
-         if (file.size > 50 * 1024 * 1024) return alert('File too large (Max 50MB)');
+         if (file.size > 100 * 1024 * 1024) return alert('File too large (Max 100MB)');
          
          const reader = new FileReader();
          reader.onload = async (ev) => {
@@ -173,11 +173,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ image: base64 })
                 });
-                if ((await res.json()).ok) {
+                const data = await res.json();
+                if (data.ok) {
                     floorplanImg.src = base64;
                     document.getElementById('placeholder').style.display = 'none';
-                } else alert('Upload failed');
-             } catch(err) { alert('Upload failed'); }
+                } else {
+                    console.error('Upload failed response:', data);
+                    alert('Upload failed: ' + (data.error || 'Unknown error'));
+                }
+             } catch(err) { 
+                 console.error('Upload error:', err);
+                 alert('Upload request failed: ' + err.message); 
+             }
          };
          reader.readAsDataURL(file);
     };

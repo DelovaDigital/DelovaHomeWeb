@@ -409,8 +409,8 @@ try {
 // MOVED TO BOTTOM OF FILE TO AVOID CONFLICTS
 
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
 // --- Authentication Middleware ---
 const sessions = new Map(); // token -> { userId, role, username }
@@ -2047,7 +2047,7 @@ app.get('/api/floorplan', (req, res) => {
     });
 });
 
-app.post('/api/floorplan/upload', requireAdmin, express.json({limit: '50mb'}), (req, res) => {
+app.post('/api/floorplan/upload', requireAdmin, (req, res) => {
     const { image } = req.body; // Base64 string "data:image/png;base64,..."
     if (!image) return res.status(400).json({ error: 'No image' });
     

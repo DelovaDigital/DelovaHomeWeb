@@ -2096,3 +2096,9 @@ input:checked + .slider:before {
     outline: none;
     border-color: var(--primary);
 }
+
+/* Make sure navbar links are clickable */
+.main-nav a {
+    position: relative;
+    z-index: 10;
+}

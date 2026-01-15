@@ -370,6 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Helper to prettify keys if i18n missing
+    function prettifyKey(key) {
+        return key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+    }
+
     function renderNav(items, currentPage) {
         const nav = document.querySelector('.main-nav');
         if (!nav) return;

@@ -51,6 +51,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Logout Button
+    const btnLogout = document.getElementById('btnProfileLogout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            if(confirm('Weet u zeker dat u wilt uitloggen?')) {
+                localStorage.clear();
+                window.location.href = '../index.html';
+            }
+        });
+    }
+
     // Check URL params for initial tab
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam = urlParams.get('tab');

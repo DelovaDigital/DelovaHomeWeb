@@ -409,7 +409,8 @@ try {
 // MOVED TO BOTTOM OF FILE TO AVOID CONFLICTS
 
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // --- Authentication Middleware ---
 const sessions = new Map(); // token -> { userId, role, username }
@@ -1753,6 +1754,20 @@ app.post('/api/devices/unpair', (req, res) => {
     
     deviceManager.unpairDevice(ip);
     res.json({ ok: true, message: 'Device unpaired' });
+});
+
+app.post('/api/devices/:id/config', (req, res) => {
+    const { id } = req.params;
+    const { rtspUrl } = req.body;
+    
+    if (!rtspUrl) return res.status(400).json({ ok: false, error: 'No config provided' });
+    
+    const success = deviceManager.saveCameraUrl(id, rtspUrl);
+    if (success) {
+        res.json({ ok: true });
+    } else {
+        res.status(500).json({ ok: false, error: 'Failed to save configuration' });
+    }
 });
 
 // --- PS5 Control ---

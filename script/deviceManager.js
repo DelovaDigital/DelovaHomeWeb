@@ -85,12 +85,14 @@ class DeviceManager extends EventEmitter {
         this.androidTvCredentials = {};
         this.samsungCredentials = {};
         this.cameraCredentials = {};
+        this.cameraConfigs = {}; // New: Store custom RTSP URLs
         this.sshCredentials = {}; // New: SSH/SMB credentials
         this.pythonPath = null; // Cache for python executable path
         this.loadAppleTvCredentials();
         this.loadAndroidTvCredentials();
         this.loadSamsungCredentials();
         this.loadCameraCredentials();
+        this.loadCameraConfigs(); // New
         this.loadSshCredentials(); // New
         
         // Integrate Discovery Service
@@ -217,6 +219,7 @@ class DeviceManager extends EventEmitter {
                 on: (info.type === 'homekit' || info.type === 'printer' || (info.name && info.name.includes('HomePod'))), // Default ON for always-on devices
                 ...((info.type === 'homekit' || (info.name && info.name.includes('HomePod'))) ? { temperature: null, humidity: null } : {}) // Init sensor slots
             }, 
+            attributes: this.cameraConfigs[info.id] ? { rtsp_url: this.cameraConfigs[info.id] } : {},
             capabilities: [],
             protocols: info.raw && info.raw.type ? [info.raw.type] : []
         };
@@ -399,6 +402,41 @@ class DeviceManager extends EventEmitter {
             console.log(`[Camera] Credentials saved for ${ip}`);
         } catch (e) {
             console.error('Failed to save camera credentials:', e);
+        }
+    }
+
+    loadCameraConfigs() {
+        try {
+            const configPath = path.join(__dirname, '../camera-configs.json');
+            if (fs.existsSync(configPath)) {
+                this.cameraConfigs = JSON.parse(fs.readFileSync(configPath));
+                console.log(`[Camera] Loaded configs for ${Object.keys(this.cameraConfigs).length} camera(s)`);
+            }
+        } catch (e) {
+            console.error('Failed to load Camera configs:', e.message);
+            this.cameraConfigs = {};
+        }
+    }
+
+    saveCameraUrl(id, rtspUrl) {
+        const configPath = path.join(__dirname, '../camera-configs.json');
+        this.cameraConfigs[id] = rtspUrl;
+        
+        // Update live device if exists
+        const device = this.devices.get(id);
+        if (device) {
+             if (!device.attributes) device.attributes = {};
+             device.attributes.rtsp_url = rtspUrl;
+             this.emit('device-updated', device);
+        }
+
+        try {
+            fs.writeFileSync(configPath, JSON.stringify(this.cameraConfigs, null, 2));
+            console.log(`[Camera] Config saved for ${id}`);
+            return true;
+        } catch (e) {
+            console.error('Failed to save camera config:', e);
+            return false;
         }
     }
 

@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const pairingModal = document.getElementById('pairingModal');
             if (event.target == pairingModal) {
-                pairingModal.style.display = 'none';
+                closeManualPairing();
             }
         }
     }
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="device-modal-content" style="max-width: 400px;">
                     <div class="device-modal-header">
                         <h2 id="pairingTitle">Apparaat Koppelen</h2>
-                        <button class="close-modal" onclick="document.getElementById('pairingModal').style.display='none'">&times;</button>
+                        <button class="close-modal" onclick="closeManualPairing()">&times;</button>
                     </div>
                     <div class="device-modal-body">
                         <p id="pairingDesc" style="text-align: center; color: #aaa; margin-bottom: 20px;">Voer inloggegevens in.</p>
@@ -512,10 +512,12 @@ document.addEventListener('DOMContentLoaded', () => {
         updateModalContent(device, true);
         
         modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
     };
 
     window.closeDeviceDetail = () => {
         document.getElementById('deviceModal').style.display = 'none';
+        document.body.style.overflow = '';
         activeStreams.forEach((player, deviceId) => {
             // Check if PiP is active for this device
             const pipVideo = document.getElementById(`pip-video-${deviceId}`);
@@ -1992,9 +1994,15 @@ window.showPairingModal = (arg1, arg2) => {
 };
 
 
+window.closeManualPairing = () => {
+    document.getElementById('pairingModal').style.display = 'none';
+    document.body.style.overflow = '';
+};
+
 window.openManualPairing = () => {
     currentPairingDevice = null;
     document.getElementById('pairingModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
     document.getElementById('pairingTitle').textContent = 'Handmatig Toevoegen';
     document.getElementById('pairingDesc').textContent = 'Voer het IP-adres en type in.';
     

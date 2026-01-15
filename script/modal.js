@@ -59,6 +59,7 @@
 
   btnCancel.addEventListener('click', ()=>{
     overlay.style.display = 'none';
+    document.body.style.overflow = '';
     if(currentResolve) { currentResolve(null); currentResolve = null; }
   });
 
@@ -75,6 +76,7 @@
         let roomId = null;
         try{ const data = await res.json(); if(data && data.room && data.room.id) roomId = data.room.id; }catch(e){}
         overlay.style.display = 'none';
+        document.body.style.overflow = '';
         if(currentResolve) { currentResolve(roomId); currentResolve = null; }
         newInput.value = '';
         return;
@@ -88,24 +90,31 @@
         if(data && data.room && data.room.id) roomId = data.room.id;
       }
       overlay.style.display = 'none';
+      document.body.style.overflow = '';
       if(currentResolve) { currentResolve(roomId); currentResolve = null; }
       newInput.value = '';
     }catch(e){
       console.error('Modal: save failed', e);
       overlay.style.display = 'none';
+      document.body.style.overflow = '';
       if(currentResolve) { currentResolve(null); currentResolve = null; }
     }
   });
 
   // click outside to close
   overlay.addEventListener('click', (ev)=>{
-    if(ev.target === overlay){ overlay.style.display = 'none'; if(currentResolve){ currentResolve(null); currentResolve = null; } }
+    if(ev.target === overlay){ 
+      overlay.style.display = 'none'; 
+      document.body.style.overflow = '';
+      if(currentResolve){ currentResolve(null); currentResolve = null; } 
+    }
   });
 
   // close modal with Escape key
   document.addEventListener('keydown', (e) => {
     if(e.key === 'Escape' && overlay.style.display === 'flex'){
       overlay.style.display = 'none';
+      document.body.style.overflow = '';
       if(currentResolve){ currentResolve(null); currentResolve = null; }
     }
   });
@@ -137,6 +146,7 @@
     }
 
     overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
     return new Promise((resolve, reject)=>{ currentResolve = resolve; });
   };
 

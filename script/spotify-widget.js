@@ -434,13 +434,23 @@ function showModal(html) {
         modal = document.createElement('div');
         modal.id = 'spotify-modal';
         modal.className = 'modal-overlay';
+        // Add click listener to close when clicking outside the modal content
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
         document.body.appendChild(modal);
     }
     modal.innerHTML = `<div class="modal-content">${html}</div>`;
     modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
 }
 
 function closeModal() {
     const modal = document.getElementById('spotify-modal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = ''; // Restore background scrolling
+    }
 }

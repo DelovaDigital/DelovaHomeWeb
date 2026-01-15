@@ -201,6 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const modal = document.getElementById('weatherModal');
       if (modal) {
           modal.style.display = 'block';
+          document.body.style.overflow = 'hidden';
           setTimeout(() => {
               const input = document.getElementById('weatherSearchInput');
               if (input) input.focus();
@@ -236,7 +237,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.closeWeatherModal = () => {
       const modal = document.getElementById('weatherModal');
-      if (modal) modal.style.display = 'none';
+      if (modal) {
+          modal.style.display = 'none';
+          document.body.style.overflow = '';
+      }
       const results = document.getElementById('weatherSearchResults');
       if (results) results.style.display = 'none';
       const input = document.getElementById('weatherSearchInput');

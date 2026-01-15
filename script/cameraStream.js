@@ -52,6 +52,16 @@ class JSMpegStream extends EventEmitter {
         ];
 
         console.log(`[JSMpeg] Starting ffmpeg for ${this.deviceId}`);
+        
+        // Log URL safely
+        try {
+            const safeUrl = new URL(this.url);
+            safeUrl.password = '***';
+            console.log(`[JSMpeg] Stream URL: ${safeUrl.toString()}`);
+        } catch(e) {
+            console.log(`[JSMpeg] Stream URL (parsing failed): ${this.url}`);
+        }
+
         this.ffmpeg = spawn("ffmpeg", args);
 
         this.ffmpeg.stdout.on('data', (data) => {
@@ -63,7 +73,7 @@ class JSMpegStream extends EventEmitter {
         });
 
         this.ffmpeg.stderr.on('data', (data) => {
-           // console.log(`[ffmpeg] ${data}`); // Enabled for debugging
+           console.log(`[ffmpeg] ${data}`); // Enabled for debugging
         });
 
         this.ffmpeg.on('close', (code) => {

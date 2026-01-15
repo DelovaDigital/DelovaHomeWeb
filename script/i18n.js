@@ -8,6 +8,7 @@
                 window.translations = await res.json();
                 applyTranslations(); // Apply immediately after loading
                 console.log('[i18n] Translations loaded');
+                window.dispatchEvent(new Event('translationsLoaded'));
             } else {
                 console.error("Failed to load locales.json");
             }

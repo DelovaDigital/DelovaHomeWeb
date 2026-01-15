@@ -568,27 +568,47 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                     };
 
-                    tr.innerHTML = `
-                        <td style="padding: 10px;">${user.Username}</td>
-                        <td style="padding: 10px;"></td>
-                        <td style="padding: 10px;">${new Date(user.CreatedAt).toLocaleDateString()}</td>
-                        <td style="padding: 10px;"></td>
-                    `;
+                    const tdUser = document.createElement('td'); 
+                    tdUser.style.padding = '12px'; 
+                    tdUser.textContent = user.Username;
                     
-                    tr.children[1].appendChild(roleSelect);
-                    tr.children[3].appendChild(deleteBtn);
+                    const tdRole = document.createElement('td'); 
+                    tdRole.style.padding = '12px'; 
+                    tdRole.appendChild(roleSelect);
+                    
+                    const tdSpacer = document.createElement('td');
+                    tdSpacer.style.padding = '12px';
+                    if (user.CreatedAt) tdSpacer.textContent = new Date(user.CreatedAt).toLocaleDateString();
+
+                    const tdActions = document.createElement('td'); 
+                    tdActions.style.padding = '12px'; 
+                    tdActions.style.textAlign = 'right';
+                    
+                    // Do NOT allow deleting self (simple check against currentUser)
+                    const currentUserId = localStorage.getItem('userId');
+                    if(user.Id != currentUserId) {
+                        tdActions.appendChild(deleteBtn);
+                    }
+
+                    tr.appendChild(tdUser);
+                    tr.appendChild(tdRole);
+                    tr.appendChild(tdSpacer);
+                    tr.appendChild(tdActions);
                     
                     usersTableBody.appendChild(tr);
                 });
             } else {
                 usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('error') : 'Fout'}</td></tr>`;
             }
-        } catch (e) {
-            console.error(e);
-            usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('network_error') : 'Netwerkfout'}</td></tr>`;
+        } catch(e) { 
+            console.error(e); 
+            if(usersTableBody) usersTableBody.innerHTML = `<tr><td colspan="4">${window.t ? window.t('network_error') : 'Netwerkfout'}</td></tr>`;
         }
     }
 
+    // Reload users when translations are ready
+    window.addEventListener('translationsLoaded', loadUsers);
+    
     // Hook into tab switching to load users
     const originalTabClick = document.querySelectorAll('.settings-nav-item');
     originalTabClick.forEach(item => {

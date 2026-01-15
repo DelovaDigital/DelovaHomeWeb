@@ -559,6 +559,12 @@ document.addEventListener('DOMContentLoaded', () => {
           if (e.key === 'Enter') submitAI();
       });
   }
+  
+  window.addEventListener('translationsLoaded', () => {
+      if (roomsList) render();
+      loadSystemStatus(); // Also reload widgets that use translation
+  });
+
   if (roomsList) render();
   loadWeather();
   loadPrinterStatus();

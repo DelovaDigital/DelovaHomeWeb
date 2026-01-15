@@ -596,36 +596,8 @@ import '../utils/app_translations.dart';
 
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
               
-              // 4. Presence & Energy (Full Width Cards)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                       // Presence
-                       Card(
-                         margin: const EdgeInsets.only(bottom: 16),
-                         child: Padding(
-                           padding: const EdgeInsets.all(16.0),
-                           child: _presenceData != null 
-                             ? PresenceWidget(data: _presenceData!)
-                             : const Center(child: LinearProgressIndicator()),
-                         ),
-                       ),
-                       // Energy
-                       Card(
-                         margin: EdgeInsets.zero,
-                         child: Padding(
-                           padding: const EdgeInsets.all(16.0),
-                           child: _energyData != null 
-                             ? EnergyWidget(data: _energyData!)
-                             : const Center(child: LinearProgressIndicator()),
-                         ),
-                       )
-                    ],
-                  ),
-                ),
-              ),
+              // 4. Removed Duplicate Presence & Energy Section
+              const SliverToBoxAdapter(child: SizedBox.shrink()),
 
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
 

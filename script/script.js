@@ -400,10 +400,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (usernameDisplay && username) {
             usernameDisplay.textContent = `Hallo, ${username}`;
             
-            // Set dynamic avatar with initials
+            // Set dynamic avatar with initials & color
             const avatarEl = nav.querySelector('.user-avatar');
             if (avatarEl) {
-                avatarEl.style.backgroundImage = `url('https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff')`;
+                // Generate color from name
+                let hash = 0;
+                for (let i = 0; i < username.length; i++) {
+                    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                const color = Math.floor(Math.abs((Math.sin(hash) * 16777215)) % 16777215).toString(16).padStart(6, '0');
+                
+                avatarEl.style.backgroundImage = `url('https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=${color}&color=fff&bold=true')`;
             }
         }
         

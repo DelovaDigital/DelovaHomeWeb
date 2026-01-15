@@ -1454,20 +1454,24 @@ input:checked + .slider:before {
 }
 
 .user-dropdown {
-    bottom: calc(100% + 10px); /* Open UP instead of down */
     top: auto;
-    left: 0; /* Align left */
+    bottom: 0;
+    left: 100%; /* Position to the right of the sidebar */
     right: auto;
+    margin-left: 10px; /* Gap */
     background: var(--card) !important;
     border: 1px solid var(--border);
-    box-shadow: 0 -10px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     min-width: 220px;
     padding: 8px;
-    transform: translateY(10px); /* Animation origin fix */
+    transform: translateX(-10px); /* Start slightly left for animation */
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
 }
 
 .user-dropdown.show {
-    transform: translateY(0);
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(0);
 }
 
 .user-dropdown a {

@@ -394,11 +394,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Update username
+        // Update username and Avatar
         const username = localStorage.getItem('username');
         const usernameDisplay = document.getElementById('usernameDisplay');
         if (usernameDisplay && username) {
             usernameDisplay.textContent = `Hallo, ${username}`;
+            
+            // Set dynamic avatar with initials
+            const avatarEl = nav.querySelector('.user-avatar');
+            if (avatarEl) {
+                avatarEl.style.backgroundImage = `url('https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff')`;
+            }
         }
         
         // Update Hub Name

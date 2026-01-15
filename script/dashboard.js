@@ -274,9 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
       loadWeather();
       closeWeatherModal();
   };
-          alert('Fout bij zoeken naar stad.');
-      }
-  };
 
   // System Status Widget
   async function loadSystemStatus() {
@@ -518,7 +515,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // initial
-  // loadScenes();
   loadPresence();
   loadEnergy();
   setInterval(loadEnergy, 5000);

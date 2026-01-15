@@ -30,8 +30,16 @@
         if (!val && window.translations && window.translations['en']) {
              val = window.translations['en'][key];
         }
-        
-        return val || key; // Fallback to key itself
+        // If no translation found, prettify the key: replace underscores with spaces and capitalize
+        if (val) return val;
+        const prettify = (k) => {
+            try {
+                return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            } catch (e) {
+                return k;
+            }
+        };
+        return prettify(key);
     };
 
     window.applyTranslations = function() {

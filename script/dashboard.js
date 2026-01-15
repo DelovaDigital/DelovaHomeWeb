@@ -196,28 +196,84 @@ document.addEventListener('DOMContentLoaded', () => {
     }catch(e){ weatherContent.innerText = 'Weer service niet bereikbaar'; }
   }
 
-  window.changeWeatherLocation = async () => {
-      const city = prompt('Voer stad in voor weerbericht:');
-      if(!city) return;
-      
-      try {
-          const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=nl&format=json`);
-          const data = await res.json();
-          
-          if(data.results && data.results.length > 0) {
-              const result = data.results[0];
-              const newLoc = {
-                  name: result.name,
-                  lat: result.latitude,
-                  lon: result.longitude
-              };
-              localStorage.setItem('weather_location', JSON.stringify(newLoc));
-              loadWeather();
-          } else {
-              alert('Stad niet gevonden.');
-          }
-      } catch(e) {
-          console.error(e);
+  window.changeWeatherLocation = () => {
+      const modal = document.getElementById('weatherModal');
+      if (modal) {
+          modal.style.display = 'block';
+          setTimeout(() => {
+              const input = document.getElementById('weatherSearchInput');
+              if (input) input.focus();
+          }, 100);
+          setupWeatherSearch();
+      }
+  };
+
+  window.closeWeatherModal = () => {
+      const modal = document.getElementById('weatherModal');
+      if (modal) modal.style.display = 'none';
+      const results = document.getElementById('weatherSearchResults');
+      if (results) results.style.display = 'none';
+      const input = document.getElementById('weatherSearchInput');
+      if (input) input.value = '';
+  };
+
+  let weatherSearchInitialized = false;
+  function setupWeatherSearch() {
+      if (weatherSearchInitialized) return;
+      weatherSearchInitialized = true;
+
+      const input = document.getElementById('weatherSearchInput');
+      const resultsBox = document.getElementById('weatherSearchResults');
+      let debounceTimer;
+
+      if (input && resultsBox) {
+          input.addEventListener('input', (e) => {
+              clearTimeout(debounceTimer);
+              const query = e.target.value;
+              
+              if (query.length < 3) {
+                  resultsBox.style.display = 'none';
+                  return;
+              }
+
+              debounceTimer = setTimeout(async () => {
+                  try {
+                      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=nl&format=json`);
+                      const data = await res.json();
+                      
+                      if (data.results && data.results.length > 0) {
+                          resultsBox.innerHTML = data.results.map(r => `
+                              <div style="padding: 12px; cursor: pointer; border-bottom: 1px solid var(--border, rgba(255,255,255,0.1));" 
+                                   onclick="applyWeatherLocation('${r.name}', ${r.latitude}, ${r.longitude})">
+                                  <div style="font-weight: 600;">${r.name}</div>
+                                  <div style="font-size: 0.85rem; opacity: 0.7;">${r.admin1 || ''}, ${r.country || ''}</div>
+                              </div>
+                          `).join('');
+                          resultsBox.style.display = 'block';
+                      } else {
+                          resultsBox.style.display = 'none';
+                      }
+                  } catch (err) {
+                      console.error('Geo search error', err);
+                  }
+              }, 500);
+          });
+
+          // Close results when clicking outside
+          document.addEventListener('click', (e) => {
+              if (!input.contains(e.target) && !resultsBox.contains(e.target)) {
+                  resultsBox.style.display = 'none';
+              }
+          });
+      }
+  }
+
+  window.applyWeatherLocation = (name, lat, lon) => {
+      const newLoc = { name, lat, lon };
+      localStorage.setItem('weather_location', JSON.stringify(newLoc));
+      loadWeather();
+      closeWeatherModal();
+  };
           alert('Fout bij zoeken naar stad.');
       }
   };

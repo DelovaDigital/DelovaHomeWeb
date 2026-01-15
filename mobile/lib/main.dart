@@ -6,6 +6,7 @@ import 'screens/hub_discovery_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'utils/app_theme.dart';
 import 'services/notification_service.dart';
+import 'services/location_service.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -25,6 +26,8 @@ void main() async {
      await Firebase.initializeApp();
      // Start notification listener
      await NotificationService().initialize();
+     // Start background location service
+     await LocationService().init();
   } catch(e) {
      debugPrint('Firebase init failed (missing config?): $e');
   }

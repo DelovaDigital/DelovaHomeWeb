@@ -93,11 +93,79 @@ function getTriggerDescription(t) {
     } else if (t.type === 'state') {
         const d = devices.find(dev => dev.id === t.deviceId);
         return `Als ${d ? d.name : t.deviceId} ${t.property} == ${t.value}`;
+    } else if (t.type === 'weather') {
+        return `Weer: ${t.condition} in ${t.location}`;
     }
     return 'Onbekend';
 }
 
 // --- Helper Logic for New UI ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Weather condition change
+    const weatherCond = document.getElementById('weatherCondition');
+    if (weatherCond) {
+        weatherCond.addEventListener('change', (e) => {
+            const val = e.target.value;
+            const valueGroup = document.getElementById('weatherValueGroup');
+            if (valueGroup) {
+                valueGroup.style.display = (val === 'temp_above' || val === 'temp_below') ? 'block' : 'none';
+            }
+        });
+    }
+
+    // Location Autocomplete
+    const locationInput = document.getElementById('weatherLocation');
+    const resultsBox = document.getElementById('locationResults');
+    let debounceTimer;
+
+    if (locationInput && resultsBox) {
+        locationInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            const query = e.target.value;
+            
+            if (query.length < 3) {
+                resultsBox.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=nl&format=json`);
+                    const data = await res.json();
+                    
+                    if (data.results && data.results.length > 0) {
+                        resultsBox.innerHTML = data.results.map(r => `
+                            <div class="search-result" style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--border);" 
+                                 onclick="selectLocation('${r.name}', ${r.latitude}, ${r.longitude}, '${r.country || ''}')">
+                                <strong>${r.name}</strong> <small style="color: var(--text-muted);">${r.admin1 || ''}, ${r.country || ''}</small>
+                            </div>
+                        `).join('');
+                        resultsBox.style.display = 'block';
+                    } else {
+                        resultsBox.style.display = 'none';
+                    }
+                } catch (err) {
+                    console.error('Geo search error', err);
+                }
+            }, 500);
+        });
+
+        // Close results when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!locationInput.contains(e.target) && !resultsBox.contains(e.target)) {
+                resultsBox.style.display = 'none';
+            }
+        });
+    }
+});
+
+window.selectLocation = (name, lat, lon, country) => {
+    document.getElementById('weatherLocation').value = name;
+    document.getElementById('weatherLat').value = lat;
+    document.getElementById('weatherLon').value = lon;
+    document.getElementById('locationResults').style.display = 'none';
+};
 
 window.selectTriggerType = (type, element) => {
     // Update hidden input
@@ -195,6 +263,16 @@ window.editAutomation = (id) => {
         document.getElementById('stateDevice').value = auto.trigger.deviceId;
         document.getElementById('stateProperty').value = auto.trigger.property;
         document.getElementById('stateValue').value = auto.trigger.value;
+    } else if (auto.trigger.type === 'weather') {
+        document.getElementById('weatherCondition').value = auto.trigger.condition;
+        document.getElementById('weatherLocation').value = auto.trigger.location;
+        document.getElementById('weatherLat').value = auto.trigger.lat;
+        document.getElementById('weatherLon').value = auto.trigger.lon;
+        if (auto.trigger.value) document.getElementById('weatherValue').value = auto.trigger.value;
+        
+        // Trigger generic change event to update UI visibility
+        const event = new Event('change');
+        document.getElementById('weatherCondition').dispatchEvent(event);
     }
 
     currentActions = JSON.parse(JSON.stringify(auto.actions));
@@ -317,6 +395,14 @@ window.saveAutomation = async () => {
         if (trigger.value === 'true') trigger.value = true;
         else if (trigger.value === 'false') trigger.value = false;
         else if (!isNaN(trigger.value)) trigger.value = Number(trigger.value);
+    } else if (triggerType === 'weather') {
+        trigger.condition = document.getElementById('weatherCondition').value;
+        trigger.location = document.getElementById('weatherLocation').value;
+        trigger.lat = document.getElementById('weatherLat').value;
+        trigger.lon = document.getElementById('weatherLon').value;
+        if (trigger.condition === 'temp_above' || trigger.condition === 'temp_below') {
+            trigger.value = document.getElementById('weatherValue').value;
+        }
     }
 
     // Ensure actions have 'type' set correctly if added via new interface

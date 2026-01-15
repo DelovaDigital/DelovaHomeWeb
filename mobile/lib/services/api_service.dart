@@ -149,6 +149,7 @@ class ApiService {
     }
   }
 
+
   Future<Map<String, dynamic>> checkUpdate() async {
     final baseUrl = await getBaseUrl();
     try {
@@ -208,6 +209,7 @@ class ApiService {
           'userId': userId,
           'latitude': latitude,
           'longitude': longitude,
+          'source': 'mobile_background',
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         }),
       );

@@ -440,8 +440,18 @@ const requireAdmin = (req, res, next) => {
 
 app.use(authenticate);
 
-// Serve static files from project root
-app.use(express.static(__dirname));
+// Serve static files from project root with caching strategy
+app.use(express.static(__dirname, {
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+            // HTML files should not be cached to ensure updates are seen immediately
+            res.setHeader('Cache-Control', 'no-cache');
+        } else {
+            // Cache other assets (CSS, JS, Images) for 1 day
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+        }
+    }
+}));
 
 app.post('/api/camera/stream', (req, res) => {
     const { deviceId, rtspUrl } = req.body;

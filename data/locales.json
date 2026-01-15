@@ -2,6 +2,7 @@
   "en": {
     "brand_name": "DelovaHome",
     "dashboard": "Dashboard",
+    "dashboard_subtitle": "Overview of rooms, devices and handy widgets",
     "rooms": "Rooms",
     "devices": "Devices",
     "floorplan": "Floorplan",
@@ -180,6 +181,7 @@
   "nl": {
     "brand_name": "DelovaHome",
     "dashboard": "Dashboard",
+    "dashboard_subtitle": "Overzicht van kamers, apparaten en handige widgets",
     "rooms": "Kamers",
     "devices": "Apparaten",
     "floorplan": "Plattegrond",

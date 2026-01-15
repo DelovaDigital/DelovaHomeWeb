@@ -390,6 +390,14 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         items.forEach(item => {
+            // Prefetch other pages to speed up navigation network requests
+            if (item.href && item.href !== currentPage && !document.querySelector(`link[rel="prefetch"][href="${item.href}"]`)) {
+                const link = document.createElement('link');
+                link.rel = 'prefetch';
+                link.href = item.href;
+                document.head.appendChild(link);
+            }
+
             const active = currentPage === item.href ? 'class="active"' : '';
                 const label = (window.t && item.key) ? window.t(item.key) : (item.name || item.key || '');
                 // Render with data-i18n so i18n.applyTranslations can update labels directly

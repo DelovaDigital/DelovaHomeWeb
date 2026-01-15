@@ -37,7 +37,7 @@ body {
 }
 
 /* Glass Components */
-.main-nav, .card, .device-card, .room-card, .widget, .modal-content, .glass-card, .settings-sidebar {
+.card, .device-card, .room-card, .widget, .modal-content, .glass-card, .settings-sidebar {
     background: var(--glass-bg) !important;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -45,15 +45,7 @@ body {
     box-shadow: var(--glass-shadow);
 }
 
-/* Navigation */
-.main-nav a {
-    color: var(--text-muted);
-}
-
-.main-nav a:hover, .main-nav a.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text);
-}
+/* Navigation Styles Handled in Base.css */
 
 .nav-brand h1 {
     background: linear-gradient(to right, var(--primary), var(--secondary));

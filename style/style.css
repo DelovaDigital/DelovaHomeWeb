@@ -92,16 +92,7 @@ body {
     margin: 0;
 }
 
-/* Navigation */
-.main-nav a {
-    color: var(--text-muted);
-}
-
-.main-nav a:hover, .main-nav a.active {
-    background: white;
-    color: var(--primary);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
+/* Navigation Styles Handled in Base.css */
 
 .nav-brand h1 {
     color: var(--primary);

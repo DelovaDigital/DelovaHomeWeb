@@ -84,7 +84,13 @@ if (fs.existsSync(HUB_CONFIG_PATH)) {
     try {
         const loadedConfig = JSON.parse(fs.readFileSync(HUB_CONFIG_PATH, 'utf8'));
         // Merge loaded config with defaults to ensure all fields exist
+        // IMPORTANT: loadedConfig must override defaults, not the other way around
         hubConfig = { ...DEFAULT_HUB_CONFIG, ...loadedConfig };
+        console.log('[Hub Config] Loaded from disk:', {
+            hubId: hubConfig.hubId?.substring(0, 8),
+            tunnelEnabled: hubConfig.tunnelEnabled,
+            tunnelRelayUrl: hubConfig.tunnelRelayUrl
+        });
     } catch (e) { console.error('Error reading hub config:', e); }
 }
 
@@ -2723,12 +2729,14 @@ try {
         if (!hubConfig.tunnelHubId || !hubConfig.tunnelHubSecret) {
             hubConfig.tunnelHubId = crypto.randomBytes(16).toString('hex');
             hubConfig.tunnelHubSecret = crypto.randomBytes(32).toString('hex');
-            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+            fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
         }
+        const relayUrl = hubConfig.tunnelRelayUrl || 'wss://relay.delovahome.com';
+        console.log('[Tunnel] Using relay URL:', relayUrl);
         return {
             hubId: hubConfig.tunnelHubId,
             hubSecret: hubConfig.tunnelHubSecret,
-            relayUrl: hubConfig.tunnelRelayUrl || 'wss://relay.delovahome.com'
+            relayUrl: relayUrl
         };
     }
 

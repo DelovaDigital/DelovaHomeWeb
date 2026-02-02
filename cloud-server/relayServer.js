@@ -40,9 +40,12 @@ class RelayServer {
             this.handleConnection(ws, req);
         });
 
-        this.server.listen(this.port, () => {
-            console.log(`[Relay] Zero-knowledge relay running on port ${this.port}`);
+        this.server.listen(this.port, '0.0.0.0', () => {
+            console.log(`[Relay] Zero-knowledge relay running on 0.0.0.0:${this.port}`);
             console.log('[Relay] Privacy mode: Cannot decrypt traffic');
+            console.log('[Relay] Connection URLs:');
+            console.log(`[Relay]   - Local: ws://localhost:${this.port}`);
+            console.log(`[Relay]   - Network: ws://192.168.0.99:${this.port}`);
         });
     }
 

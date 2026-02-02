@@ -41,11 +41,17 @@ class RelayServer {
         });
 
         this.server.listen(this.port, '0.0.0.0', () => {
-            console.log(`[Relay] Zero-knowledge relay running on 0.0.0.0:${this.port}`);
+            const address = this.server.address();
+            console.log(`[Relay] ✅ Server started successfully!`);
+            console.log(`[Relay] Actually listening on: ${JSON.stringify(address)}`);
+            console.log(`[Relay] Port: ${address.port}`);
+            console.log(`[Relay] Address: ${address.address}`);
             console.log('[Relay] Privacy mode: Cannot decrypt traffic');
             console.log('[Relay] Connection URLs:');
             console.log(`[Relay]   - Local: ws://localhost:${this.port}`);
             console.log(`[Relay]   - Network: ws://192.168.0.99:${this.port}`);
+            console.log(`[Relay] Test from Windows: curl http://192.168.0.99:8080/health`);
+            console.log(`[Relay] Test from Pi: curl http://192.168.0.99:8080/health`);
         });
     }
 

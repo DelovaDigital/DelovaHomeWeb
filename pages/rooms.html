@@ -21,6 +21,16 @@
         <p data-i18n="rooms_desc">Beheer je kamers en voeg apparaten toe aan kamers.</p>
       </header>
 
+      <section class="rooms-panel" id="roomSuggestionsPanel" style="display:none;">
+        <div class="panel-header">
+          <h3 data-i18n="room_suggestions_title">Room Suggestions</h3>
+          <div>
+            <button id="applyRoomSuggestionsBtn" class="btn-create-header" title="Apply" data-i18n="apply_suggestions"><i class="fas fa-magic"></i></button>
+          </div>
+        </div>
+        <div id="roomSuggestionsList" class="rooms-list"></div>
+      </section>
+
       <section class="rooms-panel">
         <div class="panel-header">
           <h3 data-i18n="rooms">Kamers</h3>

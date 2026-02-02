@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   const roomsList = document.getElementById('roomsList');
+  const roomSuggestionsPanel = document.getElementById('roomSuggestionsPanel');
+  const roomSuggestionsList = document.getElementById('roomSuggestionsList');
+  const applyRoomSuggestionsBtn = document.getElementById('applyRoomSuggestionsBtn');
 
   async function apiGet(path){
     const res = await fetch(path);
@@ -10,10 +13,113 @@ document.addEventListener('DOMContentLoaded', () => {
   async function fetchMap(){ try { return await apiGet('/api/room-mapping'); } catch(e){ return {}; } }
   async function fetchDevices(){ try { return await apiGet('/api/devices'); } catch(e){ return []; } }
 
+  function getRoomSuggestion(device) {
+    const name = `${device.name || ''}`.toLowerCase();
+    const type = `${device.type || ''}`.toLowerCase();
+
+    const matches = (keywords) => keywords.some(k => name.includes(k) || type.includes(k));
+
+    if (matches(['doorbell', 'door', 'entrance'])) return 'Entrance';
+    if (matches(['garage'])) return 'Garage';
+    if (matches(['garden', 'outdoor', 'patio'])) return 'Garden';
+    if (matches(['bath', 'shower', 'toilet'])) return 'Bathroom';
+    if (matches(['kitchen', 'oven', 'fridge', 'kettle'])) return 'Kitchen';
+    if (matches(['bed', 'sleep', 'night'])) return 'Bedroom';
+    if (matches(['office', 'pc', 'mac', 'laptop', 'printer', 'nas', 'server'])) return 'Office';
+    if (matches(['tv', 'sonos', 'denon', 'receiver', 'cast', 'homepod'])) return 'Living Room';
+    if (matches(['camera', 'cam'])) return 'Outdoor';
+    return null;
+  }
+
+  function translateRoomName(name) {
+    const map = {
+      'Living Room': window.t ? window.t('room_living') : 'Living Room',
+      'Bedroom': window.t ? window.t('room_bedroom') : 'Bedroom',
+      'Kitchen': window.t ? window.t('room_kitchen') : 'Kitchen',
+      'Office': window.t ? window.t('room_office') : 'Office',
+      'Bathroom': window.t ? window.t('room_bathroom') : 'Bathroom',
+      'Garden': window.t ? window.t('room_garden') : 'Garden',
+      'Garage': window.t ? window.t('room_garage') : 'Garage',
+      'Entrance': window.t ? window.t('room_entrance') : 'Entrance',
+      'Outdoor': window.t ? window.t('room_outdoor') : 'Outdoor'
+    };
+    return map[name] || name;
+  }
+
   async function render(){
     const [rooms, map, devices] = await Promise.all([fetchRooms(), fetchMap(), fetchDevices()]);
     const deviceById = {};
     devices.forEach(d => deviceById[d.id] = d);
+
+    const assignedIds = Object.keys(map || {}).filter(k => map[k]);
+    const unassigned = devices.filter(d => !assignedIds.includes(d.id));
+
+    // Room Suggestions
+    if (roomSuggestionsPanel && roomSuggestionsList) {
+      const suggestions = [];
+      unassigned.forEach(device => {
+        const suggestedRoom = getRoomSuggestion(device);
+        if (suggestedRoom) {
+          suggestions.push({ device, room: suggestedRoom });
+        }
+      });
+
+      if (suggestions.length > 0) {
+        roomSuggestionsPanel.style.display = '';
+        roomSuggestionsList.innerHTML = `
+          <div class="unassigned-panel" style="margin-bottom: 0;">
+            <strong data-i18n="room_suggestions_subtitle">Suggested mappings</strong>
+            <div class="unassigned-list">
+              ${suggestions.map(s => `
+                <div class="unassigned-item" data-device-id="${s.device.id}" data-room-name="${s.room}">
+                  <i class="${typeof getDeviceIconClass === 'function' ? getDeviceIconClass(s.device) : 'fas fa-cube'}"></i>
+                  ${s.device.name} <small>→ ${translateRoomName(s.room)}</small>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        if (applyRoomSuggestionsBtn) {
+          applyRoomSuggestionsBtn.onclick = async () => {
+            applyRoomSuggestionsBtn.disabled = true;
+            try {
+              const roomNameToId = {};
+              rooms.forEach(r => roomNameToId[r.name.toLowerCase()] = r.id);
+
+              for (const suggestion of suggestions) {
+                const targetName = translateRoomName(suggestion.room);
+                let roomId = roomNameToId[targetName.toLowerCase()];
+                if (!roomId) {
+                  const res = await fetch('/api/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: targetName })
+                  });
+                  const created = await res.json();
+                  roomId = created && created.id ? created.id : null;
+                }
+
+                if (roomId) {
+                  await fetch('/api/room-mapping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deviceId: suggestion.device.id, roomId })
+                  });
+                }
+              }
+              render();
+            } catch (e) {
+              console.error('Failed to apply room suggestions', e);
+            } finally {
+              applyRoomSuggestionsBtn.disabled = false;
+            }
+          };
+        }
+      } else {
+        roomSuggestionsPanel.style.display = 'none';
+      }
+    }
 
     roomsList.innerHTML = '';
     const headerAdd = document.getElementById('addRoomHeaderBtn');
@@ -64,9 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
     // build unassigned list
-    const assignedIds = Object.keys(map || {}).filter(k => map[k]);
-    const unassigned = devices.filter(d => !assignedIds.includes(d.id));
-
     // render unassigned devices panel
     const unassignedPanel = document.createElement('div');
     unassignedPanel.className = 'unassigned-panel';

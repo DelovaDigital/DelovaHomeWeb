@@ -2712,6 +2712,155 @@ try {
 
 server.on('upgrade', handleUpgrade);
 
+// --- Secure Tunnel Setup (Privacy-First Remote Access) ---
+let tunnelClient = null;
+try {
+    const TunnelClient = require('./script/tunnelClient');
+    const crypto = require('crypto');
+    
+    // Load or generate hub credentials
+    function getHubCredentials() {
+        if (!hubConfig.tunnelHubId || !hubConfig.tunnelHubSecret) {
+            hubConfig.tunnelHubId = crypto.randomBytes(16).toString('hex');
+            hubConfig.tunnelHubSecret = crypto.randomBytes(32).toString('hex');
+            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+        }
+        return {
+            hubId: hubConfig.tunnelHubId,
+            hubSecret: hubConfig.tunnelHubSecret,
+            relayUrl: hubConfig.tunnelRelayUrl || 'wss://relay.delovahome.com'
+        };
+    }
+
+    // Initialize tunnel if enabled
+    if (hubConfig.tunnelEnabled) {
+        const creds = getHubCredentials();
+        tunnelClient = new TunnelClient(creds.hubId, creds.hubSecret, creds.relayUrl);
+        tunnelClient.connect();
+        
+        tunnelClient.on('connected', () => {
+            console.log('[Tunnel] Remote access enabled (E2E encrypted)');
+        });
+        
+        tunnelClient.on('disconnected', () => {
+            console.log('[Tunnel] Remote access disconnected');
+        });
+    }
+
+    // Tunnel Status API
+    app.get('/api/tunnel/status', (req, res) => {
+        const creds = getHubCredentials();
+        res.json({
+            enabled: hubConfig.tunnelEnabled || false,
+            connected: tunnelClient ? tunnelClient.isConnected : false,
+            hubId: creds.hubId,
+            hubSecret: hubConfig.tunnelEnabled ? '••••••••••••••••' : creds.hubSecret,
+            relayUrl: creds.relayUrl,
+            accessToken: hubConfig.tunnelEnabled ? crypto.createHmac('sha256', creds.hubSecret)
+                .update(creds.hubId)
+                .digest('hex')
+                .substring(0, 32) : null
+        });
+    });
+
+    // Enable Tunnel
+    app.post('/api/tunnel/enable', async (req, res) => {
+        try {
+            const creds = getHubCredentials();
+            
+            if (!tunnelClient) {
+                tunnelClient = new TunnelClient(creds.hubId, creds.hubSecret, creds.relayUrl);
+            }
+            
+            await tunnelClient.connect();
+            
+            hubConfig.tunnelEnabled = true;
+            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+            
+            res.json({
+                success: true,
+                status: {
+                    enabled: true,
+                    connected: tunnelClient.isConnected,
+                    hubId: creds.hubId,
+                    hubSecret: '••••••••••••••••',
+                    relayUrl: creds.relayUrl,
+                    accessToken: crypto.createHmac('sha256', creds.hubSecret)
+                        .update(creds.hubId)
+                        .digest('hex')
+                        .substring(0, 32)
+                }
+            });
+        } catch (err) {
+            console.error('[Tunnel] Enable failed:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    // Disable Tunnel
+    app.post('/api/tunnel/disable', (req, res) => {
+        try {
+            if (tunnelClient) {
+                tunnelClient.disconnect();
+            }
+            
+            hubConfig.tunnelEnabled = false;
+            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+            
+            res.json({
+                success: true,
+                status: {
+                    enabled: false,
+                    connected: false
+                }
+            });
+        } catch (err) {
+            console.error('[Tunnel] Disable failed:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    // Regenerate Credentials
+    app.post('/api/tunnel/regenerate', (req, res) => {
+        try {
+            // Generate new credentials
+            hubConfig.tunnelHubId = crypto.randomBytes(16).toString('hex');
+            hubConfig.tunnelHubSecret = crypto.randomBytes(32).toString('hex');
+            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+            
+            // Reconnect tunnel if enabled
+            if (tunnelClient && hubConfig.tunnelEnabled) {
+                tunnelClient.disconnect();
+                const creds = getHubCredentials();
+                tunnelClient = new TunnelClient(creds.hubId, creds.hubSecret, creds.relayUrl);
+                tunnelClient.connect();
+            }
+            
+            const creds = getHubCredentials();
+            res.json({
+                success: true,
+                status: {
+                    enabled: hubConfig.tunnelEnabled,
+                    connected: tunnelClient ? tunnelClient.isConnected : false,
+                    hubId: creds.hubId,
+                    hubSecret: '••••••••••••••••',
+                    relayUrl: creds.relayUrl,
+                    accessToken: crypto.createHmac('sha256', creds.hubSecret)
+                        .update(creds.hubId)
+                        .digest('hex')
+                        .substring(0, 32)
+                }
+            });
+        } catch (err) {
+            console.error('[Tunnel] Regenerate failed:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+} catch (err) {
+    console.error('[Tunnel] Setup failed:', err);
+}
+
 // --- UDP Discovery Listener ---
 const udpServer = dgram.createSocket('udp4');
 

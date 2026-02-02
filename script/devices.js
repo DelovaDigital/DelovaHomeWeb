@@ -113,8 +113,13 @@ document.addEventListener('DOMContentLoaded', () => {
         grid = document.createElement('div');
         grid.className = 'device-grid';
         // Insert after header
+        const toolbar = document.querySelector('.device-toolbar');
         const header = document.querySelector('.page-header');
-        if (header && header.nextSibling) {
+        if (toolbar && toolbar.nextSibling) {
+            toolbar.parentNode.insertBefore(grid, toolbar.nextSibling);
+        } else if (toolbar) {
+            toolbar.parentNode.appendChild(grid);
+        } else if (header && header.nextSibling) {
             header.parentNode.insertBefore(grid, header.nextSibling);
         } else if (header) {
             header.parentNode.appendChild(grid);
@@ -166,6 +171,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 scanBtn.disabled = false;
             }
         });
+    }
+
+    // Auto-open manual pairing or trigger scan via URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const pairing = urlParams.get('pairing');
+    const pairType = urlParams.get('type');
+    const shouldScan = urlParams.get('scan');
+
+    if (shouldScan === '1' && scanBtn) {
+        setTimeout(() => scanBtn.click(), 300);
+    }
+
+    if (pairing === 'manual') {
+        setTimeout(() => {
+            if (typeof window.openManualPairing === 'function') {
+                window.openManualPairing();
+                if (pairType) {
+                    const typeSelect = document.getElementById('pair-type');
+                    if (typeSelect) typeSelect.value = pairType;
+                }
+            }
+        }, 400);
     }
 
     function startCameraStream(deviceId, ip, containerId) {
@@ -333,7 +360,85 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.error('Error fetching devices:', err));
     }
 
-    function updateDeviceCard(device) {
+    function getDeviceCategory(device) {
+        const type = (device.type || '').toLowerCase();
+        const name = (device.name || '').toLowerCase();
+        const protocol = (device.protocol || '').toLowerCase();
+        const protocols = (device.protocols || []).map(p => `${p}`.toLowerCase());
+
+        const matches = (list) => list.some(k => type.includes(k) || name.includes(k) || protocol.includes(k) || protocols.includes(k));
+
+        if (matches(['camera', 'onvif', 'rtsp'])) return { id: 'cameras', labelKey: 'category_cameras', fallback: 'Cameras' };
+        if (matches(['light', 'lamp', 'bulb', 'dimmer', 'switch', 'wled', 'hue', 'nanoleaf'])) return { id: 'lights', labelKey: 'category_lights', fallback: 'Lights' };
+        if (matches(['thermostat', 'climate', 'hvac', 'heater', 'ac', 'temperature'])) return { id: 'climate', labelKey: 'category_climate', fallback: 'Climate' };
+        if (matches(['lock', 'alarm', 'motion', 'door', 'window', 'leak', 'smoke', 'presence', 'sensor'])) return { id: 'security', labelKey: 'category_security', fallback: 'Security' };
+        if (matches(['tv', 'speaker', 'receiver', 'sonos', 'homepod', 'airplay', 'spotify', 'googlecast', 'cast', 'denon', 'console', 'kodi'])) return { id: 'media', labelKey: 'category_media', fallback: 'Media' };
+        if (matches(['pc', 'computer', 'server', 'nas', 'rpi', 'printer', 'mac', 'linux', 'windows'])) return { id: 'computers', labelKey: 'category_computers', fallback: 'Computers' };
+        if (matches(['energy', 'meter', 'solar', 'battery', 'power'])) return { id: 'energy', labelKey: 'category_energy', fallback: 'Energy' };
+        return { id: 'other', labelKey: 'category_other', fallback: 'Other' };
+    }
+
+    function applyDeviceFilter(filter) {
+        const chips = document.querySelectorAll('.device-filters .chip');
+        chips.forEach(c => c.classList.toggle('active', c.getAttribute('data-category') === filter));
+
+        const viewMode = getCurrentViewMode();
+        if (viewMode === 'sections') {
+            const sections = document.querySelectorAll('.device-section');
+            sections.forEach(section => {
+                const category = section.getAttribute('data-category') || 'other';
+                section.style.display = (filter === 'all' || category === filter) ? '' : 'none';
+            });
+        } else {
+            const cards = grid.querySelectorAll('.device-card');
+            cards.forEach(card => {
+                const category = card.getAttribute('data-category') || 'other';
+                card.style.display = (filter === 'all' || category === filter) ? '' : 'none';
+            });
+        }
+    }
+
+    function setupDeviceFilters() {
+        const chips = document.querySelectorAll('.device-filters .chip');
+        if (!chips.length) return;
+
+        const saved = localStorage.getItem('devicesCategoryFilter') || 'all';
+        applyDeviceFilter(saved);
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                const filter = chip.getAttribute('data-category') || 'all';
+                localStorage.setItem('devicesCategoryFilter', filter);
+                applyDeviceFilter(filter);
+            });
+        });
+    }
+
+    function getCurrentViewMode() {
+        return localStorage.getItem('devicesViewMode') || 'grid';
+    }
+
+    function setupDeviceViewToggle() {
+        const toggleButtons = document.querySelectorAll('.device-view-toggle .chip');
+        if (!toggleButtons.length) return;
+
+        const current = getCurrentViewMode();
+        toggleButtons.forEach(btn => btn.classList.toggle('active', btn.getAttribute('data-view') === current));
+
+        toggleButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.getAttribute('data-view') || 'grid';
+                localStorage.setItem('devicesViewMode', view);
+                toggleButtons.forEach(b => b.classList.toggle('active', b === btn));
+                renderDevices(allDevices);
+            });
+        });
+    }
+
+    setupDeviceFilters();
+    setupDeviceViewToggle();
+
+    function updateDeviceCard(device, container = grid) {
         let card = document.getElementById(`device-card-${device.id}`);
         
         // Determine Icon
@@ -343,6 +448,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const type = device.type ? device.type.toLowerCase() : 'unknown';
+        const category = getDeviceCategory(device);
+        const categoryLabel = window.t ? window.t(category.labelKey) : category.fallback;
         // HomePods are "always on" for UI purposes
         const isHomePod = (type === 'speaker' && device.protocol === 'mdns-homekit') || (device.name && device.name.includes('HomePod'));
         const isOn = (device.state && device.state.on) || isHomePod;
@@ -361,8 +468,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'INPUT') return;
                 openDeviceDetail(device.id);
             };
-            grid.appendChild(card);
+            container.appendChild(card);
+        } else if (container && card.parentElement !== container) {
+            container.appendChild(card);
         }
+
+        card.setAttribute('data-category', category.id);
 
         // Simple Card Content (Summary)
         let summary = '';
@@ -424,6 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="device-status-indicator ${statusClass}"></div>
                 </div>
                 <div class="device-card-middle">
+                    <span class="device-category-badge">${categoryLabel}</span>
                     <h3 class="device-name">${device.name}</h3>
                     <p class="device-status-text">${summary}</p>
                 </div>
@@ -455,8 +567,12 @@ document.addEventListener('DOMContentLoaded', () => {
             allDevices.push(updatedDevice);
         }
         
-        // Re-render ONLY the updated device
-        updateDeviceCard(updatedDevice);
+        // Re-render ONLY the updated device (or full sections if needed)
+        if (getCurrentViewMode() === 'sections') {
+            renderDevices(allDevices);
+        } else {
+            updateDeviceCard(updatedDevice, grid);
+        }
 
         // If modal is open for this device, update it
         const modal = document.getElementById('deviceModal');
@@ -465,7 +581,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function renderDevices(devices) {
+    function renderGrid(devices) {
+        grid.style.display = '';
+        const sectionsContainer = document.querySelector('.device-sections');
+        if (sectionsContainer) sectionsContainer.style.display = 'none';
+
         if (devices.length === 0) {
             grid.innerHTML = '<div class="loading-devices"><i class="fas fa-spinner fa-spin"></i> Apparaten zoeken...</div>';
             return;
@@ -485,8 +605,90 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         devices.forEach(device => {
-            updateDeviceCard(device);
+            updateDeviceCard(device, grid);
         });
+    }
+
+    function renderSections(devices) {
+        grid.style.display = 'none';
+
+        let sectionsContainer = document.querySelector('.device-sections');
+        if (!sectionsContainer) {
+            sectionsContainer = document.createElement('div');
+            sectionsContainer.className = 'device-sections';
+            const toolbar = document.querySelector('.device-toolbar');
+            if (toolbar && toolbar.nextSibling) {
+                toolbar.parentNode.insertBefore(sectionsContainer, toolbar.nextSibling);
+            } else if (toolbar) {
+                toolbar.parentNode.appendChild(sectionsContainer);
+            } else {
+                grid.parentNode.insertBefore(sectionsContainer, grid);
+            }
+        }
+        sectionsContainer.style.display = '';
+        sectionsContainer.innerHTML = '';
+
+        if (devices.length === 0) {
+            sectionsContainer.innerHTML = '<div class="loading-devices"><i class="fas fa-spinner fa-spin"></i> Apparaten zoeken...</div>';
+            return;
+        }
+
+        const categoryOrder = ['lights', 'climate', 'security', 'cameras', 'media', 'computers', 'energy', 'other'];
+        const categoryLabelKey = {
+            lights: 'category_lights',
+            climate: 'category_climate',
+            security: 'category_security',
+            cameras: 'category_cameras',
+            media: 'category_media',
+            computers: 'category_computers',
+            energy: 'category_energy',
+            other: 'category_other'
+        };
+
+        const grouped = {};
+        devices.forEach(device => {
+            const category = getDeviceCategory(device).id;
+            if (!grouped[category]) grouped[category] = [];
+            grouped[category].push(device);
+        });
+
+        categoryOrder.forEach(category => {
+            const items = grouped[category] || [];
+            if (!items.length) return;
+
+            const section = document.createElement('section');
+            section.className = 'device-section';
+            section.setAttribute('data-category', category);
+
+            const label = window.t ? window.t(categoryLabelKey[category]) : category;
+            section.innerHTML = `
+                <div class="device-section-header">
+                    <h3>${label}</h3>
+                    <span class="device-section-count">${items.length}</span>
+                </div>
+            `;
+
+            const sectionGrid = document.createElement('div');
+            sectionGrid.className = 'device-section-grid';
+            section.appendChild(sectionGrid);
+            sectionsContainer.appendChild(section);
+
+            items.forEach(device => {
+                updateDeviceCard(device, sectionGrid);
+            });
+        });
+    }
+
+    function renderDevices(devices) {
+        const viewMode = getCurrentViewMode();
+        if (viewMode === 'sections') {
+            renderSections(devices);
+        } else {
+            renderGrid(devices);
+        }
+
+        const currentFilter = localStorage.getItem('devicesCategoryFilter') || 'all';
+        applyDeviceFilter(currentFilter);
     }
 
     // --- Modal Logic ---

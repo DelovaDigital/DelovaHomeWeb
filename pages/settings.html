@@ -8,6 +8,7 @@
     <script>/* Prevent white flash */(function(){var t=localStorage.getItem('theme');if(t==='dark'){document.documentElement.style.background='#0f172a';document.documentElement.style.color='#f8fafc';if(document.body)document.body.style.background='#0f172a';}else{document.documentElement.style.background='#f8fafc';document.documentElement.style.color='#1e293b';if(document.body)document.body.style.background='#f8fafc';}})();</script>
     <script>(function(){var theme=localStorage.getItem('theme');var href=(theme==='dark'?'../style/style-dark.css':'../style/style.css');var l=document.createElement('link');l.rel='stylesheet';l.id='theme-stylesheet';l.href=href;document.head.appendChild(l);})();</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -272,6 +273,186 @@
 
                     <!-- Integrations Section -->
                     <div id="integrations" class="settings-section">
+                        <!-- Integrations Quick Actions -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-bolt"></i>
+                                <h3 data-i18n="integrations_quick_actions">Quick Actions</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted" style="margin-bottom: 15px; font-size: 0.9em;" data-i18n="integrations_quick_actions_desc">
+                                    Start met automatisch scannen of voeg handmatig apparaten toe.
+                                </p>
+                                <div id="integrations-scan-status" class="text-muted" style="margin-bottom: 12px;" data-i18n="auto_discovery_idle">Ready to scan.</div>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button class="btn btn-primary integration-action" data-action="scan" data-i18n="scan_network">Scan Network</button>
+                                    <button class="btn btn-secondary integration-action" data-action="open-devices" data-i18n="open_devices">Open Devices</button>
+                                    <button class="btn btn-secondary integration-action" data-action="open-devices" data-pairing="manual" data-i18n="add_device">Add Device</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Integrations Catalog -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-th-large"></i>
+                                <h3 data-i18n="integrations_catalog">Integrations Catalog</h3>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted" style="margin-bottom: 18px; font-size: 0.9em;" data-i18n="integrations_catalog_desc">
+                                    Voeg populaire platformen toe met één klik of start een scan.
+                                </p>
+                                <div class="integration-filters" role="tablist" aria-label="Integrations filters">
+                                    <button class="chip active" data-filter="all" data-i18n="filter_all">All</button>
+                                    <button class="chip" data-filter="verified" data-i18n="filter_verified">Verified</button>
+                                    <button class="chip" data-filter="beta" data-i18n="filter_beta">Beta</button>
+                                    <button class="chip" data-filter="local" data-i18n="filter_local">Local</button>
+                                </div>
+                                <div class="integration-grid">
+                                    <div class="integration-card" data-tags="verified local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-lightbulb"></i>
+                                            <h4 data-i18n="integration_hue">Philips Hue</h4>
+                                            <span class="badge badge-verified" data-i18n="badge_verified">Verified</span>
+                                        </div>
+                                        <p data-i18n="integration_hue_desc">Bridge en lampen automatisch gevonden via het netwerk.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-primary btn-sm integration-action" data-action="open-devices" data-pairing="manual" data-type="hue" data-i18n="add">Add</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="verified local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-music"></i>
+                                            <h4 data-i18n="integration_sonos">Sonos</h4>
+                                            <span class="badge badge-verified" data-i18n="badge_verified">Verified</span>
+                                        </div>
+                                        <p data-i18n="integration_sonos_desc">Vind speakers automatisch of voeg handmatig toe.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-primary btn-sm integration-action" data-action="open-devices" data-pairing="manual" data-type="sonos" data-i18n="add">Add</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="verified local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-video"></i>
+                                            <h4 data-i18n="integration_cameras">IP Cameras</h4>
+                                            <span class="badge badge-verified" data-i18n="badge_verified">Verified</span>
+                                        </div>
+                                        <p data-i18n="integration_cameras_desc">ONVIF/RTSP camera’s met live view en recording.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-primary btn-sm integration-action" data-action="open-devices" data-pairing="manual" data-type="camera" data-i18n="add">Add</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="beta local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-broadcast-tower"></i>
+                                            <h4 data-i18n="integration_cast">Google Cast</h4>
+                                            <span class="badge badge-beta" data-i18n="badge_beta">Beta</span>
+                                        </div>
+                                        <p data-i18n="integration_cast_desc">Chromecast en smart speakers automatisch ontdekken.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="open-devices" data-i18n="open_devices">Open</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="beta local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-home"></i>
+                                            <h4 data-i18n="integration_homekit">HomeKit</h4>
+                                            <span class="badge badge-beta" data-i18n="badge_beta">Beta</span>
+                                        </div>
+                                        <p data-i18n="integration_homekit_desc">HomeKit apparaten via mDNS ontdekken.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="open-devices" data-i18n="open_devices">Open</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="verified local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-toggle-on"></i>
+                                            <h4 data-i18n="integration_shelly">Shelly</h4>
+                                            <span class="badge badge-verified" data-i18n="badge_verified">Verified</span>
+                                        </div>
+                                        <p data-i18n="integration_shelly_desc">Slimme schakelaars en relais met snelle setup.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-primary btn-sm integration-action" data-action="open-devices" data-pairing="manual" data-type="shelly" data-i18n="add">Add</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="beta local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-plug"></i>
+                                            <h4 data-i18n="integration_tasmota">Tasmota</h4>
+                                            <span class="badge badge-beta" data-i18n="badge_beta">Beta</span>
+                                        </div>
+                                        <p data-i18n="integration_tasmota_desc">DIY devices met lokale controle.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-primary btn-sm integration-action" data-action="open-devices" data-pairing="manual" data-type="tasmota" data-i18n="add">Add</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="verified local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-wave-square"></i>
+                                            <h4 data-i18n="integration_wled">WLED</h4>
+                                            <span class="badge badge-verified" data-i18n="badge_verified">Verified</span>
+                                        </div>
+                                        <p data-i18n="integration_wled_desc">LED strips en effecten met één klik.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-primary btn-sm integration-action" data-action="open-devices" data-pairing="manual" data-type="wled" data-i18n="add">Add</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="beta local">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-photo-video"></i>
+                                            <h4 data-i18n="integration_kodi">Kodi</h4>
+                                            <span class="badge badge-beta" data-i18n="badge_beta">Beta</span>
+                                        </div>
+                                        <p data-i18n="integration_kodi_desc">Media centers met lokale bediening.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-primary btn-sm integration-action" data-action="open-devices" data-pairing="manual" data-type="kodi" data-i18n="add">Add</button>
+                                            <button class="btn btn-secondary btn-sm integration-action" data-action="scan" data-i18n="scan">Scan</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="coming">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-robot"></i>
+                                            <h4 data-i18n="integration_matter">Matter</h4>
+                                            <span class="badge badge-coming" data-i18n="badge_coming">Coming Soon</span>
+                                        </div>
+                                        <p data-i18n="integration_matter_desc">Universele smart‑home standaard met snelle onboarding.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-secondary btn-sm" disabled data-i18n="coming_soon">Coming Soon</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="integration-card" data-tags="coming">
+                                        <div class="integration-card-header">
+                                            <i class="fas fa-solar-panel"></i>
+                                            <h4 data-i18n="integration_energy">Energy Meters</h4>
+                                            <span class="badge badge-coming" data-i18n="badge_coming">Coming Soon</span>
+                                        </div>
+                                        <p data-i18n="integration_energy_desc">Slimme meters en per‑device verbruik.</p>
+                                        <div class="integration-card-actions">
+                                            <button class="btn btn-secondary btn-sm" disabled data-i18n="coming_soon">Coming Soon</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Spotify Integration -->
                         <div class="card settings-card">
                             <div class="card-header">
@@ -395,50 +576,118 @@
 
                     <!-- Cloud Section -->
                     <div id="cloud" class="settings-section">
+                        <!-- Privacy-Focused Remote Access -->
                         <div class="card settings-card">
                             <div class="card-header">
-                                <i class="fas fa-cloud"></i>
-                                <h3 data-i18n="cloud_settings">Cloud & Remote Access</h3>
+                                <i class="fas fa-shield-alt"></i>
+                                <h3 data-i18n="remote_access">Remote Access (Privacy-First)</h3>
                             </div>
                             <div class="card-body">
-                                <p style="margin-bottom: 20px; color: var(--text-muted);" data-i18n="cloud_desc">
-                                    Link your hub to a DelovaHome Cloud Server to access it remotely without port forwarding.
-                                </p>
-
-                                <div id="cloud-status-container" style="margin-bottom: 20px; padding: 15px; background: rgba(0,123,255,0.1); border-radius: 8px; display: none;">
-                                    <strong>Status:</strong> <span id="cloud-status-text" style="color: var(--primary);">Linked</span>
-                                    <br>
-                                    <small id="cloud-hub-id" style="color: var(--text-muted);"></small>
+                                <div class="privacy-notice" style="margin-bottom: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1); border-left: 4px solid var(--success); border-radius: 8px;">
+                                    <h4 style="margin: 0 0 10px 0; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-lock"></i>
+                                        <span data-i18n="privacy_first">Privacy First</span>
+                                    </h4>
+                                    <ul style="margin: 0; padding-left: 20px; color: var(--text-muted); font-size: 0.9rem;">
+                                        <li data-i18n="privacy_1">Alle data blijft op jouw hub (100% lokaal)</li>
+                                        <li data-i18n="privacy_2">End-to-end versleuteld tussen app en hub</li>
+                                        <li data-i18n="privacy_3">Cloud relay kan verkeer niet lezen (zero-knowledge)</li>
+                                        <li data-i18n="privacy_4">Geen port forwarding nodig</li>
+                                    </ul>
                                 </div>
 
-                                <form id="cloud-form" onsubmit="event.preventDefault();">
+                                <!-- Tunnel Status -->
+                                <div id="tunnel-status" class="status-card" style="margin-bottom: 20px; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                                        <div>
+                                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                                                <i id="tunnel-status-icon" class="fas fa-circle" style="color: var(--text-muted); font-size: 0.5rem;"></i>
+                                                <strong data-i18n="tunnel_status">Tunnel Status:</strong>
+                                                <span id="tunnel-status-text" data-i18n="disconnected">Uitgeschakeld</span>
+                                            </div>
+                                            <small id="tunnel-hub-id" style="color: var(--text-muted); display: none;">Hub ID: <code></code></small>
+                                        </div>
+                                        <button id="btn-toggle-tunnel" class="btn btn-primary" onclick="toggleTunnel()">
+                                            <i class="fas fa-play"></i> <span data-i18n="enable">Inschakelen</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Tunnel Settings -->
+                                <div id="tunnel-settings" style="display: none;">
                                     <div class="form-group">
-                                        <label for="cloud-url">Cloud Server URL</label>
-                                        <input type="text" id="cloud-url" value="https://cloud.delovahome.com" placeholder="https://your-cloud-server.com">
-                                    </div>
-
-                                    <div class="tabs" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                                        <button type="button" class="btn btn-secondary active" id="tab-cloud-login" onclick="toggleCloudSettingsTab('login')" data-i18n="login">Login</button>
-                                        <button type="button" class="btn btn-secondary" id="tab-cloud-register" onclick="toggleCloudSettingsTab('register')" data-i18n="register">Register</button>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="cloud-user">Username</label>
-                                        <input type="text" id="cloud-user" placeholder="Username">
-                                    </div>
-
-                                    <div class="form-group" id="cloud-email-group" style="display: none;">
-                                        <label for="cloud-email">Email</label>
-                                        <input type="email" id="cloud-email" placeholder="user@example.com">
+                                        <label for="tunnel-relay-url">
+                                            <span data-i18n="relay_server">Relay Server</span>
+                                            <small style="color: var(--text-muted);" data-i18n="relay_server_desc">(Standaard: officiële DelovaHome relay)</small>
+                                        </label>
+                                        <input type="text" id="tunnel-relay-url" value="wss://relay.delovahome.com" placeholder="wss://relay.delovahome.com">
                                     </div>
 
                                     <div class="form-group">
-                                        <label for="cloud-pass">Password</label>
-                                        <input type="password" id="cloud-pass" placeholder="Password">
+                                        <label>
+                                            <span data-i18n="hub_credentials">Hub Credentials</span>
+                                            <small style="color: var(--text-muted);" data-i18n="hub_credentials_desc">(Automatisch gegenereerd)</small>
+                                        </label>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                            <div>
+                                                <small style="color: var(--text-muted);" data-i18n="hub_id">Hub ID</small>
+                                                <input type="text" id="tunnel-hub-id-input" readonly style="font-family: monospace; background: var(--bg-secondary);">
+                                            </div>
+                                            <div>
+                                                <small style="color: var(--text-muted);" data-i18n="hub_secret">Hub Secret</small>
+                                                <div style="display: flex; gap: 5px;">
+                                                    <input type="password" id="tunnel-hub-secret" readonly style="font-family: monospace; background: var(--bg-secondary);">
+                                                    <button class="btn btn-secondary" onclick="toggleSecretVisibility()" style="padding: 0.6rem;">
+                                                        <i id="secret-eye" class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <button id="btn-link-cloud" class="btn btn-primary" onclick="linkCloudSettings()">Link Hub</button>
-                                </form>
+                                    <button class="btn btn-secondary" onclick="regenerateHubCredentials()" style="margin-top: 10px;">
+                                        <i class="fas fa-sync-alt"></i> <span data-i18n="regenerate_credentials">Opnieuw Genereren</span>
+                                    </button>
+                                </div>
+
+                                <!-- QR Code for App Pairing -->
+                                <div id="tunnel-qr-section" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; text-align: center;">
+                                    <h4 data-i18n="connect_app">Verbind de App</h4>
+                                    <p style="color: var(--text-muted); margin-bottom: 15px;" data-i18n="scan_qr">Scan deze QR-code met de DelovaHome app:</p>
+                                    <div id="tunnel-qr-code" style="display: inline-block; padding: 15px; background: white; border-radius: 8px;">
+                                        <!-- QR code will be generated here -->
+                                    </div>
+                                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.85rem;">
+                                        <i class="fas fa-info-circle"></i> <span data-i18n="qr_info">De QR-code bevat de hub ID en encrypted access token</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Self-Hosted Relay Option -->
+                        <div class="card settings-card">
+                            <div class="card-header">
+                                <i class="fas fa-server"></i>
+                                <h3 data-i18n="self_hosted_relay">Zelf-Gehoste Relay (Optioneel)</h3>
+                            </div>
+                            <div class="card-body">
+                                <p style="margin-bottom: 15px; color: var(--text-muted);" data-i18n="self_hosted_desc">
+                                    Voor maximale privacy: host je eigen relay server. De relay kan geen verkeer ontsleutelen.
+                                </p>
+                                
+                                <div class="code-block" style="background: var(--bg-secondary); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.85rem; overflow-x: auto;">
+                                    <div style="margin-bottom: 10px; color: var(--text-muted);"># Install op jouw VPS:</div>
+                                    <div>$ git clone https://github.com/delovahome/relay-server.git</div>
+                                    <div>$ cd relay-server</div>
+                                    <div>$ npm install</div>
+                                    <div>$ npm start</div>
+                                    <div style="margin-top: 10px; color: var(--text-muted);"># Of met Docker:</div>
+                                    <div>$ docker run -p 8080:8080 delovahome/relay-server</div>
+                                </div>
+
+                                <button class="btn btn-secondary" onclick="window.open('https://github.com/delovahome/relay-server', '_blank')" style="margin-top: 15px;">
+                                    <i class="fab fa-github"></i> <span data-i18n="view_on_github">Bekijk op GitHub</span>
+                                </button>
                             </div>
                         </div>
                     </div>

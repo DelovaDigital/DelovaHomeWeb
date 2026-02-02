@@ -120,6 +120,65 @@ document.addEventListener('DOMContentLoaded', async () => {
         switchTab(tabParam);
     }
 
+    // --- Integrations Catalog Filters ---
+    const filterChips = document.querySelectorAll('.integration-filters .chip');
+    const integrationCards = document.querySelectorAll('.integration-card');
+    if (filterChips.length > 0 && integrationCards.length > 0) {
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const filter = chip.getAttribute('data-filter');
+                integrationCards.forEach(card => {
+                    const tags = (card.getAttribute('data-tags') || '').toLowerCase();
+                    if (filter === 'all') {
+                        card.style.display = '';
+                    } else if (tags.includes(filter)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+    }
+
+    // --- Integrations Quick Actions ---
+    const integrationsStatus = document.getElementById('integrations-scan-status');
+    const integrationButtons = document.querySelectorAll('.integration-action');
+    integrationButtons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const action = btn.getAttribute('data-action');
+            if (action === 'scan') {
+                if (integrationsStatus) integrationsStatus.textContent = window.t ? window.t('auto_discovery_scanning') : 'Scanning...';
+                btn.disabled = true;
+                try {
+                    const res = await fetch('/api/devices/scan', { method: 'POST' });
+                    const data = await res.json();
+                    if (data && data.ok) {
+                        if (integrationsStatus) integrationsStatus.textContent = window.t ? window.t('auto_discovery_success') : 'Scan complete. Devices will appear shortly.';
+                    } else {
+                        if (integrationsStatus) integrationsStatus.textContent = window.t ? window.t('auto_discovery_failed') : 'Scan failed. You can try again.';
+                    }
+                } catch (e) {
+                    if (integrationsStatus) integrationsStatus.textContent = window.t ? window.t('auto_discovery_failed') : 'Scan failed. You can try again.';
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            if (action === 'open-devices') {
+                const pairing = btn.getAttribute('data-pairing');
+                const type = btn.getAttribute('data-type');
+                const params = new URLSearchParams();
+                if (pairing) params.set('pairing', pairing);
+                if (type) params.set('type', type);
+                const url = `../pages/devices.html${params.toString() ? `?${params.toString()}` : ''}`;
+                window.location.href = url;
+            }
+        });
+    });
+
     // --- Profile Settings ---
     const profileUsername = document.getElementById('profileUsername');
     if (profileUsername) {
@@ -919,3 +978,165 @@ function systemAction(action) {
 }
 window.systemAction = systemAction;
 
+// ========================================
+// SECURE TUNNEL MANAGEMENT (Privacy-First Remote Access)
+// ========================================
+
+async function loadTunnelStatus() {
+    try {
+        const res = await fetch('/api/tunnel/status');
+        const data = await res.json();
+        
+        updateTunnelUI(data);
+    } catch (err) {
+        console.error('Failed to load tunnel status:', err);
+    }
+}
+
+function updateTunnelUI(status) {
+    const statusIcon = document.getElementById('tunnel-status-icon');
+    const statusText = document.getElementById('tunnel-status-text');
+    const toggleBtn = document.getElementById('btn-toggle-tunnel');
+    const settingsDiv = document.getElementById('tunnel-settings');
+    const qrSection = document.getElementById('tunnel-qr-section');
+    const hubIdDisplay = document.getElementById('tunnel-hub-id');
+    
+    if (status.enabled && status.connected) {
+        statusIcon.style.color = 'var(--success)';
+        statusText.textContent = window.t ? window.t('connected') : 'Verbonden';
+        statusText.style.color = 'var(--success)';
+        toggleBtn.innerHTML = '<i class="fas fa-stop"></i> ' + (window.t ? window.t('disable') : 'Uitschakelen');
+        settingsDiv.style.display = 'block';
+        qrSection.style.display = 'block';
+        hubIdDisplay.style.display = 'block';
+        hubIdDisplay.querySelector('code').textContent = status.hubId;
+        
+        // Fill credentials
+        document.getElementById('tunnel-hub-id-input').value = status.hubId;
+        document.getElementById('tunnel-hub-secret').value = status.hubSecret || '••••••••••••••••';
+        document.getElementById('tunnel-relay-url').value = status.relayUrl || 'wss://relay.delovahome.com';
+        
+        // Generate QR code
+        generateTunnelQR(status.hubId, status.accessToken);
+        
+    } else if (status.enabled && !status.connected) {
+        statusIcon.style.color = 'var(--warning)';
+        statusText.textContent = window.t ? window.t('connecting') : 'Verbinden...';
+        statusText.style.color = 'var(--warning)';
+        toggleBtn.innerHTML = '<i class="fas fa-stop"></i> ' + (window.t ? window.t('disable') : 'Uitschakelen');
+        settingsDiv.style.display = 'block';
+        qrSection.style.display = 'none';
+        
+    } else {
+        statusIcon.style.color = 'var(--text-muted)';
+        statusText.textContent = window.t ? window.t('disconnected') : 'Uitgeschakeld';
+        statusText.style.color = 'var(--text-muted)';
+        toggleBtn.innerHTML = '<i class="fas fa-play"></i> ' + (window.t ? window.t('enable') : 'Inschakelen');
+        settingsDiv.style.display = 'none';
+        qrSection.style.display = 'none';
+        hubIdDisplay.style.display = 'none';
+    }
+}
+
+async function toggleTunnel() {
+    const btn = document.getElementById('btn-toggle-tunnel');
+    btn.disabled = true;
+    
+    try {
+        const currentStatus = await fetch('/api/tunnel/status').then(r => r.json());
+        const action = currentStatus.enabled ? 'disable' : 'enable';
+        
+        const res = await fetch(`/api/tunnel/${action}`, { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+            updateTunnelUI(data.status);
+            alert(window.t ? window.t(`tunnel_${action}d`) : `Tunnel ${action === 'enable' ? 'ingeschakeld' : 'uitgeschakeld'}`);
+        } else {
+            alert((window.t ? window.t('error') : 'Error') + ': ' + data.error);
+        }
+    } catch (err) {
+        console.error('Toggle tunnel failed:', err);
+        alert(window.t ? window.t('failed') : 'Fout opgetreden');
+    } finally {
+        btn.disabled = false;
+    }
+}
+window.toggleTunnel = toggleTunnel;
+
+function toggleSecretVisibility() {
+    const input = document.getElementById('tunnel-hub-secret');
+    const icon = document.getElementById('secret-eye');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+window.toggleSecretVisibility = toggleSecretVisibility;
+
+async function regenerateHubCredentials() {
+    if (!confirm(window.t ? window.t('confirm_regenerate') : 'Weet je zeker dat je nieuwe credentials wilt genereren? De huidige app connecties worden verbroken.')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/tunnel/regenerate', { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.success) {
+            updateTunnelUI(data.status);
+            alert(window.t ? window.t('credentials_regenerated') : 'Credentials opnieuw gegenereerd. Scan de nieuwe QR-code in de app.');
+        } else {
+            alert((window.t ? window.t('error') : 'Error') + ': ' + data.error);
+        }
+    } catch (err) {
+        console.error('Regenerate failed:', err);
+        alert(window.t ? window.t('failed') : 'Fout opgetreden');
+    }
+}
+window.regenerateHubCredentials = regenerateHubCredentials;
+
+function generateTunnelQR(hubId, accessToken) {
+    const qrContainer = document.getElementById('tunnel-qr-code');
+    
+    // QR data: hub connection info
+    const qrData = JSON.stringify({
+        type: 'delovahome_hub',
+        hubId: hubId,
+        accessToken: accessToken,
+        timestamp: Date.now()
+    });
+    
+    // Clear previous QR
+    qrContainer.innerHTML = '';
+    
+    // Generate QR using qrcode.js (will add library)
+    if (typeof QRCode !== 'undefined') {
+        new QRCode(qrContainer, {
+            text: qrData,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    } else {
+        // Fallback: show text
+        qrContainer.innerHTML = `<p style="font-size: 0.85rem; color: var(--text-muted);">QR library not loaded</p>`;
+        console.warn('QRCode library not available');
+    }
+}
+
+// Load tunnel status when cloud tab is opened
+document.addEventListener('DOMContentLoaded', () => {
+    const cloudTab = document.querySelector('.settings-nav-item[data-target="cloud"]');
+    if (cloudTab) {
+        cloudTab.addEventListener('click', () => {
+            setTimeout(loadTunnelStatus, 100);
+        });
+    }
+});

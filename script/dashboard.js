@@ -5,6 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const weatherContent = document.getElementById('weatherContent');
   const runSpeedtest = document.getElementById('runSpeedtest');
   const speedtestResults = document.getElementById('speedtestResults');
+    const quickStartCard = document.getElementById('quickStartCard');
+    const quickStartStatus = document.getElementById('quickStartStatus');
+    const quickStartScanBtn = document.getElementById('quickStartScanBtn');
+    const quickStartDevicesBtn = document.getElementById('quickStartDevicesBtn');
+    const quickStartRoomsBtn = document.getElementById('quickStartRoomsBtn');
 
   async function apiGet(path){
     const res = await fetch(path);
@@ -37,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const [rooms, map, devices] = await Promise.all([fetchRooms(), fetchMap(), fetchDevices()]);
     const deviceById = {};
     devices.forEach(d => deviceById[d.id] = d);
+
+        if (quickStartCard) {
+            const needsSetup = rooms.length === 0 || devices.length === 0;
+            quickStartCard.style.display = needsSetup ? 'block' : 'none';
+        }
 
     roomsList.innerHTML = '';
     if(rooms.length === 0){
@@ -94,6 +104,38 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }));
   }
+
+    if (quickStartScanBtn) {
+        quickStartScanBtn.addEventListener('click', async () => {
+            quickStartScanBtn.disabled = true;
+            if (quickStartStatus) quickStartStatus.textContent = window.t ? window.t('auto_discovery_scanning') : 'Scanning...';
+            try {
+                const res = await fetch('/api/devices/scan', { method: 'POST' });
+                const data = await res.json();
+                if (data && data.ok) {
+                    if (quickStartStatus) quickStartStatus.textContent = window.t ? window.t('auto_discovery_success') : 'Scan complete. Devices will appear shortly.';
+                } else {
+                    if (quickStartStatus) quickStartStatus.textContent = window.t ? window.t('auto_discovery_failed') : 'Scan failed. You can try again.';
+                }
+            } catch (e) {
+                if (quickStartStatus) quickStartStatus.textContent = window.t ? window.t('auto_discovery_failed') : 'Scan failed. You can try again.';
+            } finally {
+                quickStartScanBtn.disabled = false;
+            }
+        });
+    }
+
+    if (quickStartDevicesBtn) {
+        quickStartDevicesBtn.addEventListener('click', () => {
+            window.location.href = '../pages/devices.html';
+        });
+    }
+
+    if (quickStartRoomsBtn) {
+        quickStartRoomsBtn.addEventListener('click', () => {
+            window.location.href = '../pages/rooms.html';
+        });
+    }
 
     if (createRoomBtn) {
     createRoomBtn.addEventListener('click', async ()=>{

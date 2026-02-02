@@ -35,6 +35,20 @@
             <div class="dashboard-layout">
                 <!-- Left Column: Rooms -->
                 <div class="rooms-section">
+                   <div id="quickStartCard" class="unified-card quick-start-card" style="display: none; margin-bottom: 20px;">
+                        <div class="unified-card-header">
+                            <h4><i class="fas fa-rocket"></i> <span data-i18n="quick_start_title">Quick Start</span></h4>
+                        </div>
+                        <p style="margin: 0 0 12px 0; color: var(--text-muted);" data-i18n="quick_start_desc">
+                            Scan je netwerk en voeg meteen apparaten toe.
+                        </p>
+                        <div id="quickStartStatus" style="margin-bottom: 12px; color: var(--text-muted);" data-i18n="auto_discovery_idle">Ready to scan.</div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button id="quickStartScanBtn" class="btn btn-primary" data-i18n="quick_start_scan">Scan Devices</button>
+                            <button id="quickStartDevicesBtn" class="btn btn-secondary" data-i18n="quick_start_devices">Open Devices</button>
+                            <button id="quickStartRoomsBtn" class="btn btn-secondary" data-i18n="quick_start_rooms">Open Rooms</button>
+                        </div>
+                   </div>
                    <div id="roomsList" class="unified-grid">
                         <!-- Loaded via JS -->
                    </div>

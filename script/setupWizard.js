@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const setupRequired = localStorage.getItem('setupRequired');
     
-    if (setupRequired === 'true') {
+    if (setupRequired !== 'false') {
         startSetupWizard();
     }
 });
@@ -87,8 +87,26 @@ function startSetupWizard() {
 
                  <div class="setup-actions">
                      <button class="btn-secondary" onclick="nextStep(25)" data-i18n="back">Back</button>
-                     <button class="btn-primary" onclick="nextStep(5)" data-i18n="next">Next</button>
+                     <button class="btn-primary" onclick="nextStep(4)" data-i18n="next">Next</button>
                  </div>
+            </div>
+
+            <!-- Step 4: Auto Discovery -->
+            <div class="setup-step" id="step4">
+                <div class="setup-icon"><i class="fas fa-satellite-dish"></i></div>
+                <h2 class="setup-title" data-i18n="auto_discovery">Auto Device Discovery</h2>
+                <p class="setup-desc" data-i18n="auto_discovery_desc">We'll scan your network and add compatible devices automatically.</p>
+
+                <div style="max-width: 420px; margin: 0 auto 20px auto; text-align: center;">
+                    <div id="setup-scan-status" style="margin-bottom: 14px; color: var(--text-muted);" data-i18n="auto_discovery_idle">Ready to scan.</div>
+                    <button id="setup-scan-btn" class="btn-primary" onclick="startAutoDiscovery()" data-i18n="start_scan">Start Scan</button>
+                </div>
+
+                <div class="setup-actions">
+                    <button class="btn-secondary" onclick="nextStep(3)" data-i18n="back">Back</button>
+                    <button class="btn-secondary" onclick="nextStep(5)" data-i18n="skip_for_now">Skip for now</button>
+                    <button class="btn-primary" onclick="nextStep(5)" data-i18n="next">Next</button>
+                </div>
             </div>
  
             <!-- Step 5: Finish -->
@@ -158,11 +176,34 @@ function startSetupWizard() {
     };
     
     window.finishSetup = () => {
-        localStorage.removeItem('setupRequired');
+        localStorage.setItem('setupRequired', 'false');
+        localStorage.setItem('setupCompletedAt', new Date().toISOString());
         overlay.style.opacity = '0';
         setTimeout(() => {
             overlay.remove();
             window.location.reload(); 
         }, 500);
+    };
+
+    window.startAutoDiscovery = async () => {
+        const statusEl = document.getElementById('setup-scan-status');
+        const scanBtn = document.getElementById('setup-scan-btn');
+        if (!statusEl || !scanBtn) return;
+
+        scanBtn.disabled = true;
+        statusEl.textContent = window.t ? window.t('auto_discovery_scanning') : 'Scanning...';
+        try {
+            const res = await fetch('/api/devices/scan', { method: 'POST' });
+            const data = await res.json();
+            if (data && data.ok) {
+                statusEl.textContent = window.t ? window.t('auto_discovery_success') : 'Scan complete. Devices will appear shortly.';
+            } else {
+                statusEl.textContent = window.t ? window.t('auto_discovery_failed') : 'Scan failed. You can try again.';
+            }
+        } catch (e) {
+            statusEl.textContent = window.t ? window.t('auto_discovery_failed') : 'Scan failed. You can try again.';
+        } finally {
+            scanBtn.disabled = false;
+        }
     };
 }

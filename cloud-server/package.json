@@ -1,17 +1,26 @@
 {
-  "name": "delovahome-cloud",
+  "name": "delovahome-relay-server",
   "version": "1.0.0",
-  "description": "Cloud Relay Server for DelovaHome",
-  "main": "server.js",
+  "description": "Zero-knowledge relay server for DelovaHome remote access (E2E encrypted)",
+  "main": "relayServer.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node relayServer.js",
+    "dev": "nodemon relayServer.js",
+    "start:old-cloud": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "ws": "^8.13.0",
-    "uuid": "^9.0.0",
-    "bcrypt": "^5.1.0",
-    "jsonwebtoken": "^9.0.0",
-    "cors": "^2.8.5"
-  }
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "smart-home",
+    "relay",
+    "privacy",
+    "e2e-encryption",
+    "zero-knowledge"
+  ],
+  "author": "DelovaHome",
+  "license": "MIT"
 }

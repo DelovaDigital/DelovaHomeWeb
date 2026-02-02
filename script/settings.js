@@ -1051,13 +1051,30 @@ async function toggleTunnel() {
         
         if (data.success) {
             updateTunnelUI(data.status);
-            alert(window.t ? window.t(`tunnel_${action}d`) : `Tunnel ${action === 'enable' ? 'ingeschakeld' : 'uitgeschakeld'}`);
+            
+            // Show success message
+            if (action === 'enable') {
+                alert(window.t ? window.t('tunnel_enabled') : 'Tunnel ingeschakeld!\n\nScan de QR-code met je app om te verbinden.');
+            } else {
+                alert(window.t ? window.t('tunnel_disabled') : 'Tunnel uitgeschakeld');
+            }
         } else {
-            alert((window.t ? window.t('error') : 'Error') + ': ' + data.error);
+            // Show error with helpful message
+            let errorMsg = data.error || 'Unknown error';
+            
+            if (data.error && (data.error.includes('ENOTFOUND') || data.error.includes('ECONNREFUSED'))) {
+                errorMsg = 'Relay server niet bereikbaar.\n\n' +
+                    'Oplossingen:\n' +
+                    '1. Controleer relay URL in instellingen\n' +
+                    '2. Start self-hosted relay: cd cloud-server && npm start\n' +
+                    '3. Stel relay URL in op: wss://localhost:8080';
+            }
+            
+            alert((window.t ? window.t('error') : 'Error') + ':\n' + errorMsg);
         }
     } catch (err) {
         console.error('Toggle tunnel failed:', err);
-        alert(window.t ? window.t('failed') : 'Fout opgetreden');
+        alert(window.t ? window.t('failed') : 'Fout opgetreden: ' + err.message);
     } finally {
         btn.disabled = false;
     }
@@ -1131,6 +1148,56 @@ function generateTunnelQR(hubId, accessToken) {
     }
 }
 
+/// Test relay server connectivity
+async function testRelayConnection() {
+    const relayUrl = document.getElementById('tunnel-relay-url').value || 'wss://relay.delovahome.com';
+    const testBtn = event.target.closest('button');
+    const originalContent = testBtn.innerHTML;
+    
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testen...';
+    
+    try {
+        // Get health endpoint by converting wss to https
+        const healthUrl = relayUrl
+            .replace('wss://', 'https://')
+            .replace('ws://', 'http://') + '/health';
+        
+        const timeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
+        
+        const response = Promise.race([
+            fetch(healthUrl, { mode: 'no-cors' }),
+            timeout
+        ]);
+        
+        await response;
+        
+        testBtn.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i> Bereikbaar!';
+        setTimeout(() => {
+            testBtn.innerHTML = originalContent;
+            testBtn.disabled = false;
+        }, 3000);
+        
+    } catch (err) {
+        console.error('Relay test failed:', err);
+        testBtn.innerHTML = '<i class="fas fa-times-circle" style="color: red;"></i> Niet bereikbaar';
+        
+        setTimeout(() => {
+            testBtn.innerHTML = originalContent;
+            testBtn.disabled = false;
+        }, 3000);
+        
+        alert('Relay server niet bereikbaar.\n\n' +
+            'Controleer:\n' +
+            '1. URL is correct\n' +
+            '2. Server draait en is online\n' +
+            '3. Firewall blokkeert niet');
+    }
+}
+window.testRelayConnection = testRelayConnection;
+
 // Load tunnel status when cloud tab is opened
 document.addEventListener('DOMContentLoaded', () => {
     const cloudTab = document.querySelector('.settings-nav-item[data-target="cloud"]');
@@ -1140,3 +1207,4 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+

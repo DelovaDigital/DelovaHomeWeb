@@ -245,7 +245,13 @@ class TunnelClient extends EventEmitter {
     }
 
     handleError(err) {
-        console.error('[Tunnel] WebSocket error:', err);
+        console.error('[Tunnel] WebSocket error:', err.message || err);
+        
+        // Check if it's a DNS/network error
+        if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+            console.warn(`[Tunnel] Relay server not reachable (${err.code})`);
+            console.warn(`[Tunnel] Hint: Configure a relay server or start self-hosted relay at: npm start (in cloud-server/)`);
+        }
     }
 
     handleClose() {
@@ -253,13 +259,19 @@ class TunnelClient extends EventEmitter {
         this.isConnected = false;
         this.stopHeartbeat();
         this.emit('disconnected');
-        this.scheduleReconnect();
-    }
-
-    scheduleReconnect() {
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('[Tunnel] Max reconnect attempts reached');
+        thisconsole.warn('[Tunnel] Tunnel disabled - relay server not available');
+            console.warn('[Tunnel] To enable remote access:');
+            console.warn('[Tunnel]   1. Check relay URL in hub settings');
+            console.warn('[Tunnel]   2. Start self-hosted relay: cd cloud-server && npm start');
+            console.warn('[Tunnel]   3. Set relay URL to: wss://localhost:8080');
+            this.emit('error', new Error('Relay server not reachable'));
             return;
+        }
+
+        this.reconnectAttempts++;
+        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+        
+        console.log(`[Tunnel] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxR
         }
 
         this.reconnectAttempts++;

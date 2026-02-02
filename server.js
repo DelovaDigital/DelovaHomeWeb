@@ -2775,7 +2775,7 @@ try {
             await tunnelClient.connect();
             
             hubConfig.tunnelEnabled = true;
-            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+            fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
             
             res.json({
                 success: true,
@@ -2805,7 +2805,7 @@ try {
             }
             
             hubConfig.tunnelEnabled = false;
-            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+            fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
             
             res.json({
                 success: true,
@@ -2826,7 +2826,7 @@ try {
             // Generate new credentials
             hubConfig.tunnelHubId = crypto.randomBytes(16).toString('hex');
             hubConfig.tunnelHubSecret = crypto.randomBytes(32).toString('hex');
-            fs.writeFileSync(hubConfigPath, JSON.stringify(hubConfig, null, 2));
+            fs.writeFileSync(HUB_CONFIG_PATH, JSON.stringify(hubConfig, null, 2));
             
             // Reconnect tunnel if enabled
             if (tunnelClient && hubConfig.tunnelEnabled) {

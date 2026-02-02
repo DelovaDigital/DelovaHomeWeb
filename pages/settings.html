@@ -620,7 +620,15 @@
                                             <span data-i18n="relay_server">Relay Server</span>
                                             <small style="color: var(--text-muted);" data-i18n="relay_server_desc">(Standaard: officiële DelovaHome relay)</small>
                                         </label>
-                                        <input type="text" id="tunnel-relay-url" value="wss://relay.delovahome.com" placeholder="wss://relay.delovahome.com">
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="text" id="tunnel-relay-url" value="wss://relay.delovahome.com" placeholder="wss://relay.delovahome.com" style="flex: 1;">
+                                            <button class="btn btn-secondary" onclick="testRelayConnection()" style="padding: 0.6rem 1.2rem;">
+                                                <i class="fas fa-plug"></i> <span>Test</span>
+                                            </button>
+                                        </div>
+                                        <small style="color: var(--text-muted); display: block; margin-top: 8px;">
+                                            💡 Voor development: wss://localhost:8080 (als relay server draait)
+                                        </small>
                                     </div>
 
                                     <div class="form-group">

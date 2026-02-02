@@ -20,7 +20,10 @@ class RelayServer {
 
     start() {
         this.server = http.createServer((req, res) => {
+            console.log(`[Relay] HTTP Request: ${req.method} ${req.url} from ${req.socket.remoteAddress}`);
+            
             if (req.url === '/health') {
+                console.log('[Relay] ✅ Responding to /health request');
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     status: 'ok',
@@ -29,6 +32,7 @@ class RelayServer {
                     timestamp: Date.now()
                 }));
             } else {
+                console.log(`[Relay] ❌ 404 for ${req.url}`);
                 res.writeHead(404);
                 res.end();
             }
@@ -38,6 +42,18 @@ class RelayServer {
 
         this.wss.on('connection', (ws, req) => {
             this.handleConnection(ws, req);
+        });
+
+        // Error handling
+        this.server.on('error', (err) => {
+            console.error('[Relay] ❌ Server error:', err);
+        });
+
+        this.server.on('clientError', (err, socket) => {
+            console.error('[Relay] ❌ Client error:', err);
+            if (socket.writable) {
+                socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+            }
         });
 
         this.server.listen(this.port, '0.0.0.0', () => {

@@ -259,7 +259,13 @@ class TunnelClient extends EventEmitter {
         this.isConnected = false;
         this.stopHeartbeat();
         this.emit('disconnected');
-        thisconsole.warn('[Tunnel] Tunnel disabled - relay server not available');
+        this.scheduleReconnect();
+    }
+
+    scheduleReconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error('[Tunnel] Max reconnect attempts reached');
+            console.warn('[Tunnel] Tunnel disabled - relay server not available');
             console.warn('[Tunnel] To enable remote access:');
             console.warn('[Tunnel]   1. Check relay URL in hub settings');
             console.warn('[Tunnel]   2. Start self-hosted relay: cd cloud-server && npm start');
@@ -271,13 +277,7 @@ class TunnelClient extends EventEmitter {
         this.reconnectAttempts++;
         const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
         
-        console.log(`[Tunnel] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxR
-        }
-
-        this.reconnectAttempts++;
-        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-        
-        console.log(`[Tunnel] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+        console.log(`[Tunnel] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         
         setTimeout(() => this.connect(), delay);
     }

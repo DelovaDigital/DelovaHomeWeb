@@ -2870,7 +2870,9 @@ try {
     });
 
 } catch (err) {
-    console.error('[Tunnel] Setup failed:', err);
+    console.error('[Tunnel] ❌❌ CRITICAL SETUP FAILED:', err.message);
+    console.error('[Tunnel] Stack trace:', err.stack);
+    console.error('[Tunnel] Full error:', err);
 }
 
 // --- UDP Discovery Listener ---

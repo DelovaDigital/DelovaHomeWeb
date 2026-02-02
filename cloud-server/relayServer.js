@@ -54,12 +54,17 @@ class RelayServer {
         const hubToken = req.headers['x-hub-token'];
         const clientSession = req.headers['x-client-session'];
 
+        console.log('[Relay] New connection attempt:');
+        console.log(`  X-Hub-ID: ${hubId ? 'present' : 'missing'}`);
+        console.log(`  X-Hub-Token: ${hubToken ? 'present' : 'missing'}`);
+        console.log(`  X-Client-Session: ${clientSession ? 'present' : 'missing'}`);
+
         if (hubId && hubToken) {
             this.handleHubConnection(ws, hubId, hubToken);
         } else if (clientSession) {
             this.handleClientConnection(ws, clientSession);
         } else {
-            console.log('[Relay] Rejected: Missing authentication headers');
+            console.log('[Relay] ❌ Rejected: Missing authentication headers');
             ws.close(4001, 'Missing authentication');
         }
     }

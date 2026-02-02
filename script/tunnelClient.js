@@ -56,7 +56,7 @@ class TunnelClient extends EventEmitter {
     }
 
     handleOpen() {
-        console.log('[Tunnel] Connected to relay');
+        console.log('[Tunnel] ✅ Connected to relay');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
@@ -245,12 +245,14 @@ class TunnelClient extends EventEmitter {
     }
 
     handleError(err) {
-        console.error('[Tunnel] WebSocket error:', err.message || err);
+        console.error('[Tunnel] ❌ WebSocket error:', err.message || err);
+        console.error('[Tunnel] Error code:', err.code);
+        console.error('[Tunnel] Error details:', err);
         
         // Check if it's a DNS/network error
         if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
             console.warn(`[Tunnel] Relay server not reachable (${err.code})`);
-            console.warn(`[Tunnel] Hint: Configure a relay server or start self-hosted relay at: npm start (in cloud-server/)`);
+            console.warn(`[Tunnel] Expected URL: ${this.relayUrl}`);
         }
     }
 

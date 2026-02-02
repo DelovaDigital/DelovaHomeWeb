@@ -2741,6 +2741,10 @@ try {
     }
 
     // Initialize tunnel if enabled
+    console.log('[Tunnel DEBUG] hubConfig.tunnelEnabled:', hubConfig.tunnelEnabled);
+    console.log('[Tunnel DEBUG] hubConfig.tunnelRelayUrl:', hubConfig.tunnelRelayUrl);
+    console.log('[Tunnel DEBUG] Full hubConfig:', JSON.stringify(hubConfig, null, 2));
+    
     if (hubConfig.tunnelEnabled) {
         const creds = getHubCredentials();
         tunnelClient = new TunnelClient(creds.hubId, creds.hubSecret, creds.relayUrl);
